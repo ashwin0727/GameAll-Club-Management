@@ -1,0 +1,22 @@
+export const APP_NAME = "GameAll Club";
+
+export const ROLES = ["admin", "staff", "member"] as const;
+export type Role = (typeof ROLES)[number];
+
+export const MEMBERSHIP_STATUSES = ["active", "expired", "cancelled", "pending"] as const;
+export const PAYMENT_STATUSES = ["created", "paid", "failed", "refunded"] as const;
+export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"] as const;
+export const INVENTORY_TXN_TYPES = ["checkout", "return", "restock", "damage"] as const;
+
+export const NAV_ITEMS: {
+  label: string;
+  href: string;
+  roles: Role[];
+}[] = [
+  { label: "Dashboard", href: "/dashboard", roles: ["admin", "staff", "member"] },
+  { label: "Members", href: "/members", roles: ["admin", "staff"] },
+  { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
+  { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
+];
+
+export const QUERY_STALE_TIME_MS = 30_000;
