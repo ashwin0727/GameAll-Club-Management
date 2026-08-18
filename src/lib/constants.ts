@@ -1,5 +1,21 @@
 export const APP_NAME = "GameAll Club";
 
+/** Product wordmark and pitch used across splash, welcome and the auth screens. */
+export const PRODUCT_NAME = "Turf Management";
+export const PRODUCT_TAGLINE = "Manage your facility. Grow your business.";
+
+/** Sports the platform ships with; mirrors the seeded `sports` table. */
+export const SUPPORTED_SPORTS = [
+  "Badminton",
+  "Pickleball",
+  "Cricket",
+  "Football",
+  "Tennis",
+] as const;
+
+/** Seconds a user must wait between verification-email resends. */
+export const RESEND_COOLDOWN_SECONDS = 30;
+
 export const ROLES = ["admin", "staff", "member"] as const;
 export type Role = (typeof ROLES)[number];
 

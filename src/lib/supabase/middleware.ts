@@ -2,7 +2,29 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
 
-const PUBLIC_ROUTES = ["/login"];
+/** Reachable while signed out: the whole onboarding flow plus the email callback. */
+const PUBLIC_ROUTES = [
+  "/",
+  "/welcome",
+  "/signup",
+  "/verify-email",
+  "/login",
+  "/forgot-password",
+  "/auth/callback",
+];
+
+/**
+ * Signed-in users are bounced off the signed-out screens — except these.
+ * /reset-password *requires* the session the recovery link just created, and
+ * / is the splash, which routes signed-in users onward itself.
+ */
+const SESSION_TOLERANT_ROUTES = ["/reset-password", "/"];
+
+function isPublic(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || (route !== "/" && pathname.startsWith(`${route}/`)),
+  );
+}
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -26,22 +48,25 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
+  // Also refreshes an expiring session, which is why this runs on every request.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    request.nextUrl.pathname.startsWith(route),
-  );
+  const { pathname } = request.nextUrl;
+  // /reset-password is public in the sense that an unauthenticated visitor may
+  // land there — the page itself explains an invalid link.
+  const publicRoute = isPublic(pathname) || pathname.startsWith("/reset-password");
 
-  if (!user && !isPublicRoute) {
+  if (!user && !publicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirectTo", request.nextUrl.pathname);
+    url.search = "";
+    url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  if (user && publicRoute && !SESSION_TOLERANT_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";

@@ -2,32 +2,33 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthCard } from "@/features/auth/components/auth-card";
-import { LoginForm } from "@/features/auth/components/login-form";
+import { SignupForm } from "@/features/auth/components/signup-form";
 import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Sign in — ${PRODUCT_NAME}`,
+  title: `Create your account — ${PRODUCT_NAME}`,
 };
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <AuthCard
-      title="Welcome back"
-      subtitle="Sign in to manage your facility."
+      title="Create your account"
+      subtitle="Start managing your sports facility smarter."
       footer={
         <>
-          Don&apos;t have an account?{" "}
+          Already have an account?{" "}
           <Link
-            href="/signup"
+            href="/login"
             className="rounded font-medium text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Create Account
+            Sign In
           </Link>
         </>
       }
     >
-      <Suspense fallback={<div className="h-[300px]" />}>
-        <LoginForm />
+      {/* The form reads ?email= for the "change email" round trip. */}
+      <Suspense fallback={<div className="h-[420px]" />}>
+        <SignupForm />
       </Suspense>
     </AuthCard>
   );
