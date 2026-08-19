@@ -48,10 +48,17 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Also refreshes an expiring session, which is why this runs on every request.
+  // getSession() reads the cookie locally (refreshing only if the token is
+  // actually near expiry) instead of round-tripping to the Auth server on
+  // every navigation like getUser() does. That's safe here because this
+  // check only decides routing/redirects — the real authorization check is
+  // the server-verified getUser() call every protected layout already makes
+  // (see getCurrentAuthUser/getCurrentProfile), which still blocks a stale
+  // or forged cookie before any data renders.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const { pathname } = request.nextUrl;
   // /reset-password is public in the sense that an unauthenticated visitor may

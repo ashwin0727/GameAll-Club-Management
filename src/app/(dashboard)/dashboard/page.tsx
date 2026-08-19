@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { StatCards } from "@/features/dashboard/components/stat-cards";
 import { getCurrentAuthUser } from "@/features/auth/api/auth.api";
-import { createClient } from "@/lib/supabase/server";
 import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -10,8 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const user = await getCurrentAuthUser(supabase);
+  const user = await getCurrentAuthUser();
   const firstName = user?.name?.split(" ")[0];
 
   return (

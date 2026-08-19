@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/features/auth/api/auth.api";
 import { createMemberSchema } from "@/features/members/validation";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const actor = await getCurrentProfile(supabase);
+  const actor = await getCurrentProfile();
 
   if (!actor || (actor.role !== "admin" && actor.role !== "staff")) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });

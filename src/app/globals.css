@@ -3,30 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  /* Playo-style light theme.
+     #FFFFFF bg/card · #00b562 primary · #3B4540 text · #758A80 muted */
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
+    --foreground: 150 8% 25%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
+    --card-foreground: 150 8% 25%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
-    --primary: 262 83% 58%;
+    --popover-foreground: 150 8% 25%;
+    --primary: 152 100% 35%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 262 83% 96%;
-    --accent-foreground: 262 83% 30%;
+    --secondary: 150 20% 97%;
+    --secondary-foreground: 150 8% 25%;
+    --muted: 150 20% 97%;
+    --muted-foreground: 152 8% 50%;
+    --accent: 152 60% 94%;
+    --accent-foreground: 152 100% 25%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
+    --success: 152 100% 35%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 262 83% 58%;
+    --border: 150 10% 90%;
+    --input: 150 10% 90%;
+    --ring: 152 100% 35%;
     --radius: 0.75rem;
   }
 

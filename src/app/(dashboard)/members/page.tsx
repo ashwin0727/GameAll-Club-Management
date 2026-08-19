@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/features/auth/api/auth.api";
 import { MembersTable } from "@/features/members/components/members-table";
 import { APP_NAME } from "@/lib/constants";
@@ -10,8 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MembersPage() {
-  const supabase = await createClient();
-  const profile = await getCurrentProfile(supabase);
+  const profile = await getCurrentProfile();
 
   if (!profile || (profile.role !== "admin" && profile.role !== "staff")) {
     redirect("/dashboard");

@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/features/auth/api/auth.api";
 import { AppShell } from "@/components/shared/app-shell";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const profile = await getCurrentProfile(supabase);
+  const profile = await getCurrentProfile();
 
   if (!profile) {
     redirect("/login");
