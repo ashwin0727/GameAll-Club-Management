@@ -1,0 +1,28 @@
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { OnboardingProgress } from "@/features/onboarding/components/onboarding-progress";
+
+describe("OnboardingProgress", () => {
+  it("lists all five steps", () => {
+    render(<OnboardingProgress currentStep={1} />);
+
+    for (const step of ["Facility Details", "Sports", "Courts", "Operating Hours", "Pricing"]) {
+      expect(screen.getAllByText(step).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("marks the current step for assistive tech", () => {
+    render(<OnboardingProgress currentStep={1} />);
+    expect(screen.getByText("Facility Details")).toHaveAttribute("aria-current", "step");
+  });
+
+  it("shows the compact mobile summary", () => {
+    render(<OnboardingProgress currentStep={1} />);
+    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
+  });
+
+  it("renders no clickable step controls", () => {
+    render(<OnboardingProgress currentStep={1} />);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+});
