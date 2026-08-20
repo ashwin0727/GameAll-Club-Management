@@ -13,7 +13,11 @@ describe("OnboardingProgress", () => {
 
   it("marks the current step for assistive tech", () => {
     render(<OnboardingProgress currentStep={1} />);
-    expect(screen.getByText("Facility Details")).toHaveAttribute("aria-current", "step");
+    const matches = screen.getAllByText("Facility Details");
+    expect(matches.length).toBeGreaterThan(0);
+    for (const el of matches) {
+      expect(el).toHaveAttribute("aria-current", "step");
+    }
   });
 
   it("shows the compact mobile summary", () => {
