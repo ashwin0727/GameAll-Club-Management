@@ -29,9 +29,9 @@ export function FileUpload({ id = "facility-logo", label, hint, value, onChange,
 
   React.useEffect(() => {
     return () => {
-      if (preview && typeof value !== "string") URL.revokeObjectURL(preview);
+      if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview);
     };
-  }, [preview, value]);
+  }, [preview]);
 
   function handleFiles(files: FileList | null) {
     const file = files?.[0];
