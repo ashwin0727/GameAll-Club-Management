@@ -11,6 +11,7 @@ import type {
   SignupInput,
 } from "@/features/auth/validation";
 import { markDeviceOnboarded } from "@/lib/storage/onboarding";
+import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 
 const CURRENT_USER_KEY = ["auth", "current-user"] as const;
 
@@ -65,6 +66,7 @@ export function useLogout() {
     mutationFn: () => getAuthService().logout(),
     onSuccess: () => {
       queryClient.clear();
+      useOnboardingStore.getState().reset();
       router.replace("/login");
       router.refresh();
     },
