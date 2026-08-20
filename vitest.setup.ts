@@ -11,6 +11,14 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// Polyfills for URL APIs in jsdom
+if (!URL.createObjectURL) {
+  URL.createObjectURL = () => "blob:mock-url";
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = () => {};
+}
+
 // Applied to every suite: the auth screens all read the router and query string.
 vi.mock("next/navigation", async () => {
   const { routerMock, getSearchParams } = await import("@/test/router-mock");
