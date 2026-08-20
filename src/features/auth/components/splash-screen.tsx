@@ -17,17 +17,27 @@ const SPLASH_DURATION_MS = 1600;
  * It holds for ~1.6s so the brand registers without the app feeling slow, and
  * shows an indeterminate indicator — never a fake percentage.
  */
-export function SplashScreen({ signedIn }: { signedIn: boolean }) {
+export function SplashScreen({
+  signedIn,
+  onboardingCompleted,
+}: {
+  signedIn: boolean;
+  onboardingCompleted: boolean;
+}) {
   const router = useRouter();
 
   useEffect(() => {
-    const next = resolveEntryRoute({ signedIn, deviceOnboarded: hasDeviceOnboarded() });
+    const next = resolveEntryRoute({
+      signedIn,
+      deviceOnboarded: hasDeviceOnboarded(),
+      onboardingCompleted,
+    });
     // Prefetch during the hold so the transition lands instantly.
     router.prefetch(next);
 
     const timer = window.setTimeout(() => router.replace(next), SPLASH_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [router, signedIn]);
+  }, [router, signedIn, onboardingCompleted]);
 
   return (
     <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6">

@@ -4,15 +4,27 @@ import { safeRedirectPath } from "@/lib/redirects";
 
 describe("resolveEntryRoute", () => {
   it("sends a first-time visitor from splash to welcome", () => {
-    expect(resolveEntryRoute({ signedIn: false, deviceOnboarded: false })).toBe("/welcome");
+    expect(
+      resolveEntryRoute({ signedIn: false, deviceOnboarded: false, onboardingCompleted: false }),
+    ).toBe("/welcome");
   });
 
   it("sends a returning signed-out visitor from splash to login", () => {
-    expect(resolveEntryRoute({ signedIn: false, deviceOnboarded: true })).toBe("/login");
+    expect(
+      resolveEntryRoute({ signedIn: false, deviceOnboarded: true, onboardingCompleted: false }),
+    ).toBe("/login");
   });
 
-  it("sends a signed-in user from splash to the dashboard", () => {
-    expect(resolveEntryRoute({ signedIn: true, deviceOnboarded: true })).toBe("/dashboard");
+  it("sends a signed-in, fully onboarded user from splash to the dashboard", () => {
+    expect(
+      resolveEntryRoute({ signedIn: true, deviceOnboarded: true, onboardingCompleted: true }),
+    ).toBe("/dashboard");
+  });
+
+  it("sends a signed-in user who hasn't finished facility setup to onboarding", () => {
+    expect(
+      resolveEntryRoute({ signedIn: true, deviceOnboarded: true, onboardingCompleted: false }),
+    ).toBe("/onboarding/facility");
   });
 });
 

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthUser } from "@/features/auth/api/auth.api";
 import { SplashScreen } from "@/features/auth/components/splash-screen";
 
 /**
@@ -8,10 +8,9 @@ import { SplashScreen } from "@/features/auth/components/splash-screen";
  * made in the client component.
  */
 export default async function RootPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentAuthUser();
 
-  return <SplashScreen signedIn={Boolean(user)} />;
+  return (
+    <SplashScreen signedIn={Boolean(user)} onboardingCompleted={user?.onboardingCompleted ?? false} />
+  );
 }
