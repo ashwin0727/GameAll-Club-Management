@@ -31,6 +31,7 @@ export function FacilityDetailsForm() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting, isValid },
   } = useForm<FacilityDetailsInput>({
     resolver: zodResolver(facilityDetailsSchema),
@@ -61,12 +62,50 @@ export function FacilityDetailsForm() {
   // always one keystroke stale (the final character typed into a field gets
   // silently dropped from the draft). Subscribing via `watch` instead gets
   // the live, up-to-date value on every change.
+  //
+  // The actual persist (setDraft -> zustand persist -> localStorage.setItem)
+  // is debounced ~400ms per spec §22: "Do not save on every keystroke
+  // immediately." Without this, every keystroke synchronously serializes and
+  // writes the whole store to localStorage.
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
     const subscription = watch((value) => {
-      setDraft(value as Partial<FacilityDetailsInput>);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setDraft(value as Partial<FacilityDetailsInput>);
+      }, 400);
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [watch, setDraft]);
+
+  // The onboarding store's persist middleware uses skipHydration so the
+  // client's first render matches the server's empty-draft HTML (avoiding a
+  // hydration mismatch). Once React has hydrated, manually rehydrate the
+  // store from localStorage and push the real persisted draft into the form
+  // via RHF's reset (defaultValues are only read once, at initial mount,
+  // before the store had a chance to rehydrate).
+  useEffect(() => {
+    const unsub = useOnboardingStore.persist.onFinishHydration((state) => {
+      reset({
+        facilityName: state.draft.facilityName ?? "",
+        facilityType: state.draft.facilityType ?? DEFAULT_FACILITY_TYPE,
+        customFacilityType: state.draft.customFacilityType ?? "",
+        businessPhone: state.draft.businessPhone ?? "",
+        addressLine: state.draft.addressLine ?? "",
+        area: state.draft.area ?? "",
+        city: state.draft.city ?? "",
+        state: state.draft.state ?? "",
+        pinCode: state.draft.pinCode ?? "",
+        description: state.draft.description ?? "",
+      });
+    });
+    useOnboardingStore.persist.rehydrate();
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (input: FacilityDetailsInput) => {
     if (!user) {

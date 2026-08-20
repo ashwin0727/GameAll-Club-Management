@@ -46,6 +46,6 @@ export const useOnboardingStore = create<OnboardingState>()(
         })),
       reset: () => set({ ...INITIAL_STATE }),
     }),
-    { name: "turf.onboarding.v1" },
+    { name: "turf.onboarding.v1", skipHydration: true },
   ),
 );
