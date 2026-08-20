@@ -66,6 +66,11 @@ export function FileUpload({ id = "facility-logo", label, hint, value, onChange,
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleFiles(e.dataTransfer.files);
+          }}
           className="flex h-24 w-full items-center justify-center rounded-lg border border-dashed border-input text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
         >
           + Upload Logo
