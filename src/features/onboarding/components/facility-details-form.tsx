@@ -69,7 +69,10 @@ export function FacilityDetailsForm() {
   }, [watch, setDraft]);
 
   const onSubmit = async (input: FacilityDetailsInput) => {
-    if (!user) return;
+    if (!user) {
+      setSaveError("We couldn't save your facility details. Please try again.");
+      return;
+    }
     setSaveError(null);
 
     try {
