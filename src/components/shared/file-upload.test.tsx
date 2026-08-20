@@ -38,7 +38,7 @@ describe("FileUpload", () => {
   });
 
   it("rejects an unsupported file type", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ applyAccept: false });
     const onChange = vi.fn();
     render(<FileUpload label="Facility Logo" value={null} onChange={onChange} />);
 
