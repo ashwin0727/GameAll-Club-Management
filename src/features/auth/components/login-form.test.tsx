@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LoginForm } from "@/features/auth/components/login-form";
@@ -68,6 +68,24 @@ describe("LoginForm", () => {
       "href",
       "/verify-email?email=owner%40yourturf.com",
     );
+  });
+
+  it("sends an onboarding-incomplete user to facility setup instead of the dashboard", async () => {
+    const user = userEvent.setup();
+    installFakeAuthService({
+      login: vi.fn(async ({ email }) => ({
+        id: "user-1",
+        name: "Ravi Kumar",
+        email,
+        emailVerified: true,
+        onboardingCompleted: false,
+      })),
+    });
+    renderWithProviders(<LoginForm />);
+
+    await signIn(user);
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
   });
 
   it("confirms a completed verification when arriving from the email link", () => {

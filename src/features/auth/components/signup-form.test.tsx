@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SignupForm } from "@/features/auth/components/signup-form";
@@ -111,6 +111,20 @@ describe("SignupForm", () => {
         `/verify-email?email=${encodeURIComponent(VALID.email)}`,
       ),
     );
+  });
+
+  it("sends a brand-new account straight to facility setup when the session is already active", async () => {
+    const user = userEvent.setup();
+    const service = installFakeAuthService({
+      register: vi.fn(async ({ email }) => ({ email, sessionActive: true })),
+    });
+    renderWithProviders(<SignupForm />);
+
+    await fillValidForm(user);
+    await user.click(await screen.findByRole("button", { name: "Create Account" }));
+
+    await waitFor(() => expect(service.register).toHaveBeenCalled());
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
   });
 
   it("surfaces an already-registered email inline", async () => {

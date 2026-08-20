@@ -19,7 +19,7 @@ export function installFakeAuthService(overrides: Partial<AuthService> = {}): Au
       name: "Ravi Kumar",
       email,
       emailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     })),
     logout: vi.fn(async () => undefined),
     getCurrentUser: vi.fn(async () => null),

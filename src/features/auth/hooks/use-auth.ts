@@ -31,7 +31,8 @@ export function useSignup() {
       // rather than the first-run Welcome pitch.
       markDeviceOnboarded();
       if (result.sessionActive) {
-        router.replace("/dashboard");
+        // A brand-new account can never have completed onboarding yet.
+        router.replace("/onboarding/facility");
         router.refresh();
         return;
       }
@@ -49,7 +50,7 @@ export function useLogin() {
     onSuccess: async (user) => {
       markDeviceOnboarded();
       queryClient.setQueryData(CURRENT_USER_KEY, user);
-      router.replace("/dashboard");
+      router.replace(user.onboardingCompleted ? "/dashboard" : "/onboarding/facility");
       // Server components hold the old (signed-out) session until refreshed.
       router.refresh();
     },
