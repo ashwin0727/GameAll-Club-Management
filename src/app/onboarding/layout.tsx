@@ -1,8 +1,8 @@
 // src/app/onboarding/layout.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { OnboardingProgress } from "@/features/onboarding/components/onboarding-progress";
 import { LeaveConfirmDialog } from "@/features/onboarding/components/leave-confirm-dialog";
@@ -10,18 +10,29 @@ import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const currentStep = useOnboardingStore((s) => s.currentStep);
   const draft = useOnboardingStore((s) => s.draft);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const hasUnsavedProgress = Object.values(draft).some((value) => Boolean(value));
+  const previousStepPath = pathname === "/onboarding/sports" ? "/onboarding/facility" : "/dashboard";
+
+  // The store uses skipHydration so the client's first render matches the
+  // server's default (empty/step-1) HTML. Rehydrate here too — not every
+  // onboarding step (e.g. the /onboarding/sports placeholder) mounts a form
+  // that would otherwise trigger this, and OnboardingProgress's currentStep
+  // needs the real persisted value once it's safe to show it.
+  useEffect(() => {
+    useOnboardingStore.persist.rehydrate();
+  }, []);
 
   function handleBack() {
     if (hasUnsavedProgress) {
       setConfirmOpen(true);
       return;
     }
-    router.replace("/login");
+    router.replace(previousStepPath);
   }
 
   return (
@@ -45,7 +56,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       <LeaveConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        onLeave={() => router.replace("/login")}
+        onLeave={() => router.replace(previousStepPath)}
       />
     </div>
   );
