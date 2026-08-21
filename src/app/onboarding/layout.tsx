@@ -11,6 +11,7 @@ import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store
 const PREVIOUS_STEP_PATH: Record<string, string> = {
   "/onboarding/sports": "/onboarding/facility",
   "/onboarding/courts": "/onboarding/sports",
+  "/onboarding/operating-hours": "/onboarding/courts",
 };
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {

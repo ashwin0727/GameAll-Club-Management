@@ -22,6 +22,7 @@ interface OnboardingState {
   setSelectedSportIds: (ids: string[]) => void;
   setOtherSportName: (name: string) => void;
   completeSports: () => void;
+  completeCourts: () => void;
   reset: () => void;
 }
 
@@ -58,6 +59,12 @@ export const useOnboardingStore = create<OnboardingState>()(
           sportsCompleted: true,
           currentStep: 3,
           completedSteps: s.completedSteps.includes(2) ? s.completedSteps : [...s.completedSteps, 2],
+        })),
+      completeCourts: () =>
+        set((s) => ({
+          courtsCompleted: true,
+          currentStep: 4,
+          completedSteps: s.completedSteps.includes(3) ? s.completedSteps : [...s.completedSteps, 3],
         })),
       reset: () => set({ ...INITIAL_STATE }),
     }),

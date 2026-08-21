@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/features/auth/hooks/use-auth";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 import { FormMessage } from "@/features/auth/components/form-message";
-import { ErrorState } from "@/components/shared/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Pulls in framer-motion but only renders on the rare forbidden-facility
+// path — deferred off the common happy-path bundle for this form.
+const ErrorState = dynamic(() =>
+  import("@/components/shared/error-state").then((mod) => mod.ErrorState),
+);
 import { MockFacilityService } from "@/features/onboarding/services/mock-facility-service";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";

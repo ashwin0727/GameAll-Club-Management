@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Users, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -15,12 +16,20 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { TableSkeleton } from "@/components/shared/loading-state";
-import { EmptyState } from "@/components/shared/empty-state";
-import { ErrorState } from "@/components/shared/error-state";
 import { MemberFormDialog } from "@/features/members/components/member-form-dialog";
 import { useMembers } from "@/features/members/hooks/use-members";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+// Both pull in framer-motion but only ever render on the error/empty
+// branches — deferred so the common happy-path (a loaded table) never pays
+// for that bundle.
+const ErrorState = dynamic(() =>
+  import("@/components/shared/error-state").then((mod) => mod.ErrorState),
+);
+const EmptyState = dynamic(() =>
+  import("@/components/shared/empty-state").then((mod) => mod.EmptyState),
+);
 
 const PAGE_SIZE = 10;
 
