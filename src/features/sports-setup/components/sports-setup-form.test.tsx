@@ -160,4 +160,30 @@ describe("SportsSetupForm", () => {
     expect(screen.getByRole("checkbox", { name: /Cricket/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("checkbox", { name: /Badminton/ })).toHaveAttribute("aria-checked", "false");
   });
+
+  it("restores an in-progress (not yet Continued) selection from the store after remounting", async () => {
+    const user = userEvent.setup();
+    installAuth();
+    await seedFacility("BADMINTON");
+    const { unmount } = renderWithProviders(<SportsSetupForm />);
+
+    await screen.findByText("GameAll Sports Arena");
+    // Facility-type preselection applies on first render.
+    expect(screen.getByRole("checkbox", { name: /Badminton/ })).toHaveAttribute("aria-checked", "true");
+
+    // Deselect the preselected sport and pick a different one instead.
+    await user.click(screen.getByText("Indoor racket sport"));
+    await user.click(screen.getByText("Bat-and-ball team sport"));
+
+    await waitFor(() => expect(useOnboardingStore.getState().selectedSportIds).toEqual(["sport_cricket"]));
+
+    // Never clicked Continue, so nothing was saved via MockSportService.
+    unmount();
+
+    renderWithProviders(<SportsSetupForm />);
+
+    await screen.findByText("GameAll Sports Arena");
+    expect(screen.getByRole("checkbox", { name: /Cricket/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: /Badminton/ })).toHaveAttribute("aria-checked", "false");
+  });
 });

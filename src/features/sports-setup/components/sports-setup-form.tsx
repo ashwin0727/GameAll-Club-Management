@@ -21,6 +21,21 @@ import { otherSportNameSchema } from "@/features/sports-setup/validation";
 
 type LoadState = "loading" | "ready" | "forbidden";
 
+// Resolves once the onboarding store has hydrated from localStorage. The
+// store uses skipHydration so the first client render matches the server's
+// empty-state HTML; this lets the load effect below wait for the real
+// persisted values before deciding whether to preselect a sport.
+function waitForOnboardingHydration(): Promise<void> {
+  if (useOnboardingStore.persist.hasHydrated()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsubscribe = useOnboardingStore.persist.onFinishHydration(() => {
+      unsubscribe();
+      resolve();
+    });
+    useOnboardingStore.persist.rehydrate();
+  });
+}
+
 export function SportsSetupForm() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -67,13 +82,24 @@ export function SportsSetupForm() {
       if (cancelled) return;
 
       let initialIds = existing.map((row) => row.sportId);
-      const initialOtherName = existing.find((row) => row.sportId === OTHER_SPORT_ID)?.customSportName ?? "";
+      let initialOtherName = existing.find((row) => row.sportId === OTHER_SPORT_ID)?.customSportName ?? "";
 
       // Preselection only applies on a genuinely first-ever visit — never
-      // overrides an existing saved selection.
+      // overrides an existing saved selection. But an in-progress selection
+      // that was never confirmed via Continue (only auto-saved into the
+      // store's draft) still takes priority over facility-type preselection —
+      // otherwise reloading the page silently discards the owner's picks.
       if (existing.length === 0) {
-        const preselected = SINGLE_SPORT_TYPE_MAP[loadedFacility.type];
-        if (preselected) initialIds = [preselected];
+        await waitForOnboardingHydration();
+        if (cancelled) return;
+        const persisted = useOnboardingStore.getState();
+        if (persisted.selectedSportIds.length > 0) {
+          initialIds = persisted.selectedSportIds;
+          initialOtherName = persisted.otherSportName;
+        } else {
+          const preselected = SINGLE_SPORT_TYPE_MAP[loadedFacility.type];
+          if (preselected) initialIds = [preselected];
+        }
       }
 
       setFacility(loadedFacility);
@@ -137,6 +163,7 @@ export function SportsSetupForm() {
       );
 
       completeSports();
+      setIsSaving(false);
       router.push("/onboarding/courts");
     } catch {
       setSaveError("Unable to save your sports. Please try again.");
