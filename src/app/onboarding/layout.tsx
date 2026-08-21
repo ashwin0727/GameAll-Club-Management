@@ -13,14 +13,16 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   const pathname = usePathname();
   const currentStep = useOnboardingStore((s) => s.currentStep);
   const draft = useOnboardingStore((s) => s.draft);
+  const selectedSportIds = useOnboardingStore((s) => s.selectedSportIds);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const hasUnsavedProgress = Object.values(draft).some((value) => Boolean(value));
+  const hasUnsavedProgress =
+    Object.values(draft).some((value) => Boolean(value)) || selectedSportIds.length > 0;
   const previousStepPath = pathname === "/onboarding/sports" ? "/onboarding/facility" : "/dashboard";
 
   // The store uses skipHydration so the client's first render matches the
   // server's default (empty/step-1) HTML. Rehydrate here too — not every
-  // onboarding step (e.g. the /onboarding/sports placeholder) mounts a form
+  // onboarding step (e.g. the /onboarding/courts placeholder) mounts a form
   // that would otherwise trigger this, and OnboardingProgress's currentStep
   // needs the real persisted value once it's safe to show it.
   useEffect(() => {
