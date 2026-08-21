@@ -65,4 +65,40 @@ describe("useOnboardingStore", () => {
     const raw = window.localStorage.getItem("turf.onboarding.v1") ?? "";
     expect(raw).not.toMatch(/password|token/i);
   });
+
+  it("starts with no sports selected and an empty other-sport name", () => {
+    const state = useOnboardingStore.getState();
+    expect(state.selectedSportIds).toEqual([]);
+    expect(state.otherSportName).toBe("");
+  });
+
+  it("sets selected sport ids and other-sport name independently", () => {
+    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton", "sport_pickleball"]);
+    useOnboardingStore.getState().setOtherSportName("Basketball");
+
+    const state = useOnboardingStore.getState();
+    expect(state.selectedSportIds).toEqual(["sport_badminton", "sport_pickleball"]);
+    expect(state.otherSportName).toBe("Basketball");
+  });
+
+  it("marks sports complete and advances to step 3", () => {
+    useOnboardingStore.getState().completeFacilityDetails(sampleFacility);
+    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
+    useOnboardingStore.getState().completeSports();
+
+    const state = useOnboardingStore.getState();
+    expect(state.sportsCompleted).toBe(true);
+    expect(state.currentStep).toBe(3);
+    expect(state.completedSteps).toEqual([1, 2]);
+  });
+
+  it("reset clears sports selection state along with everything else", () => {
+    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
+    useOnboardingStore.getState().setOtherSportName("Basketball");
+    useOnboardingStore.getState().reset();
+
+    const state = useOnboardingStore.getState();
+    expect(state.selectedSportIds).toEqual([]);
+    expect(state.otherSportName).toBe("");
+  });
 });
