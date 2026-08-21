@@ -21,11 +21,11 @@ if (!URL.revokeObjectURL) {
 
 // Applied to every suite: the auth screens all read the router and query string.
 vi.mock("next/navigation", async () => {
-  const { routerMock, getSearchParams } = await import("@/test/router-mock");
+  const { routerMock, getSearchParams, getPathname } = await import("@/test/router-mock");
   return {
     useRouter: () => routerMock,
     useSearchParams: () => getSearchParams(),
-    usePathname: () => "/",
+    usePathname: () => getPathname(),
     redirect: vi.fn(),
     notFound: vi.fn(),
   };

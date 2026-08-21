@@ -23,7 +23,18 @@ export function getSearchParams(): URLSearchParams {
   return searchParams;
 }
 
+let pathname = "/";
+
+export function setPathname(path: string): void {
+  pathname = path;
+}
+
+export function getPathname(): string {
+  return pathname;
+}
+
 export function resetRouterMock(): void {
   Object.values(routerMock).forEach((spy) => spy.mockReset());
   setSearchParams();
+  setPathname("/");
 }

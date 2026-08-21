@@ -8,6 +8,11 @@ import { OnboardingProgress } from "@/features/onboarding/components/onboarding-
 import { LeaveConfirmDialog } from "@/features/onboarding/components/leave-confirm-dialog";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 
+const PREVIOUS_STEP_PATH: Record<string, string> = {
+  "/onboarding/sports": "/onboarding/facility",
+  "/onboarding/courts": "/onboarding/sports",
+};
+
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -18,7 +23,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
 
   const hasUnsavedProgress =
     Object.values(draft).some((value) => Boolean(value)) || selectedSportIds.length > 0;
-  const previousStepPath = pathname === "/onboarding/sports" ? "/onboarding/facility" : "/dashboard";
+  const previousStepPath = PREVIOUS_STEP_PATH[pathname ?? ""] ?? "/dashboard";
 
   // The store uses skipHydration so the client's first render matches the
   // server's default (empty/step-1) HTML. Rehydrate here too — not every
