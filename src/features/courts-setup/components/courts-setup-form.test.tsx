@@ -111,6 +111,91 @@ describe("CourtsSetupForm", () => {
     expect(await screen.findByDisplayValue("Court 2")).toBeInTheDocument();
   });
 
+  it("auto-saves a new court via the debounce timer alone, without clicking Continue", async () => {
+    const user = userEvent.setup();
+    installAuth();
+    const facility = await seedFacility();
+    await seedSports(facility.id, ["sport_badminton"]);
+    renderWithProviders(<CourtsSetupForm />);
+
+    await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
+    await screen.findByDisplayValue("Court 1");
+
+    expect(await MockPlayingAreaService.getPlayingAreas(facility.id)).toHaveLength(0);
+
+    await waitFor(
+      async () => {
+        const saved = await MockPlayingAreaService.getPlayingAreas(facility.id);
+        expect(saved.map((a) => a.name)).toEqual(["Court 1"]);
+      },
+      { timeout: 2000 },
+    );
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("auto-saves an edit to an already-saved court via the debounce timer alone", async () => {
+    const user = userEvent.setup();
+    installAuth();
+    const facility = await seedFacility();
+    const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
+    if (!facilitySport) throw new Error("facilitySport not seeded");
+    const saved = await MockPlayingAreaService.createPlayingArea({
+      id: crypto.randomUUID(),
+      facilityId: facility.id,
+      facilitySportId: facilitySport.id,
+      sportId: "sport_badminton",
+      name: "Court 1",
+      type: "INDOOR",
+      status: "ACTIVE",
+      bookingEnabled: true,
+      archived: false,
+      displayOrder: 0,
+    });
+
+    renderWithProviders(<CourtsSetupForm />);
+    const nameField = await screen.findByDisplayValue("Court 1");
+    await user.clear(nameField);
+    await user.type(nameField, "Center Court");
+
+    await waitFor(
+      async () => {
+        const [area] = await MockPlayingAreaService.getPlayingAreas(facility.id);
+        expect(area?.name).toBe("Center Court");
+      },
+      { timeout: 2000 },
+    );
+    const [persisted] = await MockPlayingAreaService.getPlayingAreas(facility.id);
+    expect(persisted?.id).toBe(saved.id);
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse a name still in use after removing an earlier court", async () => {
+    const user = userEvent.setup();
+    installAuth();
+    const facility = await seedFacility();
+    await seedSports(facility.id, ["sport_badminton"]);
+    renderWithProviders(<CourtsSetupForm />);
+
+    await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
+    await screen.findByDisplayValue("Court 1");
+    await user.click(screen.getByRole("button", { name: "+ Add Court" }));
+    await screen.findByDisplayValue("Court 2");
+
+    // Remove "Court 1" (a never-saved draft — removed immediately, no dialog).
+    const removeButtons = screen.getAllByRole("button", { name: "Remove" });
+    const firstRemove = removeButtons[0];
+    if (!firstRemove) throw new Error("expected a Remove button");
+    await user.click(firstRemove);
+    expect(screen.queryByDisplayValue("Court 1")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Court 2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "+ Add Court" }));
+
+    // A count-based scheme would re-mint "Court 2" (1 remaining + 1), colliding
+    // with the surviving court — it must skip ahead to "Court 3" instead.
+    expect(await screen.findByDisplayValue("Court 3")).toBeInTheDocument();
+  });
+
   it("removing a never-saved draft removes it immediately with no confirmation dialog", async () => {
     const user = userEvent.setup();
     installAuth();
@@ -134,6 +219,7 @@ describe("CourtsSetupForm", () => {
     const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
     if (!facilitySport) throw new Error("facilitySport not seeded");
     const saved = await MockPlayingAreaService.createPlayingArea({
+      id: crypto.randomUUID(),
       facilityId: facility.id,
       facilitySportId: facilitySport.id,
       sportId: "sport_badminton",
@@ -197,6 +283,24 @@ describe("CourtsSetupForm", () => {
     expect(routerMock.push).not.toHaveBeenCalled();
   });
 
+  it("blocks Continue when a court's name is too short", async () => {
+    const user = userEvent.setup();
+    installAuth();
+    const facility = await seedFacility();
+    await seedSports(facility.id, ["sport_badminton"]);
+    renderWithProviders(<CourtsSetupForm />);
+
+    await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
+    const nameField = await screen.findByDisplayValue("Court 1");
+    await user.clear(nameField);
+    await user.type(nameField, "A");
+
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+
+    expect(await screen.findByText(/between 2 and 50 characters/)).toBeInTheDocument();
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
   it("saves playing areas and navigates to the operating-hours placeholder on Continue", async () => {
     const user = userEvent.setup();
     installAuth();
@@ -222,6 +326,7 @@ describe("CourtsSetupForm", () => {
     const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
     if (!facilitySport) throw new Error("facilitySport not seeded");
     await MockPlayingAreaService.createPlayingArea({
+      id: crypto.randomUUID(),
       facilityId: facility.id,
       facilitySportId: facilitySport.id,
       sportId: "sport_badminton",

@@ -29,7 +29,6 @@ export const MockPlayingAreaService = {
     const now = new Date().toISOString();
     const created: PlayingArea = {
       ...input,
-      id: crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
     };
@@ -37,7 +36,7 @@ export const MockPlayingAreaService = {
     return created;
   },
 
-  async updatePlayingArea(id: string, patch: Partial<PlayingAreaInput>): Promise<PlayingArea> {
+  async updatePlayingArea(id: string, patch: Partial<Omit<PlayingAreaInput, "id">>): Promise<PlayingArea> {
     const rows = readAll();
     const index = rows.findIndex((row) => row.id === id);
     const existing = rows[index];

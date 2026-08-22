@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { AddPlayingAreaButton } from "@/features/courts-setup/components/add-playing-area-button";
 import { PlayingAreaCard } from "@/features/courts-setup/components/playing-area-card";
 import { playingAreaLabelFor, pluralizeLabel } from "@/features/courts-setup/constants";
 import type { PlayingArea } from "@/features/courts-setup/types";
@@ -34,7 +34,6 @@ export function SportSection({
   onRemoveRequest,
 }: SportSectionProps) {
   const label = playingAreaLabelFor(sport.code);
-  const addLabel = `+ Add ${label}`;
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
@@ -60,9 +59,7 @@ export function SportSection({
           <p className="text-xs text-muted-foreground">
             Add the {label.toLowerCase()}s available for this sport.
           </p>
-          <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-            {addLabel}
-          </Button>
+          <AddPlayingAreaButton label={label} onClick={onAdd} />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -81,11 +78,7 @@ export function SportSection({
         </div>
       )}
 
-      {playingAreas.length > 0 && (
-        <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-          {addLabel}
-        </Button>
-      )}
+      {playingAreas.length > 0 && <AddPlayingAreaButton label={label} onClick={onAdd} />}
 
       {sectionError && <p className="text-sm text-destructive">{sectionError}</p>}
     </section>

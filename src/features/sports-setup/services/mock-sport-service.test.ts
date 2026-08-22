@@ -85,6 +85,42 @@ describe("MockSportService", () => {
     expect(badminton?.customSportName).toBeUndefined();
   });
 
+  it("preserves id and createdAt for a sport that was already selected, across re-saves", async () => {
+    const first = await MockSportService.saveFacilitySports(
+      FACILITY_A,
+      rows(FACILITY_A, ["sport_badminton", "sport_pickleball"]),
+    );
+    const badmintonId = first.find((row) => row.sportId === "sport_badminton")?.id;
+    const badmintonCreatedAt = first.find((row) => row.sportId === "sport_badminton")?.createdAt;
+
+    // Re-saving the exact same selection (e.g. navigating Back to Sports
+    // and clicking Continue again without changing anything) must not mint
+    // a new id — anything holding facilitySportId as a foreign key (like a
+    // saved court) would otherwise be silently orphaned.
+    const second = await MockSportService.saveFacilitySports(
+      FACILITY_A,
+      rows(FACILITY_A, ["sport_badminton", "sport_pickleball"]),
+    );
+    const badmintonAgain = second.find((row) => row.sportId === "sport_badminton");
+
+    expect(badmintonAgain?.id).toBe(badmintonId);
+    expect(badmintonAgain?.createdAt).toBe(badmintonCreatedAt);
+  });
+
+  it("mints a new id only for a genuinely newly-added sport on re-save", async () => {
+    const first = await MockSportService.saveFacilitySports(FACILITY_A, rows(FACILITY_A, ["sport_badminton"]));
+    const badmintonId = first[0]?.id;
+
+    const second = await MockSportService.saveFacilitySports(
+      FACILITY_A,
+      rows(FACILITY_A, ["sport_badminton", "sport_cricket"]),
+    );
+
+    expect(second.find((row) => row.sportId === "sport_badminton")?.id).toBe(badmintonId);
+    expect(second.find((row) => row.sportId === "sport_cricket")?.id).toBeTruthy();
+    expect(second.find((row) => row.sportId === "sport_cricket")?.id).not.toBe(badmintonId);
+  });
+
   it("updateFacilitySports also replaces the full set", async () => {
     await MockSportService.saveFacilitySports(FACILITY_A, rows(FACILITY_A, ["sport_badminton"]));
     const updated = await MockSportService.updateFacilitySports(

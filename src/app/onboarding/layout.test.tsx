@@ -79,4 +79,25 @@ describe("OnboardingLayout", () => {
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
   });
+
+  it("does not show the confirm dialog on /onboarding/courts even though earlier steps left draft/selectedSportIds populated", async () => {
+    const user = userEvent.setup();
+    setPathname("/onboarding/courts");
+    // Facility and Sports steps never clear this state once completed —
+    // Courts persists its own data incrementally, so neither field reflects
+    // anything actually unsaved on this step.
+    useOnboardingStore.getState().setDraft({ facilityName: "GameAll Sports Arena" });
+    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
+
+    renderWithProviders(
+      <OnboardingLayout>
+        <div>content</div>
+      </OnboardingLayout>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
+    expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
+  });
 });

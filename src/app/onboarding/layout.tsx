@@ -22,8 +22,15 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   const selectedSportIds = useOnboardingStore((s) => s.selectedSportIds);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // `draft` and `selectedSportIds` are never cleared once their own step
+  // completes, so they stay populated for the rest of onboarding. Only warn
+  // while on the steps that actually own that in-progress state (Facility,
+  // Sports) — later steps (e.g. Courts, which persists incrementally and has
+  // no zustand draft of its own) would otherwise always trip the confirm
+  // dialog off leftover state from steps that already completed.
+  const isEarlyStep = pathname === "/onboarding/facility" || pathname === "/onboarding/sports";
   const hasUnsavedProgress =
-    Object.values(draft).some((value) => Boolean(value)) || selectedSportIds.length > 0;
+    isEarlyStep && (Object.values(draft).some((value) => Boolean(value)) || selectedSportIds.length > 0);
   const previousStepPath = PREVIOUS_STEP_PATH[pathname ?? ""] ?? "/dashboard";
 
   // The store uses skipHydration so the client's first render matches the

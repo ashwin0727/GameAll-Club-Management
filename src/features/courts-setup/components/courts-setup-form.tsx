@@ -51,13 +51,20 @@ export function CourtsSetupForm() {
   const [removeTarget, setRemoveTarget] = useState<{ id: string; label: string } | null>(null);
 
   // Tracks which local playing-area ids have never made it to the service
-  // yet (still a local-only draft, per spec §14). Once the debounce for an
-  // id fires and createPlayingArea resolves, that id is removed here and
-  // the local record's id is swapped for the service-assigned one.
+  // yet (still a local-only draft, per spec §14). The id is client-generated
+  // up front (see handleAdd) and never swapped, so this only distinguishes
+  // create vs. update — it's removed once createPlayingArea resolves.
   const unsavedIds = useRef<Set<string>>(new Set());
   const playingAreasRef = useRef<PlayingArea[]>([]);
   const timeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  playingAreasRef.current = playingAreas;
+  // Per-id promise chain so overlapping persists (a debounce firing while a
+  // prior save for the same id is still in flight, or handleContinue's flush
+  // racing an in-flight debounce) serialize instead of racing each other.
+  const persistChains = useRef<Record<string, Promise<void>>>({});
+
+  useEffect(() => {
+    playingAreasRef.current = playingAreas;
+  }, [playingAreas]);
 
   useEffect(() => {
     if (userLoading) return;
@@ -101,39 +108,47 @@ export function CourtsSetupForm() {
     };
   }, [user, userLoading, router]);
 
-  const persistArea = useCallback(async (id: string) => {
-    const area = playingAreasRef.current.find((a) => a.id === id);
-    if (!area) return;
+  const persistArea = useCallback((id: string): Promise<void> => {
+    const prior = persistChains.current[id] ?? Promise.resolve();
+    const run = prior.catch(() => {}).then(async () => {
+      const area = playingAreasRef.current.find((a) => a.id === id);
+      if (!area) return;
+      const name = area.name.trim();
 
-    if (unsavedIds.current.has(id)) {
-      const input: PlayingAreaInput = {
-        facilityId: area.facilityId,
-        facilitySportId: area.facilitySportId,
-        sportId: area.sportId,
-        name: area.name,
-        type: area.type,
-        status: area.status,
-        bookingEnabled: area.bookingEnabled,
-        archived: area.archived,
-        displayOrder: area.displayOrder,
-      };
-      const created = await MockPlayingAreaService.createPlayingArea(input);
-      unsavedIds.current.delete(id);
-      setPlayingAreas((prev) => prev.map((a) => (a.id === id ? created : a)));
-    } else {
-      await MockPlayingAreaService.updatePlayingArea(id, {
-        name: area.name,
-        type: area.type,
-        status: area.status,
-        bookingEnabled: area.bookingEnabled,
-      });
-    }
+      if (unsavedIds.current.has(id)) {
+        const input: PlayingAreaInput = {
+          id: area.id,
+          facilityId: area.facilityId,
+          facilitySportId: area.facilitySportId,
+          sportId: area.sportId,
+          name,
+          type: area.type,
+          status: area.status,
+          bookingEnabled: area.bookingEnabled,
+          archived: area.archived,
+          displayOrder: area.displayOrder,
+        };
+        await MockPlayingAreaService.createPlayingArea(input);
+        unsavedIds.current.delete(id);
+      } else {
+        await MockPlayingAreaService.updatePlayingArea(id, {
+          name,
+          type: area.type,
+          status: area.status,
+          bookingEnabled: area.bookingEnabled,
+        });
+      }
+    });
+    persistChains.current[id] = run;
+    return run;
   }, []);
 
   function scheduleSave(id: string) {
     clearTimeout(timeouts.current[id]);
     timeouts.current[id] = setTimeout(() => {
-      persistArea(id);
+      persistArea(id).catch(() => {
+        setSaveError("Unable to save your changes. Please try again.");
+      });
     }, DEBOUNCE_MS);
   }
 
@@ -160,7 +175,15 @@ export function CourtsSetupForm() {
     const sport = AVAILABLE_SPORTS.find((s) => s.id === facilitySport.sportId);
     const label = playingAreaLabelFor(sport?.code ?? "OTHER");
     const existingForSport = playingAreas.filter((a) => a.facilitySportId === facilitySport.id);
-    const nextNumber = existingForSport.length + 1;
+    // Derive from the highest existing numeric suffix, not the count — after
+    // a removal, count-based numbering can re-mint a name that still exists
+    // (e.g. remove "Court 1" from [Court 1, Court 2]: length is 1, so a
+    // count-based next number of 2 collides with the surviving "Court 2").
+    const usedNumbers = existingForSport.map((a) => {
+      const match = /(\d+)\s*$/.exec(a.name.trim());
+      return match ? Number(match[1]) : 0;
+    });
+    const nextNumber = (usedNumbers.length > 0 ? Math.max(...usedNumbers) : 0) + 1;
 
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -202,9 +225,14 @@ export function CourtsSetupForm() {
   async function confirmRemove() {
     if (!removeTarget) return;
     const { id } = removeTarget;
-    await MockPlayingAreaService.removePlayingArea(id);
-    setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
-    setRemoveTarget(null);
+    clearTimeout(timeouts.current[id]);
+    try {
+      await MockPlayingAreaService.removePlayingArea(id);
+      setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
+      setRemoveTarget(null);
+    } catch {
+      setSaveError("Unable to remove this. Please try again.");
+    }
   }
 
   async function handleContinue() {
@@ -253,9 +281,14 @@ export function CourtsSetupForm() {
     setSaveError(null);
 
     try {
-      // Flush any pending debounced saves before navigating away.
+      // Flush any pending debounced saves before navigating away — clear the
+      // timers first so we don't leave a stray one to fire post-navigation.
+      for (const area of playingAreas) {
+        clearTimeout(timeouts.current[area.id]);
+      }
       await Promise.all(playingAreas.map((area) => persistArea(area.id)));
       completeCourts();
+      setIsSaving(false);
       router.push("/onboarding/operating-hours");
     } catch {
       setSaveError("Unable to save your courts. Please try again.");

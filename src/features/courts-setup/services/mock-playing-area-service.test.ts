@@ -18,6 +18,7 @@ function courtInput(overrides: Partial<PlayingAreaInput> = {}): PlayingAreaInput
     archived: false,
     displayOrder: 0,
     ...overrides,
+    id: overrides.id ?? crypto.randomUUID(),
   };
 }
 

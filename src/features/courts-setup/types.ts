@@ -21,4 +21,4 @@ export interface PlayingArea {
   updatedAt: string;
 }
 
-export type PlayingAreaInput = Omit<PlayingArea, "id" | "createdAt" | "updatedAt">;
+export type PlayingAreaInput = Omit<PlayingArea, "createdAt" | "updatedAt">;
