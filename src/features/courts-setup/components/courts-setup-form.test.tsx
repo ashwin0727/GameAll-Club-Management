@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CourtsSetupForm } from "@/features/courts-setup/components/courts-setup-form";
-import { MockPlayingAreaService } from "@/features/courts-setup/services/mock-playing-area-service";
-import { MockFacilityService } from "@/features/onboarding/services/mock-facility-service";
-import { MockSportService } from "@/features/sports-setup/services/mock-sport-service";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
-import { installFakeAuthService, renderWithProviders } from "@/test/harness";
+import {
+  installFakeAuthService,
+  installFakeFacilityService,
+  installFakePlayingAreasService,
+  installFakeSportsService,
+  renderWithProviders,
+} from "@/test/harness";
 import { routerMock } from "@/test/router-mock";
 
 const FAKE_USER = {
@@ -18,11 +21,16 @@ const FAKE_USER = {
 };
 
 function installAuth() {
-  return installFakeAuthService({ getCurrentUser: vi.fn(async () => FAKE_USER) });
+  installFakeAuthService({ getCurrentUser: vi.fn(async () => FAKE_USER) });
+  const facilityService = installFakeFacilityService();
+  facilityService.setCurrentUserId(FAKE_USER.id);
+  const sportsService = installFakeSportsService();
+  const playingAreasService = installFakePlayingAreasService();
+  return { facilityService, sportsService, playingAreasService };
 }
 
-async function seedFacility() {
-  return MockFacilityService.saveFacility({
+async function seedFacility(facilityService: ReturnType<typeof installFakeFacilityService>) {
+  return facilityService.createFacility({
     ownerId: FAKE_USER.id,
     name: "GameAll Sports Arena",
     type: "MULTI_SPORT",
@@ -39,8 +47,12 @@ async function seedFacility() {
   });
 }
 
-async function seedSports(facilityId: string, sportIds: string[]) {
-  return MockSportService.saveFacilitySports(
+async function seedSports(
+  sportsService: ReturnType<typeof installFakeSportsService>,
+  facilityId: string,
+  sportIds: string[],
+) {
+  return sportsService.saveFacilitySports(
     facilityId,
     sportIds.map((sportId) => ({ facilityId, sportId, enabled: true })),
   );
@@ -48,12 +60,14 @@ async function seedSports(facilityId: string, sportIds: string[]) {
 
 describe("CourtsSetupForm", () => {
   beforeEach(() => {
-    window.localStorage.clear();
     useOnboardingStore.getState().reset();
   });
 
   it("redirects to /login when there is no signed-in user", async () => {
     installFakeAuthService({ getCurrentUser: vi.fn(async () => null) });
+    installFakeFacilityService();
+    installFakeSportsService();
+    installFakePlayingAreasService();
     renderWithProviders(<CourtsSetupForm />);
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/login"));
@@ -67,17 +81,17 @@ describe("CourtsSetupForm", () => {
   });
 
   it("redirects to /onboarding/sports when the facility has no selected sports", async () => {
-    installAuth();
-    await seedFacility();
+    const { facilityService } = installAuth();
+    await seedFacility(facilityService);
     renderWithProviders(<CourtsSetupForm />);
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
   });
 
   it("shows only the sections for sports actually selected", async () => {
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton", "sport_cricket"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton", "sport-cricket"]);
     renderWithProviders(<CourtsSetupForm />);
 
     expect(await screen.findByText("Badminton")).toBeInTheDocument();
@@ -87,9 +101,9 @@ describe("CourtsSetupForm", () => {
   });
 
   it("uses Turf terminology for Cricket and Court terminology for Badminton", async () => {
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton", "sport_cricket"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton", "sport-cricket"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await screen.findByText("Badminton");
@@ -99,9 +113,9 @@ describe("CourtsSetupForm", () => {
 
   it("adding a court auto-generates a sequential name and increments the count", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -113,19 +127,19 @@ describe("CourtsSetupForm", () => {
 
   it("auto-saves a new court via the debounce timer alone, without clicking Continue", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService, playingAreasService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
     await screen.findByDisplayValue("Court 1");
 
-    expect(await MockPlayingAreaService.getPlayingAreas(facility.id)).toHaveLength(0);
+    expect(await playingAreasService.getPlayingAreas(facility.id)).toHaveLength(0);
 
     await waitFor(
       async () => {
-        const saved = await MockPlayingAreaService.getPlayingAreas(facility.id);
+        const saved = await playingAreasService.getPlayingAreas(facility.id);
         expect(saved.map((a) => a.name)).toEqual(["Court 1"]);
       },
       { timeout: 2000 },
@@ -135,15 +149,15 @@ describe("CourtsSetupForm", () => {
 
   it("auto-saves an edit to an already-saved court via the debounce timer alone", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService, playingAreasService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    const [facilitySport] = await seedSports(sportsService, facility.id, ["sport-badminton"]);
     if (!facilitySport) throw new Error("facilitySport not seeded");
-    const saved = await MockPlayingAreaService.createPlayingArea({
+    const saved = await playingAreasService.createPlayingArea({
       id: crypto.randomUUID(),
       facilityId: facility.id,
       facilitySportId: facilitySport.id,
-      sportId: "sport_badminton",
+      sportId: "sport-badminton",
       name: "Court 1",
       type: "INDOOR",
       status: "ACTIVE",
@@ -159,21 +173,21 @@ describe("CourtsSetupForm", () => {
 
     await waitFor(
       async () => {
-        const [area] = await MockPlayingAreaService.getPlayingAreas(facility.id);
+        const [area] = await playingAreasService.getPlayingAreas(facility.id);
         expect(area?.name).toBe("Center Court");
       },
       { timeout: 2000 },
     );
-    const [persisted] = await MockPlayingAreaService.getPlayingAreas(facility.id);
+    const [persisted] = await playingAreasService.getPlayingAreas(facility.id);
     expect(persisted?.id).toBe(saved.id);
     expect(routerMock.push).not.toHaveBeenCalled();
   });
 
   it("does not reuse a name still in use after removing an earlier court", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -198,9 +212,9 @@ describe("CourtsSetupForm", () => {
 
   it("removing a never-saved draft removes it immediately with no confirmation dialog", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -214,15 +228,15 @@ describe("CourtsSetupForm", () => {
 
   it("removing an already-saved court shows a confirm dialog, and Remove soft-deletes it", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService, playingAreasService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    const [facilitySport] = await seedSports(sportsService, facility.id, ["sport-badminton"]);
     if (!facilitySport) throw new Error("facilitySport not seeded");
-    const saved = await MockPlayingAreaService.createPlayingArea({
+    const saved = await playingAreasService.createPlayingArea({
       id: crypto.randomUUID(),
       facilityId: facility.id,
       facilitySportId: facilitySport.id,
-      sportId: "sport_badminton",
+      sportId: "sport-badminton",
       name: "Court 1",
       type: "INDOOR",
       status: "ACTIVE",
@@ -240,18 +254,19 @@ describe("CourtsSetupForm", () => {
     await user.click(screen.getByRole("button", { name: "Remove" }));
 
     await waitFor(async () => {
-      const remaining = await MockPlayingAreaService.getPlayingAreas(facility.id);
+      const remaining = await playingAreasService.getPlayingAreas(facility.id);
       expect(remaining).toHaveLength(0);
     });
-    const raw = window.localStorage.getItem("turf.playing-areas.mock.v1") ?? "";
-    expect(raw).toContain(saved.id);
+    // Soft delete: the row survives (archived), it's just excluded from reads.
+    const archivedRow = playingAreasService.rows.find((row) => row.id === saved.id);
+    expect(archivedRow?.archived).toBe(true);
   });
 
   it("blocks Continue and shows an error when a selected sport has zero playing areas", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await screen.findByText("Badminton");
@@ -263,9 +278,9 @@ describe("CourtsSetupForm", () => {
 
   it("blocks Continue on duplicate names within the same sport", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -285,9 +300,9 @@ describe("CourtsSetupForm", () => {
 
   it("blocks Continue when a court's name is too short", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -303,9 +318,9 @@ describe("CourtsSetupForm", () => {
 
   it("saves playing areas and navigates to the operating-hours placeholder on Continue", async () => {
     const user = userEvent.setup();
-    installAuth();
-    const facility = await seedFacility();
-    await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService, playingAreasService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    await seedSports(sportsService, facility.id, ["sport-badminton"]);
     renderWithProviders(<CourtsSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
@@ -316,20 +331,20 @@ describe("CourtsSetupForm", () => {
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/operating-hours"));
     expect(useOnboardingStore.getState().courtsCompleted).toBe(true);
 
-    const saved = await MockPlayingAreaService.getPlayingAreas(facility.id);
+    const saved = await playingAreasService.getPlayingAreas(facility.id);
     expect(saved.map((a) => a.name)).toEqual(["Court 1"]);
   });
 
   it("restores previously saved playing areas after remounting", async () => {
-    installAuth();
-    const facility = await seedFacility();
-    const [facilitySport] = await seedSports(facility.id, ["sport_badminton"]);
+    const { facilityService, sportsService, playingAreasService } = installAuth();
+    const facility = await seedFacility(facilityService);
+    const [facilitySport] = await seedSports(sportsService, facility.id, ["sport-badminton"]);
     if (!facilitySport) throw new Error("facilitySport not seeded");
-    await MockPlayingAreaService.createPlayingArea({
+    await playingAreasService.createPlayingArea({
       id: crypto.randomUUID(),
       facilityId: facility.id,
       facilitySportId: facilitySport.id,
-      sportId: "sport_badminton",
+      sportId: "sport-badminton",
       name: "Court 1",
       type: "INDOOR",
       status: "ACTIVE",

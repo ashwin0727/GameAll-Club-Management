@@ -13,7 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 const ErrorState = dynamic(() =>
   import("@/components/shared/error-state").then((mod) => mod.ErrorState),
 );
-import { MockFacilityService } from "@/features/onboarding/services/mock-facility-service";
+import { getFacilityService } from "@/services/facility";
+import { getSportsService } from "@/services/sports";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";
 import { FacilityContextCard } from "@/features/sports-setup/components/facility-context-card";
@@ -21,8 +22,8 @@ import { SportGrid } from "@/features/sports-setup/components/sport-grid";
 import { OtherSportInput } from "@/features/sports-setup/components/other-sport-input";
 import { SelectedSportsSummary } from "@/features/sports-setup/components/selected-sports-summary";
 import { SaveStatus } from "@/features/onboarding/components/save-status";
-import { AVAILABLE_SPORTS, OTHER_SPORT_ID, SINGLE_SPORT_TYPE_MAP } from "@/features/sports-setup/constants";
-import { MockSportService } from "@/features/sports-setup/services/mock-sport-service";
+import { OTHER_SPORT_CODE, SINGLE_SPORT_TYPE_CODE_MAP } from "@/features/sports-setup/constants";
+import type { Sport } from "@/features/sports-setup/types";
 import { otherSportNameSchema } from "@/features/sports-setup/validation";
 
 type LoadState = "loading" | "ready" | "forbidden";
@@ -50,6 +51,7 @@ export function SportsSetupForm() {
   const completeSports = useOnboardingStore((s) => s.completeSports);
 
   const [facility, setFacility] = useState<Facility | null>(null);
+  const [sports, setSports] = useState<Sport[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([]);
   const [otherSportName, setOtherSportName] = useState("");
@@ -58,8 +60,8 @@ export function SportsSetupForm() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Facility/sport loading: client-side only, since MockFacilityService and
-  // MockSportService are localStorage-backed and cannot run on the server.
+  const otherSportId = sports.find((s) => s.code === OTHER_SPORT_CODE)?.id;
+
   useEffect(() => {
     if (userLoading) return;
     if (!user) {
@@ -70,25 +72,29 @@ export function SportsSetupForm() {
     let cancelled = false;
 
     (async () => {
-      const loadedFacility = await MockFacilityService.getFacility(user.id);
+      const loadedFacility = await getFacilityService().getFacility();
       if (cancelled) return;
       if (!loadedFacility) {
         router.replace("/onboarding/facility");
         return;
       }
-      // Guaranteed true by construction (the service already filters by
-      // ownerId) — kept as an explicit check per spec rather than trusted
-      // silently.
+      // Guaranteed true by construction (the service already scopes to the
+      // authenticated user) — kept as an explicit check per spec rather than
+      // trusted silently.
       if (loadedFacility.ownerId !== user.id) {
         setLoadState("forbidden");
         return;
       }
 
-      const existing = await MockSportService.getFacilitySports(loadedFacility.id);
+      const [availableSports, existing] = await Promise.all([
+        getSportsService().getActiveSports(),
+        getSportsService().getFacilitySports(loadedFacility.id),
+      ]);
       if (cancelled) return;
 
+      const otherId = availableSports.find((s) => s.code === OTHER_SPORT_CODE)?.id;
       let initialIds = existing.map((row) => row.sportId);
-      let initialOtherName = existing.find((row) => row.sportId === OTHER_SPORT_ID)?.customSportName ?? "";
+      let initialOtherName = existing.find((row) => row.sportId === otherId)?.customSportName ?? "";
 
       // Preselection only applies on a genuinely first-ever visit — never
       // overrides an existing saved selection. But an in-progress selection
@@ -103,12 +109,14 @@ export function SportsSetupForm() {
           initialIds = persisted.selectedSportIds;
           initialOtherName = persisted.otherSportName;
         } else {
-          const preselected = SINGLE_SPORT_TYPE_MAP[loadedFacility.type];
+          const preselectedCode = SINGLE_SPORT_TYPE_CODE_MAP[loadedFacility.type];
+          const preselected = availableSports.find((s) => s.code === preselectedCode)?.id;
           if (preselected) initialIds = [preselected];
         }
       }
 
       setFacility(loadedFacility);
+      setSports(availableSports);
       setSelectedSportIds(initialIds);
       setOtherSportName(initialOtherName);
       setSelectedSportIdsInStore(initialIds);
@@ -143,7 +151,7 @@ export function SportsSetupForm() {
       return;
     }
 
-    if (selectedSportIds.includes(OTHER_SPORT_ID)) {
+    if (otherSportId && selectedSportIds.includes(otherSportId)) {
       const result = otherSportNameSchema.safeParse(otherSportName);
       if (!result.success) {
         setOtherNameError(result.error.issues[0]?.message ?? "Enter the sport name.");
@@ -158,16 +166,17 @@ export function SportsSetupForm() {
     setSaveError(null);
 
     try {
-      await MockSportService.saveFacilitySports(
+      await getSportsService().saveFacilitySports(
         facility.id,
         selectedSportIds.map((sportId) => ({
           facilityId: facility.id,
           sportId,
           enabled: true,
-          customSportName: sportId === OTHER_SPORT_ID ? otherSportName.trim() : undefined,
+          customSportName: sportId === otherSportId ? otherSportName.trim() : undefined,
         })),
       );
 
+      await getFacilityService().updateOnboardingStep(facility.id, "COURTS");
       completeSports();
       setIsSaving(false);
       router.push("/onboarding/courts");
@@ -202,9 +211,9 @@ export function SportsSetupForm() {
 
       {saveError && <FormMessage>{saveError}</FormMessage>}
 
-      <SportGrid sports={AVAILABLE_SPORTS} selectedSportIds={selectedSportIds} onToggle={toggleSport} />
+      <SportGrid sports={sports} selectedSportIds={selectedSportIds} onToggle={toggleSport} />
 
-      {selectedSportIds.includes(OTHER_SPORT_ID) && (
+      {otherSportId && selectedSportIds.includes(otherSportId) && (
         <OtherSportInput
           value={otherSportName}
           onChange={(value) => {

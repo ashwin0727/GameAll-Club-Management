@@ -1,29 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { AVAILABLE_SPORTS, OTHER_SPORT_ID, SINGLE_SPORT_TYPE_MAP } from "@/features/sports-setup/constants";
+import { OTHER_SPORT_CODE, SINGLE_SPORT_TYPE_CODE_MAP, presentSport } from "@/features/sports-setup/constants";
+
+const CATALOG_ROWS = [
+  { id: "1", key: "badminton", name: "Badminton", is_active: true },
+  { id: "2", key: "pickleball", name: "Pickleball", is_active: true },
+  { id: "3", key: "cricket", name: "Cricket", is_active: true },
+  { id: "4", key: "football", name: "Football", is_active: true },
+  { id: "5", key: "tennis", name: "Tennis", is_active: true },
+  { id: "6", key: "other", name: "Other", is_active: true },
+];
 
 describe("sports-setup constants", () => {
-  it("lists exactly six sports, each active, ending with Other", () => {
-    expect(AVAILABLE_SPORTS).toHaveLength(6);
-    expect(AVAILABLE_SPORTS.every((sport) => sport.isActive)).toBe(true);
-    expect(AVAILABLE_SPORTS[AVAILABLE_SPORTS.length - 1]!.id).toBe(OTHER_SPORT_ID);
-  });
-
-  it("gives every sport a unique id and a non-empty icon/description", () => {
-    const ids = AVAILABLE_SPORTS.map((sport) => sport.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const sport of AVAILABLE_SPORTS) {
+  it("presents every catalog row with a non-empty icon/description, matching its uppercased key as code", () => {
+    const sports = CATALOG_ROWS.map(presentSport);
+    expect(sports).toHaveLength(6);
+    expect(sports.every((sport) => sport.isActive)).toBe(true);
+    expect(sports[sports.length - 1]?.code).toBe(OTHER_SPORT_CODE);
+    for (const sport of sports) {
       expect(sport.icon.length).toBeGreaterThan(0);
       expect(sport.description.length).toBeGreaterThan(0);
+      expect(sport.code).toBe(sport.code.toUpperCase());
     }
   });
 
-  it("maps only the five single-sport facility types to a preselected sport", () => {
-    expect(SINGLE_SPORT_TYPE_MAP.BADMINTON).toBe("sport_badminton");
-    expect(SINGLE_SPORT_TYPE_MAP.PICKLEBALL).toBe("sport_pickleball");
-    expect(SINGLE_SPORT_TYPE_MAP.CRICKET).toBe("sport_cricket");
-    expect(SINGLE_SPORT_TYPE_MAP.FOOTBALL).toBe("sport_football");
-    expect(SINGLE_SPORT_TYPE_MAP.TENNIS).toBe("sport_tennis");
-    expect(SINGLE_SPORT_TYPE_MAP.MULTI_SPORT).toBeUndefined();
-    expect(SINGLE_SPORT_TYPE_MAP.OTHER).toBeUndefined();
+  it("maps only the five single-sport facility types to a preselected sport code", () => {
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.BADMINTON).toBe("BADMINTON");
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.PICKLEBALL).toBe("PICKLEBALL");
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.CRICKET).toBe("CRICKET");
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.FOOTBALL).toBe("FOOTBALL");
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.TENNIS).toBe("TENNIS");
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.MULTI_SPORT).toBeUndefined();
+    expect(SINGLE_SPORT_TYPE_CODE_MAP.OTHER).toBeUndefined();
   });
 });

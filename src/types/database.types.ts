@@ -1,5 +1,5 @@
 /**
- * Hand-written to match supabase/migrations/0001_init.sql.
+ * Hand-written to match supabase/migrations/0001_init.sql and 0002_onboarding_backend.sql.
  * Regenerate with `supabase gen types typescript --linked` once the project is linked,
  * and diff against this file to catch drift.
  */
@@ -10,6 +10,23 @@ export type MembershipStatus = "active" | "expired" | "cancelled" | "pending";
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
 export type InventoryTxnType = "checkout" | "return" | "restock" | "damage";
+export type DbFacilityType =
+  | "BADMINTON"
+  | "PICKLEBALL"
+  | "CRICKET"
+  | "FOOTBALL"
+  | "TENNIS"
+  | "MULTI_SPORT"
+  | "OTHER";
+export type DbEntityStatus = "ACTIVE" | "INACTIVE";
+export type DbOnboardingStep =
+  | "FACILITY_DETAILS"
+  | "SPORTS"
+  | "COURTS"
+  | "OPERATING_HOURS"
+  | "PRICING"
+  | "COMPLETED";
+export type DbAreaType = "INDOOR" | "OUTDOOR";
 
 export interface Database {
   __InternalSupabase: {
@@ -52,6 +69,23 @@ export interface Database {
           timezone: string;
           currency: string;
           created_at: string;
+          facility_type: DbFacilityType;
+          custom_facility_type: string | null;
+          business_email: string;
+          business_phone: string;
+          address_line_1: string;
+          address_line_2: string | null;
+          area: string;
+          state: string;
+          country: string;
+          postal_code: string;
+          latitude: number | null;
+          longitude: number | null;
+          logo_url: string | null;
+          description: string | null;
+          status: DbEntityStatus;
+          onboarding_step: DbOnboardingStep;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -63,6 +97,23 @@ export interface Database {
           timezone?: string;
           currency?: string;
           created_at?: string;
+          facility_type: DbFacilityType;
+          custom_facility_type?: string | null;
+          business_email: string;
+          business_phone: string;
+          address_line_1: string;
+          address_line_2?: string | null;
+          area: string;
+          state: string;
+          country?: string;
+          postal_code: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          logo_url?: string | null;
+          description?: string | null;
+          status?: DbEntityStatus;
+          onboarding_step?: DbOnboardingStep;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["facilities"]["Insert"]>;
         Relationships: [
@@ -113,6 +164,9 @@ export interface Database {
           name: string;
           is_active: boolean;
           sort_order: number;
+          category: string | null;
+          default_playing_area_label: string | null;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -120,20 +174,31 @@ export interface Database {
           name: string;
           is_active?: boolean;
           sort_order?: number;
+          category?: string | null;
+          default_playing_area_label?: string | null;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["sports"]["Insert"]>;
         Relationships: [];
       };
       facility_sports: {
         Row: {
+          id: string;
           facility_id: string;
           sport_id: string;
+          is_active: boolean;
+          custom_sport_name: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
+          id?: string;
           facility_id: string;
           sport_id: string;
+          is_active?: boolean;
+          custom_sport_name?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["facility_sports"]["Insert"]>;
         Relationships: [
@@ -157,22 +222,34 @@ export interface Database {
         Row: {
           id: string;
           facility_id: string;
+          facility_sport_id: string;
           sport_id: string;
           name: string;
           surface: string | null;
           hourly_rate_inr: number;
-          is_active: boolean;
+          area_type: DbAreaType;
+          status: DbEntityStatus;
+          booking_enabled: boolean;
+          archived: boolean;
+          display_order: number;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           facility_id: string;
+          facility_sport_id: string;
           sport_id: string;
           name: string;
           surface?: string | null;
           hourly_rate_inr?: number;
-          is_active?: boolean;
+          area_type?: DbAreaType;
+          status?: DbEntityStatus;
+          booking_enabled?: boolean;
+          archived?: boolean;
+          display_order?: number;
           created_at?: string;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["courts"]["Insert"]>;
         Relationships: [
@@ -181,6 +258,13 @@ export interface Database {
             columns: ["facility_id"];
             isOneToOne: false;
             referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "courts_facility_sport_id_fkey";
+            columns: ["facility_sport_id"];
+            isOneToOne: false;
+            referencedRelation: "facility_sports";
             referencedColumns: ["id"];
           },
           {
@@ -456,6 +540,36 @@ export interface Database {
         Args: { target_facility: string; allowed: FacilityRole[] };
         Returns: boolean;
       };
+      create_facility_with_owner: {
+        Args: {
+          p_name: string;
+          p_facility_type: DbFacilityType;
+          p_custom_facility_type: string | null;
+          p_business_email: string;
+          p_business_phone: string;
+          p_address_line_1: string;
+          p_address_line_2: string | null;
+          p_area: string;
+          p_city: string;
+          p_state: string;
+          p_country: string;
+          p_postal_code: string;
+          p_latitude: number | null;
+          p_longitude: number | null;
+          p_timezone: string;
+          p_logo_url: string | null;
+          p_description: string | null;
+        };
+        Returns: Database["public"]["Tables"]["facilities"]["Row"];
+      };
+      sync_facility_sports: {
+        Args: {
+          p_facility_id: string;
+          p_sport_ids: string[];
+          p_custom_sport_name?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["facility_sports"]["Row"][];
+      };
     };
     Enums: {
       role: Role;
@@ -464,6 +578,10 @@ export interface Database {
       payment_status: PaymentStatus;
       booking_status: BookingStatus;
       inventory_txn_type: InventoryTxnType;
+      facility_type: DbFacilityType;
+      entity_status: DbEntityStatus;
+      onboarding_step: DbOnboardingStep;
+      area_type: DbAreaType;
     };
     CompositeTypes: Record<string, never>;
   };

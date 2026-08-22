@@ -12,7 +12,7 @@ import { FacilityLocationSection } from "@/features/onboarding/components/facili
 import { FacilityBrandingSection } from "@/features/onboarding/components/facility-branding-section";
 import { SaveStatus } from "@/features/onboarding/components/save-status";
 import { DEFAULT_FACILITY_TYPE } from "@/features/onboarding/constants";
-import { MockFacilityService } from "@/features/onboarding/services/mock-facility-service";
+import { getFacilityService } from "@/services/facility";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { FacilityType } from "@/features/onboarding/types";
 import { facilityDetailsSchema, type FacilityDetailsInput } from "@/features/onboarding/validation";
@@ -115,7 +115,7 @@ export function FacilityDetailsForm() {
     setSaveError(null);
 
     try {
-      const facility = await MockFacilityService.saveFacility({
+      const facility = await getFacilityService().createFacility({
         ownerId: user.id,
         name: input.facilityName.trim(),
         // Safe: zod validated facilityType against the same literal values as FacilityType.
@@ -135,6 +135,7 @@ export function FacilityDetailsForm() {
         description: input.description?.trim() || undefined,
       });
 
+      await getFacilityService().updateOnboardingStep(facility.id, "SPORTS");
       completeFacilityDetails(facility);
       router.push("/onboarding/sports");
     } catch {

@@ -7,7 +7,7 @@ import { useCurrentUser } from "@/features/auth/hooks/use-auth";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 import { FormMessage } from "@/features/auth/components/form-message";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MockFacilityService } from "@/features/onboarding/services/mock-facility-service";
+import { getFacilityService } from "@/services/facility";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";
 import { FacilityContextCard } from "@/features/sports-setup/components/facility-context-card";
@@ -15,16 +15,16 @@ import { PlayingAreaSummary } from "@/features/courts-setup/components/playing-a
 import { SportSection } from "@/features/courts-setup/components/sport-section";
 import { RemovePlayingAreaDialog } from "@/features/courts-setup/components/remove-playing-area-dialog";
 import { SaveStatus } from "@/features/onboarding/components/save-status";
-import { AVAILABLE_SPORTS, OTHER_SPORT_ID } from "@/features/sports-setup/constants";
-import { MockSportService } from "@/features/sports-setup/services/mock-sport-service";
-import type { FacilitySport } from "@/features/sports-setup/types";
+import { OTHER_SPORT_CODE } from "@/features/sports-setup/constants";
+import { getSportsService } from "@/services/sports";
+import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import {
   DEFAULT_BOOKING_ENABLED,
   DEFAULT_PLAYING_AREA_STATUS,
   DEFAULT_PLAYING_AREA_TYPE,
   playingAreaLabelFor,
 } from "@/features/courts-setup/constants";
-import { MockPlayingAreaService } from "@/features/courts-setup/services/mock-playing-area-service";
+import { getPlayingAreasService } from "@/services/playing-areas";
 import type { PlayingArea, PlayingAreaInput } from "@/features/courts-setup/types";
 
 const ErrorState = dynamic(() =>
@@ -41,6 +41,7 @@ export function CourtsSetupForm() {
   const completeCourts = useOnboardingStore((s) => s.completeCourts);
 
   const [facility, setFacility] = useState<Facility | null>(null);
+  const [sports, setSports] = useState<Sport[]>([]);
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [playingAreas, setPlayingAreas] = useState<PlayingArea[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -76,7 +77,7 @@ export function CourtsSetupForm() {
     let cancelled = false;
 
     (async () => {
-      const loadedFacility = await MockFacilityService.getFacility(user.id);
+      const loadedFacility = await getFacilityService().getFacility();
       if (cancelled) return;
       if (!loadedFacility) {
         router.replace("/onboarding/facility");
@@ -87,18 +88,22 @@ export function CourtsSetupForm() {
         return;
       }
 
-      const sports = await MockSportService.getFacilitySports(loadedFacility.id);
+      const [availableSports, facSports] = await Promise.all([
+        getSportsService().getActiveSports(),
+        getSportsService().getFacilitySports(loadedFacility.id),
+      ]);
       if (cancelled) return;
-      if (sports.length === 0) {
+      if (facSports.length === 0) {
         router.replace("/onboarding/sports");
         return;
       }
 
-      const areas = await MockPlayingAreaService.getPlayingAreas(loadedFacility.id);
+      const areas = await getPlayingAreasService().getPlayingAreas(loadedFacility.id);
       if (cancelled) return;
 
       setFacility(loadedFacility);
-      setFacilitySports(sports);
+      setSports(availableSports);
+      setFacilitySports(facSports);
       setPlayingAreas(areas);
       setLoadState("ready");
     })();
@@ -128,10 +133,10 @@ export function CourtsSetupForm() {
           archived: area.archived,
           displayOrder: area.displayOrder,
         };
-        await MockPlayingAreaService.createPlayingArea(input);
+        await getPlayingAreasService().createPlayingArea(input);
         unsavedIds.current.delete(id);
       } else {
-        await MockPlayingAreaService.updatePlayingArea(id, {
+        await getPlayingAreasService().updatePlayingArea(id, {
           name,
           type: area.type,
           status: area.status,
@@ -172,7 +177,7 @@ export function CourtsSetupForm() {
 
   function handleAdd(facilitySport: FacilitySport) {
     if (!facility) return;
-    const sport = AVAILABLE_SPORTS.find((s) => s.id === facilitySport.sportId);
+    const sport = sports.find((s) => s.id === facilitySport.sportId);
     const label = playingAreaLabelFor(sport?.code ?? "OTHER");
     const existingForSport = playingAreas.filter((a) => a.facilitySportId === facilitySport.id);
     // Derive from the highest existing numeric suffix, not the count — after
@@ -227,7 +232,7 @@ export function CourtsSetupForm() {
     const { id } = removeTarget;
     clearTimeout(timeouts.current[id]);
     try {
-      await MockPlayingAreaService.removePlayingArea(id);
+      await getPlayingAreasService().removePlayingArea(id);
       setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
       setRemoveTarget(null);
     } catch {
@@ -259,10 +264,10 @@ export function CourtsSetupForm() {
     for (const facilitySport of facilitySports) {
       const count = playingAreas.filter((a) => a.facilitySportId === facilitySport.id).length;
       if (count === 0) {
-        const sport = AVAILABLE_SPORTS.find((s) => s.id === facilitySport.sportId);
+        const sport = sports.find((s) => s.id === facilitySport.sportId);
         const label = playingAreaLabelFor(sport?.code ?? "OTHER");
         const sportName =
-          facilitySport.sportId === OTHER_SPORT_ID
+          sport?.code === OTHER_SPORT_CODE
             ? facilitySport.customSportName || "this sport"
             : sport?.name ?? "this sport";
         sectionErrs[facilitySport.id] = `Add at least one ${label.toLowerCase()} for ${sportName}.`;
@@ -287,6 +292,7 @@ export function CourtsSetupForm() {
         clearTimeout(timeouts.current[area.id]);
       }
       await Promise.all(playingAreas.map((area) => persistArea(area.id)));
+      await getFacilityService().updateOnboardingStep(facility.id, "OPERATING_HOURS");
       completeCourts();
       setIsSaving(false);
       router.push("/onboarding/operating-hours");
@@ -324,10 +330,10 @@ export function CourtsSetupForm() {
       {saveError && <FormMessage>{saveError}</FormMessage>}
 
       {facilitySports.map((facilitySport) => {
-        const sport = AVAILABLE_SPORTS.find((s) => s.id === facilitySport.sportId);
+        const sport = sports.find((s) => s.id === facilitySport.sportId);
         if (!sport) return null;
         const displayName =
-          facilitySport.sportId === OTHER_SPORT_ID && facilitySport.customSportName
+          sport.code === OTHER_SPORT_CODE && facilitySport.customSportName
             ? facilitySport.customSportName
             : sport.name;
         const areasForSport = playingAreas

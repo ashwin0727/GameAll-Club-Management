@@ -43,6 +43,10 @@ export function failing(code: AuthErrorCode, message: string) {
   });
 }
 
+export { installFakeFacilityService, FakeFacilityService } from "@/test/fakes/fake-facility-service";
+export { installFakeSportsService, FakeSportsService } from "@/test/fakes/fake-sports-service";
+export { installFakePlayingAreasService, FakePlayingAreasService } from "@/test/fakes/fake-playing-areas-service";
+
 export function renderWithProviders(ui: React.ReactElement): RenderResult {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

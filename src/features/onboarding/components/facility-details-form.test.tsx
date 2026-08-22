@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FacilityDetailsForm } from "@/features/onboarding/components/facility-details-form";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
-import { installFakeAuthService, renderWithProviders } from "@/test/harness";
+import { installFakeAuthService, installFakeFacilityService, renderWithProviders } from "@/test/harness";
 import { routerMock } from "@/test/router-mock";
 
 const VALID = {
@@ -30,7 +30,10 @@ const FAKE_USER = {
  * `if (!user) return;` guard will silently no-op.
  */
 function installAuth() {
-  return installFakeAuthService({ getCurrentUser: vi.fn(async () => FAKE_USER) });
+  const auth = installFakeAuthService({ getCurrentUser: vi.fn(async () => FAKE_USER) });
+  const facilityService = installFakeFacilityService();
+  facilityService.setCurrentUserId(FAKE_USER.id);
+  return auth;
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
