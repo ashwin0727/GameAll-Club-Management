@@ -53,6 +53,7 @@ alter table facilities
   add column address_line_2 text,
   add column area text not null default '',
   add column state text not null default '',
+  add column country text,
   add column postal_code text not null default '',
   add column latitude numeric,
   add column longitude numeric,
