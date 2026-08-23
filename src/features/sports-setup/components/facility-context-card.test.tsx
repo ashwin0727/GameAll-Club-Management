@@ -19,6 +19,7 @@ const FACILITY: Facility = {
     pinCode: "600053",
   },
   status: "ACTIVE",
+  onboardingStep: "FACILITY_DETAILS",
   createdAt: "2026-08-20T00:00:00.000Z",
   updatedAt: "2026-08-20T00:00:00.000Z",
 };

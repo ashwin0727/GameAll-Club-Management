@@ -37,10 +37,21 @@ export interface Facility {
   logoUrl?: string;
   description?: string;
   status: "ACTIVE" | "INACTIVE";
+  onboardingStep:
+    | "FACILITY_DETAILS"
+    | "SPORTS"
+    | "COURTS"
+    | "OPERATING_HOURS"
+    | "PRICING"
+    | "COMPLETED";
+  onboardingCompletedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export type FacilityInput = Omit<Facility, "id" | "createdAt" | "updatedAt" | "status"> & {
+export type FacilityInput = Omit<
+  Facility,
+  "id" | "createdAt" | "updatedAt" | "status" | "onboardingStep" | "onboardingCompletedAt"
+> & {
   status?: Facility["status"];
 };

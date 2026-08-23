@@ -74,7 +74,12 @@ export const useOnboardingStore = create<OnboardingState>()(
           currentStep: 5,
           completedSteps: s.completedSteps.includes(4) ? s.completedSteps : [...s.completedSteps, 4],
         })),
-      completePricing: () => set({ pricingCompleted: true }),
+      completePricing: () =>
+        set((s) => ({
+          pricingCompleted: true,
+          currentStep: 6,
+          completedSteps: s.completedSteps.includes(5) ? s.completedSteps : [...s.completedSteps, 5],
+        })),
       reset: () => set({ ...INITIAL_STATE }),
     }),
     { name: "turf.onboarding.v1", skipHydration: true },

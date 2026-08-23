@@ -11,6 +11,7 @@ export type ServiceErrorCode =
   | "PLAYING_AREA_NOT_FOUND"
   | "DUPLICATE_PLAYING_AREA"
   | "INVALID_PLAYING_AREA"
+  | "SETUP_INCOMPLETE"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -24,6 +25,7 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   PLAYING_AREA_NOT_FOUND: "Playing area not found.",
   DUPLICATE_PLAYING_AREA: "This name is already used for this sport.",
   INVALID_PLAYING_AREA: "That playing area isn't valid.",
+  SETUP_INCOMPLETE: "Some required setup is still missing.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

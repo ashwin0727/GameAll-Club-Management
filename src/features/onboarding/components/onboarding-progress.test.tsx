@@ -3,10 +3,10 @@ import { render, screen } from "@testing-library/react";
 import { OnboardingProgress } from "@/features/onboarding/components/onboarding-progress";
 
 describe("OnboardingProgress", () => {
-  it("lists all five steps", () => {
+  it("lists all six steps", () => {
     render(<OnboardingProgress currentStep={1} />);
 
-    for (const step of ["Facility Details", "Sports", "Courts", "Operating Hours", "Pricing"]) {
+    for (const step of ["Facility Details", "Sports", "Courts", "Operating Hours", "Pricing", "Setup"]) {
       expect(screen.getAllByText(step).length).toBeGreaterThan(0);
     }
   });
@@ -22,7 +22,7 @@ describe("OnboardingProgress", () => {
 
   it("shows the compact mobile summary", () => {
     render(<OnboardingProgress currentStep={1} />);
-    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 6")).toBeInTheDocument();
   });
 
   it("renders no clickable step controls", () => {

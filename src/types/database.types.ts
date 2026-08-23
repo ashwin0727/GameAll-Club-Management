@@ -85,6 +85,7 @@ export interface Database {
           description: string | null;
           status: DbEntityStatus;
           onboarding_step: DbOnboardingStep;
+          onboarding_completed_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -113,6 +114,7 @@ export interface Database {
           description?: string | null;
           status?: DbEntityStatus;
           onboarding_step?: DbOnboardingStep;
+          onboarding_completed_at?: string | null;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["facilities"]["Insert"]>;
@@ -779,6 +781,10 @@ export interface Database {
       save_pricing_rules: {
         Args: { p_facility_id: string; p_plan_name: string; p_rules: unknown };
         Returns: Database["public"]["Tables"]["pricing_plans"]["Row"];
+      };
+      complete_facility_setup: {
+        Args: { p_facility_id: string };
+        Returns: Database["public"]["Tables"]["facilities"]["Row"];
       };
     };
     Enums: {

@@ -23,6 +23,7 @@ export class FakeFacilityService implements FacilityService {
       id: crypto.randomUUID(),
       ownerId: this.currentUserId ?? input.ownerId,
       status: input.status ?? "ACTIVE",
+      onboardingStep: "FACILITY_DETAILS",
       createdAt: now,
       updatedAt: now,
     };
@@ -47,8 +48,11 @@ export class FakeFacilityService implements FacilityService {
     return updated;
   }
 
-  async updateOnboardingStep(): Promise<void> {
-    // Not exercised by current onboarding UI tests; no-op is sufficient.
+  async updateOnboardingStep(facilityId: string, step: Facility["onboardingStep"]): Promise<void> {
+    const index = this.facilities.findIndex((f) => f.id === facilityId);
+    const existing = this.facilities[index];
+    if (index === -1 || !existing) return;
+    this.facilities[index] = { ...existing, onboardingStep: step };
   }
 }
 

@@ -29,6 +29,8 @@ function toFacility(row: FacilityRow): Facility {
     logoUrl: row.logo_url ?? undefined,
     description: row.description ?? undefined,
     status: row.status,
+    onboardingStep: row.onboarding_step,
+    onboardingCompletedAt: row.onboarding_completed_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
