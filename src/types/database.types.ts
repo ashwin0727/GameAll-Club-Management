@@ -626,6 +626,98 @@ export interface Database {
           },
         ];
       };
+      pricing_plans: {
+        Row: {
+          id: string;
+          facility_id: string;
+          name: string;
+          currency: string;
+          status: "ACTIVE" | "INACTIVE";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          name?: string;
+          currency?: string;
+          status?: "ACTIVE" | "INACTIVE";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pricing_plans"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "pricing_plans_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pricing_rules: {
+        Row: {
+          id: string;
+          pricing_plan_id: string;
+          facility_id: string;
+          facility_sport_id: string;
+          playing_area_id: string | null;
+          day_type: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS";
+          covers_full_day: boolean;
+          start_time: string | null;
+          end_time: string | null;
+          amount_minor: number;
+          currency: string;
+          pricing_unit: "PER_HOUR" | "PER_30_MINUTES" | "PER_SESSION" | "PER_MATCH";
+          priority: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          pricing_plan_id: string;
+          facility_id: string;
+          facility_sport_id: string;
+          playing_area_id?: string | null;
+          day_type?: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS";
+          covers_full_day?: boolean;
+          start_time?: string | null;
+          end_time?: string | null;
+          amount_minor: number;
+          currency?: string;
+          pricing_unit?: "PER_HOUR" | "PER_30_MINUTES" | "PER_SESSION" | "PER_MATCH";
+          priority?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["pricing_rules"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "pricing_rules_pricing_plan_id_fkey";
+            columns: ["pricing_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "pricing_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pricing_rules_facility_sport_id_fkey";
+            columns: ["facility_sport_id"];
+            isOneToOne: false;
+            referencedRelation: "facility_sports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pricing_rules_playing_area_id_fkey";
+            columns: ["playing_area_id"];
+            isOneToOne: false;
+            referencedRelation: "courts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -683,6 +775,10 @@ export interface Database {
       delete_playing_area_override: {
         Args: { p_playing_area_id: string };
         Returns: void;
+      };
+      save_pricing_rules: {
+        Args: { p_facility_id: string; p_plan_name: string; p_rules: unknown };
+        Returns: Database["public"]["Tables"]["pricing_plans"]["Row"];
       };
     };
     Enums: {

@@ -24,6 +24,7 @@ interface OnboardingState {
   completeSports: () => void;
   completeCourts: () => void;
   completeOperatingHours: () => void;
+  completePricing: () => void;
   reset: () => void;
 }
 
@@ -73,6 +74,7 @@ export const useOnboardingStore = create<OnboardingState>()(
           currentStep: 5,
           completedSteps: s.completedSteps.includes(4) ? s.completedSteps : [...s.completedSteps, 4],
         })),
+      completePricing: () => set({ pricingCompleted: true }),
       reset: () => set({ ...INITIAL_STATE }),
     }),
     { name: "turf.onboarding.v1", skipHydration: true },
