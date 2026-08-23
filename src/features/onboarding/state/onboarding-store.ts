@@ -23,6 +23,7 @@ interface OnboardingState {
   setOtherSportName: (name: string) => void;
   completeSports: () => void;
   completeCourts: () => void;
+  completeOperatingHours: () => void;
   reset: () => void;
 }
 
@@ -65,6 +66,12 @@ export const useOnboardingStore = create<OnboardingState>()(
           courtsCompleted: true,
           currentStep: 4,
           completedSteps: s.completedSteps.includes(3) ? s.completedSteps : [...s.completedSteps, 3],
+        })),
+      completeOperatingHours: () =>
+        set((s) => ({
+          operatingHoursCompleted: true,
+          currentStep: 5,
+          completedSteps: s.completedSteps.includes(4) ? s.completedSteps : [...s.completedSteps, 4],
         })),
       reset: () => set({ ...INITIAL_STATE }),
     }),

@@ -525,6 +525,107 @@ export interface Database {
           },
         ];
       };
+      operating_schedules: {
+        Row: {
+          id: string;
+          facility_id: string;
+          scope_type: "FACILITY" | "PLAYING_AREA";
+          playing_area_id: string | null;
+          timezone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          scope_type: "FACILITY" | "PLAYING_AREA";
+          playing_area_id?: string | null;
+          timezone?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["operating_schedules"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "operating_schedules_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "operating_schedules_playing_area_id_fkey";
+            columns: ["playing_area_id"];
+            isOneToOne: false;
+            referencedRelation: "courts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      operating_days: {
+        Row: {
+          id: string;
+          schedule_id: string;
+          facility_id: string;
+          day_of_week: number;
+          is_closed: boolean;
+          is_24_hours: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          schedule_id: string;
+          facility_id: string;
+          day_of_week: number;
+          is_closed?: boolean;
+          is_24_hours?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["operating_days"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "operating_days_schedule_id_fkey";
+            columns: ["schedule_id"];
+            isOneToOne: false;
+            referencedRelation: "operating_schedules";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      operating_time_slots: {
+        Row: {
+          id: string;
+          operating_day_id: string;
+          facility_id: string;
+          start_time: string;
+          end_time: string;
+          crosses_midnight: boolean;
+          display_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          operating_day_id: string;
+          facility_id: string;
+          start_time: string;
+          end_time: string;
+          crosses_midnight?: boolean;
+          display_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["operating_time_slots"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "operating_time_slots_operating_day_id_fkey";
+            columns: ["operating_day_id"];
+            isOneToOne: false;
+            referencedRelation: "operating_days";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -569,6 +670,19 @@ export interface Database {
           p_custom_sport_name?: string | null;
         };
         Returns: Database["public"]["Tables"]["facility_sports"]["Row"][];
+      };
+      save_operating_schedule: {
+        Args: {
+          p_facility_id: string;
+          p_scope_type: "FACILITY" | "PLAYING_AREA";
+          p_playing_area_id: string | null;
+          p_days: unknown;
+        };
+        Returns: Database["public"]["Tables"]["operating_schedules"]["Row"];
+      };
+      delete_playing_area_override: {
+        Args: { p_playing_area_id: string };
+        Returns: void;
       };
     };
     Enums: {
