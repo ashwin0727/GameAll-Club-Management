@@ -118,18 +118,12 @@ export class SupabaseBookingService implements BookingService {
     if (!data) throw new ServiceError("BOOKING_NOT_FOUND");
   }
 
-  async searchMembers(query: string): Promise<{ id: string; fullName: string; email: string }[]> {
+  async searchMembers(facilityId: string, query: string): Promise<{ id: string; fullName: string; phone: string; email: string | null }[]> {
     const trimmed = query.trim();
     if (trimmed.length < 2) return [];
 
-    const { data, error } = await this.supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("role", "member")
-      .or(`full_name.ilike.%${trimmed}%,email.ilike.%${trimmed}%`)
-      .limit(10);
-
+    const { data, error } = await this.supabase.rpc("search_members", { p_facility_id: facilityId, p_query: trimmed });
     if (error) throw mapSupabaseError(error);
-    return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name, email: row.email }));
+    return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name, phone: row.phone, email: row.email }));
   }
 }

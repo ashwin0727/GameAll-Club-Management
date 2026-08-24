@@ -15,6 +15,11 @@ export interface BookingService {
   /** Moves an existing booking to a new time/court, revalidating exactly as creation does. */
   rescheduleBooking(input: RescheduleBookingInput): Promise<Booking>;
   cancelBooking(bookingId: string, reason?: string): Promise<void>;
-  /** Name/email search over registered members, for the "Member" customer picker. */
-  searchMembers(query: string): Promise<{ id: string; fullName: string; email: string }[]>;
+  /**
+   * Name/phone/email search over this facility's member records, for the
+   * "Member" customer picker — facility-scoped (members are a per-facility
+   * customer record, not a platform-wide account) and requires no
+   * membership plan to be searchable/bookable.
+   */
+  searchMembers(facilityId: string, query: string): Promise<{ id: string; fullName: string; phone: string; email: string | null }[]>;
 }

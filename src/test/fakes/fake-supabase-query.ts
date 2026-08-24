@@ -18,6 +18,8 @@ export function fakeQueryBuilder<T>(result: QueryResult<T>) {
     eq: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
+    range: vi.fn(() => builder),
+    or: vi.fn(() => builder),
     insert: vi.fn(() => builder),
     update: vi.fn(() => builder),
     maybeSingle: vi.fn(async () => result),

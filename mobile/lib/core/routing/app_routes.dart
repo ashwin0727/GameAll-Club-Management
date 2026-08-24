@@ -21,4 +21,6 @@ class AppRoutes {
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
   static const guests = '/guests';
+  static const members = '/members';
+  static const membershipSessions = '/membership-sessions';
 }

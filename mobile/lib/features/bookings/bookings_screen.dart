@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/booking.dart';
@@ -16,9 +18,13 @@ import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_dialog.dart';
+import '../../shared/widgets/booking_slot_chip.dart';
+import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'booking_operations.dart';
 import 'booking_slots.dart';
+import 'booking_status_presentation.dart';
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key});
@@ -347,43 +353,17 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                         Text(area.name, style: Theme.of(context).textTheme.titleSmall),
                         const SizedBox(height: AppSpacing.sm),
                         if (slots.isEmpty)
-                          const Text('Closed on this date.', style: TextStyle(color: AppColors.muted))
+                          Text('Closed on this date.', style: AppTypography.secondary(context))
                         else
                           Wrap(
                             spacing: AppSpacing.sm,
                             runSpacing: AppSpacing.sm,
                             children: slots.map((slot) {
-                              return InkWell(
+                              return BookingSlotChip(
+                                label: TimeOfDay.fromDateTime(slot.startTime).format(context),
+                                available: slot.available,
+                                selected: false,
                                 onTap: () => _onSlotTap(area, slot),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget, minWidth: 76),
-                                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: slot.available ? AppColors.success.withValues(alpha: 0.1) : AppColors.mutedBackground,
-                                    border: Border.all(
-                                      color: slot.available ? AppColors.success.withValues(alpha: 0.4) : AppColors.border,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        TimeOfDay.fromDateTime(slot.startTime).format(context),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: slot.available ? AppColors.success : AppColors.muted,
-                                        ),
-                                      ),
-                                      Text(
-                                        slot.available ? 'Available' : 'Booked',
-                                        style: const TextStyle(fontSize: 10, color: AppColors.muted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               );
                             }).toList(),
                           ),
@@ -413,7 +393,7 @@ class _OpsStat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(label, style: AppTypography.caption(context)),
           const SizedBox(height: 2),
           Text('$value', style: Theme.of(context).textTheme.titleLarge),
         ],
@@ -436,6 +416,7 @@ class QuickBookingSheet extends ConsumerStatefulWidget {
     this.areas = const [],
     this.date,
     this.initialGuest,
+    this.initialMember,
   });
 
   final String facilityId;
@@ -447,6 +428,8 @@ class QuickBookingSheet extends ConsumerStatefulWidget {
   final DateTime? date;
   /// Set when opened via "Book Court" from a Guest Profile — skips search entirely.
   final GuestPlayer? initialGuest;
+  /// Set when opened via "Book Court" from a Member Profile — skips member search entirely.
+  final MemberSearchResult? initialMember;
 
   @override
   ConsumerState<QuickBookingSheet> createState() => QuickBookingSheetState();
@@ -487,6 +470,8 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
     _slot = widget.slot;
     _facilitySportId = widget.area?.facilitySportId;
     _selectedGuest = widget.initialGuest;
+    _selectedMember = widget.initialMember;
+    if (widget.initialMember != null) _customerType = CustomerType.member;
   }
 
   @override
@@ -577,7 +562,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
       return;
     }
     _memberSearchDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final results = await ref.read(bookingRepositoryProvider).searchMembers(value);
+      final results = await ref.read(bookingRepositoryProvider).searchMembers(widget.facilityId, value);
       if (mounted) setState(() => _memberResults = results);
     });
   }
@@ -610,6 +595,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
           paymentStatus: _paymentStatus,
         ),
       );
+      HapticFeedback.mediumImpact();
       if (mounted) Navigator.of(context).pop(booking);
     } on AppException catch (e) {
       setState(() => _error = e.message);
@@ -685,10 +671,11 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                       runSpacing: AppSpacing.sm,
                       children: _slots.map((s) {
                         final selected = _slot?.startTime == s.startTime;
-                        return ChoiceChip(
-                          label: Text(TimeOfDay.fromDateTime(s.startTime).format(context)),
+                        return BookingSlotChip(
+                          label: TimeOfDay.fromDateTime(s.startTime).format(context),
+                          available: s.available,
                           selected: selected,
-                          onSelected: s.available ? (_) => setState(() => _slot = s) : null,
+                          onTap: () => setState(() => _slot = s),
                         );
                       }).toList(),
                     ),
@@ -792,7 +779,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                       (m) => ListTile(
                         dense: true,
                         title: Text(m.fullName),
-                        subtitle: Text(m.email),
+                        subtitle: Text(m.email != null ? '${m.phone} · ${m.email}' : m.phone),
                         onTap: () => setState(() {
                           _selectedMember = m;
                           _memberResults = [];
@@ -926,6 +913,16 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   }
 
   Future<void> _cancel() async {
+    final confirmed = await showAppConfirmDialog(
+      context,
+      title: 'Cancel Booking?',
+      message: 'This booking will be cancelled. This cannot be undone.',
+      confirmLabel: 'Cancel Booking',
+      cancelLabel: 'Keep Booking',
+      destructive: true,
+    );
+    if (!confirmed) return;
+
     setState(() {
       _isWorking = true;
       _error = null;
@@ -978,8 +975,20 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
               ),
               Row(
                 children: [
-                  Expanded(child: _DetailField(label: 'Payment', value: b.paymentStatus.name)),
-                  Expanded(child: _DetailField(label: 'Status', value: b.status.name)),
+                  Expanded(
+                    child: _DetailBadgeField(
+                      label: 'Payment',
+                      badgeLabel: paymentStatusLabel(b.paymentStatus),
+                      tone: paymentStatusTone(b.paymentStatus),
+                    ),
+                  ),
+                  Expanded(
+                    child: _DetailBadgeField(
+                      label: 'Status',
+                      badgeLabel: bookingStatusLabel(b.status),
+                      tone: bookingStatusTone(b.status),
+                    ),
+                  ),
                 ],
               ),
               if (_error != null) ...[
@@ -1019,10 +1028,11 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: _slots.map((s) {
-                    return ChoiceChip(
-                      label: Text(TimeOfDay.fromDateTime(s.startTime).format(context)),
+                    return BookingSlotChip(
+                      label: TimeOfDay.fromDateTime(s.startTime).format(context),
+                      available: s.available,
                       selected: _selectedSlot?.startTime == s.startTime,
-                      onSelected: s.available ? (_) => setState(() => _selectedSlot = s) : null,
+                      onTap: () => setState(() => _selectedSlot = s),
                     );
                   }).toList(),
                 ),
@@ -1071,8 +1081,31 @@ class _DetailField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(label, style: AppTypography.caption(context)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailBadgeField extends StatelessWidget {
+  const _DetailBadgeField({required this.label, required this.badgeLabel, required this.tone});
+
+  final String label;
+  final String badgeLabel;
+  final StatusTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTypography.caption(context)),
+          const SizedBox(height: 4),
+          StatusBadge(label: badgeLabel, tone: tone),
         ],
       ),
     );

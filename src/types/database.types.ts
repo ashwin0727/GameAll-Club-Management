@@ -510,6 +510,215 @@ export interface Database {
           },
         ];
       };
+      members: {
+        Row: {
+          id: string;
+          facility_id: string;
+          full_name: string;
+          phone: string;
+          email: string | null;
+          date_of_birth: string | null;
+          gender: string | null;
+          notes: string | null;
+          status: "ACTIVE" | "INACTIVE";
+          user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          full_name: string;
+          phone: string;
+          email?: string | null;
+          date_of_birth?: string | null;
+          gender?: string | null;
+          notes?: string | null;
+          status?: "ACTIVE" | "INACTIVE";
+          user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["members"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "members_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      membership_batches: {
+        Row: {
+          id: string;
+          facility_id: string;
+          plan_id: string;
+          facility_sport_id: string;
+          court_id: string;
+          name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          plan_id: string;
+          facility_sport_id: string;
+          court_id: string;
+          name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["membership_batches"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "membership_batches_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "membership_batches_court_id_fkey";
+            columns: ["court_id"];
+            isOneToOne: false;
+            referencedRelation: "courts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      membership_batch_members: {
+        Row: {
+          id: string;
+          batch_id: string;
+          member_id: string;
+          membership_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          batch_id: string;
+          member_id: string;
+          membership_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["membership_batch_members"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "membership_batch_members_batch_id_fkey";
+            columns: ["batch_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_batches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "membership_batch_members_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "members";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      membership_sessions: {
+        Row: {
+          id: string;
+          batch_id: string;
+          facility_id: string;
+          court_id: string;
+          facility_sport_id: string;
+          session_date: string;
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          released_capacity: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          batch_id: string;
+          facility_id: string;
+          court_id: string;
+          facility_sport_id: string;
+          session_date: string;
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          released_capacity?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["membership_sessions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "membership_sessions_batch_id_fkey";
+            columns: ["batch_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_batches";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      membership_session_bookings: {
+        Row: {
+          id: string;
+          session_id: string;
+          facility_id: string;
+          participant_type: "MEMBER" | "GUEST";
+          member_id: string | null;
+          guest_player_id: string | null;
+          status: "CONFIRMED" | "CANCELLED";
+          slot_source: "MEMBERSHIP" | "RELEASED";
+          amount_minor: number | null;
+          currency: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          facility_id: string;
+          participant_type: "MEMBER" | "GUEST";
+          member_id?: string | null;
+          guest_player_id?: string | null;
+          status?: "CONFIRMED" | "CANCELLED";
+          slot_source: "MEMBERSHIP" | "RELEASED";
+          amount_minor?: number | null;
+          currency?: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["membership_session_bookings"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "membership_session_bookings_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "membership_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       inventory_items: {
         Row: {
           id: string;
@@ -890,6 +1099,85 @@ export interface Database {
           sports: { sportId: string; sportName: string }[];
         }[];
       };
+      create_membership: {
+        Args: {
+          p_member_id: string;
+          p_facility_id: string;
+          p_plan_id: string;
+          p_start_date: string;
+          p_payment_status?: PaymentStatus;
+        };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      cancel_membership: {
+        Args: { p_membership_id: string };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      search_facility_members: {
+        Args: {
+          p_facility_id: string;
+          p_query?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          member_id: string;
+          full_name: string;
+          phone: string;
+          email: string | null;
+          membership_id: string | null;
+          plan_id: string | null;
+          plan_name: string | null;
+          start_date: string | null;
+          end_date: string | null;
+          status: MembershipStatus | null;
+        }[];
+      };
+      get_member_stats: {
+        Args: { p_member_id: string; p_facility_id: string };
+        Returns: {
+          total_visits: number;
+          total_bookings: number;
+          last_visit: string | null;
+          total_amount_minor: number;
+          pending_amount_minor: number;
+          sports: { sportId: string; sportName: string }[];
+        }[];
+      };
+      create_member: {
+        Args: {
+          p_facility_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_email?: string | null;
+          p_date_of_birth?: string | null;
+          p_gender?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["members"]["Row"];
+      };
+      update_member: {
+        Args: {
+          p_member_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_email: string | null;
+          p_date_of_birth: string | null;
+          p_gender: string | null;
+          p_notes: string | null;
+          p_status?: "ACTIVE" | "INACTIVE" | null;
+        };
+        Returns: Database["public"]["Tables"]["members"]["Row"];
+      };
+      search_members: {
+        Args: { p_facility_id: string; p_query: string };
+        Returns: {
+          id: string;
+          full_name: string;
+          phone: string;
+          email: string | null;
+        }[];
+      };
       reschedule_booking: {
         Args: {
           p_booking_id: string;
@@ -898,6 +1186,95 @@ export interface Database {
           p_new_end_time: string;
         };
         Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      create_membership_batch: {
+        Args: {
+          p_facility_id: string;
+          p_plan_id: string;
+          p_facility_sport_id: string;
+          p_court_id: string;
+          p_name: string;
+          p_days_of_week: number[];
+          p_start_time: string;
+          p_end_time: string;
+          p_capacity: number;
+        };
+        Returns: Database["public"]["Tables"]["membership_batches"]["Row"];
+      };
+      update_membership_batch: {
+        Args: {
+          p_batch_id: string;
+          p_name: string;
+          p_court_id: string;
+          p_days_of_week: number[];
+          p_start_time: string;
+          p_end_time: string;
+          p_capacity: number;
+          p_is_active?: boolean | null;
+        };
+        Returns: Database["public"]["Tables"]["membership_batches"]["Row"];
+      };
+      assign_batch_member: {
+        Args: { p_batch_id: string; p_member_id: string; p_membership_id?: string | null };
+        Returns: Database["public"]["Tables"]["membership_batch_members"]["Row"];
+      };
+      remove_batch_member: {
+        Args: { p_batch_id: string; p_member_id: string };
+        Returns: undefined;
+      };
+      get_or_create_membership_session: {
+        Args: { p_batch_id: string; p_session_date: string };
+        Returns: Database["public"]["Tables"]["membership_sessions"]["Row"];
+      };
+      get_membership_session_capacity: {
+        Args: { p_session_id: string };
+        Returns: {
+          capacity: number;
+          released_capacity: number;
+          member_booked_count: number;
+          guest_booked_count: number;
+          unused_capacity: number;
+          guest_available_capacity: number;
+        }[];
+      };
+      book_membership_slot: {
+        Args: { p_batch_id: string; p_session_date: string; p_member_id: string };
+        Returns: Database["public"]["Tables"]["membership_session_bookings"]["Row"];
+      };
+      release_membership_capacity: {
+        Args: { p_session_id: string; p_count: number };
+        Returns: Database["public"]["Tables"]["membership_sessions"]["Row"];
+      };
+      restore_membership_capacity: {
+        Args: { p_session_id: string; p_count: number };
+        Returns: Database["public"]["Tables"]["membership_sessions"]["Row"];
+      };
+      book_guest_slot: {
+        Args: { p_batch_id: string; p_session_date: string; p_guest_player_id: string };
+        Returns: Database["public"]["Tables"]["membership_session_bookings"]["Row"];
+      };
+      cancel_membership_slot_booking: {
+        Args: { p_booking_id: string };
+        Returns: Database["public"]["Tables"]["membership_session_bookings"]["Row"];
+      };
+      list_membership_sessions_for_date: {
+        Args: { p_facility_id: string; p_date: string };
+        Returns: {
+          batch_id: string;
+          session_id: string | null;
+          batch_name: string;
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          session_date: string;
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          released_capacity: number;
+          member_booked_count: number;
+          guest_booked_count: number;
+        }[];
       };
     };
     Enums: {

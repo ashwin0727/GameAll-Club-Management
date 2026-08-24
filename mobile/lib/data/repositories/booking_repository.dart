@@ -101,20 +101,17 @@ class BookingRepository {
     }
   }
 
-  Future<List<MemberSearchResult>> searchMembers(String query) async {
+  /// Facility-scoped, ACTIVE-members-only search for the Booking → Member
+  /// picker — calls the `search_members` RPC. Unlike the old `profiles`
+  /// query this replaces (which searched every member on the platform by
+  /// `role = 'member'`, a concept that no longer exists), this is scoped to
+  /// one facility, matching `SupabaseBookingService.searchMembers` on the web.
+  Future<List<MemberSearchResult>> searchMembers(String facilityId, String query) async {
     final trimmed = query.trim();
     if (trimmed.length < 2) return [];
     try {
-      final rows = await _client
-          .from('profiles')
-          .select('id, full_name, email')
-          .eq('role', 'member')
-          .or('full_name.ilike.%$trimmed%,email.ilike.%$trimmed%')
-          .limit(10);
-      return (rows as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .map((r) => MemberSearchResult(id: r['id'] as String, fullName: r['full_name'] as String, email: r['email'] as String))
-          .toList();
+      final rows = await _client.rpc('search_members', params: {'p_facility_id': facilityId, 'p_query': trimmed});
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MemberSearchResult.fromJson).toList();
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

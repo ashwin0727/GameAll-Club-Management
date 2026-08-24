@@ -31,6 +31,7 @@ export const NAV_ITEMS: {
 }[] = [
   { label: "Dashboard", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Members", href: "/members", roles: ["admin", "staff"] },
+  { label: "Membership Sessions", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
   { label: "Guest Players", href: "/guests", roles: ["admin", "staff"] },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },

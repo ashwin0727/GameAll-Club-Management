@@ -18,6 +18,16 @@ export type ServiceErrorCode =
   | "INVALID_BOOKING"
   | "GUEST_NOT_FOUND"
   | "INVALID_GUEST"
+  | "MEMBER_NOT_FOUND"
+  | "MEMBER_ALREADY_EXISTS"
+  | "INVALID_MEMBER"
+  | "MEMBERSHIP_NOT_FOUND"
+  | "MEMBERSHIP_PLAN_NOT_FOUND"
+  | "INVALID_MEMBERSHIP"
+  | "MEMBERSHIP_BATCH_NOT_FOUND"
+  | "INVALID_MEMBERSHIP_BATCH"
+  | "MEMBERSHIP_SESSION_NOT_FOUND"
+  | "MEMBERSHIP_CAPACITY_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -38,6 +48,17 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   INVALID_BOOKING: "That booking isn't valid. Check the time and try again.",
   GUEST_NOT_FOUND: "That guest could not be found.",
   INVALID_GUEST: "Enter a guest name to continue.",
+  MEMBER_NOT_FOUND: "That member could not be found.",
+  MEMBER_ALREADY_EXISTS: "A member with this mobile number already exists.",
+  INVALID_MEMBER: "Enter the member's name and mobile number to continue.",
+  MEMBERSHIP_NOT_FOUND: "That membership could not be found.",
+  MEMBERSHIP_PLAN_NOT_FOUND: "That membership plan is not available for this facility.",
+  INVALID_MEMBERSHIP: "That membership isn't valid. Check the plan and start date and try again.",
+  MEMBERSHIP_BATCH_NOT_FOUND: "That membership batch could not be found.",
+  INVALID_MEMBERSHIP_BATCH: "That membership batch isn't valid. Check the court, sport, and schedule and try again.",
+  MEMBERSHIP_SESSION_NOT_FOUND: "That membership session could not be found.",
+  // Overridden per-call with the specific rule that was broken (e.g. "No guest slots are currently available") — see supabase-membership-session.service.ts.
+  MEMBERSHIP_CAPACITY_ERROR: "Unable to complete this action.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

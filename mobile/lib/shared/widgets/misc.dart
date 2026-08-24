@@ -37,7 +37,7 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-enum StatusTone { success, warning, danger, neutral }
+enum StatusTone { success, warning, danger, info, neutral }
 
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.label, this.tone = StatusTone.neutral});
@@ -53,6 +53,8 @@ class StatusBadge extends StatelessWidget {
         return AppColors.warning;
       case StatusTone.danger:
         return AppColors.destructive;
+      case StatusTone.info:
+        return AppColors.info;
       case StatusTone.neutral:
         return AppColors.muted;
     }

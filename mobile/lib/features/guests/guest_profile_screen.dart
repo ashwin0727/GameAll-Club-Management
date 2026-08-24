@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking.dart';
 import '../../data/models/guest.dart';
@@ -12,7 +12,9 @@ import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import '../bookings/booking_status_presentation.dart';
 import '../bookings/bookings_screen.dart';
 import 'guest_form_sheet.dart';
 
@@ -118,15 +120,19 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_guest.phone != null) Text('Phone: ${_guest.phone}', style: const TextStyle(color: AppColors.muted)),
-                      if (_guest.email != null) Text('Email: ${_guest.email}', style: const TextStyle(color: AppColors.muted)),
+                      if (_guest.phone != null) Text('Phone: ${_guest.phone}', style: AppTypography.secondary(context)),
+                      if (_guest.email != null) Text('Email: ${_guest.email}', style: AppTypography.secondary(context)),
                       const SizedBox(height: AppSpacing.lg),
                       _buildStats(),
                       const SizedBox(height: AppSpacing.lg),
                       Text('Booking History', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
                       if (_history.isEmpty)
-                        const Text('No bookings found.', style: TextStyle(color: AppColors.muted))
+                        EmptyStateView(
+                          message: 'No bookings found.',
+                          actionLabel: '+ Book Court',
+                          onAction: _bookCourt,
+                        )
                       else
                         ..._history.map(
                           (b) => Padding(
@@ -139,9 +145,13 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(Formatters.dateShort(b.startTime)),
-                                        Text(
-                                          '${b.status.name} · ${b.paymentStatus.name}',
-                                          style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                                        const SizedBox(height: AppSpacing.xs),
+                                        Wrap(
+                                          spacing: AppSpacing.xs,
+                                          children: [
+                                            StatusBadge(label: bookingStatusLabel(b.status), tone: bookingStatusTone(b.status)),
+                                            StatusBadge(label: paymentStatusLabel(b.paymentStatus), tone: paymentStatusTone(b.paymentStatus)),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -190,10 +200,10 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Last Visit: ${stats.lastVisit != null ? Formatters.dateShort(stats.lastVisit!) : 'Never'}',
-          style: const TextStyle(color: AppColors.muted),
+          style: AppTypography.secondary(context),
         ),
         if (stats.sports.isNotEmpty)
-          Text('Sports: ${stats.sports.map((s) => s.sportName).join(', ')}', style: const TextStyle(color: AppColors.muted)),
+          Text('Sports: ${stats.sports.map((s) => s.sportName).join(', ')}', style: AppTypography.secondary(context)),
       ],
     );
   }
@@ -212,7 +222,7 @@ class _StatTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Text(label, style: AppTypography.caption(context)),
           const SizedBox(height: 2),
           Text(value, style: Theme.of(context).textTheme.titleMedium),
         ],

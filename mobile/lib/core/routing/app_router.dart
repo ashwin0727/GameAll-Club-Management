@@ -11,6 +11,8 @@ import '../../features/authentication/splash_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/guests/guests_screen.dart';
+import '../../features/members/members_screen.dart';
+import '../../features/membership_sessions/membership_sessions_screen.dart';
 import '../../features/onboarding/courts_setup_screen.dart';
 import '../../features/onboarding/facility_details_screen.dart';
 import '../../features/onboarding/operating_hours_screen.dart';
@@ -102,6 +104,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
       GoRoute(path: AppRoutes.bookings, builder: (context, state) => const BookingsScreen()),
       GoRoute(path: AppRoutes.guests, builder: (context, state) => const GuestsScreen()),
+      GoRoute(path: AppRoutes.members, builder: (context, state) => const MembersScreen()),
+      GoRoute(
+        path: AppRoutes.membershipSessions,
+        builder: (context, state) => const MembershipSessionsScreen(),
+      ),
     ],
   );
 });

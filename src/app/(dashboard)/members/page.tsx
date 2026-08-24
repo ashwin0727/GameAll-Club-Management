@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/features/auth/api/auth.api";
-import { MembersTable } from "@/features/members/components/members-table";
+import { MemberList } from "@/features/members/components/member-list";
 import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -19,9 +19,9 @@ export default async function MembersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Members</h1>
-        <p className="text-sm text-muted-foreground">Manage club members and their accounts.</p>
+        <p className="text-sm text-muted-foreground">Manage facility members and their memberships.</p>
       </div>
-      <MembersTable />
+      <MemberList />
     </div>
   );
 }

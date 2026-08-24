@@ -10,6 +10,8 @@ import 'onboarding_repository.dart';
 import 'dashboard_repository.dart';
 import 'booking_repository.dart';
 import 'guest_repository.dart';
+import 'membership_repository.dart';
+import 'membership_session_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
@@ -62,4 +64,12 @@ final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
 
 final guestRepositoryProvider = Provider<GuestRepository>((ref) {
   return GuestRepository(ref.watch(supabaseClientProvider));
+});
+
+final membershipRepositoryProvider = Provider<MembershipRepository>((ref) {
+  return MembershipRepository(ref.watch(supabaseClientProvider));
+});
+
+final membershipSessionRepositoryProvider = Provider<MembershipSessionRepository>((ref) {
+  return MembershipSessionRepository(ref.watch(supabaseClientProvider));
 });

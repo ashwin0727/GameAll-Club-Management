@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../data/models/guest.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_search_field.dart';
+import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'guest_form_sheet.dart';
 import 'guest_profile_screen.dart';
@@ -137,12 +141,9 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(
+                    AppSearchField(
                       controller: _queryController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search by name or phone',
-                        prefixIcon: Icon(Icons.search),
-                      ),
+                      hintText: 'Search by name or phone',
                       onChanged: _onQueryChanged,
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -182,12 +183,10 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (_guests.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                        child: Text(
-                          _query.trim().length >= 2 ? 'No guest players found.' : 'No guest players have been added yet.',
-                          style: const TextStyle(color: AppColors.muted),
-                        ),
+                      EmptyStateView(
+                        message: _query.trim().length >= 2 ? 'No guest players found.' : 'No guest players have been added yet.',
+                        actionLabel: _query.trim().length >= 2 ? null : '+ Add Guest',
+                        onAction: _query.trim().length >= 2 ? null : _openAddGuest,
                       )
                     else
                       ..._guests.map(
@@ -195,7 +194,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                           child: InkWell(
                             onTap: () => _openProfile(g),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
                             child: AppCard(
                               child: Row(
                                 children: [
@@ -203,12 +202,16 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(g.name, style: Theme.of(context).textTheme.titleSmall),
+                                        Text(g.name, style: AppTypography.rowTitle(context)),
                                         if (g.phone != null)
-                                          Text(g.phone!, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                                          Text(g.phone!, style: AppTypography.caption(context)),
                                       ],
                                     ),
                                   ),
+                                  if (g.status == GuestStatus.inactive) ...[
+                                    const StatusBadge(label: 'Inactive', tone: StatusTone.neutral),
+                                    const SizedBox(width: AppSpacing.sm),
+                                  ],
                                   const Icon(Icons.chevron_right, color: AppColors.muted),
                                 ],
                               ),

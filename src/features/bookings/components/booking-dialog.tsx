@@ -36,6 +36,7 @@ export function BookingDialog({
   initialCourtId,
   initialSlot,
   initialGuest,
+  initialMember,
   onBooked,
 }: {
   open: boolean;
@@ -49,6 +50,8 @@ export function BookingDialog({
   initialSlot?: TimeSlot;
   /** Set when opened via "Book Court" from a Guest Profile — skips guest search entirely. */
   initialGuest?: GuestPlayer;
+  /** Set when opened via "Book Court" from a Member Profile — skips member search entirely. */
+  initialMember?: { id: string; fullName: string };
   onBooked: (booking: Booking) => void;
 }) {
   const [facilitySportId, setFacilitySportId] = useState(initialCourtId ? areas.find((a) => a.id === initialCourtId)?.facilitySportId ?? "" : "");
@@ -57,7 +60,7 @@ export function BookingDialog({
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
-  const [customerType, setCustomerType] = useState<CustomerType>("GUEST");
+  const [customerType, setCustomerType] = useState<CustomerType>(initialMember ? "MEMBER" : "GUEST");
   const [selectedGuest, setSelectedGuest] = useState<GuestPlayer | null>(initialGuest ?? null);
   const [guestQuery, setGuestQuery] = useState("");
   const [guestResults, setGuestResults] = useState<GuestPlayer[]>([]);
@@ -66,8 +69,8 @@ export function BookingDialog({
   const [newGuestPhone, setNewGuestPhone] = useState("");
   const [isSavingGuest, setIsSavingGuest] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
-  const [memberResults, setMemberResults] = useState<{ id: string; fullName: string; email: string }[]>([]);
-  const [selectedMember, setSelectedMember] = useState<{ id: string; fullName: string } | null>(null);
+  const [memberResults, setMemberResults] = useState<{ id: string; fullName: string; phone: string; email: string | null }[]>([]);
+  const [selectedMember, setSelectedMember] = useState<{ id: string; fullName: string } | null>(initialMember ?? null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("PENDING");
   const [notes, setNotes] = useState("");
   const [isBooking, setIsBooking] = useState(false);
@@ -78,7 +81,7 @@ export function BookingDialog({
     setFacilitySportId(initialCourtId ? areas.find((a) => a.id === initialCourtId)?.facilitySportId ?? "" : "");
     setCourtId(initialCourtId ?? "");
     setSlot(initialSlot ?? null);
-    setCustomerType("GUEST");
+    setCustomerType(initialMember ? "MEMBER" : "GUEST");
     setSelectedGuest(initialGuest ?? null);
     setGuestQuery("");
     setGuestResults([]);
@@ -87,12 +90,12 @@ export function BookingDialog({
     setNewGuestPhone("");
     setMemberQuery("");
     setMemberResults([]);
-    setSelectedMember(null);
+    setSelectedMember(initialMember ?? null);
     setPaymentStatus("PENDING");
     setNotes("");
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialCourtId, initialSlot, initialGuest]);
+  }, [open, initialCourtId, initialSlot, initialGuest, initialMember]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +181,7 @@ export function BookingDialog({
     }
     const timeout = setTimeout(() => {
       getBookingService()
-        .searchMembers(memberQuery)
+        .searchMembers(facilityId, memberQuery)
         .then((results) => !cancelled && setMemberResults(results))
         .catch(() => {});
     }, 300);
@@ -186,7 +189,7 @@ export function BookingDialog({
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [memberQuery]);
+  }, [memberQuery, facilityId]);
 
   async function confirm() {
     if (!courtId || !slot) return;
@@ -411,7 +414,7 @@ export function BookingDialog({
                 <div className="space-y-2">
                   <input
                     aria-label="Search members"
-                    placeholder="Search by name or email"
+                    placeholder="Search by name or phone"
                     value={memberQuery}
                     onChange={(e) => setMemberQuery(e.target.value)}
                     className="h-11 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm"
@@ -428,7 +431,7 @@ export function BookingDialog({
                           }}
                           className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
                         >
-                          {m.fullName} <span className="text-muted-foreground">· {m.email}</span>
+                          {m.fullName} <span className="text-muted-foreground">· {m.phone}</span>
                         </button>
                       ))}
                     </div>

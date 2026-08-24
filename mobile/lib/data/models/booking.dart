@@ -190,10 +190,23 @@ class BookingTimeSlot {
   final bool available;
 }
 
+/// Mirrors `search_members`'s return columns — a facility-scoped, ACTIVE-only
+/// member lookup used by the Booking → Member picker. `phone` is always
+/// present (members.phone is not-null); `email` is optional.
 class MemberSearchResult {
-  const MemberSearchResult({required this.id, required this.fullName, required this.email});
+  const MemberSearchResult({required this.id, required this.fullName, required this.phone, this.email});
 
   final String id;
   final String fullName;
-  final String email;
+  final String phone;
+  final String? email;
+
+  factory MemberSearchResult.fromJson(Map<String, dynamic> json) {
+    return MemberSearchResult(
+      id: json['id'] as String,
+      fullName: json['full_name'] as String,
+      phone: json['phone'] as String,
+      email: json['email'] as String?,
+    );
+  }
 }
