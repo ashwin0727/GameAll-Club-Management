@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirrors AppColors.primary (lib/core/theme/app_colors.dart) so the
+     native pre-engine launch background matches the Flutter splash screen
+     exactly — no white flash between OS launch and the first Flutter frame. -->
+<resources>
+    <color name="launch_background">#FF16A34A</color>
+</resources>

@@ -9,12 +9,23 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/facility.dart';
 import '../../data/models/operating_hours.dart';
+import '../../data/models/playing_area.dart';
+import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_progress_bar.dart';
+import 'operating_hours_validation.dart';
+
+class _OverrideEntry {
+  _OverrideEntry({required this.active, required this.days, this.initiallyActive = false});
+
+  bool active;
+  List<OperatingDay> days;
+  final bool initiallyActive;
+}
 
 class OperatingHoursScreen extends ConsumerStatefulWidget {
   const OperatingHoursScreen({super.key});
@@ -28,6 +39,12 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
   String? _loadError;
   String? _facilityId;
   List<OperatingDay> _days = OperatingDay.defaultWeek();
+  Map<int, String> _dayErrors = {};
+  List<FacilitySport> _facilitySports = [];
+  List<Sport> _sports = [];
+  List<PlayingArea> _areas = [];
+  final Map<String, _OverrideEntry> _overrides = {};
+  final Map<String, Map<int, String>> _overrideErrors = {};
   bool _isSubmitting = false;
   String? _submitError;
 
@@ -48,14 +65,38 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
-      final schedule = await ref.read(operatingHoursRepositoryProvider).getFacilitySchedule(facility.id);
+      final hoursRepo = ref.read(operatingHoursRepositoryProvider);
+      final schedule = await hoursRepo.getFacilitySchedule(facility.id);
+      final facilitySports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
+      final sports = await ref.read(sportsRepositoryProvider).getActiveSports();
+      final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+
+      final days = schedule != null && schedule.days.isNotEmpty
+          ? daysOfWeek
+                .map((d) => schedule.days.where((day) => day.dayOfWeek == d).firstOrNull ?? OperatingDay.defaultOpen(d))
+                .toList()
+          : OperatingDay.defaultWeek();
+
+      _overrides.clear();
+      _overrideErrors.clear();
+      for (final area in areas) {
+        final areaSchedule = await hoursRepo.getPlayingAreaSchedule(area.id);
+        final hasOverride = areaSchedule != null && areaSchedule.days.isNotEmpty;
+        final overrideDays = hasOverride
+            ? daysOfWeek
+                  .map((d) => areaSchedule.days.where((day) => day.dayOfWeek == d).firstOrNull ?? OperatingDay.defaultOpen(d))
+                  .toList()
+            : days.map((d) => OperatingDay.defaultOpen(d.dayOfWeek)).toList();
+        _overrides[area.id] = _OverrideEntry(active: hasOverride, days: overrideDays, initiallyActive: hasOverride);
+        _overrideErrors[area.id] = {};
+      }
+
       setState(() {
         _facilityId = facility.id;
-        if (schedule != null && schedule.days.isNotEmpty) {
-          _days = daysOfWeek
-              .map((d) => schedule.days.where((day) => day.dayOfWeek == d).firstOrNull ?? OperatingDay.defaultOpen(d))
-              .toList();
-        }
+        _days = days;
+        _facilitySports = facilitySports;
+        _sports = sports;
+        _areas = areas;
         _isLoading = false;
       });
     } on AppException catch (e) {
@@ -68,39 +109,111 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
 
   void _updateDay(int dayOfWeek, OperatingDay Function(OperatingDay) update) {
     setState(() {
-      _days = _days.map((d) => d.dayOfWeek == dayOfWeek ? update(d) : d).toList();
+      _days = _days.map((d) => d.dayOfWeek == dayOfWeek ? withComputedOvernight(update(d)) : d).toList();
+      _dayErrors = Map.of(_dayErrors)..remove(dayOfWeek);
     });
   }
 
-  Future<void> _pickTime(int dayOfWeek, bool isStart) async {
-    final day = _days.firstWhere((d) => d.dayOfWeek == dayOfWeek);
-    final slot = day.slots.isNotEmpty
-        ? day.slots.first
-        : const OperatingTimeSlot(startTime: '06:00', endTime: '23:00', crossesMidnight: false, displayOrder: 0);
+  void _updateOverrideDay(String areaId, int dayOfWeek, OperatingDay Function(OperatingDay) update) {
+    setState(() {
+      final entry = _overrides[areaId]!;
+      entry.days = entry.days.map((d) => d.dayOfWeek == dayOfWeek ? withComputedOvernight(update(d)) : d).toList();
+      _overrideErrors[areaId] = Map.of(_overrideErrors[areaId] ?? {})..remove(dayOfWeek);
+    });
+  }
+
+  Future<void> _pickTime(OperatingTimeSlot slot, bool isStart, ValueChanged<OperatingTimeSlot> onChanged) async {
     final current = isStart ? slot.startTime : slot.endTime;
     final parts = current.split(':');
-    final initial = TimeOfDay(hour: int.tryParse(parts[0]) ?? 6, minute: int.tryParse(parts[1]) ?? 0);
-
+    final initial = TimeOfDay(hour: int.tryParse(parts[0]) ?? 6, minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0);
     final picked = await showTimePicker(context: context, initialTime: initial);
     if (picked == null) return;
     final formatted = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-
-    final newSlot = OperatingTimeSlot(
-      startTime: isStart ? formatted : slot.startTime,
-      endTime: isStart ? slot.endTime : formatted,
-      crossesMidnight: false,
-      displayOrder: 0,
+    onChanged(
+      OperatingTimeSlot(
+        startTime: isStart ? formatted : slot.startTime,
+        endTime: isStart ? slot.endTime : formatted,
+        crossesMidnight: slot.crossesMidnight,
+        displayOrder: slot.displayOrder,
+      ),
     );
-    _updateDay(dayOfWeek, (d) => d.copyWith(slots: [newSlot]));
+  }
+
+  Future<void> _copyDayTo(int sourceDow) async {
+    final source = _days.firstWhere((d) => d.dayOfWeek == sourceDow);
+    final targets = await showDialog<Set<int>>(
+      context: context,
+      builder: (context) => _CopyHoursDialog(sourceDow: sourceDow),
+    );
+    if (targets == null || targets.isEmpty) return;
+    setState(() {
+      _days = _days
+          .map((d) => targets.contains(d.dayOfWeek)
+              ? withComputedOvernight(d.copyWith(isClosed: source.isClosed, is24Hours: source.is24Hours, slots: source.slots))
+              : d)
+          .toList();
+      _dayErrors = Map.of(_dayErrors)..removeWhere((dow, _) => targets.contains(dow));
+    });
+  }
+
+  void _applyQuickSetup(String preset) {
+    setState(() {
+      switch (preset) {
+        case 'everyday':
+          _days = _days
+              .map((d) => d.copyWith(isClosed: false, is24Hours: false, slots: OperatingDay.defaultOpen(d.dayOfWeek).slots))
+              .toList();
+          break;
+        case 'weekdays':
+          _days = _days
+              .map(
+                (d) => d.dayOfWeek == 0 || d.dayOfWeek == 6
+                    ? d.copyWith(isClosed: true, slots: const [])
+                    : d.copyWith(isClosed: false, is24Hours: false, slots: OperatingDay.defaultOpen(d.dayOfWeek).slots),
+              )
+              .toList();
+          break;
+        case '24hours':
+          _days = _days.map((d) => d.copyWith(isClosed: false, is24Hours: true)).toList();
+          break;
+      }
+      _dayErrors = {};
+    });
   }
 
   Future<void> _submit() async {
+    final dayErrors = validateSchedule(_days);
+    final overrideErrors = <String, Map<int, String>>{};
+    for (final entry in _overrides.entries) {
+      if (entry.value.active) {
+        overrideErrors[entry.key] = validateSchedule(entry.value.days);
+      }
+    }
+    final hasErrors = dayErrors.isNotEmpty || overrideErrors.values.any((e) => e.isNotEmpty);
+    if (hasErrors) {
+      setState(() {
+        _dayErrors = dayErrors;
+        _overrideErrors.addAll(overrideErrors);
+        _submitError = 'Fix the highlighted days before continuing.';
+      });
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _submitError = null;
     });
     try {
-      await ref.read(operatingHoursRepositoryProvider).saveFacilitySchedule(_facilityId!, _days);
+      final hoursRepo = ref.read(operatingHoursRepositoryProvider);
+      await hoursRepo.saveFacilitySchedule(_facilityId!, _days);
+      for (final area in _areas) {
+        final entry = _overrides[area.id]!;
+        if (entry.active) {
+          await hoursRepo.savePlayingAreaSchedule(area.id, _facilityId!, entry.days);
+        } else if (entry.initiallyActive) {
+          await hoursRepo.deletePlayingAreaOverride(area.id);
+        }
+      }
       await ref
           .read(facilityRepositoryProvider)
           .updateOnboardingStep(_facilityId!, OnboardingStep.pricing);
@@ -131,6 +244,16 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                     Text('Set your operating hours', style: Theme.of(context).textTheme.headlineSmall),
                     const SizedBox(height: AppSpacing.xs),
                     const Text('Choose when your facility is open for bookings and activities.'),
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        _QuickSetupChip(label: 'Everyday, same hours', onTap: () => _applyQuickSetup('everyday')),
+                        _QuickSetupChip(label: 'Weekdays only', onTap: () => _applyQuickSetup('weekdays')),
+                        _QuickSetupChip(label: 'Open 24 hours', onTap: () => _applyQuickSetup('24hours')),
+                      ],
+                    ),
                     const SizedBox(height: AppSpacing.xl),
                     if (_submitError != null) ...[
                       Text(_submitError!, style: const TextStyle(color: Colors.red)),
@@ -138,56 +261,55 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                     ],
                     ...displayOrder.map((dow) {
                       final day = _days.firstWhere((d) => d.dayOfWeek == dow);
-                      final isOpen = !day.isClosed;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: AppCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(dayLabels[dow], style: Theme.of(context).textTheme.titleSmall),
-                                  ),
-                                  Switch(
-                                    value: isOpen,
-                                    onChanged: (value) => _updateDay(
-                                      dow,
-                                      (d) => d.copyWith(
-                                        isClosed: !value,
-                                        slots: value && d.slots.isEmpty
-                                            ? OperatingDay.defaultOpen(dow).slots
-                                            : d.slots,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (isOpen) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Wrap(
-                                  spacing: AppSpacing.md,
-                                  runSpacing: AppSpacing.sm,
-                                  children: [
-                                    _TimeChip(
-                                      label: 'Opens',
-                                      time: day.slots.isNotEmpty ? day.slots.first.startTime : '06:00',
-                                      onTap: () => _pickTime(dow, true),
-                                    ),
-                                    _TimeChip(
-                                      label: 'Closes',
-                                      time: day.slots.isNotEmpty ? day.slots.first.endTime : '23:00',
-                                      onTap: () => _pickTime(dow, false),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
+                        child: _DayCard(
+                          label: dayLabels[dow],
+                          day: day,
+                          error: _dayErrors[dow],
+                          onChange: (update) => _updateDay(dow, update),
+                          onPickTime: (slot, isStart, onChanged) => _pickTime(slot, isStart, onChanged),
+                          onCopyRequest: () => _copyDayTo(dow),
                         ),
                       );
                     }),
+                    if (_areas.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      Text('Customize individual court/turf hours', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.xs),
+                      const Text(
+                        'By default, all courts and turfs use the facility hours above.',
+                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      ..._facilitySports.map((fs) {
+                        final sport = _sports.where((s) => s.id == fs.sportId).firstOrNull;
+                        final areasForSport = _areas.where((a) => a.facilitySportId == fs.id).toList();
+                        if (areasForSport.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fs.customSportName ?? sport?.name ?? 'Sport',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              ...areasForSport.map((area) => _PlayingAreaOverrideCard(
+                                area: area,
+                                entry: _overrides[area.id]!,
+                                errors: _overrideErrors[area.id] ?? {},
+                                onCustomize: () => setState(() => _overrides[area.id]!.active = true),
+                                onUseFacilityHours: () => setState(() => _overrides[area.id]!.active = false),
+                                onDayChange: (dow, update) => _updateOverrideDay(area.id, dow, update),
+                                onPickTime: _pickTime,
+                              )),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
                     PrimaryButton(
                       label: 'Continue →',
@@ -199,6 +321,266 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                 ),
               ),
       ),
+    );
+  }
+}
+
+class _QuickSetupChip extends StatelessWidget {
+  const _QuickSetupChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(label: Text(label), onPressed: onTap);
+  }
+}
+
+class _PlayingAreaOverrideCard extends StatelessWidget {
+  const _PlayingAreaOverrideCard({
+    required this.area,
+    required this.entry,
+    required this.errors,
+    required this.onCustomize,
+    required this.onUseFacilityHours,
+    required this.onDayChange,
+    required this.onPickTime,
+  });
+
+  final PlayingArea area;
+  final _OverrideEntry entry;
+  final Map<int, String> errors;
+  final VoidCallback onCustomize;
+  final VoidCallback onUseFacilityHours;
+  final void Function(int dayOfWeek, OperatingDay Function(OperatingDay)) onDayChange;
+  final Future<void> Function(OperatingTimeSlot, bool, ValueChanged<OperatingTimeSlot>) onPickTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(area.name, style: Theme.of(context).textTheme.titleSmall)),
+                if (entry.active)
+                  TextButton(onPressed: onUseFacilityHours, child: const Text('Use facility hours'))
+                else
+                  OutlinedButton(onPressed: onCustomize, child: const Text('Customize')),
+              ],
+            ),
+            if (!entry.active)
+              const Text('Uses facility hours ✓', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+            if (entry.active) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ...displayOrder.map((dow) {
+                final day = entry.days.firstWhere((d) => d.dayOfWeek == dow);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: _DayCard(
+                    label: dayLabels[dow],
+                    day: day,
+                    error: errors[dow],
+                    onChange: (update) => onDayChange(dow, update),
+                    onPickTime: onPickTime,
+                    compact: true,
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DayCard extends StatelessWidget {
+  const _DayCard({
+    required this.label,
+    required this.day,
+    required this.error,
+    required this.onChange,
+    required this.onPickTime,
+    this.onCopyRequest,
+    this.compact = false,
+  });
+
+  final String label;
+  final OperatingDay day;
+  final String? error;
+  final ValueChanged<OperatingDay Function(OperatingDay)> onChange;
+  final Future<void> Function(OperatingTimeSlot, bool, ValueChanged<OperatingTimeSlot>) onPickTime;
+  final VoidCallback? onCopyRequest;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final isOpen = !day.isClosed;
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
+            if (onCopyRequest != null)
+              IconButton(
+                icon: const Icon(Icons.copy_outlined, size: 18),
+                tooltip: 'Copy hours to other days',
+                onPressed: onCopyRequest,
+              ),
+            const Text('Open', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+            Switch(
+              value: isOpen,
+              onChanged: (value) => onChange(
+                (d) => d.copyWith(
+                  isClosed: !value,
+                  slots: value && d.slots.isEmpty ? OperatingDay.defaultOpen(d.dayOfWeek).slots : d.slots,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (isOpen) ...[
+          Row(
+            children: [
+              const Text('Open 24 hours', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+              Switch(value: day.is24Hours, onChanged: (value) => onChange((d) => d.copyWith(is24Hours: value))),
+            ],
+          ),
+          if (!day.is24Hours) ...[
+            ...day.slots.map((slot) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: [
+                    _TimeChip(
+                      label: 'Opens',
+                      time: slot.startTime,
+                      onTap: () => onPickTime(
+                        slot,
+                        true,
+                        (newSlot) => onChange(
+                          (d) => d.copyWith(slots: [for (final s in d.slots) s == slot ? newSlot : s]),
+                        ),
+                      ),
+                    ),
+                    _TimeChip(
+                      label: 'Closes',
+                      time: slot.endTime,
+                      onTap: () => onPickTime(
+                        slot,
+                        false,
+                        (newSlot) => onChange(
+                          (d) => d.copyWith(slots: [for (final s in d.slots) s == slot ? newSlot : s]),
+                        ),
+                      ),
+                    ),
+                    if (slot.crossesMidnight)
+                      const Text('(next day)', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                    if (day.slots.length > 1)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        tooltip: 'Remove slot',
+                        onPressed: () => onChange(
+                          (d) => d.copyWith(slots: d.slots.where((s) => s != slot).toList()),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            TextButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add another time slot'),
+              onPressed: () => onChange(
+                (d) => d.copyWith(
+                  slots: [
+                    ...d.slots,
+                    OperatingTimeSlot(
+                      startTime: '06:00',
+                      endTime: '23:00',
+                      crossesMidnight: false,
+                      displayOrder: d.slots.length,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+        if (error != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+        ],
+      ],
+    );
+
+    if (compact) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: body,
+      );
+    }
+    return AppCard(child: body);
+  }
+}
+
+class _CopyHoursDialog extends StatefulWidget {
+  const _CopyHoursDialog({required this.sourceDow});
+
+  final int sourceDow;
+
+  @override
+  State<_CopyHoursDialog> createState() => _CopyHoursDialogState();
+}
+
+class _CopyHoursDialogState extends State<_CopyHoursDialog> {
+  final Set<int> _selected = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final targets = displayOrder.where((d) => d != widget.sourceDow).toList();
+    return AlertDialog(
+      title: Text('Copy ${dayLabels[widget.sourceDow]}\'s hours to…'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: targets
+              .map(
+                (dow) => CheckboxListTile(
+                  title: Text(dayLabels[dow]),
+                  value: _selected.contains(dow),
+                  onChanged: (checked) => setState(() {
+                    if (checked ?? false) {
+                      _selected.add(dow);
+                    } else {
+                      _selected.remove(dow);
+                    }
+                  }),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: _selected.isEmpty ? null : () => Navigator.pop(context, _selected),
+          child: const Text('Apply'),
+        ),
+      ],
     );
   }
 }

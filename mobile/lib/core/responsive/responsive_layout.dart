@@ -66,7 +66,7 @@ class ResponsivePage extends StatelessWidget {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(child: content),
+            child: content,
           ),
         );
       },

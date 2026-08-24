@@ -119,6 +119,24 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
     }
   }
 
+  Future<void> _updateAreaField(
+    PlayingArea area, {
+    String? areaType,
+    String? status,
+    bool? bookingEnabled,
+  }) async {
+    try {
+      final updated = await ref
+          .read(playingAreaRepositoryProvider)
+          .updatePlayingArea(area.id, areaType: areaType, status: status, bookingEnabled: bookingEnabled);
+      setState(() {
+        _areas = _areas.map((a) => a.id == area.id ? updated : a).toList();
+      });
+    } on AppException catch (e) {
+      if (mounted) setState(() => _continueError = e.message);
+    }
+  }
+
   Future<void> _removeArea(PlayingArea area) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -212,6 +230,9 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
                                     area: area,
                                     onRename: (name) => _renameArea(area, name),
                                     onRemove: () => _removeArea(area),
+                                    onAreaTypeChanged: (v) => _updateAreaField(area, areaType: v),
+                                    onStatusChanged: (v) => _updateAreaField(area, status: v),
+                                    onBookingEnabledChanged: (v) => _updateAreaField(area, bookingEnabled: v),
                                   ),
                                 ),
                               ),
@@ -241,11 +262,21 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
 }
 
 class _PlayingAreaRow extends StatefulWidget {
-  const _PlayingAreaRow({required this.area, required this.onRename, required this.onRemove});
+  const _PlayingAreaRow({
+    required this.area,
+    required this.onRename,
+    required this.onRemove,
+    required this.onAreaTypeChanged,
+    required this.onStatusChanged,
+    required this.onBookingEnabledChanged,
+  });
 
   final PlayingArea area;
   final ValueChanged<String> onRename;
   final VoidCallback onRemove;
+  final ValueChanged<String> onAreaTypeChanged;
+  final ValueChanged<String> onStatusChanged;
+  final ValueChanged<bool> onBookingEnabledChanged;
 
   @override
   State<_PlayingAreaRow> createState() => _PlayingAreaRowState();
@@ -262,20 +293,97 @@ class _PlayingAreaRowState extends State<_PlayingAreaRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
-            onSubmitted: widget.onRename,
-            onEditingComplete: () => widget.onRename(_controller.text),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  onSubmitted: widget.onRename,
+                  onEditingComplete: () => widget.onRename(_controller.text),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.destructive),
+                tooltip: 'Remove',
+                onPressed: widget.onRemove,
+              ),
+            ],
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline, color: AppColors.destructive),
-          tooltip: 'Remove',
-          onPressed: widget.onRemove,
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _InlineDropdown(
+                label: 'Type',
+                value: widget.area.areaType,
+                options: const ['INDOOR', 'OUTDOOR'],
+                onChanged: widget.onAreaTypeChanged,
+              ),
+              _InlineDropdown(
+                label: 'Status',
+                value: widget.area.status,
+                options: const ['ACTIVE', 'INACTIVE'],
+                onChanged: widget.onStatusChanged,
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Bookable', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  Switch(value: widget.area.bookingEnabled, onChanged: widget.onBookingEnabledChanged),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineDropdown extends StatelessWidget {
+  const _InlineDropdown({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        DropdownButton<String>(
+          value: value,
+          isDense: true,
+          underline: const SizedBox.shrink(),
+          items: options
+              .map((o) => DropdownMenuItem(value: o, child: Text(o[0] + o.substring(1).toLowerCase())))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
         ),
       ],
     );

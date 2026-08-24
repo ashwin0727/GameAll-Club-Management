@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CalendarClock, Boxes, Gamepad2 } from "lucide-react";
+import { LayoutDashboard, Users, CalendarClock, Boxes, Gamepad2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
@@ -12,6 +12,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
   "/members": Users,
   "/bookings": CalendarClock,
+  "/guests": UserRound,
   "/inventory": Boxes,
 };
 

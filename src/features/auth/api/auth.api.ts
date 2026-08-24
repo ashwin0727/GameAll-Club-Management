@@ -36,19 +36,41 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   return data;
 });
 
+/**
+ * profiles.onboarding_completed is the fast, normal-path signal, but it's
+ * only ever written by the complete_facility_setup RPC — a client that (by
+ * bug, or a future new completion path) writes facilities.onboarding_step
+ * directly instead would leave it stuck at false forever, sending an
+ * already-onboarded owner back into onboarding on every sign-in. Treating
+ * either signal as authoritative makes that class of bug self-healing
+ * instead of a permanent lockout.
+ */
+async function hasCompletedFacility(supabase: SupabaseClient<Database>, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("facilities")
+    .select("id")
+    .eq("owner_id", userId)
+    .eq("onboarding_step", "COMPLETED")
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
 /** Profile joined with the auth facts the UI needs (verification state). */
 export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
-  const { user } = await getAuthenticatedUser();
+  const { supabase, user } = await getAuthenticatedUser();
   if (!user) return null;
 
   const profile = await getCurrentProfile();
+  const onboardingCompleted =
+    (profile?.onboarding_completed ?? false) || (await hasCompletedFacility(supabase, user.id));
 
   return {
     id: user.id,
     email: user.email ?? "",
     name: profile?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? "",
     emailVerified: Boolean(user.email_confirmed_at),
-    onboardingCompleted: profile?.onboarding_completed ?? false,
+    onboardingCompleted,
   };
 });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -51,6 +53,13 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
         _summary = summary;
         _isLoading = false;
       });
+      // Landing here with a facility already COMPLETED means nothing left to
+      // validate — but re-running the (idempotent) RPC is still worth doing
+      // as a self-heal for any account whose profiles.onboarding_completed
+      // never got flipped by an older client bug. Best-effort.
+      if (summary.facility.onboardingStep == OnboardingStep.completed) {
+        unawaited(ref.read(onboardingRepositoryProvider).completeSetup(facility.id).catchError((_) => facility));
+      }
     } on AppException catch (e) {
       setState(() {
         _isLoading = false;

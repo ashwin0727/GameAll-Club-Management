@@ -92,7 +92,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xl),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push(AppRoutes.forgotPassword),
+                    child: const Text('Forgot password?'),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 PrimaryButton(
                   label: 'Sign In',
                   loadingLabel: 'Signing in…',

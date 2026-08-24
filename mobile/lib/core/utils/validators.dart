@@ -49,6 +49,17 @@ class Validators {
     return null;
   }
 
+  /// Phone as an optional field (e.g. a guest player) — same 10-digit rule
+  /// as [phone], but empty is valid.
+  static String? optionalPhone(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return null;
+    if (!_tenDigitPhone.hasMatch(trimmed.replaceAll(RegExp(r'^\+91'), ''))) {
+      return 'Enter a valid 10-digit phone number.';
+    }
+    return null;
+  }
+
   static String? pinCode(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return 'PIN code is required.';

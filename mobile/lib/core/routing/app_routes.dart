@@ -9,6 +9,7 @@ class AppRoutes {
   static const signIn = '/sign-in';
   static const createAccount = '/create-account';
   static const emailVerification = '/email-verification';
+  static const forgotPassword = '/forgot-password';
 
   static const onboardingFacility = '/onboarding/facility';
   static const onboardingSports = '/onboarding/sports';
@@ -18,4 +19,6 @@ class AppRoutes {
   static const onboardingComplete = '/onboarding/complete';
 
   static const dashboard = '/dashboard';
+  static const bookings = '/bookings';
+  static const guests = '/guests';
 }

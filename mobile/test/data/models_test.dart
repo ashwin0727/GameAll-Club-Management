@@ -76,6 +76,45 @@ void main() {
     });
   });
 
+  group('PlayingArea.fromJson', () {
+    test('parses a full courts row, matching the web app column names', () {
+      final area = PlayingArea.fromJson({
+        'id': 'area-1',
+        'facility_id': 'facility-1',
+        'facility_sport_id': 'fs-1',
+        'sport_id': 'sport-1',
+        'name': 'Court 1',
+        'area_type': 'OUTDOOR',
+        'status': 'INACTIVE',
+        'booking_enabled': false,
+        'archived': false,
+        'display_order': 2,
+      });
+
+      expect(area.name, 'Court 1');
+      expect(area.areaType, 'OUTDOOR');
+      expect(area.status, 'INACTIVE');
+      expect(area.bookingEnabled, isFalse);
+      expect(area.displayOrder, 2);
+    });
+
+    test('defaults type/status/bookingEnabled/archived when columns are missing', () {
+      final area = PlayingArea.fromJson({
+        'id': 'area-1',
+        'facility_id': 'facility-1',
+        'facility_sport_id': 'fs-1',
+        'sport_id': 'sport-1',
+        'name': 'Court 1',
+      });
+
+      expect(area.areaType, 'INDOOR');
+      expect(area.status, 'ACTIVE');
+      expect(area.bookingEnabled, isTrue);
+      expect(area.archived, isFalse);
+      expect(area.displayOrder, 0);
+    });
+  });
+
   group('playingAreaLabelFor', () {
     test('labels cricket/football as Turf', () {
       expect(playingAreaLabelFor('CRICKET'), 'Turf');
@@ -100,6 +139,46 @@ void main() {
       });
       expect(slot.startTime, '06:00');
       expect(slot.endTime, '23:00');
+    });
+  });
+
+  group('PricingRule.fromJson', () {
+    test('parses a full pricing_rules row, matching the web app column names', () {
+      final rule = PricingRule.fromJson({
+        'id': 'rule-1',
+        'facility_sport_id': 'fs-1',
+        'playing_area_id': 'area-1',
+        'day_type': 'WEEKENDS',
+        'covers_full_day': false,
+        'start_time': '17:00:00',
+        'end_time': '22:00:00',
+        'amount_minor': 60000,
+        'currency': 'INR',
+        'pricing_unit': 'PER_HOUR',
+        'priority': 10,
+      });
+
+      expect(rule.facilitySportId, 'fs-1');
+      expect(rule.playingAreaId, 'area-1');
+      expect(rule.dayType, 'WEEKENDS');
+      expect(rule.coversFullDay, isFalse);
+      expect(rule.startTime, '17:00');
+      expect(rule.endTime, '22:00');
+      expect(rule.amountMinor, 60000);
+      expect(rule.priority, 10);
+    });
+
+    test('defaults dayType/coversFullDay/currency/pricingUnit when columns are missing', () {
+      final rule = PricingRule.fromJson({
+        'facility_sport_id': 'fs-1',
+        'amount_minor': 40000,
+      });
+
+      expect(rule.dayType, 'ALL_DAYS');
+      expect(rule.coversFullDay, isTrue);
+      expect(rule.currency, 'INR');
+      expect(rule.pricingUnit, 'PER_HOUR');
+      expect(rule.playingAreaId, isNull);
     });
   });
 

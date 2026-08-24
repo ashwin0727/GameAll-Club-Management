@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/facility.dart';
 import '../../features/authentication/create_account_screen.dart';
 import '../../features/authentication/email_verification_screen.dart';
+import '../../features/authentication/forgot_password_screen.dart';
 import '../../features/authentication/session_controller.dart';
 import '../../features/authentication/sign_in_screen.dart';
 import '../../features/authentication/splash_screen.dart';
+import '../../features/bookings/bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/guests/guests_screen.dart';
 import '../../features/onboarding/courts_setup_screen.dart';
 import '../../features/onboarding/facility_details_screen.dart';
 import '../../features/onboarding/operating_hours_screen.dart';
@@ -34,7 +37,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final isAuthRoute = path == AppRoutes.signIn ||
           path == AppRoutes.createAccount ||
-          path == AppRoutes.emailVerification;
+          path == AppRoutes.emailVerification ||
+          path == AppRoutes.forgotPassword;
 
       if (!session.isAuthenticated) {
         return isAuthRoute ? null : AppRoutes.signIn;
@@ -68,6 +72,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.onboardingFacility,
         builder: (context, state) => const FacilityDetailsScreen(),
       ),
@@ -92,6 +100,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SetupSummaryScreen(),
       ),
       GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
+      GoRoute(path: AppRoutes.bookings, builder: (context, state) => const BookingsScreen()),
+      GoRoute(path: AppRoutes.guests, builder: (context, state) => const GuestsScreen()),
     ],
   );
 });

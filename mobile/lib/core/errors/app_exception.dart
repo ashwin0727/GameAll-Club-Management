@@ -14,6 +14,12 @@ enum AppErrorCode {
   duplicatePlayingArea,
   invalidPlayingArea,
   setupIncomplete,
+  courtNotFound,
+  bookingNotFound,
+  bookingConflict,
+  invalidBooking,
+  guestNotFound,
+  invalidGuest,
   network,
   databaseError,
 }
@@ -30,6 +36,12 @@ const Map<AppErrorCode, String> _friendlyMessage = {
   AppErrorCode.duplicatePlayingArea: 'This name is already used for this sport.',
   AppErrorCode.invalidPlayingArea: "That value isn't valid.",
   AppErrorCode.setupIncomplete: 'Some required setup is still missing.',
+  AppErrorCode.courtNotFound: 'That court or turf could not be found.',
+  AppErrorCode.bookingNotFound: 'That booking could not be found.',
+  AppErrorCode.bookingConflict: 'That time slot was just booked by someone else. Please pick another time.',
+  AppErrorCode.invalidBooking: "That booking isn't valid. Check the time and try again.",
+  AppErrorCode.guestNotFound: 'That guest could not be found.',
+  AppErrorCode.invalidGuest: 'Enter a guest name to continue.',
   AppErrorCode.network: 'Network error. Check your connection and try again.',
   AppErrorCode.databaseError: 'Something went wrong. Please try again.',
 };
@@ -66,6 +78,7 @@ AppException mapSupabaseError(
     if (code == '23503' && notFound != null) return AppException(notFound);
     if (code == '23514' && invalid != null) return AppException(invalid);
     if (code == '42501') return AppException(AppErrorCode.unauthorized);
+    if (code == '23P01') return AppException(AppErrorCode.bookingConflict);
     return AppException(AppErrorCode.databaseError);
   }
 

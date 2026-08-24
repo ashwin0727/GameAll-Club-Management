@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
@@ -93,6 +96,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_month),
+            tooltip: 'Bookings',
+            onPressed: () => context.push(AppRoutes.bookings),
+          ),
+          IconButton(
+            icon: const Icon(Icons.groups_outlined),
+            tooltip: 'Guest Players',
+            onPressed: () => context.push(AppRoutes.guests),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
             onPressed: () => ref.read(sessionControllerProvider.notifier).signOut(),
@@ -152,6 +165,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             },
                           ),
                         ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      SecondaryButton(
+                        label: '+ New Booking',
+                        onPressed: () => context.push(AppRoutes.bookings),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       _KpiGrid(summary: _summary!),
@@ -216,6 +234,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Revenue by Sport'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Revenue by sport isn\'t available yet — it needs completed booking payments to report on.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Court/Turf Utilization'),
+                      const SizedBox(height: AppSpacing.sm),
+                      AppCard(
+                        child: _summary!.utilization.bySport.isEmpty
+                            ? const Text('No sports configured yet.')
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _summary!.utilization.bySport
+                                    .map(
+                                      (s) => Padding(
+                                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                                        child: Row(
+                                          children: [
+                                            Expanded(child: Text(s.sportName)),
+                                            Text('${s.utilizationPercent}%'),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
                       SectionHeader(title: 'Memberships'),
                       const SizedBox(height: AppSpacing.sm),
                       AppCard(
@@ -248,6 +295,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Live Activity'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Live check-ins and in-progress sessions aren\'t tracked yet.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Guest Players'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Guest player tracking isn\'t available yet.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Expenses'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Expense tracking isn\'t available yet.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Business Position'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Profit/loss reporting needs expenses to be tracked first.',
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SectionHeader(title: 'Upcoming'),
+                      const SizedBox(height: AppSpacing.sm),
+                      const UnavailableCard(
+                        message: 'Tournaments and coaching sessions aren\'t available yet.',
                       ),
                     ],
                   ),

@@ -12,6 +12,12 @@ export type ServiceErrorCode =
   | "DUPLICATE_PLAYING_AREA"
   | "INVALID_PLAYING_AREA"
   | "SETUP_INCOMPLETE"
+  | "COURT_NOT_FOUND"
+  | "BOOKING_NOT_FOUND"
+  | "BOOKING_CONFLICT"
+  | "INVALID_BOOKING"
+  | "GUEST_NOT_FOUND"
+  | "INVALID_GUEST"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -26,6 +32,12 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   DUPLICATE_PLAYING_AREA: "This name is already used for this sport.",
   INVALID_PLAYING_AREA: "That playing area isn't valid.",
   SETUP_INCOMPLETE: "Some required setup is still missing.",
+  COURT_NOT_FOUND: "That court or turf could not be found.",
+  BOOKING_NOT_FOUND: "That booking could not be found.",
+  BOOKING_CONFLICT: "That time slot was just booked by someone else. Please pick another time.",
+  INVALID_BOOKING: "That booking isn't valid. Check the time and try again.",
+  GUEST_NOT_FOUND: "That guest could not be found.",
+  INVALID_GUEST: "Enter a guest name to continue.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 
@@ -63,6 +75,11 @@ export function mapSupabaseError(
   // PostgREST surfaces an RLS-blocked write as a permission error.
   if (error.code === "42501") {
     return new ServiceError("UNAUTHORIZED");
+  }
+  // Raised by the bookings table's own exclusion constraint (0001_init.sql) —
+  // two live bookings tried to claim the same court/time at once.
+  if (error.code === "23P01") {
+    return new ServiceError("BOOKING_CONFLICT");
   }
 
   return new ServiceError("DATABASE_ERROR");

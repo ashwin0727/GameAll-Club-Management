@@ -139,6 +139,25 @@ export class SupabaseAuthService implements AuthService {
       .eq("id", user.id)
       .maybeSingle();
 
+    // profiles.onboarding_completed is only ever written by the
+    // complete_facility_setup RPC. A client that writes
+    // facilities.onboarding_step directly instead (a bug fixed in the
+    // Pricing step, but worth guarding against) would otherwise leave this
+    // stuck at false forever and send an already-onboarded owner back into
+    // onboarding on every sign-in — so also treat a COMPLETED facility as
+    // "onboarded" directly, which self-heals that class of bug.
+    let facilityCompleted = false;
+    if (!profile?.onboarding_completed) {
+      const { data: facility } = await this.supabase
+        .from("facilities")
+        .select("id")
+        .eq("owner_id", user.id)
+        .eq("onboarding_step", "COMPLETED")
+        .limit(1)
+        .maybeSingle();
+      facilityCompleted = Boolean(facility);
+    }
+
     return {
       id: user.id,
       email: user.email ?? "",
@@ -146,7 +165,7 @@ export class SupabaseAuthService implements AuthService {
       // read; fall back to the signup metadata rather than rendering blank.
       name: profile?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? "",
       emailVerified: Boolean(user.email_confirmed_at),
-      onboardingCompleted: profile?.onboarding_completed ?? false,
+      onboardingCompleted: (profile?.onboarding_completed ?? false) || facilityCompleted,
     };
   }
 

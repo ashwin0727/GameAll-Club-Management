@@ -41,4 +41,50 @@ class OperatingHoursRepository {
       throw mapSupabaseError(e, invalid: AppErrorCode.invalidPlayingArea);
     }
   }
+
+  Future<OperatingSchedule?> getPlayingAreaSchedule(String playingAreaId) async {
+    try {
+      final row = await _client
+          .from('operating_schedules')
+          .select(_scheduleSelect)
+          .eq('playing_area_id', playingAreaId)
+          .eq('scope_type', 'PLAYING_AREA')
+          .maybeSingle();
+      return row == null ? null : OperatingSchedule.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<void> savePlayingAreaSchedule(
+    String playingAreaId,
+    String facilityId,
+    List<OperatingDay> days,
+  ) async {
+    try {
+      await _client.rpc(
+        'save_operating_schedule',
+        params: {
+          'p_facility_id': facilityId,
+          'p_scope_type': 'PLAYING_AREA',
+          'p_playing_area_id': playingAreaId,
+          'p_days': days.map((d) => d.toPayload()).toList(),
+        },
+      );
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(
+        e,
+        invalid: AppErrorCode.invalidPlayingArea,
+        notFound: AppErrorCode.playingAreaNotFound,
+      );
+    }
+  }
+
+  Future<void> deletePlayingAreaOverride(String playingAreaId) async {
+    try {
+      await _client.rpc('delete_playing_area_override', params: {'p_playing_area_id': playingAreaId});
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
 }

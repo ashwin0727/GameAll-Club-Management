@@ -8,6 +8,8 @@ import 'operating_hours_repository.dart';
 import 'pricing_repository.dart';
 import 'onboarding_repository.dart';
 import 'dashboard_repository.dart';
+import 'booking_repository.dart';
+import 'guest_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
@@ -52,4 +54,12 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
     ref.watch(playingAreaRepositoryProvider),
     ref.watch(operatingHoursRepositoryProvider),
   );
+});
+
+final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
+  return BookingRepository(ref.watch(supabaseClientProvider));
+});
+
+final guestRepositoryProvider = Provider<GuestRepository>((ref) {
+  return GuestRepository(ref.watch(supabaseClientProvider));
 });

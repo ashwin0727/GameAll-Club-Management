@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/config/app_config.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/app_user.dart';
 
@@ -44,6 +45,23 @@ class AuthRepository {
     try {
       await _client.auth.resend(type: OtpType.signup, email: email);
     } on AuthException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// Mirrors src/services/auth/supabase-auth.service.ts's `resetPassword` —
+  /// a missing account must look identical to a real one, so only genuine
+  /// infra failures surface here, never "user not found". The reset link
+  /// opens the web app's existing `/reset-password` page rather than a
+  /// mobile deep link.
+  Future<void> resetPassword(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: AppConfig.webAppUrl.isNotEmpty ? '${AppConfig.webAppUrl}/reset-password' : null,
+      );
+    } on AuthException catch (e) {
+      if (RegExp('user not found', caseSensitive: false).hasMatch(e.message)) return;
       throw mapSupabaseError(e);
     }
   }

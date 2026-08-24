@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
+import 'app_card.dart';
 
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.subtitle, this.trailing});
@@ -84,5 +85,30 @@ class CurrencyText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(Formatters.currencyInr(amountInr), style: style);
+  }
+}
+
+/// An honest "not available yet" placeholder — used instead of fabricating
+/// zeros for dashboard modules with no backing table/write-path yet.
+/// Mirrors src/features/dashboard/components/unavailable-card.tsx.
+class UnavailableCard extends StatelessWidget {
+  const UnavailableCard({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: AppColors.muted),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
   }
 }

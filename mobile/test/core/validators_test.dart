@@ -41,6 +41,19 @@ void main() {
     });
   });
 
+  group('Validators.optionalPhone', () {
+    test('is optional — empty is valid', () {
+      expect(Validators.optionalPhone(''), isNull);
+      expect(Validators.optionalPhone(null), isNull);
+    });
+    test('rejects a non-10-digit number when provided', () {
+      expect(Validators.optionalPhone('12345'), isNotNull);
+    });
+    test('accepts a 10-digit number', () {
+      expect(Validators.optionalPhone('9876543210'), isNull);
+    });
+  });
+
   group('Validators.pinCode', () {
     test('rejects a 4-digit code', () {
       expect(Validators.pinCode('1234'), isNotNull);

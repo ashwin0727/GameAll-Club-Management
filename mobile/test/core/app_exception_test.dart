@@ -23,6 +23,16 @@ void main() {
       expect(result.code, AppErrorCode.facilitySportNotFound);
     });
 
+    test('maps a check-violation to the caller-supplied invalid code (e.g. an empty guest name)', () {
+      final result = mapSupabaseError(_pgError('23514'), invalid: AppErrorCode.invalidGuest);
+      expect(result.code, AppErrorCode.invalidGuest);
+    });
+
+    test('maps a booking-exclusion-constraint violation to bookingConflict', () {
+      final result = mapSupabaseError(_pgError('23P01'));
+      expect(result.code, AppErrorCode.bookingConflict);
+    });
+
     test('maps an RLS-blocked write to unauthorized regardless of context', () {
       final result = mapSupabaseError(_pgError('42501'));
       expect(result.code, AppErrorCode.unauthorized);

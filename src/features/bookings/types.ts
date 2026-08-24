@@ -1,31 +1,62 @@
-import { z } from "zod";
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type CustomerType = "MEMBER" | "GUEST";
+export type PaymentStatus = "PENDING" | "PAID" | "REFUNDED";
 
-export const courtSchema = z.object({
-  id: z.string().uuid(),
-  facility_id: z.string().uuid(),
-  sport_id: z.string().uuid(),
-  name: z.string().min(1),
-  surface: z.string().nullable(),
-  hourly_rate_inr: z.number().int().nonnegative(),
-  is_active: z.boolean(),
-});
-export type Court = z.infer<typeof courtSchema>;
+export interface Booking {
+  id: string;
+  facilityId: string;
+  courtId: string;
+  facilitySportId: string | null;
+  memberId: string | null;
+  customerType: CustomerType;
+  guestPlayerId: string | null;
+  guestName: string | null;
+  guestPhone: string | null;
+  /** ISO timestamp (UTC). */
+  startTime: string;
+  /** ISO timestamp (UTC). */
+  endTime: string;
+  status: BookingStatus;
+  amountMinor: number | null;
+  currency: string;
+  paymentStatus: PaymentStatus;
+  cancellationReason: string | null;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const bookingStatusSchema = z.enum(["pending", "confirmed", "cancelled", "completed"]);
+export interface NewBookingInput {
+  facilityId: string;
+  courtId: string;
+  /** ISO timestamp (UTC). */
+  startTime: string;
+  /** ISO timestamp (UTC). */
+  endTime: string;
+  customerType: CustomerType;
+  memberId?: string | null;
+  guestPlayerId?: string | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
+  notes?: string | null;
+  paymentStatus?: PaymentStatus;
+}
 
-export const bookingSchema = z.object({
-  id: z.string().uuid(),
-  facility_id: z.string().uuid(),
-  court_id: z.string().uuid(),
-  member_id: z.string().uuid(),
-  start_time: z.string(),
-  end_time: z.string(),
-  status: bookingStatusSchema,
-  created_by: z.string().uuid(),
-  created_at: z.string(),
-});
-export type Booking = z.infer<typeof bookingSchema>;
+export interface RescheduleBookingInput {
+  bookingId: string;
+  courtId: string;
+  /** ISO timestamp (UTC). */
+  startTime: string;
+  /** ISO timestamp (UTC). */
+  endTime: string;
+}
 
-// Next slice: api/, hooks/, and calendar components for this feature. Overlapping
-// bookings are rejected by the database (bookings_no_overlap), so the UI only
-// needs to surface that error, not police it.
+/** One bookable window on the picked date, for the "pick a slot" UI. */
+export interface TimeSlot {
+  /** ISO timestamp (UTC). */
+  startTime: string;
+  /** ISO timestamp (UTC). */
+  endTime: string;
+  available: boolean;
+}

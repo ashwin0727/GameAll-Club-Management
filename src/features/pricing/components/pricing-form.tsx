@@ -12,6 +12,7 @@ import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { getPricingService } from "@/services/pricing";
+import { getOnboardingService } from "@/services/onboarding";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";
 import { FacilityContextCard } from "@/features/sports-setup/components/facility-context-card";
@@ -293,7 +294,11 @@ export function PricingForm() {
 
     try {
       await getPricingService().savePricingRules(facility.id, allRules);
-      await getFacilityService().updateOnboardingStep(facility.id, "COMPLETED");
+      // Goes through the complete_facility_setup RPC (not a raw onboarding_step
+      // write) so profiles.onboarding_completed is flipped in the same
+      // transaction — otherwise the next sign-in would send the owner right
+      // back into onboarding despite the facility being fully set up.
+      await getOnboardingService().completeSetup(facility.id);
       completePricing();
       setIsSaving(false);
       router.push("/onboarding/complete");

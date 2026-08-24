@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gameall_club_mobile/data/models/facility.dart';
 import 'package:gameall_club_mobile/data/models/sport.dart';
+import 'package:gameall_club_mobile/data/models/operating_hours.dart';
 import 'package:gameall_club_mobile/data/models/playing_area.dart';
 import 'package:gameall_club_mobile/data/models/pricing.dart';
 import 'package:gameall_club_mobile/data/models/setup_summary.dart';
@@ -95,6 +96,67 @@ void main() {
         pricingPlan: null,
       );
       expect(summary.sportsMissingPricing, ['Badminton']);
+    });
+
+    test('a schedule where every day is closed still counts as missing operating hours', () {
+      final summary = SetupSummary(
+        facility: _facility(),
+        facilitySports: const [_facilitySport],
+        sports: const [_sport],
+        playingAreas: const [_area],
+        schedule: OperatingSchedule(
+          id: 'sched-1',
+          facilityId: 'facility-1',
+          scopeType: 'FACILITY',
+          timezone: 'Asia/Kolkata',
+          days: daysOfWeek.map((d) => const OperatingDay(dayOfWeek: 0, isClosed: true, is24Hours: false, slots: [])).toList(),
+        ),
+        pricingPlan: null,
+      );
+      expect(summary.missingOperatingHours, isTrue);
+    });
+
+    test('isReady is true only once every requirement — including operating hours — is satisfied', () {
+      final summary = SetupSummary(
+        facility: _facility(),
+        facilitySports: const [_facilitySport],
+        sports: const [_sport],
+        playingAreas: const [_area],
+        schedule: OperatingSchedule(
+          id: 'sched-1',
+          facilityId: 'facility-1',
+          scopeType: 'FACILITY',
+          timezone: 'Asia/Kolkata',
+          days: daysOfWeek
+              .map(
+                (d) => OperatingDay(
+                  dayOfWeek: d,
+                  isClosed: false,
+                  is24Hours: false,
+                  slots: const [OperatingTimeSlot(startTime: '06:00', endTime: '23:00', crossesMidnight: false, displayOrder: 0)],
+                ),
+              )
+              .toList(),
+        ),
+        pricingPlan: PricingPlan(
+          id: 'plan-1',
+          facilityId: 'facility-1',
+          currency: 'INR',
+          rules: const [
+            PricingRule(
+              facilitySportId: 'fs-1',
+              dayType: 'ALL_DAYS',
+              coversFullDay: true,
+              amountMinor: 40000,
+              currency: 'INR',
+              pricingUnit: 'PER_HOUR',
+              priority: 0,
+            ),
+          ],
+        ),
+      );
+      expect(summary.isReady, isTrue);
+      expect(summary.missingRequirements, isEmpty);
     });
   });
 }

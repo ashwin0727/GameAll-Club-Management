@@ -411,23 +411,45 @@ export interface Database {
           id: string;
           facility_id: string;
           court_id: string;
-          member_id: string;
+          facility_sport_id: string | null;
+          member_id: string | null;
+          customer_type: "MEMBER" | "GUEST";
+          guest_name: string | null;
+          guest_phone: string | null;
           start_time: string;
           end_time: string;
           status: BookingStatus;
+          amount_minor: number | null;
+          currency: string;
+          payment_status: "PENDING" | "PAID" | "REFUNDED";
+          cancellation_reason: string | null;
+          guest_player_id: string | null;
+          notes: string | null;
           created_by: string;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           facility_id: string;
           court_id: string;
-          member_id: string;
+          facility_sport_id?: string | null;
+          member_id?: string | null;
+          customer_type?: "MEMBER" | "GUEST";
+          guest_name?: string | null;
+          guest_phone?: string | null;
           start_time: string;
           end_time: string;
           status?: BookingStatus;
+          amount_minor?: number | null;
+          currency?: string;
+          payment_status?: "PENDING" | "PAID" | "REFUNDED";
+          cancellation_reason?: string | null;
+          guest_player_id?: string | null;
+          notes?: string | null;
           created_by: string;
           created_at?: string;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["bookings"]["Insert"]>;
         Relationships: [
@@ -450,6 +472,40 @@ export interface Database {
             columns: ["member_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      guest_players: {
+        Row: {
+          id: string;
+          facility_id: string;
+          name: string;
+          phone: string | null;
+          email: string | null;
+          notes: string | null;
+          status: "ACTIVE" | "INACTIVE";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          name: string;
+          phone?: string | null;
+          email?: string | null;
+          notes?: string | null;
+          status?: "ACTIVE" | "INACTIVE";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["guest_players"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "guest_players_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
             referencedColumns: ["id"];
           },
         ];
@@ -785,6 +841,63 @@ export interface Database {
       complete_facility_setup: {
         Args: { p_facility_id: string };
         Returns: Database["public"]["Tables"]["facilities"]["Row"];
+      };
+      create_booking: {
+        Args: {
+          p_facility_id: string;
+          p_court_id: string;
+          p_start_time: string;
+          p_end_time: string;
+          p_customer_type: "MEMBER" | "GUEST";
+          p_member_id: string | null;
+          p_guest_name: string | null;
+          p_guest_phone: string | null;
+          p_notes: string | null;
+          p_payment_status?: "PENDING" | "PAID" | "REFUNDED";
+          p_guest_player_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      find_or_create_guest: {
+        Args: {
+          p_facility_id: string;
+          p_name: string;
+          p_phone: string | null;
+          p_email?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["guest_players"]["Row"];
+      };
+      update_guest: {
+        Args: {
+          p_guest_id: string;
+          p_name: string;
+          p_phone: string | null;
+          p_email: string | null;
+          p_notes: string | null;
+          p_status: "ACTIVE" | "INACTIVE" | null;
+        };
+        Returns: Database["public"]["Tables"]["guest_players"]["Row"];
+      };
+      get_guest_stats: {
+        Args: { p_guest_id: string };
+        Returns: {
+          total_visits: number;
+          total_bookings: number;
+          last_visit: string | null;
+          total_amount_minor: number;
+          pending_amount_minor: number;
+          sports: { sportId: string; sportName: string }[];
+        }[];
+      };
+      reschedule_booking: {
+        Args: {
+          p_booking_id: string;
+          p_new_court_id: string;
+          p_new_start_time: string;
+          p_new_end_time: string;
+        };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
       };
     };
     Enums: {

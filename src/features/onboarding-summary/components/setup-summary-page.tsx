@@ -61,6 +61,17 @@ export function SetupSummaryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userLoading, router]);
 
+  // Landing here with a facility already COMPLETED means nothing left to
+  // validate — but re-running the (idempotent) RPC is still worth doing as a
+  // self-heal for any account whose profiles.onboarding_completed never got
+  // flipped by an older client bug. Best-effort; the page below already
+  // routes correctly either way.
+  useEffect(() => {
+    if (summary?.facility.onboardingStep === "COMPLETED") {
+      getOnboardingService().completeSetup(summary.facility.id).catch(() => {});
+    }
+  }, [summary]);
+
   async function handleComplete() {
     if (!summary) return;
     setIsCompleting(true);
