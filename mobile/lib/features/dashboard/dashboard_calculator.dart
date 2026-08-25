@@ -82,6 +82,33 @@ class DashboardCalculator {
     return minutes < 0 ? 0 : minutes;
   }
 
+  /// Converts confirmed-usage membership sessions (from the
+  /// `get_membership_utilization_sessions` RPC — see
+  /// supabase/migrations/0015_membership_utilization.sql) into
+  /// synthetic booking-shaped entries so they merge into
+  /// [computeUtilization]/[buildTodaysSchedule] exactly like a real booking,
+  /// rather than a second utilization algorithm. Mirrors
+  /// src/features/dashboard/summary.ts's `toUtilizationBookings`.
+  ///
+  /// A session occupies its court for its full duration exactly once if it
+  /// has at least one CONFIRMED member-or-guest slot booking — never
+  /// multiplied by headcount, since the RPC already dedupes to one row per
+  /// session with any confirmed booking. A session with zero confirmed
+  /// bookings never appears in the RPC's result set, so it contributes zero
+  /// occupied time (allocation is not usage).
+  static List<({String playingAreaId, DateTime startTime, DateTime endTime, String status})> toUtilizationBookings(
+    List<({String courtId, String sessionDate, String startTime, String endTime})> sessions,
+  ) {
+    return sessions.map((s) {
+      return (
+        playingAreaId: s.courtId,
+        startTime: DateTime.parse('${s.sessionDate}T${s.startTime}'),
+        endTime: DateTime.parse('${s.sessionDate}T${s.endTime}'),
+        status: 'confirmed',
+      );
+    }).toList();
+  }
+
   static int computeUtilizationPercent(double bookedMinutes, double availableMinutes) {
     if (availableMinutes <= 0) return 0;
     final percent = (bookedMinutes / availableMinutes) * 100;

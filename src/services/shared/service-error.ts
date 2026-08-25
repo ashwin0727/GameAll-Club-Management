@@ -28,6 +28,8 @@ export type ServiceErrorCode =
   | "INVALID_MEMBERSHIP_BATCH"
   | "MEMBERSHIP_SESSION_NOT_FOUND"
   | "MEMBERSHIP_CAPACITY_ERROR"
+  | "PAYMENT_ORDER_ERROR"
+  | "PAYMENT_GATEWAY_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -59,6 +61,9 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   MEMBERSHIP_SESSION_NOT_FOUND: "That membership session could not be found.",
   // Overridden per-call with the specific rule that was broken (e.g. "No guest slots are currently available") — see supabase-membership-session.service.ts.
   MEMBERSHIP_CAPACITY_ERROR: "Unable to complete this action.",
+  // Overridden per-call with the specific rule the RPC rejected the request for.
+  PAYMENT_ORDER_ERROR: "Unable to start this payment.",
+  PAYMENT_GATEWAY_ERROR: "Unable to reach the payment gateway. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

@@ -5,8 +5,11 @@ import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
+import '../../data/models/payment.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../payments/payment_checkout_controller.dart';
+import '../payments/payment_status_panel.dart';
 import 'membership_status.dart';
 
 /// Assign a plan to a member, or renew (same write path — a new start date
@@ -30,6 +33,9 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
   DateTime _startDate = DateTime.now();
   bool _paymentPaid = true;
   bool _isSaving = false;
+  bool _isPayingViaRazorpay = false;
+  bool _isCheckingAgain = false;
+  CheckoutResult? _paymentState;
   String? _error;
 
   @override
@@ -92,6 +98,62 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// Alternative to the manual Paid/Pending toggle: pay through the
+  /// Razorpay checkout. Mirrors the now-FIXED `payWithRazorpay` in
+  /// assign-membership-dialog.tsx — a "captured" result here is a VERIFIED
+  /// payment, but membership activation is deliberately NOT performed by
+  /// this payment phase (spec §"Membership Payment": "DO NOT activate the
+  /// Membership yet — membership activation belongs to the next business
+  /// settlement phase"). This only flips the existing manual "Paid" toggle
+  /// to true and shows the payment status panel; staff still has to press
+  /// the existing "Confirm" button below to actually assign the membership.
+  Future<void> _payViaRazorpay() async {
+    final plan = _selectedPlan;
+    if (plan == null) {
+      setState(() => _error = 'Select a membership plan.');
+      return;
+    }
+    setState(() {
+      _isPayingViaRazorpay = true;
+      _error = null;
+      _paymentState = null;
+    });
+    try {
+      final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
+        CreatePaymentOrderInput(
+          facilityId: widget.facilityId,
+          sourceType: PaymentSourceType.membership,
+          memberId: widget.memberId,
+          planId: plan.id,
+        ),
+        contactName: widget.memberName,
+      );
+      if (!mounted) return;
+      setState(() => _paymentState = result is CheckoutCancelled ? null : result);
+      if (result is CheckoutCaptured) {
+        setState(() => _paymentPaid = true);
+      }
+    } on AppException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _isPayingViaRazorpay = false);
+    }
+  }
+
+  Future<void> _handleCheckAgain(String paymentOrderId) async {
+    setState(() => _isCheckingAgain = true);
+    try {
+      final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
+      if (!mounted) return;
+      setState(() => _paymentState = result);
+      if (result is CheckoutCaptured) {
+        setState(() => _paymentPaid = true);
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingAgain = false);
     }
   }
 
@@ -170,6 +232,18 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
                   ChoiceChip(label: const Text('Pending'), selected: !_paymentPaid, onSelected: (_) => setState(() => _paymentPaid = false)),
                 ],
               ),
+              if (_paymentState != null || _isPayingViaRazorpay) ...[
+                const SizedBox(height: AppSpacing.sm),
+                PaymentStatusPanel(
+                  state: _paymentState,
+                  isProcessing: _isPayingViaRazorpay,
+                  isCheckingAgain: _isCheckingAgain,
+                  onCheckAgain: _paymentState is CheckoutPending
+                      ? () => _handleCheckAgain((_paymentState as CheckoutPending).paymentOrderId)
+                      : null,
+                  onRetry: _paymentState is CheckoutFailed ? _payViaRazorpay : null,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(_error!, style: const TextStyle(color: Colors.red)),
@@ -179,7 +253,12 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
                 label: 'Confirm',
                 loadingLabel: 'Saving…',
                 isLoading: _isSaving,
-                onPressed: _planId == null ? null : _confirm,
+                onPressed: _planId == null || _isPayingViaRazorpay ? null : _confirm,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SecondaryButton(
+                label: _isPayingViaRazorpay ? 'Paying…' : 'Pay via Razorpay',
+                onPressed: _planId == null || _isSaving || _isPayingViaRazorpay ? null : _payViaRazorpay,
               ),
             ],
           ],

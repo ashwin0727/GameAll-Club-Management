@@ -1,0 +1,163 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Shared Razorpay verification logic — Phase 4.
+//
+// Used by verify-razorpay-payment (client-triggered), razorpay-webhook
+// (Razorpay-triggered), and reconcile-razorpay-payment (staff-triggered
+// manual recheck) so the three Edge Functions never duplicate signature
+// verification, status mapping, or the forward-only state machine.
+//
+// Pure functions only — no Supabase client, no `Deno.env` reads — so this
+// module can be unit tested (razorpay.test.ts) with plain `deno test`,
+// without a live Supabase/Razorpay connection.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type PaymentOrderStatus =
+  | "CREATED"
+  | "ORDER_CREATED"
+  | "PAYMENT_ATTEMPTED"
+  | "PAYMENT_VERIFICATION_PENDING"
+  | "PAYMENT_VERIFIED"
+  | "AUTHORIZED"
+  | "CAPTURED"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUND_REQUESTED"
+  | "REFUNDED";
+
+/** Forward-progression rank — mirrors apply_payment_verification's rank_map in 0019_payment_verification.sql exactly. Statuses absent here (FAILED/CANCELLED/REFUND*) are terminal and never advanced through this map. */
+const STATUS_RANK: Partial<Record<PaymentOrderStatus, number>> = {
+  CREATED: 0,
+  ORDER_CREATED: 1,
+  PAYMENT_ATTEMPTED: 2,
+  PAYMENT_VERIFICATION_PENDING: 3,
+  PAYMENT_VERIFIED: 4,
+  AUTHORIZED: 5,
+  CAPTURED: 6,
+  COMPLETED: 7,
+};
+
+/**
+ * Mirrors apply_payment_verification's forward-only, no-downgrade decision
+ * (0019_payment_verification.sql) — given the order's current status and a
+ * Razorpay-derived target, returns the status that should be written, or
+ * `null` if this is a no-op (already at/past that state, or in a terminal
+ * state this logic doesn't advance from). FAILED is handled the same way
+ * the SQL function handles it: only reachable from a pre-authorization
+ * state, never downgrading an already-authorized/captured order.
+ */
+export function nextPaymentOrderStatus(current: PaymentOrderStatus, target: "AUTHORIZED" | "CAPTURED" | "FAILED" | "PAYMENT_VERIFIED"): PaymentOrderStatus | null {
+  if (target === "FAILED") {
+    const preAuthStates: PaymentOrderStatus[] = ["CREATED", "ORDER_CREATED", "PAYMENT_ATTEMPTED", "PAYMENT_VERIFICATION_PENDING", "PAYMENT_VERIFIED"];
+    return preAuthStates.includes(current) ? "FAILED" : null;
+  }
+  const currentRank = STATUS_RANK[current];
+  const targetRank = STATUS_RANK[target];
+  if (currentRank === undefined || targetRank === undefined) return null;
+  return targetRank > currentRank ? target : null;
+}
+
+/** Razorpay's payment.status values that matter to this integration — see https://razorpay.com/docs/payments/payments/#payment-life-cycle. */
+export type RazorpayPaymentStatus = "created" | "authorized" | "captured" | "failed" | "refunded";
+
+/** Maps a Razorpay payment status to the GameAll-derived target passed into `nextPaymentOrderStatus` / the apply_payment_verification RPC. */
+export function mapRazorpayPaymentStatus(status: string): "AUTHORIZED" | "CAPTURED" | "FAILED" | "PAYMENT_VERIFIED" {
+  switch (status) {
+    case "captured":
+      return "CAPTURED";
+    case "authorized":
+      return "AUTHORIZED";
+    case "failed":
+      return "FAILED";
+    default:
+      // "created" or anything else Razorpay might add — signature/order
+      // checked out, but not yet in a state we can call authorized/
+      // captured/failed. Not a failure, just not conclusive yet.
+      return "PAYMENT_VERIFIED";
+  }
+}
+
+export interface RazorpayPayment {
+  id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function hmacSha256Hex(message: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return toHex(signature);
+}
+
+/** Constant-time string comparison — avoids leaking signature-match progress via response timing. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * Verifies a Razorpay Checkout payment signature — HMAC-SHA256 of
+ * `${razorpayOrderId}|${razorpayPaymentId}` keyed with the Razorpay Key
+ * Secret. This is the ONLY correct algorithm for this signature (see
+ * https://razorpay.com/docs/payments/server-integration/nodejs/payment-gateway/build-integration/#3-verify-payment-signature)
+ * — never the webhook signature algorithm, which signs the raw body
+ * instead.
+ */
+export async function verifyPaymentSignature(razorpayOrderId: string, razorpayPaymentId: string, signature: string, keySecret: string): Promise<boolean> {
+  const expected = await hmacSha256Hex(`${razorpayOrderId}|${razorpayPaymentId}`, keySecret);
+  return timingSafeEqual(expected, signature);
+}
+
+/**
+ * Verifies a Razorpay webhook signature — HMAC-SHA256 of the exact raw
+ * request body, keyed with the dedicated Razorpay Webhook Secret (never
+ * the Key Secret). Callers MUST pass the untouched raw body text read
+ * directly off the request — re-serializing parsed JSON changes
+ * whitespace/key order and breaks the signature.
+ */
+export async function verifyWebhookSignature(rawBody: string, signature: string, webhookSecret: string): Promise<boolean> {
+  const expected = await hmacSha256Hex(rawBody, webhookSecret);
+  return timingSafeEqual(expected, signature);
+}
+
+/** Fetches a payment's authoritative state directly from Razorpay's API — never trusted from the client. */
+export async function fetchRazorpayPayment(paymentId: string, keyId: string, keySecret: string): Promise<RazorpayPayment> {
+  const response = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}` },
+  });
+  if (!response.ok) {
+    throw new Error(`Razorpay payment lookup failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+/** Fetches every payment attempt Razorpay has recorded for an order — used by reconcile-razorpay-payment when no specific payment id is known yet. */
+export async function fetchRazorpayOrderPayments(razorpayOrderId: string, keyId: string, keySecret: string): Promise<RazorpayPayment[]> {
+  const response = await fetch(`https://api.razorpay.com/v1/orders/${razorpayOrderId}/payments`, {
+    headers: { Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}` },
+  });
+  if (!response.ok) {
+    throw new Error(`Razorpay order-payments lookup failed with status ${response.status}`);
+  }
+  const body = await response.json();
+  return (body.items ?? []) as RazorpayPayment[];
+}
+
+/** Picks the most decisive payment attempt to reconcile against: captured beats authorized beats failed, and ties break to the most recently returned (Razorpay already orders these newest-first). */
+export function pickMostDecisivePayment(payments: RazorpayPayment[]): RazorpayPayment | null {
+  const byPriority = (status: string) => (status === "captured" ? 0 : status === "authorized" ? 1 : status === "failed" ? 2 : 3);
+  if (payments.length === 0) return null;
+  return [...payments].sort((a, b) => byPriority(a.status) - byPriority(b.status))[0];
+}

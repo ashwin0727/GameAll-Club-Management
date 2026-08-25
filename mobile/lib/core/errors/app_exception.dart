@@ -30,6 +30,8 @@ enum AppErrorCode {
   membershipSessionNotFound,
   invalidMembershipBatch,
   membershipCapacityError,
+  paymentGatewayError,
+  paymentOrderError,
   network,
   databaseError,
 }
@@ -62,6 +64,8 @@ const Map<AppErrorCode, String> _friendlyMessage = {
   AppErrorCode.membershipSessionNotFound: 'That membership session could not be found.',
   AppErrorCode.invalidMembershipBatch: 'That court does not belong to this facility/sport.',
   AppErrorCode.membershipCapacityError: 'Unable to complete this action.',
+  AppErrorCode.paymentGatewayError: 'Unable to reach the payment gateway. Please try again.',
+  AppErrorCode.paymentOrderError: 'Unable to start this payment.',
   AppErrorCode.network: 'Network error. Check your connection and try again.',
   AppErrorCode.databaseError: 'Something went wrong. Please try again.',
 };

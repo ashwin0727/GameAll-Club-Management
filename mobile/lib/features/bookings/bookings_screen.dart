@@ -12,7 +12,9 @@ import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/booking.dart';
 import '../../data/models/guest.dart';
+import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
+import '../../data/models/payment.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
@@ -22,6 +24,9 @@ import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/booking_slot_chip.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import '../membership_sessions/membership_slot_card.dart';
+import '../payments/payment_checkout_controller.dart';
+import '../payments/payment_status_panel.dart';
 import 'booking_operations.dart';
 import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
@@ -48,6 +53,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   bool _gridLoading = false;
   String? _gridError;
   List<Booking> _bookings = [];
+  List<MembershipSessionSlot> _membershipSlots = [];
   final Map<String, OperatingDay?> _dayByCourt = {};
 
   @override
@@ -101,9 +107,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final dayEnd = dayStart.add(const Duration(days: 1));
       final dow = dayStart.weekday % 7;
 
+      final dateStr =
+          '${dayStart.year.toString().padLeft(4, '0')}-${dayStart.month.toString().padLeft(2, '0')}-${dayStart.day.toString().padLeft(2, '0')}';
+
       final hoursRepo = ref.read(operatingHoursRepositoryProvider);
       final facilitySchedule = await hoursRepo.getFacilitySchedule(_facilityId!);
       final bookings = await ref.read(bookingRepositoryProvider).getBookingsForFacility(_facilityId!, dayStart, dayEnd);
+      final membershipSlots = await ref
+          .read(membershipSessionRepositoryProvider)
+          .listSessionsForDate(_facilityId!, dateStr);
 
       _dayByCourt.clear();
       for (final area in _areas) {
@@ -114,6 +126,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
       setState(() {
         _bookings = bookings;
+        _membershipSlots = membershipSlots;
         _gridLoading = false;
       });
     } on AppException catch (e) {
@@ -144,6 +157,13 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     return (_bookingsByCourt[courtId] ?? []).where((b) => b.startTime == startTime).firstOrNull;
   }
 
+  /// A membership batch's protected window never renders as a plain
+  /// available/booked cell — the owner always sees the membership slot
+  /// panel instead, whether or not any of it has been released yet.
+  MembershipSessionSlot? _findMembershipSlot(String courtId, BookingTimeSlot slot) {
+    return findMembershipSlot(courtId, slot, _membershipSlots);
+  }
+
   bool get _isToday {
     final now = DateTime.now();
     return _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
@@ -155,12 +175,30 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   }
 
   void _onSlotTap(PlayingArea area, BookingTimeSlot slot) {
+    final membershipSlot = _findMembershipSlot(area.id, slot);
+    if (membershipSlot != null) {
+      _openMembershipSlot(membershipSlot);
+      return;
+    }
     if (slot.available) {
       _openQuickBooking(area, slot);
     } else {
       final booking = _findBookingAt(area.id, slot.startTime);
       if (booking != null) _openBookingDetails(booking, area);
     }
+  }
+
+  Future<void> _openMembershipSlot(MembershipSessionSlot slot) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: SingleChildScrollView(
+          child: MembershipSlotCard(facilityId: _facilityId!, slot: slot, onChanged: _reloadGrid),
+        ),
+      ),
+    );
   }
 
   Future<void> _openQuickBooking(PlayingArea area, BookingTimeSlot slot) async {
@@ -359,10 +397,12 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                             spacing: AppSpacing.sm,
                             runSpacing: AppSpacing.sm,
                             children: slots.map((slot) {
+                              final membershipSlot = _findMembershipSlot(area.id, slot);
                               return BookingSlotChip(
                                 label: TimeOfDay.fromDateTime(slot.startTime).format(context),
                                 available: slot.available,
                                 selected: false,
+                                locked: membershipSlot != null,
                                 onTap: () => _onSlotTap(area, slot),
                               );
                             }).toList(),
@@ -853,8 +893,48 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   BookingTimeSlot? _selectedSlot;
   bool _isWorking = false;
   String? _error;
+  bool _isPaying = false;
+  bool _isCheckingAgain = false;
+  CheckoutResult? _paymentState;
 
   bool get _canModify => widget.booking.status == BookingStatus.pending || widget.booking.status == BookingStatus.confirmed;
+
+  bool get _canPay => widget.booking.paymentStatus == PaymentStatus.pending;
+
+  Future<void> _payNow() async {
+    setState(() {
+      _isPaying = true;
+      _error = null;
+      _paymentState = null;
+    });
+    try {
+      final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
+        CreatePaymentOrderInput(
+          facilityId: widget.facilityId,
+          sourceType: widget.booking.customerType == CustomerType.member
+              ? PaymentSourceType.memberBooking
+              : PaymentSourceType.guestBooking,
+          bookingId: widget.booking.id,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _paymentState = result is CheckoutCancelled ? null : result);
+    } on AppException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
+
+  Future<void> _handleCheckAgain(String paymentOrderId) async {
+    setState(() => _isCheckingAgain = true);
+    try {
+      final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
+      if (mounted) setState(() => _paymentState = result);
+    } finally {
+      if (mounted) setState(() => _isCheckingAgain = false);
+    }
+  }
 
   Future<void> _pickRescheduleDate() async {
     final picked = await showDatePicker(
@@ -991,9 +1071,30 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   ),
                 ],
               ),
+              if (_paymentState != null || _isPaying) ...[
+                const SizedBox(height: AppSpacing.sm),
+                PaymentStatusPanel(
+                  state: _paymentState,
+                  isProcessing: _isPaying,
+                  isCheckingAgain: _isCheckingAgain,
+                  onCheckAgain: _paymentState is CheckoutPending
+                      ? () => _handleCheckAgain((_paymentState as CheckoutPending).paymentOrderId)
+                      : null,
+                  onRetry: _paymentState is CheckoutFailed ? _payNow : null,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(_error!, style: const TextStyle(color: Colors.red)),
+              ],
+              if (_canPay) ...[
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryButton(
+                  label: 'Pay Now',
+                  loadingLabel: 'Starting payment…',
+                  isLoading: _isPaying,
+                  onPressed: _isWorking ? null : _payNow,
+                ),
               ],
               if (_canModify) ...[
                 const SizedBox(height: AppSpacing.lg),

@@ -14,6 +14,7 @@ import {
   resolveDateRange,
   summarizeMemberships,
   summarizePayments,
+  toUtilizationBookings,
 } from "@/features/dashboard/summary";
 import type { DashboardSummary } from "@/features/dashboard/types";
 import type { DashboardService, DashboardSummaryParams } from "@/services/dashboard/dashboard.service";
@@ -55,7 +56,7 @@ export class SupabaseDashboardService implements DashboardService {
 
     const earliestFrom = previous ? previous.from : current.from;
 
-    const [bookingsRes, membershipsRes, paymentsRes] = await Promise.all([
+    const [bookingsRes, membershipsRes, paymentsRes, membershipSessionsRes] = await Promise.all([
       this.supabase
         .from("bookings")
         .select("court_id, start_time, end_time, status")
@@ -69,13 +70,32 @@ export class SupabaseDashboardService implements DashboardService {
         .eq("facility_id", facilityId)
         .gte("created_at", earliestFrom)
         .lt("created_at", current.to),
+      this.supabase.rpc("get_membership_utilization_sessions", {
+        p_facility_id: facilityId,
+        p_from: earliestFrom.slice(0, 10),
+        p_to: current.to.slice(0, 10),
+      }),
     ]);
 
     if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
     if (membershipsRes.error) throw mapSupabaseError(membershipsRes.error);
     if (paymentsRes.error) throw mapSupabaseError(paymentsRes.error);
+    if (membershipSessionsRes.error) throw mapSupabaseError(membershipSessionsRes.error);
 
-    const allBookings = ((bookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id));
+    // Actual usage of a membership-protected slot (member or guest) occupies
+    // court-time exactly like a regular booking, even though it's tracked in
+    // a different table — merged in here so utilization/today's-schedule
+    // never treat a fully-attended membership court as 0% used.
+    const membershipUtilizationBookings = toUtilizationBookings(
+      (membershipSessionsRes.data ?? [])
+        .filter((s) => playingAreaIds.has(s.court_id))
+        .map((s) => ({ courtId: s.court_id, sessionDate: s.session_date, startTime: s.start_time, endTime: s.end_time })),
+    );
+
+    const allBookings = [
+      ...((bookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id)),
+      ...membershipUtilizationBookings.map((b) => ({ court_id: b.playingAreaId, start_time: b.startTime, end_time: b.endTime, status: b.status })),
+    ];
     const currentBookings = allBookings.filter((b) => b.start_time >= current.from && b.start_time < current.to);
     const previousBookings = previous
       ? allBookings.filter((b) => b.start_time >= previous.from && b.start_time < previous.to)

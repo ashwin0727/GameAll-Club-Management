@@ -81,18 +81,49 @@ class DashboardRepository {
           .gte('created_at', earliestFrom.toIso8601String())
           .lt('created_at', period.current.to.toIso8601String());
 
-      final allBookings = (bookingsRows as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .where((b) => playingAreaIds.contains(b['court_id']))
-          .map(
-            (b) => (
-              playingAreaId: b['court_id'] as String,
-              startTime: DateTime.parse(b['start_time'] as String),
-              endTime: DateTime.parse(b['end_time'] as String),
-              status: b['status'] as String,
+      // Actual usage of a membership-protected slot (member or guest)
+      // occupies court-time exactly like a regular booking, even though
+      // it's tracked in a different table — merged into allBookings below
+      // so utilization/today's-schedule never treat a fully-attended
+      // membership court as 0% used. See 0015_membership_utilization.sql.
+      final membershipSessionRows = await _client.rpc(
+        'get_membership_utilization_sessions',
+        params: {
+          'p_facility_id': facilityId,
+          'p_from': earliestFrom.toIso8601String().substring(0, 10),
+          'p_to': period.current.to.toIso8601String().substring(0, 10),
+        },
+      );
+
+      final membershipUtilizationBookings = DashboardCalculator.toUtilizationBookings(
+        (membershipSessionRows as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .where((s) => playingAreaIds.contains(s['court_id']))
+            .map(
+              (s) => (
+                courtId: s['court_id'] as String,
+                sessionDate: s['session_date'] as String,
+                startTime: s['start_time'] as String,
+                endTime: s['end_time'] as String,
+              ),
+            )
+            .toList(),
+      );
+
+      final allBookings = [
+        ...(bookingsRows as List<dynamic>)
+            .cast<Map<String, dynamic>>()
+            .where((b) => playingAreaIds.contains(b['court_id']))
+            .map(
+              (b) => (
+                playingAreaId: b['court_id'] as String,
+                startTime: DateTime.parse(b['start_time'] as String),
+                endTime: DateTime.parse(b['end_time'] as String),
+                status: b['status'] as String,
+              ),
             ),
-          )
-          .toList();
+        ...membershipUtilizationBookings,
+      ];
 
       final currentBookings = allBookings
           .where((b) => !b.startTime.isBefore(period.current.from) && b.startTime.isBefore(period.current.to))

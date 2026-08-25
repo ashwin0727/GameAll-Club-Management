@@ -173,6 +173,24 @@ export function computeUtilization(input: {
   return { overallPercent, bySport };
 }
 
+/**
+ * A membership session occupies its court once, for its full duration,
+ * exactly when at least one member or guest has actually confirmed a slot
+ * in it — allocation alone (no confirmed bookings) is not usage. The RPC
+ * this feeds from (get_membership_utilization_sessions) already filters to
+ * "has at least one CONFIRMED slot booking", so every row here counts.
+ */
+export function toUtilizationBookings(
+  sessions: { courtId: string; sessionDate: string; startTime: string; endTime: string }[],
+): UtilizationBooking[] {
+  return sessions.map((s) => ({
+    playingAreaId: s.courtId,
+    startTime: `${s.sessionDate}T${s.startTime}`,
+    endTime: `${s.sessionDate}T${s.endTime}`,
+    status: "confirmed",
+  }));
+}
+
 export function summarizeMemberships(
   memberships: { status: string; end_date: string; created_at: string }[],
   now: Date,

@@ -17,12 +17,21 @@ class BookingSlotChip extends StatefulWidget {
     required this.available,
     required this.selected,
     this.onTap,
+    this.locked = false,
   });
 
   final String label;
   final bool available;
   final bool selected;
   final VoidCallback? onTap;
+
+  /// True when this cell falls inside a membership batch's protected
+  /// window (see findMembershipSlot in features/bookings/booking_slots.dart).
+  /// A locked slot is always tappable — regardless of [available] — since
+  /// tapping it opens the membership slot panel rather than the normal
+  /// booking flow, and is rendered in a visually distinct style so it's
+  /// never confused with a plain available/booked cell.
+  final bool locked;
 
   @override
   State<BookingSlotChip> createState() => _BookingSlotChipState();
@@ -31,8 +40,10 @@ class BookingSlotChip extends StatefulWidget {
 class _BookingSlotChipState extends State<BookingSlotChip> {
   bool _pressed = false;
 
+  bool get _tappable => widget.locked || widget.available;
+
   void _handleTap() {
-    if (!widget.available || widget.onTap == null) return;
+    if (!_tappable || widget.onTap == null) return;
     HapticFeedback.selectionClick();
     widget.onTap!();
   }
@@ -47,6 +58,10 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
       background = AppColors.primary;
       border = AppColors.primary;
       foreground = Colors.white;
+    } else if (widget.locked) {
+      background = AppColors.info.withValues(alpha: 0.1);
+      border = AppColors.info.withValues(alpha: 0.4);
+      foreground = AppColors.info;
     } else if (!widget.available) {
       background = AppColors.mutedBackground;
       border = AppColors.border;
@@ -57,18 +72,26 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
       foreground = AppColors.success;
     }
 
+    final subtitle = widget.selected
+        ? 'Selected'
+        : widget.locked
+            ? 'Membership'
+            : (widget.available ? 'Available' : 'Booked');
+
     return GestureDetector(
-      onTapDown: widget.available ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: widget.available ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: widget.available ? () => setState(() => _pressed = false) : null,
+      onTapDown: _tappable ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: _tappable ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: _tappable ? () => setState(() => _pressed = false) : null,
       onTap: _handleTap,
       child: Semantics(
         button: true,
-        enabled: widget.available,
+        enabled: _tappable,
         selected: widget.selected,
-        label: widget.available
-            ? (widget.selected ? '${widget.label}, selected' : '${widget.label}, available')
-            : '${widget.label}, booked',
+        label: widget.locked
+            ? '${widget.label}, membership protected'
+            : widget.available
+                ? (widget.selected ? '${widget.label}, selected' : '${widget.label}, available')
+                : '${widget.label}, booked',
         child: AnimatedScale(
           scale: _pressed ? 0.94 : 1.0,
           duration: AppMotion.fast,
@@ -88,11 +111,11 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  widget.label,
+                  widget.locked ? '🔒 ${widget.label}' : widget.label,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
                 ),
                 Text(
-                  widget.selected ? 'Selected' : (widget.available ? 'Available' : 'Booked'),
+                  subtitle,
                   style: TextStyle(fontSize: 10, color: widget.selected ? Colors.white70 : AppColors.muted),
                 ),
               ],

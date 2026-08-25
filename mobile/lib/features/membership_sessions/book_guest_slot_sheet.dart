@@ -6,8 +6,10 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/guest.dart';
 import '../../data/models/membership_session.dart';
+import '../../data/models/payment.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../payments/payment_checkout_controller.dart';
 
 /// Search-or-create a guest (reusing the existing `GuestRepository`
 /// search/find-or-create flow, same as the Guest Players feature), then
@@ -95,9 +97,38 @@ class _BookGuestSlotSheetState extends ConsumerState<BookGuestSlotSheet> {
       _error = null;
     });
     try {
-      await ref
+      final created = await ref
           .read(membershipSessionRepositoryProvider)
           .bookGuestSlot(widget.slot.batchId, widget.slot.sessionDate, guest.id);
+
+      final amountMinor = created.amountMinor;
+      if (amountMinor != null && amountMinor > 0) {
+        final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
+          CreatePaymentOrderInput(
+            facilityId: widget.facilityId,
+            sourceType: PaymentSourceType.guestBooking,
+            membershipSessionBookingId: created.id,
+          ),
+        );
+        if (!mounted) return;
+        switch (result) {
+          case CheckoutFailed(:final message):
+            // The guest slot booking already exists — a failed payment
+            // doesn't undo it, but we keep the sheet open so the error is
+            // visible and the payment can be retried.
+            setState(() => _error = message);
+            return;
+          case CheckoutCaptured():
+          case CheckoutPending():
+          case CheckoutCancelled():
+            // Booking already created either way — a payment that's merely
+            // pending (or was cancelled) isn't a booking failure; it can be
+            // charged/checked again later from the booking's own payment
+            // status. This sheet's job (creating the booking) is done
+            // either way.
+            break;
+        }
+      }
       if (mounted) Navigator.of(context).pop(true);
     } on AppException catch (e) {
       setState(() => _error = e.message);

@@ -10,6 +10,7 @@ import {
   resolveDateRange,
   summarizeMemberships,
   summarizePayments,
+  toUtilizationBookings,
 } from "@/features/dashboard/summary";
 import type { OperatingDay } from "@/features/operating-hours/types";
 
@@ -104,6 +105,58 @@ describe("operatingMinutesForDay + computeUtilizationPercent (utilization calcul
 describe("bookingDurationMinutes", () => {
   it("computes duration between two ISO timestamps", () => {
     expect(bookingDurationMinutes("2026-08-24T06:00:00.000Z", "2026-08-24T07:30:00.000Z")).toBe(90);
+  });
+});
+
+describe("toUtilizationBookings (membership session usage feeds utilization, allocation alone does not)", () => {
+  it("converts a confirmed-usage session into a synthetic booking spanning its full duration", () => {
+    const [booking] = toUtilizationBookings([
+      { courtId: "court-1", sessionDate: "2026-08-24", startTime: "18:00:00", endTime: "19:00:00" },
+    ]);
+    expect(booking).toMatchObject({ playingAreaId: "court-1", status: "confirmed" });
+    expect(bookingDurationMinutes(booking!.startTime, booking!.endTime)).toBe(60);
+  });
+
+  it("occupies the court once per session regardless of how many members/guests are in it", () => {
+    // get_membership_utilization_sessions already dedupes to one row per
+    // session with any confirmed booking — the conversion must not
+    // multiply that by headcount.
+    const result = toUtilizationBookings([
+      { courtId: "court-1", sessionDate: "2026-08-24", startTime: "18:00:00", endTime: "19:00:00" },
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it("merges into computeUtilization exactly like a real booking — spec's 80% partial-release scenario", () => {
+    const period = { from: "2026-08-24T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" };
+    // Capacity 5, 3 members + 1 guest confirmed (1 released slot still unused) — the
+    // session occupies its single 1h slot out of a 5h open window = 20% for
+    // that court, distinct from "5/5 allocated" or headcount-based math.
+    const membershipBookings = toUtilizationBookings([
+      { courtId: "court-1", sessionDate: "2026-08-24", startTime: "18:00:00", endTime: "19:00:00" },
+    ]);
+    const result = computeUtilization({
+      playingAreas: [{ id: "court-1", name: "Court 1", facilitySportId: "fs-1" }],
+      facilitySports: [{ id: "fs-1", sportId: "sport-1" }],
+      sports: [{ id: "sport-1", name: "Badminton" }],
+      facilityOperatingDays: [openDay(1, "18:00", "23:00")], // 5h open
+      bookings: [...membershipBookings],
+      period,
+    });
+    expect(result.overallPercent).toBe(20);
+  });
+
+  it("contributes zero occupied time when nothing has actually been confirmed (allocation ≠ usage)", () => {
+    const period = { from: "2026-08-24T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" };
+    const result = computeUtilization({
+      playingAreas: [{ id: "court-1", name: "Court 1", facilitySportId: "fs-1" }],
+      facilitySports: [{ id: "fs-1", sportId: "sport-1" }],
+      sports: [{ id: "sport-1", name: "Badminton" }],
+      facilityOperatingDays: [openDay(1, "18:00", "19:00")],
+      bookings: [], // no membership session row is fed in when nobody confirmed
+      period,
+    });
+    expect(result.overallPercent).toBe(0);
   });
 });
 

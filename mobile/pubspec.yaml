@@ -41,6 +41,7 @@ dependencies:
   uuid: ^4.6.0
   postgrest: ^2.9.1
   http: ^1.2.2
+  razorpay_flutter: ^1.4.0
 
 dev_dependencies:
   flutter_test:

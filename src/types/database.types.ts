@@ -362,24 +362,36 @@ export interface Database {
         Row: {
           id: string;
           facility_id: string;
-          member_id: string;
+          member_id: string | null;
           membership_id: string | null;
+          payment_order_id: string | null;
+          booking_id: string | null;
+          guest_player_id: string | null;
           razorpay_order_id: string | null;
           razorpay_payment_id: string | null;
           amount_inr: number;
           status: PaymentStatus;
+          payment_method: string | null;
+          paid_at: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           facility_id: string;
-          member_id: string;
+          member_id?: string | null;
           membership_id?: string | null;
+          payment_order_id?: string | null;
+          booking_id?: string | null;
+          guest_player_id?: string | null;
           razorpay_order_id?: string | null;
           razorpay_payment_id?: string | null;
           amount_inr: number;
           status?: PaymentStatus;
+          payment_method?: string | null;
+          paid_at?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>;
         Relationships: [
@@ -394,7 +406,7 @@ export interface Database {
             foreignKeyName: "payments_member_id_fkey";
             columns: ["member_id"];
             isOneToOne: false;
-            referencedRelation: "profiles";
+            referencedRelation: "members";
             referencedColumns: ["id"];
           },
           {
@@ -404,7 +416,126 @@ export interface Database {
             referencedRelation: "memberships";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "payments_payment_order_id_fkey";
+            columns: ["payment_order_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey";
+            columns: ["booking_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id"];
+          },
         ];
+      };
+      payment_orders: {
+        Row: {
+          id: string;
+          facility_id: string;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          booking_id: string | null;
+          membership_session_booking_id: string | null;
+          member_id: string | null;
+          plan_id: string | null;
+          amount_minor: number;
+          currency: string;
+          status:
+            | "CREATED"
+            | "ORDER_CREATED"
+            | "PAYMENT_ATTEMPTED"
+            | "PAYMENT_VERIFICATION_PENDING"
+            | "PAYMENT_VERIFIED"
+            | "AUTHORIZED"
+            | "CAPTURED"
+            | "COMPLETED"
+            | "FAILED"
+            | "CANCELLED"
+            | "REFUND_REQUESTED"
+            | "REFUNDED";
+          razorpay_order_id: string | null;
+          razorpay_payment_id: string | null;
+          razorpay_signature: string | null;
+          receipt: string;
+          expires_at: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          booking_id?: string | null;
+          membership_session_booking_id?: string | null;
+          member_id?: string | null;
+          plan_id?: string | null;
+          amount_minor: number;
+          currency?: string;
+          status?:
+            | "CREATED"
+            | "ORDER_CREATED"
+            | "PAYMENT_ATTEMPTED"
+            | "AUTHORIZED"
+            | "CAPTURED"
+            | "COMPLETED"
+            | "FAILED"
+            | "CANCELLED"
+            | "REFUND_REQUESTED"
+            | "REFUNDED";
+          razorpay_order_id?: string | null;
+          razorpay_payment_id?: string | null;
+          razorpay_signature?: string | null;
+          receipt: string;
+          expires_at: string;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["payment_orders"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_orders_booking_id_fkey";
+            columns: ["booking_id"];
+            isOneToOne: false;
+            referencedRelation: "bookings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      razorpay_webhook_events: {
+        Row: {
+          id: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          processed: boolean;
+          processed_at: string | null;
+          error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          event_type: string;
+          payload: Record<string, unknown>;
+          processed?: boolean;
+          processed_at?: string | null;
+          error?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["razorpay_webhook_events"]["Insert"]>;
+        Relationships: [];
       };
       bookings: {
         Row: {
@@ -1275,6 +1406,46 @@ export interface Database {
           member_booked_count: number;
           guest_booked_count: number;
         }[];
+      };
+      get_membership_utilization_sessions: {
+        Args: { p_facility_id: string; p_from: string; p_to: string };
+        Returns: { court_id: string; session_date: string; start_time: string; end_time: string }[];
+      };
+      create_payment_order: {
+        Args: {
+          p_facility_id: string;
+          p_source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          p_booking_id?: string | null;
+          p_membership_session_booking_id?: string | null;
+          p_member_id?: string | null;
+          p_plan_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
+      };
+      get_payment_order: {
+        Args: { p_payment_order_id: string };
+        Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
+      };
+      record_payment_attempt: {
+        Args: {
+          p_payment_order_id: string;
+          p_status: "PAYMENT_ATTEMPTED" | "FAILED";
+          p_razorpay_payment_id?: string | null;
+          p_razorpay_signature?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
+      };
+      apply_payment_verification: {
+        Args: {
+          p_payment_order_id: string;
+          p_razorpay_order_id: string;
+          p_razorpay_payment_id: string;
+          p_razorpay_status: "AUTHORIZED" | "CAPTURED" | "FAILED" | "PAYMENT_VERIFIED";
+          p_amount_minor: number;
+          p_currency: string;
+          p_razorpay_signature?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
       };
     };
     Enums: {

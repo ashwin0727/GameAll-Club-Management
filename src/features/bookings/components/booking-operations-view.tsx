@@ -8,14 +8,18 @@ import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { getBookingService } from "@/services/bookings";
+import { getMembershipSessionService } from "@/services/membership-sessions";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { computeTodaysOperations } from "@/features/bookings/operations";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import type { OperatingDay } from "@/features/operating-hours/types";
+import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
 import { BookingDialog } from "@/features/bookings/components/booking-dialog";
 import { BookingDetailsDialog } from "@/features/bookings/components/booking-details-dialog";
+import { MembershipSlotCard } from "@/features/membership-sessions/components/membership-slot-card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -38,11 +42,13 @@ export function BookingOperationsView() {
   const [sportFilter, setSportFilter] = useState<string>("");
   const [dayByCourt, setDayByCourt] = useState<Map<string, OperatingDay | null>>(new Map());
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [membershipSlots, setMembershipSlots] = useState<MembershipSessionSlot[]>([]);
   const [gridLoading, setGridLoading] = useState(false);
   const [gridError, setGridError] = useState<string | null>(null);
 
   const [bookingDialog, setBookingDialog] = useState<{ courtId?: string; slot?: TimeSlot } | null>(null);
   const [detailsBooking, setDetailsBooking] = useState<Booking | null>(null);
+  const [membershipSlotDialog, setMembershipSlotDialog] = useState<MembershipSessionSlot | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,9 +88,12 @@ export function BookingOperationsView() {
         dayEnd.setDate(dayEnd.getDate() + 1);
         const dow = dayStart.getDay();
 
-        const [dayBookings, facilitySchedule] = await Promise.all([
+        const dateStr = `${dayStart.getFullYear()}-${String(dayStart.getMonth() + 1).padStart(2, "0")}-${String(dayStart.getDate()).padStart(2, "0")}`;
+
+        const [dayBookings, facilitySchedule, sessionsForDate] = await Promise.all([
           getBookingService().getBookingsForFacility(facilityId, dayStart, dayEnd),
           getOperatingHoursService().getFacilitySchedule(facilityId),
+          getMembershipSessionService().listSessionsForDate(facilityId, dateStr),
         ]);
 
         const overrides = await Promise.all(
@@ -98,6 +107,7 @@ export function BookingOperationsView() {
 
         setBookings(dayBookings);
         setDayByCourt(nextDayByCourt);
+        setMembershipSlots(sessionsForDate);
       } catch {
         setGridError("Unable to load availability. Please try again.");
       } finally {
@@ -132,6 +142,39 @@ export function BookingOperationsView() {
     return map;
   }, [areas, dayByCourt, bookingsByCourt, selectedDate]);
 
+  /**
+   * A membership batch's protected window never renders as a plain
+   * available/booked cell — the owner always sees the protected-capacity
+   * panel (via MembershipSlotCard) instead, whether or not any of it has
+   * been released yet. Matches by local wall-clock minute-of-day, since
+   * both TimeSlot.startTime (from computeAvailableSlots) and the batch's
+   * start_time/end_time represent the same facility-local time.
+   */
+  function findMembershipSlot(courtId: string, slot: TimeSlot): MembershipSessionSlot | undefined {
+    const slotStart = new Date(slot.startTime);
+    const minuteOfDay = slotStart.getHours() * 60 + slotStart.getMinutes();
+    return membershipSlots.find((m) => {
+      if (m.courtId !== courtId) return false;
+      const [sh, sm] = m.startTime.split(":").map(Number);
+      const [eh, em] = m.endTime.split(":").map(Number);
+      const start = (sh ?? 0) * 60 + (sm ?? 0);
+      const end = (eh ?? 0) * 60 + (em ?? 0);
+      return minuteOfDay >= start && minuteOfDay < end;
+    });
+  }
+
+  // Keep an open membership-slot dialog's numbers live after a
+  // release/restore/guest-book reloads the grid, instead of showing
+  // stale capacity until the owner closes and reopens it.
+  useEffect(() => {
+    if (!membershipSlotDialog) return;
+    const fresh = membershipSlots.find(
+      (m) => m.batchId === membershipSlotDialog.batchId && m.sessionDate === membershipSlotDialog.sessionDate,
+    );
+    if (fresh) setMembershipSlotDialog(fresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membershipSlots]);
+
   const operations = useMemo(() => computeTodaysOperations(bookings, new Date()), [bookings]);
 
   const groupedSports = useMemo(() => {
@@ -146,6 +189,11 @@ export function BookingOperationsView() {
   }
 
   function handleCellClick(courtId: string, slot: TimeSlot) {
+    const membershipSlot = findMembershipSlot(courtId, slot);
+    if (membershipSlot) {
+      setMembershipSlotDialog(membershipSlot);
+      return;
+    }
     if (slot.available) {
       setBookingDialog({ courtId, slot });
       return;
@@ -255,21 +303,27 @@ export function BookingOperationsView() {
                           <p className="text-xs text-muted-foreground">Closed on this date.</p>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
-                            {slots.map((slot) => (
-                              <button
-                                key={slot.startTime}
-                                type="button"
-                                onClick={() => handleCellClick(court.id, slot)}
-                                title={formatTime(slot.startTime)}
-                                className={`h-9 rounded-md border px-2 text-[11px] font-medium transition-colors ${
-                                  slot.available
-                                    ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
-                                    : "border-input bg-muted text-muted-foreground hover:bg-accent"
-                                }`}
-                              >
-                                {formatTime(slot.startTime)}
-                              </button>
-                            ))}
+                            {slots.map((slot) => {
+                              const membershipSlot = findMembershipSlot(court.id, slot);
+                              return (
+                                <button
+                                  key={slot.startTime}
+                                  type="button"
+                                  onClick={() => handleCellClick(court.id, slot)}
+                                  title={membershipSlot ? `${formatTime(slot.startTime)} · ${membershipSlot.batchName}` : formatTime(slot.startTime)}
+                                  className={`h-9 rounded-md border px-2 text-[11px] font-medium transition-colors ${
+                                    membershipSlot
+                                      ? "border-purple-400/50 bg-purple-500/10 text-purple-700 hover:bg-purple-500/20 dark:text-purple-300"
+                                      : slot.available
+                                        ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
+                                        : "border-input bg-muted text-muted-foreground hover:bg-accent"
+                                  }`}
+                                >
+                                  {membershipSlot ? "🔒 " : ""}
+                                  {formatTime(slot.startTime)}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -307,6 +361,16 @@ export function BookingOperationsView() {
             facilityId={facilityId}
             onChanged={() => reloadGrid()}
           />
+          <Dialog open={membershipSlotDialog !== null} onOpenChange={(open) => !open && setMembershipSlotDialog(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Membership Session</DialogTitle>
+              </DialogHeader>
+              {membershipSlotDialog && (
+                <MembershipSlotCard facilityId={facilityId} slot={membershipSlotDialog} onChanged={() => reloadGrid()} />
+              )}
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

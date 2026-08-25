@@ -8,6 +8,8 @@ import { getMembershipService } from "@/services/memberships";
 import { computeMembershipEndDate } from "@/features/memberships/status";
 import type { Membership, MembershipPlan } from "@/features/memberships/types";
 import { ServiceError } from "@/services/shared/service-error";
+import { usePaymentCheckout, type CheckoutResult } from "@/features/payments/use-payment-checkout";
+import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -39,6 +41,8 @@ export function AssignMembershipDialog({
   const [paymentPaid, setPaymentPaid] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
+  const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +60,7 @@ export function AssignMembershipDialog({
   const selectedPlan = plans?.find((p) => p.id === planId) ?? null;
   const endDate = selectedPlan ? computeMembershipEndDate(startDate, selectedPlan.durationDays) : null;
 
-  async function confirm() {
+  async function saveMembership(paid: boolean) {
     if (!selectedPlan) {
       setError("Select a membership plan.");
       return;
@@ -69,7 +73,7 @@ export function AssignMembershipDialog({
         facilityId,
         planId: selectedPlan.id,
         startDate,
-        paymentStatus: paymentPaid ? "paid" : "created",
+        paymentStatus: paid ? "paid" : "created",
       });
       onAssigned(membership);
       onOpenChange(false);
@@ -77,6 +81,41 @@ export function AssignMembershipDialog({
       setError(err instanceof ServiceError ? err.message : "Unable to assign this membership.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function confirm() {
+    await saveMembership(paymentPaid);
+  }
+
+  async function payWithRazorpay() {
+    if (!selectedPlan) {
+      setError("Select a membership plan.");
+      return;
+    }
+    setError(null);
+    setPaymentState("processing");
+    const result = await startCheckout(
+      { facilityId, sourceType: "MEMBERSHIP", memberId, planId: selectedPlan.id },
+      { description: `${selectedPlan.name} membership`, prefill: { name: memberName } },
+    );
+    // A "captured" result here is a VERIFIED payment — but membership
+    // activation is deliberately not performed by this payment phase (spec
+    // §"Membership Payment": "DO NOT activate the Membership yet"). Staff
+    // still assigns the membership via the existing "Confirm" button below
+    // (with "Paid" selected) once payment is confirmed — this only tells
+    // them it's safe to do so.
+    setPaymentState(result.status === "cancelled" ? null : result);
+    if (result.status === "captured") {
+      setPaymentPaid(true);
+    }
+  }
+
+  async function handleCheckAgain(paymentOrderId: string) {
+    const result: CheckoutResult = await checkAgain(paymentOrderId);
+    setPaymentState(result);
+    if (result.status === "captured") {
+      setPaymentPaid(true);
     }
   }
 
@@ -138,22 +177,37 @@ export function AssignMembershipDialog({
 
             <div>
               <p className="mb-1 text-sm font-medium">Payment</p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button type="button" variant={paymentPaid ? "default" : "outline"} size="sm" onClick={() => setPaymentPaid(true)}>
-                  Paid
+                  Paid (cash/manual)
                 </Button>
                 <Button type="button" variant={!paymentPaid ? "default" : "outline"} size="sm" onClick={() => setPaymentPaid(false)}>
                   Pending
                 </Button>
+                <Button type="button" variant="outline" size="sm" onClick={payWithRazorpay} disabled={!planId || isPaying || isSaving}>
+                  {isPaying ? "Processing…" : "Pay via Razorpay"}
+                </Button>
               </div>
             </div>
 
+            {paymentState && (
+              <PaymentStatusPanel
+                state={paymentState}
+                isCheckingAgain={isPaying}
+                onCheckAgain={
+                  paymentState !== "processing" && paymentState.status !== "cancelled" && paymentState.status !== "captured"
+                    ? () => handleCheckAgain((paymentState as { paymentOrderId: string }).paymentOrderId)
+                    : undefined
+                }
+                onRetry={paymentState !== "processing" && paymentState.status === "failed" ? payWithRazorpay : undefined}
+              />
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}
 
         <DialogFooter>
-          <Button type="button" onClick={confirm} disabled={!planId || isSaving}>
+          <Button type="button" onClick={confirm} disabled={!planId || isSaving || isPaying}>
             {isSaving ? "Saving…" : "Confirm"}
           </Button>
         </DialogFooter>

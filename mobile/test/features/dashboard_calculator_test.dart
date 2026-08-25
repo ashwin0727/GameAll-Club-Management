@@ -68,6 +68,61 @@ void main() {
     });
   });
 
+  group('toUtilizationBookings (membership session usage feeds utilization, allocation alone does not)', () {
+    test('converts a confirmed-usage session into a synthetic booking spanning its full duration', () {
+      final result = DashboardCalculator.toUtilizationBookings([
+        (courtId: 'court-1', sessionDate: '2026-08-24', startTime: '18:00:00', endTime: '19:00:00'),
+      ]);
+      final booking = result.single;
+      expect(booking.playingAreaId, 'court-1');
+      expect(booking.status, 'confirmed');
+      expect(DashboardCalculator.bookingDurationMinutes(booking.startTime, booking.endTime), 60);
+    });
+
+    test('occupies the court once per session regardless of how many members/guests are in it', () {
+      // get_membership_utilization_sessions already dedupes to one row per
+      // session with any confirmed booking — the conversion must not
+      // multiply that by headcount.
+      final result = DashboardCalculator.toUtilizationBookings([
+        (courtId: 'court-1', sessionDate: '2026-08-24', startTime: '18:00:00', endTime: '19:00:00'),
+      ]);
+      expect(result, hasLength(1));
+    });
+
+    test('merges into computeUtilization exactly like a real booking — spec\'s 80% partial-release scenario', () {
+      final period = DateRange(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 25));
+      // Capacity 5, 3 members + 1 guest confirmed (1 released slot still
+      // unused) — the session occupies its single 1h slot out of a 5h open
+      // window = 20% for that court, distinct from "5/5 allocated" or
+      // headcount-based math.
+      final membershipBookings = DashboardCalculator.toUtilizationBookings([
+        (courtId: 'court-1', sessionDate: '2026-08-24', startTime: '18:00:00', endTime: '19:00:00'),
+      ]);
+      final result = DashboardCalculator.computeUtilization(
+        playingAreas: [(id: 'court-1', name: 'Court 1', facilitySportId: 'fs-1')],
+        facilitySports: [(id: 'fs-1', sportId: 'sport-1')],
+        sports: [(id: 'sport-1', name: 'Badminton')],
+        facilityOperatingDays: [_openDay(1, start: '18:00', end: '23:00')], // 5h open
+        bookings: membershipBookings,
+        period: period,
+      );
+      expect(result.overallPercent, 20);
+    });
+
+    test('contributes zero occupied time when nothing has actually been confirmed (allocation != usage)', () {
+      final period = DateRange(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 25));
+      final result = DashboardCalculator.computeUtilization(
+        playingAreas: [(id: 'court-1', name: 'Court 1', facilitySportId: 'fs-1')],
+        facilitySports: [(id: 'fs-1', sportId: 'sport-1')],
+        sports: [(id: 'sport-1', name: 'Badminton')],
+        facilityOperatingDays: [_openDay(1, start: '18:00', end: '19:00')],
+        bookings: const [], // no membership session row is fed in when nobody confirmed
+        period: period,
+      );
+      expect(result.overallPercent, 0);
+    });
+  });
+
   group('computeUtilization', () {
     test('excludes cancelled bookings from utilization', () {
       final period = DateRange(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 25));

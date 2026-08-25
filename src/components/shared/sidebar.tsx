@@ -44,7 +44,10 @@ export function Sidebar({ role }: { role: Role }) {
         <nav className="flex-1 space-y-1 p-3">
           {items.map((item) => {
             const Icon = ICONS[item.href] ?? LayoutDashboard;
-            const active = pathname.startsWith(item.href);
+            // Plain startsWith would also match "/membership-sessions" against
+            // the "/members" item (a literal string prefix, not a path
+            // boundary) — require an exact match or a "/" right after.
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

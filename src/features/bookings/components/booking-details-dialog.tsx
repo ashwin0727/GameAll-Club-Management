@@ -10,6 +10,8 @@ import { formatCurrency } from "@/features/pricing/money";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { ServiceError } from "@/services/shared/service-error";
+import { usePaymentCheckout, type CheckoutResult } from "@/features/payments/use-payment-checkout";
+import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -39,8 +41,32 @@ export function BookingDetailsDialog({
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
+  const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
 
   if (!booking) return null;
+
+  async function payNow() {
+    setError(null);
+    setPaymentState("processing");
+    const result = await startCheckout(
+      {
+        facilityId,
+        sourceType: booking!.customerType === "MEMBER" ? "MEMBER_BOOKING" : "GUEST_BOOKING",
+        bookingId: booking!.id,
+      },
+      {
+        description: `${sportName} · ${court?.name ?? "Court"}`,
+        prefill: booking!.customerType === "GUEST" ? { name: booking!.guestName ?? undefined, contact: booking!.guestPhone ?? undefined } : undefined,
+      },
+    );
+    setPaymentState(result.status === "cancelled" ? null : result);
+  }
+
+  async function handleCheckAgain(paymentOrderId: string) {
+    const result: CheckoutResult = await checkAgain(paymentOrderId);
+    setPaymentState(result);
+  }
 
   async function loadRescheduleSlots(dateStr: string) {
     if (!court) return;
@@ -136,6 +162,18 @@ export function BookingDetailsDialog({
                 <p className="capitalize">{booking.status}</p>
               </div>
             </div>
+            {paymentState && (
+              <PaymentStatusPanel
+                state={paymentState}
+                isCheckingAgain={isPaying}
+                onCheckAgain={
+                  paymentState !== "processing" && paymentState.status !== "cancelled" && paymentState.status !== "captured"
+                    ? () => handleCheckAgain((paymentState as { paymentOrderId: string }).paymentOrderId)
+                    : undefined
+                }
+                onRetry={paymentState !== "processing" && paymentState.status === "failed" ? payNow : undefined}
+              />
+            )}
             {error && <p className="text-destructive">{error}</p>}
           </div>
         ) : (
@@ -183,10 +221,15 @@ export function BookingDetailsDialog({
           {mode === "view" ? (
             canModify && (
               <>
-                <Button type="button" variant="outline" onClick={() => setMode("reschedule")} disabled={isWorking}>
+                {booking.paymentStatus === "PENDING" && (
+                  <Button type="button" onClick={payNow} disabled={isPaying || isWorking}>
+                    {isPaying ? "Processing…" : "Pay Now"}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={() => setMode("reschedule")} disabled={isWorking || isPaying}>
                   Reschedule
                 </Button>
-                <Button type="button" variant="destructive" onClick={cancel} disabled={isWorking}>
+                <Button type="button" variant="destructive" onClick={cancel} disabled={isWorking || isPaying}>
                   {isWorking ? "Cancelling…" : "Cancel Booking"}
                 </Button>
               </>

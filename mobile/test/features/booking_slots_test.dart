@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gameall_club_mobile/data/models/booking.dart';
+import 'package:gameall_club_mobile/data/models/membership_session.dart';
 import 'package:gameall_club_mobile/data/models/operating_hours.dart';
 import 'package:gameall_club_mobile/features/bookings/booking_slots.dart';
 
@@ -47,5 +49,61 @@ void main() {
     );
     final slots = computeAvailableSlots(monday, overnight, const []);
     expect(slots.length, 2);
+  });
+
+  group('findMembershipSlot', () {
+    MembershipSessionSlot batchSlot({
+      String courtId = 'court-1',
+      String startTime = '18:00:00',
+      String endTime = '19:00:00',
+    }) {
+      return MembershipSessionSlot(
+        batchId: 'batch-1',
+        batchName: 'Evening Badminton',
+        courtId: courtId,
+        courtName: 'Court 1',
+        facilitySportId: 'fs-1',
+        sportName: 'Badminton',
+        sessionDate: '2026-01-05',
+        startTime: startTime,
+        endTime: endTime,
+        capacity: 5,
+        releasedCapacity: 0,
+        memberBookedCount: 0,
+        guestBookedCount: 0,
+      );
+    }
+
+    final gridSlot = BookingTimeSlot(
+      startTime: DateTime(2026, 1, 5, 18),
+      endTime: DateTime(2026, 1, 5, 19),
+      available: true,
+    );
+
+    test('finds a batch whose window covers the grid cell on the same court', () {
+      final match = findMembershipSlot('court-1', gridSlot, [batchSlot()]);
+      expect(match, isNotNull);
+      expect(match!.batchId, 'batch-1');
+    });
+
+    test('ignores a batch on a different court', () {
+      final match = findMembershipSlot('court-2', gridSlot, [batchSlot()]);
+      expect(match, isNull);
+    });
+
+    test('ignores a batch whose window does not cover this time', () {
+      final match = findMembershipSlot('court-1', gridSlot, [batchSlot(startTime: '20:00:00', endTime: '21:00:00')]);
+      expect(match, isNull);
+    });
+
+    test('treats the window as [start, end) — a cell starting exactly at the batch end is not covered', () {
+      final cellAtEnd = BookingTimeSlot(
+        startTime: DateTime(2026, 1, 5, 19),
+        endTime: DateTime(2026, 1, 5, 20),
+        available: true,
+      );
+      final match = findMembershipSlot('court-1', cellAtEnd, [batchSlot()]);
+      expect(match, isNull);
+    });
   });
 }

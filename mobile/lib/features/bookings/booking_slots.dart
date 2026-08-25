@@ -1,4 +1,5 @@
 import '../../data/models/booking.dart';
+import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
 
 /// Port of src/features/bookings/slots.ts — splits a day's open windows
@@ -27,6 +28,29 @@ List<BookingTimeSlot> computeAvailableSlots(
   }
 
   return slots;
+}
+
+/// Finds the membership batch slot (if any) whose protected window covers
+/// this grid cell — port of booking-operations-view.tsx's
+/// `findMembershipSlot`. A membership batch's window never renders as a
+/// plain available/booked cell; the caller uses this to decide whether to
+/// show the membership-protected styling/dialog instead. Matches by local
+/// wall-clock minute-of-day, since both [slot].startTime (from
+/// computeAvailableSlots) and the batch's start_time/end_time represent the
+/// same facility-local time.
+MembershipSessionSlot? findMembershipSlot(
+  String courtId,
+  BookingTimeSlot slot,
+  List<MembershipSessionSlot> membershipSlots,
+) {
+  final minuteOfDay = slot.startTime.hour * 60 + slot.startTime.minute;
+  for (final m in membershipSlots) {
+    if (m.courtId != courtId) continue;
+    final start = _toMinutes(m.startTime);
+    final end = _toMinutes(m.endTime);
+    if (minuteOfDay >= start && minuteOfDay < end) return m;
+  }
+  return null;
 }
 
 class _Window {

@@ -9,6 +9,7 @@ import { validateGuestName, validateGuestPhone } from "@/features/guests/validat
 import type { GuestPlayer } from "@/features/guests/types";
 import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
 import { ServiceError } from "@/services/shared/service-error";
+import { usePaymentCheckout } from "@/features/payments/use-payment-checkout";
 
 export function BookGuestSlotDialog({
   open,
@@ -31,6 +32,7 @@ export function BookGuestSlotDialog({
   const [newPhone, setNewPhone] = useState("");
   const [isBooking, setIsBooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { startCheckout, isProcessing: isPaying } = usePaymentCheckout();
 
   function search(value: string) {
     setQuery(value);
@@ -72,7 +74,25 @@ export function BookGuestSlotDialog({
     setIsBooking(true);
     setError(null);
     try {
-      await getMembershipSessionService().bookGuestSlot(slot.batchId, slot.sessionDate, selectedGuest.id);
+      const created = await getMembershipSessionService().bookGuestSlot(slot.batchId, slot.sessionDate, selectedGuest.id);
+      setIsBooking(false);
+
+      if (created.amountMinor != null && created.amountMinor > 0) {
+        const result = await startCheckout(
+          { facilityId, sourceType: "GUEST_BOOKING", membershipSessionBookingId: created.id },
+          { description: `${slot.batchName} · ${slot.courtName}`, prefill: { name: selectedGuest.name, contact: selectedGuest.phone ?? undefined } },
+        );
+        if (result.status === "failed") {
+          setError(result.message);
+          return;
+        }
+        // "captured"/"pending"/"cancelled" all still leave the guest slot
+        // booked — a payment that's merely pending (or was cancelled)
+        // isn't a booking failure; it can be charged/checked again later
+        // from the booking's own payment status. This dialog's job
+        // (creating the booking) is done either way.
+      }
+
       onBooked();
       onOpenChange(false);
     } catch (err) {
@@ -164,8 +184,8 @@ export function BookGuestSlotDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" onClick={confirm} disabled={isBooking}>
-            {isBooking ? "Booking…" : "Confirm Booking"}
+          <Button type="button" onClick={confirm} disabled={isBooking || isPaying}>
+            {isBooking ? "Booking…" : isPaying ? "Processing payment…" : "Confirm Booking"}
           </Button>
         </DialogFooter>
       </DialogContent>
