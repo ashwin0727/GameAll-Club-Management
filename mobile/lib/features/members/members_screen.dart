@@ -136,12 +136,12 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
 
   Future<void> _openAssignMembership(String memberId, {required String memberName}) async {
     if (_facilityId == null) return;
-    final assigned = await showModalBottomSheet<Membership>(
+    final assigned = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) => AssignMembershipSheet(facilityId: _facilityId!, memberId: memberId, memberName: memberName),
     );
-    if (assigned != null) _refreshList();
+    if (assigned == true) _refreshList();
   }
 
   Future<void> _openPlans() async {

@@ -452,9 +452,11 @@ export interface Database {
             | "AUTHORIZED"
             | "CAPTURED"
             | "COMPLETED"
+            | "SETTLEMENT_EXCEPTION"
             | "FAILED"
             | "CANCELLED"
             | "REFUND_REQUESTED"
+            | "PARTIALLY_REFUNDED"
             | "REFUNDED";
           razorpay_order_id: string | null;
           razorpay_payment_id: string | null;
@@ -482,9 +484,11 @@ export interface Database {
             | "AUTHORIZED"
             | "CAPTURED"
             | "COMPLETED"
+            | "SETTLEMENT_EXCEPTION"
             | "FAILED"
             | "CANCELLED"
             | "REFUND_REQUESTED"
+            | "PARTIALLY_REFUNDED"
             | "REFUNDED";
           razorpay_order_id?: string | null;
           razorpay_payment_id?: string | null;
@@ -535,6 +539,122 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["razorpay_webhook_events"]["Insert"]>;
+        Relationships: [];
+      };
+      settlement_exceptions: {
+        Row: {
+          id: string;
+          facility_id: string;
+          payment_order_id: string;
+          transaction_id: string | null;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          source_id: string | null;
+          reason: "BOOKING_NO_LONGER_AVAILABLE" | "GUEST_CAPACITY_EXHAUSTED" | "MEMBERSHIP_INVALID" | "BUSINESS_VALIDATION_FAILED" | "DATABASE_SETTLEMENT_FAILURE";
+          status: "OPEN" | "RESOLVED";
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          payment_order_id: string;
+          transaction_id?: string | null;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          source_id?: string | null;
+          reason: "BOOKING_NO_LONGER_AVAILABLE" | "GUEST_CAPACITY_EXHAUSTED" | "MEMBERSHIP_INVALID" | "BUSINESS_VALIDATION_FAILED" | "DATABASE_SETTLEMENT_FAILURE";
+          status?: "OPEN" | "RESOLVED";
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["settlement_exceptions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "settlement_exceptions_payment_order_id_fkey";
+            columns: ["payment_order_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      refunds: {
+        Row: {
+          id: string;
+          facility_id: string;
+          payment_order_id: string;
+          transaction_id: string | null;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          source_id: string | null;
+          razorpay_payment_id: string;
+          razorpay_refund_id: string | null;
+          amount_minor: number;
+          currency: string;
+          reason: "CUSTOMER_CANCELLATION" | "FACILITY_CANCELLATION" | "COURT_UNAVAILABLE" | "SETTLEMENT_EXCEPTION" | "DUPLICATE_PAYMENT" | "OWNER_OVERRIDE" | "OTHER";
+          status: "REQUESTED" | "PROCESSING" | "PENDING" | "PROCESSED" | "FAILED" | "CANCELLED";
+          is_override: boolean;
+          override_reason: string | null;
+          policy_percent_applied: number | null;
+          failure_reason: string | null;
+          initiated_by: string | null;
+          created_at: string;
+          updated_at: string;
+          processed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          payment_order_id: string;
+          transaction_id?: string | null;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          source_id?: string | null;
+          razorpay_payment_id: string;
+          razorpay_refund_id?: string | null;
+          amount_minor: number;
+          currency?: string;
+          reason: "CUSTOMER_CANCELLATION" | "FACILITY_CANCELLATION" | "COURT_UNAVAILABLE" | "SETTLEMENT_EXCEPTION" | "DUPLICATE_PAYMENT" | "OWNER_OVERRIDE" | "OTHER";
+          status?: "REQUESTED" | "PROCESSING" | "PENDING" | "PROCESSED" | "FAILED" | "CANCELLED";
+          is_override?: boolean;
+          override_reason?: string | null;
+          policy_percent_applied?: number | null;
+          failure_reason?: string | null;
+          initiated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          processed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["refunds"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "refunds_payment_order_id_fkey";
+            columns: ["payment_order_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cancellation_policies: {
+        Row: {
+          id: string;
+          facility_id: string;
+          full_refund_hours: number;
+          full_refund_percent: number;
+          partial_refund_hours: number;
+          partial_refund_percent: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          full_refund_hours?: number;
+          full_refund_percent?: number;
+          partial_refund_hours?: number;
+          partial_refund_percent?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["cancellation_policies"]["Insert"]>;
         Relationships: [];
       };
       bookings: {
@@ -1240,10 +1360,6 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["memberships"]["Row"];
       };
-      cancel_membership: {
-        Args: { p_membership_id: string };
-        Returns: Database["public"]["Tables"]["memberships"]["Row"];
-      };
       search_facility_members: {
         Args: {
           p_facility_id: string;
@@ -1446,6 +1562,71 @@ export interface Database {
           p_razorpay_signature?: string | null;
         };
         Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
+      };
+      settle_payment: {
+        Args: { p_payment_order_id: string };
+        Returns: Database["public"]["Tables"]["payment_orders"]["Row"];
+      };
+      activate_membership: {
+        Args: { p_member_id: string; p_facility_id: string; p_plan_id: string; p_start_date: string };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      cancel_booking: {
+        Args: {
+          p_booking_id: string;
+          p_reason?: string | null;
+          p_refund_override_percent?: number | null;
+          p_override_reason?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      cancel_membership_guest_slot: {
+        Args: {
+          p_booking_id: string;
+          p_reason?: string | null;
+          p_refund_override_percent?: number | null;
+          p_override_reason?: string | null;
+        };
+        Returns: Record<string, unknown>;
+      };
+      cancel_membership: {
+        Args: {
+          p_membership_id: string;
+          p_reason?: string | null;
+          p_refund_amount_minor?: number | null;
+          p_override_reason?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      refundable_amount: {
+        Args: { p_payment_order_id: string };
+        Returns: number;
+      };
+      get_effective_cancellation_policy: {
+        Args: { p_facility_id: string };
+        Returns: Database["public"]["Tables"]["cancellation_policies"]["Row"];
+      };
+      upsert_cancellation_policy: {
+        Args: {
+          p_facility_id: string;
+          p_full_refund_hours: number;
+          p_full_refund_percent: number;
+          p_partial_refund_hours: number;
+          p_partial_refund_percent: number;
+        };
+        Returns: Database["public"]["Tables"]["cancellation_policies"]["Row"];
+      };
+      get_refund: {
+        Args: { p_refund_id: string };
+        Returns: Database["public"]["Tables"]["refunds"]["Row"];
+      };
+      list_refunds: {
+        Args: { p_facility_id: string };
+        Returns: Database["public"]["Tables"]["refunds"]["Row"][];
+      };
+      list_settlement_exceptions: {
+        Args: { p_facility_id: string; p_status?: string | null };
+        Returns: Database["public"]["Tables"]["settlement_exceptions"]["Row"][];
       };
     };
     Enums: {

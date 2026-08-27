@@ -22,6 +22,22 @@ enum PaymentSourceType {
         return 'GUEST_BOOKING';
     }
   }
+
+  /// Added for Phase 6 (refunds/settlement exceptions read `source_type` off
+  /// `refunds`/`settlement_exceptions` rows) — Phase 1-5 never needed to
+  /// parse this enum back from a string.
+  static PaymentSourceType fromJson(String value) {
+    switch (value) {
+      case 'MEMBERSHIP':
+        return PaymentSourceType.membership;
+      case 'MEMBER_BOOKING':
+        return PaymentSourceType.memberBooking;
+      case 'GUEST_BOOKING':
+        return PaymentSourceType.guestBooking;
+      default:
+        throw ArgumentError('Unknown PaymentSourceType: $value');
+    }
+  }
 }
 
 /// Mirrors payment_order_status (supabase/migrations/0016_payment_orders.sql,
@@ -40,9 +56,11 @@ enum PaymentOrderStatus {
   authorized,
   captured,
   completed,
+  settlementException,
   failed,
   cancelled,
   refundRequested,
+  partiallyRefunded,
   refunded;
 
   static PaymentOrderStatus fromJson(String value) {
@@ -63,12 +81,16 @@ enum PaymentOrderStatus {
         return PaymentOrderStatus.captured;
       case 'COMPLETED':
         return PaymentOrderStatus.completed;
+      case 'SETTLEMENT_EXCEPTION':
+        return PaymentOrderStatus.settlementException;
       case 'FAILED':
         return PaymentOrderStatus.failed;
       case 'CANCELLED':
         return PaymentOrderStatus.cancelled;
       case 'REFUND_REQUESTED':
         return PaymentOrderStatus.refundRequested;
+      case 'PARTIALLY_REFUNDED':
+        return PaymentOrderStatus.partiallyRefunded;
       case 'REFUNDED':
         return PaymentOrderStatus.refunded;
       default:
@@ -183,6 +205,16 @@ class VerifyPaymentInput {
 /// explicitly asks to check again.
 class ReconcilePaymentInput {
   const ReconcilePaymentInput({required this.paymentOrderId});
+
+  final String paymentOrderId;
+}
+
+/// Mirrors src/features/payments/types.ts's `SettlePaymentInput`. Manual
+/// retry path for a payment order left at plain CAPTURED because the inline
+/// settlement `apply_payment_verification` normally performs (0021_payment_
+/// settlement.sql) hit a transient failure — calls `settle-payment` directly.
+class SettlePaymentInput {
+  const SettlePaymentInput({required this.paymentOrderId});
 
   final String paymentOrderId;
 }

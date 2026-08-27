@@ -161,3 +161,56 @@ export function pickMostDecisivePayment(payments: RazorpayPayment[]): RazorpayPa
   if (payments.length === 0) return null;
   return [...payments].sort((a, b) => byPriority(a.status) - byPriority(b.status))[0];
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Refunds — Phase 6. Shared by every Edge Function that submits a refund to
+// Razorpay (create-razorpay-refund, cancel-booking, cancel-membership-slot,
+// cancel-membership) so the API call/idempotency shape lives in one place.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface RazorpayRefund {
+  id: string;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  status: string; // "created" (queued) | "processed" | "failed" — see https://razorpay.com/docs/payments/refunds/
+}
+
+/**
+ * Submits a refund to Razorpay for an already-captured payment. Amount MUST
+ * be in the smallest currency unit (paise), matching every other amount in
+ * this integration (spec §18). `notes.gameall_refund_id` is what
+ * apply_refund_webhook's fallback lookup (by razorpay_payment_id) exists
+ * for if a webhook ever arrives before this call's response does — the
+ * primary link is still the returned razorpay_refund_id, stored immediately
+ * after this resolves.
+ */
+export async function createRazorpayRefund(paymentId: string, amountMinor: number, keyId: string, keySecret: string, reference: string): Promise<RazorpayRefund> {
+  const response = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount: amountMinor, speed: "normal", notes: { reference } }),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Razorpay refund request failed with status ${response.status}: ${body}`);
+  }
+  return response.json();
+}
+
+/** Maps a razorpay-webhook `refund.*` event type to apply_refund_webhook's `p_status` argument. */
+export function mapRefundEventToStatus(eventType: string): "created" | "processed" | "failed" | null {
+  switch (eventType) {
+    case "refund.created":
+      return "created";
+    case "refund.processed":
+      return "processed";
+    case "refund.failed":
+      return "failed";
+    default:
+      return null;
+  }
+}

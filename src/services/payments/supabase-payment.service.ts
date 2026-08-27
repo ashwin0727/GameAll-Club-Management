@@ -9,6 +9,7 @@ import type {
   PaymentVerificationResult,
   ReconcilePaymentInput,
   RecordPaymentAttemptInput,
+  SettlePaymentInput,
   VerifyPaymentInput,
 } from "@/features/payments/types";
 import type { PaymentService } from "@/services/payments/payment.service";
@@ -101,6 +102,13 @@ export class SupabasePaymentService implements PaymentService {
       body: { paymentOrderId: input.paymentOrderId },
     });
     return this.mapVerificationResponse("reconcile-razorpay-payment", data, error);
+  }
+
+  async settlePaymentOrder(input: SettlePaymentInput): Promise<PaymentVerificationResult> {
+    const { data, error } = await this.supabase.functions.invoke<VerifyFunctionResponse>("settle-payment", {
+      body: { paymentOrderId: input.paymentOrderId },
+    });
+    return this.mapVerificationResponse("settle-payment", data, error);
   }
 
   async getPaymentOrderStatus(paymentOrderId: string): Promise<PaymentVerificationResult> {

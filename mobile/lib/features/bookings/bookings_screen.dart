@@ -16,6 +16,7 @@ import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
 import '../../data/models/payment.dart';
 import '../../data/models/playing_area.dart';
+import '../../data/models/refund.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
@@ -886,6 +887,7 @@ class _BookingDetailsSheet extends ConsumerStatefulWidget {
 }
 
 class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
+  late Booking _booking = widget.booking;
   bool _rescheduling = false;
   DateTime? _newDate;
   List<BookingTimeSlot> _slots = [];
@@ -897,9 +899,21 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   bool _isCheckingAgain = false;
   CheckoutResult? _paymentState;
 
-  bool get _canModify => widget.booking.status == BookingStatus.pending || widget.booking.status == BookingStatus.confirmed;
+  /// Set after a cancellation that created a refund — mirrors
+  /// `booking-details-dialog.tsx`'s `cancelRefundNote`. Never silently
+  /// discarded: the sheet stays open to show it instead of popping
+  /// immediately, the same way a no-refund cancellation still does.
+  String? _cancelRefundNote;
 
-  bool get _canPay => widget.booking.paymentStatus == PaymentStatus.pending;
+  /// Set once a payment on this booking settles (server-confirmed) so a
+  /// plain system-back/swipe-to-dismiss still tells the grid to reload,
+  /// even though this sheet — mirroring `booking-details-dialog.tsx` — never
+  /// auto-closes on a settled payment the way the membership sheet does.
+  bool _changed = false;
+
+  bool get _canModify => _booking.status == BookingStatus.pending || _booking.status == BookingStatus.confirmed;
+
+  bool get _canPay => _booking.paymentStatus == PaymentStatus.pending;
 
   Future<void> _payNow() async {
     setState(() {
@@ -911,14 +925,15 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
       final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
         CreatePaymentOrderInput(
           facilityId: widget.facilityId,
-          sourceType: widget.booking.customerType == CustomerType.member
+          sourceType: _booking.customerType == CustomerType.member
               ? PaymentSourceType.memberBooking
               : PaymentSourceType.guestBooking,
-          bookingId: widget.booking.id,
+          bookingId: _booking.id,
         ),
       );
       if (!mounted) return;
       setState(() => _paymentState = result is CheckoutCancelled ? null : result);
+      if (result is CheckoutSettled) _markSettled();
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -930,10 +945,24 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
     setState(() => _isCheckingAgain = true);
     try {
       final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
-      if (mounted) setState(() => _paymentState = result);
+      if (!mounted) return;
+      setState(() => _paymentState = result);
+      if (result is CheckoutSettled) _markSettled();
     } finally {
       if (mounted) setState(() => _isCheckingAgain = false);
     }
+  }
+
+  /// The server already flipped `bookings.status`/`payment_status` by the
+  /// time a checkout resolves "settled" (settle_payment, 0021_payment_
+  /// settlement.sql) — mirrors booking-details-dialog.tsx's
+  /// `onChanged({...booking, status: "confirmed", paymentStatus: "PAID"})`
+  /// optimistic update rather than waiting for a full grid refetch.
+  void _markSettled() {
+    setState(() {
+      _booking = _booking.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid);
+      _changed = true;
+    });
   }
 
   Future<void> _pickRescheduleDate() async {
@@ -962,7 +991,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
           ? computeAvailableSlots(
               picked,
               day,
-              existing.where((b) => b.id != widget.booking.id).map((b) => (startTime: b.startTime, endTime: b.endTime)).toList(),
+              existing.where((b) => b.id != _booking.id).map((b) => (startTime: b.startTime, endTime: b.endTime)).toList(),
             )
           : [];
       _slotsLoading = false;
@@ -978,7 +1007,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
     try {
       await ref.read(bookingRepositoryProvider).rescheduleBooking(
         RescheduleBookingInput(
-          bookingId: widget.booking.id,
+          bookingId: _booking.id,
           courtId: widget.area.id,
           startTime: _selectedSlot!.startTime,
           endTime: _selectedSlot!.endTime,
@@ -1006,10 +1035,31 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
     setState(() {
       _isWorking = true;
       _error = null;
+      _cancelRefundNote = null;
     });
     try {
-      await ref.read(bookingRepositoryProvider).cancelBooking(widget.booking.id, reason: 'Owner Request');
-      if (mounted) Navigator.of(context).pop(true);
+      // Server-side (cancel-booking Edge Function): cancels the booking,
+      // releases court availability, and — if the booking was paid —
+      // requests and submits a cancellation-policy-derived refund, all in
+      // one call (spec §8/§13). Never a plain client-side status update.
+      final result = await ref.read(refundRepositoryProvider).cancelBooking(
+        CancelBookingInput(bookingId: _booking.id, reason: 'Owner Request'),
+      );
+      if (!mounted) return;
+      setState(() {
+        _booking = result.booking;
+        _changed = true;
+      });
+      final refund = result.refund;
+      if (refund != null) {
+        setState(() {
+          _cancelRefundNote = refund.status == RefundStatus.failed
+              ? 'The booking was cancelled, but the refund could not be submitted. Please retry from Refunds.'
+              : 'Refund requested — it will show as processed once Razorpay confirms it.';
+        });
+      } else if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -1019,8 +1069,13 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final b = widget.booking;
-    return Padding(
+    final b = _booking;
+    return PopScope(
+      canPop: !_changed,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) Navigator.of(context).pop(true);
+      },
+      child: Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: SingleChildScrollView(
         child: Column(
@@ -1077,11 +1132,17 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   state: _paymentState,
                   isProcessing: _isPaying,
                   isCheckingAgain: _isCheckingAgain,
+                  settledLabel: 'Booking Confirmed',
+                  resourceLabel: 'booking',
                   onCheckAgain: _paymentState is CheckoutPending
                       ? () => _handleCheckAgain((_paymentState as CheckoutPending).paymentOrderId)
                       : null,
                   onRetry: _paymentState is CheckoutFailed ? _payNow : null,
                 ),
+              ],
+              if (_cancelRefundNote != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(_cancelRefundNote!, style: AppTypography.secondary(context)),
               ],
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
@@ -1164,6 +1225,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
             ],
           ],
         ),
+      ),
       ),
     );
   }

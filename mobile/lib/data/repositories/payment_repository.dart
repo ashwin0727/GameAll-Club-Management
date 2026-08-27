@@ -137,6 +137,31 @@ class PaymentRepository {
     return PaymentVerificationResult.fromJson((response.data as Map).cast<String, dynamic>());
   }
 
+  /// Manual retry path for a payment order left at plain CAPTURED because
+  /// the inline settlement `apply_payment_verification` normally performs
+  /// (0021_payment_settlement.sql) hit a transient failure — calls
+  /// `settle-payment` directly. Not the normal flow: settlement usually
+  /// already happened inline by the time verify/reconcile return.
+  Future<PaymentVerificationResult> settlePaymentOrder(SettlePaymentInput input) async {
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'settle-payment',
+        body: {'paymentOrderId': input.paymentOrderId},
+      );
+    } on FunctionsHttpException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] is String) {
+        throw AppException(AppErrorCode.paymentOrderError, details['error'] as String);
+      }
+      throw AppException(AppErrorCode.paymentGatewayError);
+    } on FunctionException {
+      throw AppException(AppErrorCode.paymentGatewayError);
+    }
+
+    return PaymentVerificationResult.fromJson((response.data as Map).cast<String, dynamic>());
+  }
+
   /// Reads the current authoritative status for a payment order (RLS-scoped)
   /// — what payment status UI should poll/display, never Razorpay directly.
   /// Mirrors the existing `get_payment_order` RPC (already used server-side

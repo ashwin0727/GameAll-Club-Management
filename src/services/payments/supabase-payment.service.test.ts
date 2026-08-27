@@ -163,3 +163,29 @@ describe("SupabasePaymentService.getPaymentOrderStatus", () => {
     await expect(service.getPaymentOrderStatus("po-missing")).rejects.toMatchObject({ code: "PAYMENT_ORDER_ERROR" });
   });
 });
+
+describe("SupabasePaymentService.settlePaymentOrder", () => {
+  it("invokes settle-payment with just the payment order id and returns the settled status", async () => {
+    const invoke = vi.fn(async () => ({ data: { paymentOrderId: "po-1", status: "COMPLETED" }, error: null }));
+    const service = new SupabasePaymentService({ functions: { invoke } } as never);
+
+    const result = await service.settlePaymentOrder({ paymentOrderId: "po-1" });
+
+    expect(invoke).toHaveBeenCalledWith("settle-payment", { body: { paymentOrderId: "po-1" } });
+    expect(result).toEqual({ paymentOrderId: "po-1", status: "COMPLETED" });
+  });
+
+  it("surfaces a settlement rejection (e.g. not yet CAPTURED) as PAYMENT_ORDER_ERROR, never as a fabricated success", async () => {
+    const invoke = vi.fn(async () => ({ data: { error: "Unable to settle this payment right now." }, error: null }));
+    const service = new SupabasePaymentService({ functions: { invoke } } as never);
+
+    await expect(service.settlePaymentOrder({ paymentOrderId: "po-1" })).rejects.toMatchObject({ code: "PAYMENT_ORDER_ERROR" });
+  });
+
+  it("maps a gateway failure to PAYMENT_GATEWAY_ERROR", async () => {
+    const invoke = vi.fn(async () => ({ data: null, error: { message: "network down" } }));
+    const service = new SupabasePaymentService({ functions: { invoke } } as never);
+
+    await expect(service.settlePaymentOrder({ paymentOrderId: "po-1" })).rejects.toMatchObject({ code: "PAYMENT_GATEWAY_ERROR" });
+  });
+});

@@ -19,6 +19,7 @@ import '../../features/onboarding/operating_hours_screen.dart';
 import '../../features/onboarding/pricing_screen.dart';
 import '../../features/onboarding/setup_summary_screen.dart';
 import '../../features/onboarding/sports_setup_screen.dart';
+import '../../features/refunds/refunds_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 
@@ -109,6 +110,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.membershipSessions,
         builder: (context, state) => const MembershipSessionsScreen(),
       ),
+      GoRoute(path: AppRoutes.refunds, builder: (context, state) => const RefundsScreen()),
     ],
   );
 });

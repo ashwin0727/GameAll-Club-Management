@@ -19,6 +19,7 @@ import type { FacilityMemberRow, Membership, MemberStats } from "@/features/memb
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { AssignMembershipDialog } from "@/features/memberships/components/assign-membership-dialog";
+import { CancelMembershipDialog } from "@/features/memberships/components/cancel-membership-dialog";
 import { BookingDialog } from "@/features/bookings/components/booking-dialog";
 
 function formatDate(iso: string): string {
@@ -66,6 +67,7 @@ export function MemberProfileDialog({
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
+  const [cancelMembershipOpen, setCancelMembershipOpen] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -146,7 +148,7 @@ export function MemberProfileDialog({
 
   return (
     <>
-      <Dialog open={open && !editOpen && !renewOpen && !bookOpen} onOpenChange={onOpenChange}>
+      <Dialog open={open && !editOpen && !renewOpen && !cancelMembershipOpen && !bookOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -257,6 +259,11 @@ export function MemberProfileDialog({
             <Button type="button" onClick={() => setBookOpen(true)}>
               Book Court
             </Button>
+            {member.membershipId && displayStatus === "ACTIVE" && (
+              <Button type="button" variant="destructive" onClick={() => setCancelMembershipOpen(true)}>
+                Cancel Membership
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -294,6 +301,19 @@ export function MemberProfileDialog({
           memberName={member.fullName}
           onAssigned={() => {
             setRenewOpen(false);
+            onChanged();
+          }}
+        />
+      )}
+
+      {cancelMembershipOpen && member.membershipId && (
+        <CancelMembershipDialog
+          open={cancelMembershipOpen}
+          onOpenChange={setCancelMembershipOpen}
+          membershipId={member.membershipId}
+          planName={member.planName ?? "Membership"}
+          onCancelled={() => {
+            setCancelMembershipOpen(false);
             onChanged();
           }}
         />

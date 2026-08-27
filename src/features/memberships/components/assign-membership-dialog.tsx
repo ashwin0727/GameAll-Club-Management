@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMembershipService } from "@/services/memberships";
 import { computeMembershipEndDate } from "@/features/memberships/status";
-import type { Membership, MembershipPlan } from "@/features/memberships/types";
+import type { MembershipPlan } from "@/features/memberships/types";
 import { ServiceError } from "@/services/shared/service-error";
 import { usePaymentCheckout, type CheckoutResult } from "@/features/payments/use-payment-checkout";
 import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
@@ -33,7 +33,7 @@ export function AssignMembershipDialog({
   facilityId: string;
   memberId: string;
   memberName: string;
-  onAssigned: (membership: Membership) => void;
+  onAssigned: () => void;
 }) {
   const [plans, setPlans] = useState<MembershipPlan[] | null>(null);
   const [planId, setPlanId] = useState("");
@@ -68,14 +68,14 @@ export function AssignMembershipDialog({
     setIsSaving(true);
     setError(null);
     try {
-      const membership = await getMembershipService().createMembership({
+      await getMembershipService().createMembership({
         memberId,
         facilityId,
         planId: selectedPlan.id,
         startDate,
         paymentStatus: paid ? "paid" : "created",
       });
-      onAssigned(membership);
+      onAssigned();
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to assign this membership.");
@@ -99,23 +99,25 @@ export function AssignMembershipDialog({
       { facilityId, sourceType: "MEMBERSHIP", memberId, planId: selectedPlan.id },
       { description: `${selectedPlan.name} membership`, prefill: { name: memberName } },
     );
-    // A "captured" result here is a VERIFIED payment — but membership
-    // activation is deliberately not performed by this payment phase (spec
-    // §"Membership Payment": "DO NOT activate the Membership yet"). Staff
-    // still assigns the membership via the existing "Confirm" button below
-    // (with "Paid" selected) once payment is confirmed — this only tells
-    // them it's safe to do so.
+    // "settled" means the server itself already activated the membership
+    // (settle_payment → activate_membership, 0021_payment_settlement.sql)
+    // — this dialog never activates it directly. "exception" means the
+    // payment was captured but the plan could no longer be activated (e.g.
+    // deactivated mid-checkout); the payment is preserved for the facility
+    // to resolve, and this dialog stays open showing that.
     setPaymentState(result.status === "cancelled" ? null : result);
-    if (result.status === "captured") {
-      setPaymentPaid(true);
+    if (result.status === "settled") {
+      onAssigned();
+      onOpenChange(false);
     }
   }
 
   async function handleCheckAgain(paymentOrderId: string) {
     const result: CheckoutResult = await checkAgain(paymentOrderId);
     setPaymentState(result);
-    if (result.status === "captured") {
-      setPaymentPaid(true);
+    if (result.status === "settled") {
+      onAssigned();
+      onOpenChange(false);
     }
   }
 
@@ -193,10 +195,12 @@ export function AssignMembershipDialog({
             {paymentState && (
               <PaymentStatusPanel
                 state={paymentState}
+                settledLabel="Membership Activated"
+                resourceLabel="membership"
                 isCheckingAgain={isPaying}
                 onCheckAgain={
-                  paymentState !== "processing" && paymentState.status !== "cancelled" && paymentState.status !== "captured"
-                    ? () => handleCheckAgain((paymentState as { paymentOrderId: string }).paymentOrderId)
+                  paymentState !== "processing" && paymentState.status === "pending"
+                    ? () => handleCheckAgain(paymentState.paymentOrderId)
                     : undefined
                 }
                 onRetry={paymentState !== "processing" && paymentState.status === "failed" ? payWithRazorpay : undefined}

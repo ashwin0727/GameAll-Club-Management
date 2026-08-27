@@ -2,6 +2,7 @@
 /// same-scope overlap checks, plus the operating-hours compatibility
 /// cross-check (the backend RPC does not enforce this itself; web only
 /// validates it client-side, so mobile mirrors that exactly).
+library;
 import '../../data/models/operating_hours.dart';
 
 final RegExp _timeRe = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');

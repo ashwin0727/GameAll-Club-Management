@@ -16,23 +16,25 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { mapRazorpayPaymentStatus, verifyWebhookSignature, type RazorpayPayment } from "../_shared/razorpay.ts";
+import { mapRazorpayPaymentStatus, mapRefundEventToStatus, verifyWebhookSignature, type RazorpayPayment, type RazorpayRefund } from "../_shared/razorpay.ts";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-// Only these events drive payment_orders/payments changes — everything
-// else Razorpay might deliver (refund.*, order.notification.*, ...) is
+// Only these events drive payment_orders/payments/refunds changes —
+// everything else Razorpay might deliver (order.notification.*, ...) is
 // still recorded (for the audit trail) but never processed
-// (§"Only process events actually required by GameAll").
-const HANDLED_EVENT_TYPES = new Set(["payment.authorized", "payment.captured", "payment.failed", "order.paid"]);
+// (§"Only process events actually required by GameAll"). Phase 6 adds the
+// three refund.* events (spec §20).
+const HANDLED_EVENT_TYPES = new Set(["payment.authorized", "payment.captured", "payment.failed", "order.paid", "refund.created", "refund.processed", "refund.failed"]);
 
 interface WebhookPayload {
   event: string;
   payload?: {
     payment?: { entity?: RazorpayPayment };
     order?: { entity?: { id?: string; amount?: number; currency?: string } };
+    refund?: { entity?: RazorpayRefund };
   };
 }
 
@@ -132,6 +134,11 @@ Deno.serve(async (req) => {
 });
 
 async function processEvent(supabase: SupabaseClient, payload: WebhookPayload): Promise<void> {
+  const refundStatus = mapRefundEventToStatus(payload.event);
+  if (refundStatus) {
+    return processRefundEvent(supabase, payload, refundStatus);
+  }
+
   const payment = payload.payload?.payment?.entity;
   if (!payment) {
     // order.paid can theoretically arrive without an embedded payment
@@ -175,6 +182,40 @@ async function processEvent(supabase: SupabaseClient, payload: WebhookPayload): 
     // loudly; still return without throwing so the event is marked
     // processed rather than retried indefinitely.
     console.error("[razorpay-webhook] apply_payment_verification rejected", { paymentOrderId: order.id, code: applyError.code, message: applyError.message });
+    return;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// processRefundEvent — Phase 6. The authoritative path for refund state:
+// a client's own "Check Again" never resolves REQUESTED/PROCESSING beyond
+// what it already knew (there is no reconcile-razorpay-refund equivalent
+// in this phase's spec — refund reconciliation is webhook-driven only,
+// spec §22). apply_refund_webhook is forward-only + idempotent, so a
+// redelivered event (this function's own dedupe already caught most of
+// those, but Razorpay's refund.created + refund.processed can legitimately
+// both arrive) is always safe to re-run.
+// ─────────────────────────────────────────────────────────────────────────
+async function processRefundEvent(supabase: SupabaseClient, payload: WebhookPayload, status: "created" | "processed" | "failed"): Promise<void> {
+  const refund = payload.payload?.refund?.entity;
+  if (!refund) {
+    console.log("[razorpay-webhook] refund event carried no refund entity, nothing to reconcile", { eventType: payload.event });
+    return;
+  }
+
+  const { error: applyError } = await supabase.rpc("apply_refund_webhook", {
+    p_razorpay_refund_id: refund.id,
+    p_razorpay_payment_id: refund.payment_id,
+    p_status: status,
+    p_amount_minor: refund.amount,
+  });
+
+  if (applyError) {
+    // A P0002 here means GameAll has no matching refund row at all (e.g. a
+    // refund created directly in the Razorpay dashboard, outside this
+    // integration) — logged, not retried forever, since retrying can never
+    // manufacture a refund row that was never requested through GameAll.
+    console.error("[razorpay-webhook] apply_refund_webhook rejected", { razorpayRefundId: refund.id, code: applyError.code, message: applyError.message });
     return;
   }
 }

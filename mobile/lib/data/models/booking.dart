@@ -113,7 +113,7 @@ class Booking {
     );
   }
 
-  Booking copyWith({BookingStatus? status, String? cancellationReason}) {
+  Booking copyWith({BookingStatus? status, String? cancellationReason, PaymentStatus? paymentStatus}) {
     return Booking(
       id: id,
       facilityId: facilityId,
@@ -129,7 +129,7 @@ class Booking {
       status: status ?? this.status,
       amountMinor: amountMinor,
       currency: currency,
-      paymentStatus: paymentStatus,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       notes: notes,
       createdBy: createdBy,

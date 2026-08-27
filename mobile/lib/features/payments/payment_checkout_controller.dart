@@ -7,25 +7,37 @@ import '../../data/models/payment.dart';
 import '../../data/repositories/payment_repository.dart';
 import '../../data/repositories/repository_providers.dart';
 
-/// The four states the Payment Status panel shows — mirrors
+/// The five states the Payment Status panel shows — mirrors
 /// src/features/payments/use-payment-checkout.ts's `CheckoutResult`
 /// deliberately as a much smaller set than the full [PaymentOrderStatus]
-/// state machine. `CheckoutCaptured` is the only state that ever reads as
-/// success to the user; every pre-capture server status
-/// (PAYMENT_VERIFIED/AUTHORIZED/etc.) collapses to `CheckoutPending` — the UI
-/// never claims success before the server has actually confirmed CAPTURED
-/// (spec §"Critical Principle").
+/// state machine.
+///
+/// [CheckoutSettled] is the ONLY state that ever reads as success — it means
+/// the server actually confirmed the booking / activated the membership
+/// (payment_orders.status == COMPLETED), never just that Razorpay captured
+/// the money. [CheckoutException] means the payment WAS captured but the
+/// business operation could not be completed (e.g. the slot was cancelled in
+/// the meantime) — the payment is safe and recorded, but the user's
+/// booking/membership is NOT confirmed and needs facility follow-up. Every
+/// other pre-settlement server status collapses to [CheckoutPending] — the UI
+/// never claims success before the server has actually settled (spec
+/// §"Critical Principle" / §"Core Principle").
 sealed class CheckoutResult {
   const CheckoutResult();
 }
 
-class CheckoutCaptured extends CheckoutResult {
-  const CheckoutCaptured(this.paymentOrderId);
+class CheckoutSettled extends CheckoutResult {
+  const CheckoutSettled(this.paymentOrderId);
   final String paymentOrderId;
 }
 
 class CheckoutPending extends CheckoutResult {
   const CheckoutPending(this.paymentOrderId);
+  final String paymentOrderId;
+}
+
+class CheckoutException extends CheckoutResult {
+  const CheckoutException(this.paymentOrderId);
   final String paymentOrderId;
 }
 
@@ -39,9 +51,35 @@ class CheckoutCancelled extends CheckoutResult {
   const CheckoutCancelled();
 }
 
+/// apply_payment_verification (0021_payment_settlement.sql) already settles
+/// inline the instant a payment genuinely transitions to CAPTURED, so by the
+/// time verify/reconcile return, status is normally already COMPLETED or
+/// SETTLEMENT_EXCEPTION. The one gap: if that inline settlement attempt
+/// itself hit a transient failure, the order is left at plain CAPTURED —
+/// retryable via settle-payment directly (apply_payment_verification's own
+/// rank-based guard means simply re-verifying/re-reconciling would no-op
+/// without ever retrying settlement, since the payment status itself hasn't
+/// changed). This gives every caller one extra, harmless retry attempt.
+Future<PaymentOrderStatus> _settleIfStillCaptured(
+  PaymentRepository repository,
+  String paymentOrderId,
+  PaymentOrderStatus status,
+) async {
+  if (status != PaymentOrderStatus.captured) return status;
+  try {
+    final settled = await repository.settlePaymentOrder(SettlePaymentInput(paymentOrderId: paymentOrderId));
+    return settled.status;
+  } catch (_) {
+    return status;
+  }
+}
+
 CheckoutResult _toCheckoutResult(String paymentOrderId, PaymentOrderStatus serverStatus) {
-  if (serverStatus == PaymentOrderStatus.captured || serverStatus == PaymentOrderStatus.completed) {
-    return CheckoutCaptured(paymentOrderId);
+  if (serverStatus == PaymentOrderStatus.completed) {
+    return CheckoutSettled(paymentOrderId);
+  }
+  if (serverStatus == PaymentOrderStatus.settlementException) {
+    return CheckoutException(paymentOrderId);
   }
   if (serverStatus == PaymentOrderStatus.failed) {
     return CheckoutFailed(paymentOrderId, 'Your payment could not be completed.');
@@ -51,14 +89,15 @@ CheckoutResult _toCheckoutResult(String paymentOrderId, PaymentOrderStatus serve
 
 /// The one place that drives a full Razorpay Checkout attempt: create the
 /// payment order (existing Phase 1/2 write path) → open Checkout → record
-/// the raw client result → SERVER-side verification. Mirrors
-/// src/features/payments/use-payment-checkout.ts exactly. The client's own
-/// "success" callback is only ever a hint — `verify-razorpay-payment` (an
-/// independent signature check + a direct Razorpay API call) is what
-/// actually decides whether this resolves as [CheckoutCaptured]. Never
-/// confirms a booking or activates a membership — callers decide what, if
-/// anything, to do with a captured result; that business settlement is a
-/// later phase.
+/// the raw client result → SERVER-side verification → server-side
+/// settlement. Mirrors src/features/payments/use-payment-checkout.ts
+/// exactly. The client's own "success" callback is only ever a hint —
+/// `verify-razorpay-payment` (an independent signature check + a direct
+/// Razorpay API call) decides whether the payment is captured, and the
+/// server settles it (confirms the booking / activates the membership)
+/// before this ever resolves as [CheckoutSettled]. A captured payment whose
+/// booking/membership could no longer be confirmed resolves as
+/// [CheckoutException], never as a silent success.
 class PaymentCheckoutController {
   PaymentCheckoutController(this._repository);
 
@@ -90,8 +129,9 @@ class PaymentCheckoutController {
             razorpaySignature: response.signature ?? '',
           ),
         );
+        final finalStatus = await _settleIfStillCaptured(_repository, checkoutInfo.paymentOrderId, verified.status);
         if (!completer.isCompleted) {
-          completer.complete(_toCheckoutResult(checkoutInfo.paymentOrderId, verified.status));
+          completer.complete(_toCheckoutResult(checkoutInfo.paymentOrderId, finalStatus));
         }
       } catch (_) {
         // Verification itself failed to complete (network blip, gateway
@@ -131,8 +171,8 @@ class PaymentCheckoutController {
       'name': 'GameAll',
       if (contactName != null || contactPhone != null)
         'prefill': {
-          if (contactName != null) 'name': contactName,
-          if (contactPhone != null) 'contact': contactPhone,
+          'name': ?contactName,
+          'contact': ?contactPhone,
         },
     });
 
@@ -144,12 +184,14 @@ class PaymentCheckoutController {
   }
 
   /// Manual recovery for a payment stuck "pending" — asks Razorpay directly
-  /// rather than waiting for the webhook. Not for polling; call on explicit
-  /// user action ("Check Again").
+  /// rather than waiting for the webhook, then retries settlement if the
+  /// payment turns out to already be captured. Not for polling; call on
+  /// explicit user action ("Check Again").
   Future<CheckoutResult> checkAgain(String paymentOrderId) async {
     try {
-      final result = await _repository.reconcilePaymentOrder(ReconcilePaymentInput(paymentOrderId: paymentOrderId));
-      return _toCheckoutResult(paymentOrderId, result.status);
+      final reconciled = await _repository.reconcilePaymentOrder(ReconcilePaymentInput(paymentOrderId: paymentOrderId));
+      final finalStatus = await _settleIfStillCaptured(_repository, paymentOrderId, reconciled.status);
+      return _toCheckoutResult(paymentOrderId, finalStatus);
     } catch (_) {
       return CheckoutPending(paymentOrderId);
     }

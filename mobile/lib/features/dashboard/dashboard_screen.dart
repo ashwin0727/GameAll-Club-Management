@@ -116,6 +116,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () => context.push(AppRoutes.membershipSessions),
           ),
           IconButton(
+            icon: const Icon(Icons.currency_rupee),
+            tooltip: 'Refunds',
+            onPressed: () => context.push(AppRoutes.refunds),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
             onPressed: () => ref.read(sessionControllerProvider.notifier).signOut(),

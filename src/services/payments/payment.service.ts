@@ -4,6 +4,7 @@ import type {
   PaymentVerificationResult,
   ReconcilePaymentInput,
   RecordPaymentAttemptInput,
+  SettlePaymentInput,
   VerifyPaymentInput,
 } from "@/features/payments/types";
 
@@ -49,4 +50,16 @@ export interface PaymentService {
 
   /** Reads the current authoritative status for a payment order (RLS-scoped) — what payment status UI should poll/display, never Razorpay directly. */
   getPaymentOrderStatus(paymentOrderId: string): Promise<PaymentVerificationResult>;
+
+  /**
+   * Manual retry for a payment stuck at CAPTURED because business
+   * settlement (confirm the booking / activate the membership) hit a
+   * transient failure — calls `settle-payment`. Settlement normally
+   * already happens automatically the instant a payment is verified as
+   * captured; this exists only for the retry path. Fully idempotent — a
+   * business rejection (cancelled booking, deactivated plan, ...) already
+   * resolved to SETTLEMENT_EXCEPTION and calling this again will not
+   * change that.
+   */
+  settlePaymentOrder(input: SettlePaymentInput): Promise<PaymentVerificationResult>;
 }

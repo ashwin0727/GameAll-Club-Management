@@ -86,11 +86,12 @@ export function BookGuestSlotDialog({
           setError(result.message);
           return;
         }
-        // "captured"/"pending"/"cancelled" all still leave the guest slot
-        // booked — a payment that's merely pending (or was cancelled)
-        // isn't a booking failure; it can be charged/checked again later
-        // from the booking's own payment status. This dialog's job
-        // (creating the booking) is done either way.
+        // "settled"/"exception"/"pending"/"cancelled" all still leave the
+        // guest slot booked — a payment that's merely pending (or was
+        // cancelled) isn't a booking failure, and a settlement exception
+        // still preserved the payment for the facility to resolve. This
+        // dialog's job (creating the booking) is done either way; only a
+        // hard payment failure blocks it below.
       }
 
       onBooked();

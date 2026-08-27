@@ -9,9 +9,11 @@ export type PaymentOrderStatus =
   | "AUTHORIZED"
   | "CAPTURED"
   | "COMPLETED"
+  | "SETTLEMENT_EXCEPTION"
   | "FAILED"
   | "CANCELLED"
   | "REFUND_REQUESTED"
+  | "PARTIALLY_REFUNDED"
   | "REFUNDED";
 
 export interface CreatePaymentOrderInput {
@@ -60,6 +62,10 @@ export interface VerifyPaymentInput {
 }
 
 export interface ReconcilePaymentInput {
+  paymentOrderId: string;
+}
+
+export interface SettlePaymentInput {
   paymentOrderId: string;
 }
 

@@ -18,6 +18,7 @@ import '../../shared/widgets/states.dart';
 import '../bookings/booking_status_presentation.dart';
 import '../bookings/bookings_screen.dart';
 import '../memberships/assign_membership_sheet.dart';
+import '../memberships/cancel_membership_sheet.dart';
 import '../memberships/membership_status.dart';
 import '../memberships/membership_status_presentation.dart';
 import 'member_form_sheet.dart';
@@ -96,8 +97,15 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
     }
   }
 
+  /// Membership activation on the Razorpay path is now entirely
+  /// server-side (settle_payment → activate_membership,
+  /// 0021_payment_settlement.sql), so [AssignMembershipSheet] no longer
+  /// hands back a client-side [Membership] object to patch local state
+  /// from — it only pops `true`/null. Refetch this member's row from the
+  /// server instead of reconstructing it from a returned object, the same
+  /// way [MembersScreen]'s list refresh does.
   Future<void> _renewMembership() async {
-    final membership = await showModalBottomSheet<Membership>(
+    final assigned = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) => AssignMembershipSheet(
@@ -106,22 +114,47 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
         memberName: _member.fullName,
       ),
     );
-    if (membership != null) {
-      setState(() {
-        _member = FacilityMemberRow(
-          memberId: _member.memberId,
-          fullName: _member.fullName,
-          phone: _member.phone,
-          email: _member.email,
-          membershipId: membership.id,
-          planId: membership.planId,
-          planName: membership.planName,
-          startDate: membership.startDate,
-          endDate: membership.endDate,
-          status: membership.status,
-        );
-        _changed = true;
-      });
+    if (assigned == true) {
+      await _reloadMemberRow();
+      setState(() => _changed = true);
+      _load();
+    }
+  }
+
+  Future<void> _reloadMemberRow() async {
+    try {
+      final rows = await ref
+          .read(membershipRepositoryProvider)
+          .searchFacilityMembers(widget.facilityId, query: _member.phone);
+      final matches = rows.where((m) => m.memberId == _member.memberId);
+      if (matches.isNotEmpty && mounted) {
+        setState(() => _member = matches.first);
+      }
+    } on AppException catch (_) {
+      // Best-effort refresh — the sheet already reported success; a failed
+      // refetch here just leaves the previously-displayed row stale until
+      // the next visit, never a fabricated membership.
+    }
+  }
+
+  /// Shown only when the member has an active membership — mirrors
+  /// `member.membershipId && displayStatus === "ACTIVE"` in
+  /// `member-profile-dialog.tsx` exactly (same condition, not "has ever had
+  /// a membership").
+  Future<void> _cancelMembership() async {
+    final membershipId = _member.membershipId;
+    if (membershipId == null) return;
+    final cancelled = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => CancelMembershipSheet(
+        membershipId: membershipId,
+        planName: _member.planName ?? 'Membership',
+      ),
+    );
+    if (cancelled == true) {
+      setState(() => _changed = true);
+      await _reloadMemberRow();
       _load();
     }
   }
@@ -194,6 +227,19 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       PrimaryButton(label: 'Book Court', onPressed: _bookCourt),
+                      if (_member.membershipId != null &&
+                          computeMembershipStatus(status: _member.status, endDate: _member.endDate) ==
+                              MembershipDisplayStatus.active) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                            onPressed: _cancelMembership,
+                            child: const Text('Cancel Membership'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

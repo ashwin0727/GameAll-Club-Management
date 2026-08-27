@@ -14,8 +14,14 @@ import 'membership_status.dart';
 
 /// Assign a plan to a member, or renew (same write path — a new start date
 /// always inserts a new membership row, never overwrites history). Mirrors
-/// `assign-membership-dialog.tsx`. Returns the created [Membership] via
-/// `Navigator.pop`, or null if dismissed.
+/// `assign-membership-dialog.tsx`. Pops `true` via `Navigator.pop` when a
+/// membership was assigned/activated (manual Paid/Pending confirm, or a
+/// settled Razorpay payment), or null if dismissed without one. Since
+/// membership activation on the Razorpay path is now entirely server-side
+/// (settle_payment → activate_membership, 0021_payment_settlement.sql), this
+/// sheet never has a client-side [Membership] object to hand back for that
+/// path — callers must refetch the member's current membership from the
+/// server on `true` rather than reading fields off a popped object.
 class AssignMembershipSheet extends ConsumerStatefulWidget {
   const AssignMembershipSheet({super.key, required this.facilityId, required this.memberId, required this.memberName});
 
@@ -82,7 +88,7 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
       _error = null;
     });
     try {
-      final membership = await ref
+      await ref
           .read(membershipRepositoryProvider)
           .createMembership(
             CreateMembershipInput(
@@ -93,7 +99,7 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
               paymentStatus: _paymentPaid ? 'paid' : 'created',
             ),
           );
-      if (mounted) Navigator.of(context).pop(membership);
+      if (mounted) Navigator.of(context).pop(true);
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -102,14 +108,16 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
   }
 
   /// Alternative to the manual Paid/Pending toggle: pay through the
-  /// Razorpay checkout. Mirrors the now-FIXED `payWithRazorpay` in
-  /// assign-membership-dialog.tsx — a "captured" result here is a VERIFIED
-  /// payment, but membership activation is deliberately NOT performed by
-  /// this payment phase (spec §"Membership Payment": "DO NOT activate the
-  /// Membership yet — membership activation belongs to the next business
-  /// settlement phase"). This only flips the existing manual "Paid" toggle
-  /// to true and shows the payment status panel; staff still has to press
-  /// the existing "Confirm" button below to actually assign the membership.
+  /// Razorpay checkout. Mirrors the FIXED `payWithRazorpay` in
+  /// assign-membership-dialog.tsx — membership activation on this path is
+  /// now entirely server-side (settle_payment → activate_membership,
+  /// 0021_payment_settlement.sql), so this sheet never creates a
+  /// [Membership] itself here. On a [CheckoutSettled] result the membership
+  /// already exists in the database — pop `true` and close immediately, no
+  /// manual "Confirm" step needed. On [CheckoutException] the payment was
+  /// captured but the plan could no longer be activated (e.g. deactivated
+  /// mid-checkout); the payment is preserved for the facility to resolve,
+  /// and this sheet stays open showing that.
   Future<void> _payViaRazorpay() async {
     final plan = _selectedPlan;
     if (plan == null) {
@@ -133,8 +141,8 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
       );
       if (!mounted) return;
       setState(() => _paymentState = result is CheckoutCancelled ? null : result);
-      if (result is CheckoutCaptured) {
-        setState(() => _paymentPaid = true);
+      if (result is CheckoutSettled) {
+        Navigator.of(context).pop(true);
       }
     } on AppException catch (e) {
       setState(() => _error = e.message);
@@ -149,8 +157,8 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
       final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
       if (!mounted) return;
       setState(() => _paymentState = result);
-      if (result is CheckoutCaptured) {
-        setState(() => _paymentPaid = true);
+      if (result is CheckoutSettled) {
+        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) setState(() => _isCheckingAgain = false);
@@ -238,6 +246,8 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
                   state: _paymentState,
                   isProcessing: _isPayingViaRazorpay,
                   isCheckingAgain: _isCheckingAgain,
+                  settledLabel: 'Membership Activated',
+                  resourceLabel: 'membership',
                   onCheckAgain: _paymentState is CheckoutPending
                       ? () => _handleCheckAgain((_paymentState as CheckoutPending).paymentOrderId)
                       : null,

@@ -49,11 +49,12 @@ void main() {
       expect(source, contains('on FunctionException {'));
       // Both the FunctionsHttpException-without-a-usable-body branch and the
       // catch-all FunctionException branch throw the same generic code. This
-      // same try/catch shape is repeated for verifyPaymentOrder and
-      // reconcilePaymentOrder (Phase 4), so across the whole file there are
-      // 2 occurrences per method x 3 methods = 6.
+      // same try/catch shape is repeated for verifyPaymentOrder,
+      // reconcilePaymentOrder (Phase 4), and settlePaymentOrder (Phase 5), so
+      // across the whole file there are 2 occurrences per method x 4 methods
+      // = 8.
       final gatewayThrows = RegExp(r'throw AppException\(AppErrorCode\.paymentGatewayError\);').allMatches(source).length;
-      expect(gatewayThrows, 6);
+      expect(gatewayThrows, 8);
     });
 
     test('every thrown error is the app\'s own AppException type, never a raw object', () {
@@ -136,6 +137,27 @@ void main() {
       expect(match, isNotNull, reason: 'expected an inline body: { ... } map literal for reconcile-razorpay-payment');
       final fields = RegExp(r"'(\w+)':").allMatches(match!.group(1)!).map((m) => m.group(1)).toSet();
       expect(fields, {'paymentOrderId'});
+    });
+  });
+
+  group('PaymentRepository.settlePaymentOrder', () {
+    test('invokes settle-payment with just the payment order id', () {
+      expect(source, contains("_client.functions.invoke(\n        'settle-payment'"));
+      final match = RegExp(r"settle-payment'[\s\S]*?body: \{([\s\S]*?)\},\n\s*\);").firstMatch(source);
+      expect(match, isNotNull, reason: 'expected an inline body: { ... } map literal for settle-payment');
+      final fields = RegExp(r"'(\w+)':").allMatches(match!.group(1)!).map((m) => m.group(1)).toSet();
+      expect(fields, {'paymentOrderId'});
+    });
+  });
+
+  group('PaymentOrderStatus.fromJson mirrors the Phase 5 SETTLEMENT_EXCEPTION value, positioned right after COMPLETED', () {
+    test('SETTLEMENT_EXCEPTION parses and sits between COMPLETED and FAILED', () {
+      expect(PaymentOrderStatus.fromJson('SETTLEMENT_EXCEPTION'), PaymentOrderStatus.settlementException);
+      final values = PaymentOrderStatus.values;
+      final completedIdx = values.indexOf(PaymentOrderStatus.completed);
+      final exceptionIdx = values.indexOf(PaymentOrderStatus.settlementException);
+      final failedIdx = values.indexOf(PaymentOrderStatus.failed);
+      expect(completedIdx < exceptionIdx && exceptionIdx < failedIdx, isTrue);
     });
   });
 

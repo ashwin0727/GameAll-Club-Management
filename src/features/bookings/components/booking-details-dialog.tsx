@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getBookingService } from "@/services/bookings";
+import { getRefundService } from "@/services/refunds";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { formatCurrency } from "@/features/pricing/money";
@@ -42,6 +43,7 @@ export function BookingDetailsDialog({
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
+  const [cancelRefundNote, setCancelRefundNote] = useState<string | null>(null);
   const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
 
   if (!booking) return null;
@@ -61,11 +63,17 @@ export function BookingDetailsDialog({
       },
     );
     setPaymentState(result.status === "cancelled" ? null : result);
+    if (result.status === "settled") {
+      onChanged({ ...booking!, status: "confirmed", paymentStatus: "PAID" });
+    }
   }
 
   async function handleCheckAgain(paymentOrderId: string) {
     const result: CheckoutResult = await checkAgain(paymentOrderId);
     setPaymentState(result);
+    if (result.status === "settled") {
+      onChanged({ ...booking!, status: "confirmed", paymentStatus: "PAID" });
+    }
   }
 
   async function loadRescheduleSlots(dateStr: string) {
@@ -108,10 +116,23 @@ export function BookingDetailsDialog({
   async function cancel() {
     setIsWorking(true);
     setError(null);
+    setCancelRefundNote(null);
     try {
-      await getBookingService().cancelBooking(booking!.id, "Owner Request");
-      onChanged({ ...booking!, status: "cancelled" });
-      onOpenChange(false);
+      // Server-side (cancel-booking Edge Function): cancels the booking,
+      // releases court availability, and — if the booking was paid — requests
+      // and submits a cancellation-policy-derived refund, all in one call
+      // (spec §8/§13). Never a plain client-side status update anymore.
+      const { booking: cancelled, refund } = await getRefundService().cancelBooking({ bookingId: booking!.id, reason: "Owner Request" });
+      onChanged(cancelled);
+      if (refund) {
+        setCancelRefundNote(
+          refund.status === "FAILED"
+            ? "The booking was cancelled, but the refund could not be submitted. Please retry from Refunds."
+            : "Refund requested — it will show as processed once Razorpay confirms it.",
+        );
+      } else {
+        onOpenChange(false);
+      }
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to cancel this booking.");
     } finally {
@@ -165,15 +186,18 @@ export function BookingDetailsDialog({
             {paymentState && (
               <PaymentStatusPanel
                 state={paymentState}
+                settledLabel="Booking Confirmed"
+                resourceLabel="booking"
                 isCheckingAgain={isPaying}
                 onCheckAgain={
-                  paymentState !== "processing" && paymentState.status !== "cancelled" && paymentState.status !== "captured"
-                    ? () => handleCheckAgain((paymentState as { paymentOrderId: string }).paymentOrderId)
+                  paymentState !== "processing" && paymentState.status === "pending"
+                    ? () => handleCheckAgain(paymentState.paymentOrderId)
                     : undefined
                 }
                 onRetry={paymentState !== "processing" && paymentState.status === "failed" ? payNow : undefined}
               />
             )}
+            {cancelRefundNote && <p className="text-muted-foreground">{cancelRefundNote}</p>}
             {error && <p className="text-destructive">{error}</p>}
           </div>
         ) : (

@@ -9,11 +9,13 @@ import 'payment_checkout_controller.dart';
 /// src/features/payments/components/payment-status-panel.tsx (spec
 /// §"Payment Status Screen"), used inline inside every payment-triggering
 /// sheet instead of each one inventing its own copy. Never claims success
-/// for anything short of the server's own [CheckoutCaptured] result;
+/// for anything short of the server's own [CheckoutSettled] result;
 /// [CheckoutPending] always offers a manual recheck rather than implying the
-/// payment failed. Pass `isProcessing: true` while a checkout attempt is in
-/// flight, and the terminal [CheckoutResult] once it resolves — a
-/// [CheckoutCancelled] result renders nothing, same as the web component.
+/// payment failed, and a captured-but-unsettled payment surfaces as
+/// [CheckoutException] (not silently as success, and not as a failure
+/// either — the money is safe). Pass `isProcessing: true` while a checkout
+/// attempt is in flight, and the terminal [CheckoutResult] once it resolves —
+/// a [CheckoutCancelled] result renders nothing, same as the web component.
 class PaymentStatusPanel extends StatelessWidget {
   const PaymentStatusPanel({
     super.key,
@@ -22,6 +24,8 @@ class PaymentStatusPanel extends StatelessWidget {
     this.isCheckingAgain = false,
     this.onCheckAgain,
     this.onRetry,
+    this.settledLabel = 'Payment Successful',
+    this.resourceLabel = 'booking',
   });
 
   final CheckoutResult? state;
@@ -29,6 +33,14 @@ class PaymentStatusPanel extends StatelessWidget {
   final bool isCheckingAgain;
   final VoidCallback? onCheckAgain;
   final VoidCallback? onRetry;
+
+  /// What "settled" confirmed, e.g. "Booking Confirmed" / "Membership
+  /// Activated". Defaults to a generic success message.
+  final String settledLabel;
+
+  /// The noun used in the "requires attention" exception copy, e.g.
+  /// "booking" / "membership".
+  final String resourceLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +63,37 @@ class PaymentStatusPanel extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    if (result is CheckoutCaptured) {
+    if (result is CheckoutSettled) {
       return _panel(
         context,
-        child: const Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            StatusBadge(label: 'Payment Successful', tone: StatusTone.success),
-            SizedBox(height: AppSpacing.xs),
-            Text('Your payment has been confirmed.', style: TextStyle(color: AppColors.muted)),
+            StatusBadge(label: settledLabel, tone: StatusTone.success),
+            const SizedBox(height: AppSpacing.xs),
+            const Text('Your payment has been confirmed.', style: TextStyle(color: AppColors.muted)),
+          ],
+        ),
+      );
+    }
+
+    if (result is CheckoutException) {
+      final resource = resourceLabel.isEmpty
+          ? resourceLabel
+          : resourceLabel[0].toUpperCase() + resourceLabel.substring(1);
+      return _panel(
+        context,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const StatusBadge(label: 'Payment Received', tone: StatusTone.warning),
+            const SizedBox(height: AppSpacing.xs),
+            Text('$resource Requires Attention', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Your payment was received, but we could not confirm this $resourceLabel. Our team will resolve your payment.',
+              style: const TextStyle(color: AppColors.muted),
+            ),
           ],
         ),
       );

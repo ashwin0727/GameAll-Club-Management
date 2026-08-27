@@ -118,14 +118,15 @@ class _BookGuestSlotSheetState extends ConsumerState<BookGuestSlotSheet> {
             // visible and the payment can be retried.
             setState(() => _error = message);
             return;
-          case CheckoutCaptured():
+          case CheckoutSettled():
           case CheckoutPending():
+          case CheckoutException():
           case CheckoutCancelled():
             // Booking already created either way — a payment that's merely
-            // pending (or was cancelled) isn't a booking failure; it can be
-            // charged/checked again later from the booking's own payment
-            // status. This sheet's job (creating the booking) is done
-            // either way.
+            // pending (or was cancelled) isn't a booking failure, and a
+            // settlement exception still preserved the payment for the
+            // facility to resolve. This sheet's job (creating the booking)
+            // is done either way.
             break;
         }
       }
