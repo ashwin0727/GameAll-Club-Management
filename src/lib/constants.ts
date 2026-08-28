@@ -34,6 +34,7 @@ export const NAV_ITEMS: {
   { label: "Membership Sessions", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
   { label: "Guest Players", href: "/guests", roles: ["admin", "staff"] },
+  { label: "Finance", href: "/finance", roles: ["admin", "staff"] },
   { label: "Refunds", href: "/refunds", roles: ["admin", "staff"] },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
 ];

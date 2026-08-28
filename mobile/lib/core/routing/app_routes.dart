@@ -24,4 +24,10 @@ class AppRoutes {
   static const members = '/members';
   static const membershipSessions = '/membership-sessions';
   static const refunds = '/refunds';
+
+  /// Mirrors the web's NAV_ITEMS "Finance" entry at /finance (src/lib/
+  /// constants.ts). The transactions list is its own screen on mobile —
+  /// the web reaches it at /finance/transactions.
+  static const finance = '/finance';
+  static const financeTransactions = '/finance/transactions';
 }

@@ -8,6 +8,7 @@
 /// backend contract this ports.
 library;
 
+import 'finance.dart';
 import 'payment.dart';
 
 /// Mirrors `refund_status` (0022_refund_enums.sql).
@@ -365,6 +366,42 @@ class CancelMembershipInput {
   /// Explicit owner-decided refund amount — omit for no refund (spec §14/§15).
   final int? refundAmountMinor;
   final String? overrideReason;
+}
+
+/// Finance → Refunds filters (spec §"Refund Filters") — Phase 7. Mirrors
+/// web's `RefundListFilters`. Every field maps to a `list_refunds` parameter
+/// that all default to "no filter" in 0024_finance.sql, so an unfiltered call
+/// reproduces Phase 6's behavior exactly.
+class RefundListFilters {
+  const RefundListFilters({this.status, this.sourceType, this.dateRange, this.limit, this.offset});
+
+  final RefundStatus? status;
+  final PaymentSourceType? sourceType;
+
+  /// Resolved server-side against the facility's timezone, exactly like every
+  /// other Finance range — never turned into dates on this device.
+  final FinanceDateRange? dateRange;
+  final int? limit;
+  final int? offset;
+}
+
+/// Finance → Settlement Exceptions filters (spec §"Exception Filters") —
+/// Phase 7. Mirrors web's `SettlementExceptionListFilters`.
+///
+/// [status] defaults to OPEN (matching both the RPC's own default and the web
+/// service's `{ status: "OPEN" }` default); pass `null` explicitly to see
+/// every status. Only OPEN/RESOLVED exist in this data model — there is no
+/// intermediate "processing" state for a settlement exception.
+class SettlementExceptionListFilters {
+  const SettlementExceptionListFilters({
+    this.status = SettlementExceptionStatus.open,
+    this.sourceType,
+    this.dateRange,
+  });
+
+  final SettlementExceptionStatus? status;
+  final PaymentSourceType? sourceType;
+  final FinanceDateRange? dateRange;
 }
 
 class InitiateRefundInput {

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getRefundService } from "@/services/refunds";
-import type { Refund, SettlementException } from "@/features/refunds/types";
+import type { Refund, RefundStatus, SettlementException } from "@/features/refunds/types";
+import type { PaymentSourceType } from "@/features/payments/types";
 import { ServiceError } from "@/services/shared/service-error";
 
 function refundStatusTone(status: Refund["status"]): "success" | "warning" | "destructive" | "secondary" {
@@ -44,8 +46,15 @@ export function RefundsPanel() {
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [exceptionStatus, setExceptionStatus] = useState<"OPEN" | "RESOLVED" | "ALL">("OPEN");
+  const [refundStatus, setRefundStatus] = useState<RefundStatus | "ALL">("ALL");
+  const [refundSource, setRefundSource] = useState<PaymentSourceType | "ALL">("ALL");
+
   async function reload(id: string) {
-    const [openExceptions, refundList] = await Promise.all([getRefundService().listSettlementExceptions(id, "OPEN"), getRefundService().listRefunds(id)]);
+    const [openExceptions, refundList] = await Promise.all([
+      getRefundService().listSettlementExceptions(id, { status: exceptionStatus === "ALL" ? null : exceptionStatus }),
+      getRefundService().listRefunds(id, { status: refundStatus === "ALL" ? undefined : refundStatus, sourceType: refundSource === "ALL" ? undefined : refundSource }),
+    ]);
     setExceptions(openExceptions);
     setRefunds(refundList);
   }
@@ -67,7 +76,15 @@ export function RefundsPanel() {
     return () => {
       cancelled = true;
     };
+    // Filters intentionally excluded here — the below effect handles refetching on filter change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!facilityId || loadState !== "ready") return;
+    reload(facilityId).catch(() => setError("Unable to load refunds right now."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exceptionStatus, refundStatus, refundSource]);
 
   async function refundException(exceptionId: string) {
     if (!facilityId) return;
@@ -92,7 +109,19 @@ export function RefundsPanel() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div>
-        <h2 className="mb-2 text-sm font-medium">Payment Received, Not Confirmed</h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Payment Received, Not Confirmed</h2>
+          <Select value={exceptionStatus} onValueChange={(v) => setExceptionStatus(v as typeof exceptionStatus)}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="OPEN">Open</SelectItem>
+              <SelectItem value="RESOLVED">Resolved</SelectItem>
+              <SelectItem value="ALL">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {exceptions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No open settlement exceptions.</p>
         ) : (
@@ -115,7 +144,34 @@ export function RefundsPanel() {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium">Refund History</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-medium">Refund History</h2>
+          <div className="flex gap-2">
+            <Select value={refundSource} onValueChange={(v) => setRefundSource(v as typeof refundSource)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Sources</SelectItem>
+                <SelectItem value="MEMBERSHIP">Membership</SelectItem>
+                <SelectItem value="MEMBER_BOOKING">Member Booking</SelectItem>
+                <SelectItem value="GUEST_BOOKING">Guest Booking</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={refundStatus} onValueChange={(v) => setRefundStatus(v as typeof refundStatus)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Status</SelectItem>
+                <SelectItem value="PROCESSING">Processing</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="PROCESSED">Processed</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         {refunds.length === 0 ? (
           <p className="text-sm text-muted-foreground">No refunds yet.</p>
         ) : (

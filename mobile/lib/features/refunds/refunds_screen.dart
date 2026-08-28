@@ -11,8 +11,10 @@ import '../../data/models/refund.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
+import '../finance/finance_presentation.dart';
 
 /// Owner-facing refund visibility (spec §13/§28/§29/§30) — mirrors
 /// `refunds-panel.tsx`: open settlement exceptions (payment received,
@@ -36,6 +38,15 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
   List<Refund> _refunds = [];
   String? _workingId;
   String? _actionError;
+
+  /// Phase 7 filters (spec §"Refund Filters" / §"Exception Filters"),
+  /// mirroring the dropdowns refunds-panel.tsx gained. All three are applied
+  /// by `list_refunds`/`list_settlement_exceptions` themselves
+  /// (0024_finance.sql) — never by filtering an already-fetched list here.
+  /// `null` means "no filter" (the web's "ALL" option).
+  SettlementExceptionStatus? _exceptionStatus = SettlementExceptionStatus.open;
+  RefundStatus? _refundStatus;
+  PaymentSourceType? _refundSource;
 
   @override
   void initState() {
@@ -65,8 +76,14 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
     });
     try {
       final repo = ref.read(refundRepositoryProvider);
-      final exceptions = await repo.listSettlementExceptions(facilityId, status: 'OPEN');
-      final refunds = await repo.listRefunds(facilityId);
+      final exceptions = await repo.listSettlementExceptions(
+        facilityId,
+        filters: SettlementExceptionListFilters(status: _exceptionStatus),
+      );
+      final refunds = await repo.listRefunds(
+        facilityId,
+        filters: RefundListFilters(status: _refundStatus, sourceType: _refundSource),
+      );
       setState(() {
         _exceptions = exceptions;
         _refunds = refunds;
@@ -95,6 +112,56 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
     }
   }
 
+  /// Every filter change refetches from the server rather than narrowing the
+  /// list already in memory — the RPCs own the filtering (0024_finance.sql).
+  Future<void> _pickExceptionStatus() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _exceptionStatus?.toJson() ?? 'ALL',
+      options: const [
+        (value: 'OPEN', label: 'Open'),
+        (value: 'RESOLVED', label: 'Resolved'),
+        (value: 'ALL', label: 'All'),
+      ],
+    );
+    if (picked == null) return;
+    setState(() {
+      _exceptionStatus = picked == 'ALL' ? null : SettlementExceptionStatus.fromJson(picked);
+    });
+    await _load();
+  }
+
+  Future<void> _pickRefundSource() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _refundSource?.toJson() ?? 'ALL',
+      options: [
+        (value: 'ALL', label: 'All Sources'),
+        ...PaymentSourceType.values.map((s) => (value: s.toJson(), label: sourceTypeMenuLabel(s))),
+      ],
+    );
+    if (picked == null) return;
+    setState(() => _refundSource = picked == 'ALL' ? null : PaymentSourceType.fromJson(picked));
+    await _load();
+  }
+
+  Future<void> _pickRefundStatus() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _refundStatus?.toJson() ?? 'ALL',
+      options: const [
+        (value: 'ALL', label: 'All Status'),
+        (value: 'PROCESSING', label: 'Processing'),
+        (value: 'PENDING', label: 'Pending'),
+        (value: 'PROCESSED', label: 'Processed'),
+        (value: 'FAILED', label: 'Failed'),
+      ],
+    );
+    if (picked == null) return;
+    setState(() => _refundStatus = picked == 'ALL' ? null : RefundStatus.fromJson(picked));
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,12 +188,32 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
                       ],
                       Text('Payment Received, Not Confirmed', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.sm),
+                      PickerChip(
+                        label: _exceptionStatusLabel(_exceptionStatus),
+                        onSelect: _pickExceptionStatus,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
                       if (_exceptions.isEmpty)
                         Text('No open settlement exceptions.', style: AppTypography.secondary(context))
                       else
                         ..._exceptions.map(_buildExceptionCard),
                       const SizedBox(height: AppSpacing.xl),
                       Text('Refund History', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          PickerChip(
+                            label: _refundSource == null ? 'All Sources' : sourceTypeMenuLabel(_refundSource!),
+                            onSelect: _pickRefundSource,
+                          ),
+                          PickerChip(
+                            label: _refundStatus == null ? 'All Status' : _refundStatusChipLabel(_refundStatus!),
+                            onSelect: _pickRefundStatus,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       if (_refunds.isEmpty)
                         Text('No refunds yet.', style: AppTypography.secondary(context))
@@ -219,6 +306,16 @@ String _exceptionReasonLabel(SettlementExceptionReason reason) {
 String _refundReasonLabel(RefundReason reason) => reason.toJson().replaceAll('_', ' ').toLowerCase();
 
 String _refundStatusLabel(RefundStatus status) => status.toJson().toLowerCase();
+
+/// Title-cased variants for the Phase 7 filter chips ("Processed", "Open") —
+/// the badges keep their existing lowercase styling.
+String _titleCase(String raw) => raw[0] + raw.substring(1).toLowerCase();
+
+String _refundStatusChipLabel(RefundStatus status) => _titleCase(status.toJson());
+
+/// `null` is the web's "ALL" option — no status filter at all.
+String _exceptionStatusLabel(SettlementExceptionStatus? status) =>
+    status == null ? 'All' : _titleCase(status.toJson());
 
 StatusTone _refundStatusTone(RefundStatus status) {
   switch (status) {

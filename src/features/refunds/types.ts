@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { PaymentSourceType } from "@/features/payments/types";
+import type { FinanceDateRange } from "@/features/finance/types";
 
 export type RefundStatus = "REQUESTED" | "PROCESSING" | "PENDING" | "PROCESSED" | "FAILED" | "CANCELLED";
 
@@ -104,6 +105,22 @@ export interface CancelMembershipInput {
   /** Explicit owner-decided refund amount — omit for no refund (spec §14/§15). */
   refundAmountMinor?: number;
   overrideReason?: string;
+}
+
+/** Finance → Refunds filters (spec §"Refund Filters"). */
+export interface RefundListFilters {
+  status?: RefundStatus;
+  sourceType?: PaymentSourceType;
+  dateRange?: FinanceDateRange;
+  limit?: number;
+  offset?: number;
+}
+
+/** Finance → Settlement Exceptions filters (spec §"Exception Filters"). Only OPEN/RESOLVED exist in this app's data model — there is no intermediate "processing" state for a settlement exception. */
+export interface SettlementExceptionListFilters {
+  status?: "OPEN" | "RESOLVED" | null;
+  sourceType?: PaymentSourceType;
+  dateRange?: FinanceDateRange;
 }
 
 export interface InitiateRefundInput {

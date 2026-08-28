@@ -6,8 +6,10 @@ import type {
   CancellationPolicy,
   InitiateRefundInput,
   Refund,
+  RefundListFilters,
   RefundSubmission,
   SettlementException,
+  SettlementExceptionListFilters,
   UpsertCancellationPolicyInput,
 } from "@/features/refunds/types";
 
@@ -22,8 +24,8 @@ export interface RefundService {
   initiateRefund(input: InitiateRefundInput): Promise<RefundSubmission>;
   /** Captured Amount − Processed Refunds − In-flight Refunds — the server-authoritative ceiling for any refund UI ever shows. */
   refundableAmount(paymentOrderId: string): Promise<number>;
-  listRefunds(facilityId: string): Promise<Refund[]>;
-  listSettlementExceptions(facilityId: string, status?: "OPEN" | "RESOLVED" | null): Promise<SettlementException[]>;
+  listRefunds(facilityId: string, filters?: RefundListFilters): Promise<Refund[]>;
+  listSettlementExceptions(facilityId: string, filters?: SettlementExceptionListFilters): Promise<SettlementException[]>;
   getCancellationPolicy(facilityId: string): Promise<CancellationPolicy>;
   upsertCancellationPolicy(input: UpsertCancellationPolicyInput): Promise<CancellationPolicy>;
 }

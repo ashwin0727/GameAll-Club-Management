@@ -29,4 +29,11 @@ class Formatters {
 
   static String dateShort(DateTime date) =>
       DateFormat('d MMM yyyy').format(date);
+
+  /// "27 Aug 2026, 3:30 PM" — a timestamp with its time of day, for
+  /// traceability views (Finance transaction details) where "which day" is
+  /// not precise enough. Converted to the device's local zone first, since
+  /// Supabase hands back UTC instants.
+  static String dateTimeShort(DateTime timestamp) =>
+      DateFormat('d MMM yyyy, h:mm a').format(timestamp.toLocal());
 }

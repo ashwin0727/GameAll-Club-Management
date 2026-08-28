@@ -76,16 +76,54 @@ void main() {
       expect(source, contains("_client.rpc('refundable_amount', params: {'p_payment_order_id': paymentOrderId})"));
     });
 
-    test('listRefunds reads via list_refunds', () {
-      expect(source, contains("_client.rpc('list_refunds', params: {'p_facility_id': facilityId})"));
+    test('listRefunds reads via list_refunds with the Phase 7 filter params', () {
+      // 0024_finance.sql re-created list_refunds with status/source/date-range
+      // /pagination parameters. They all default to "no filter" server-side,
+      // so an unfiltered call still reproduces Phase 6's behavior.
+      final match = RegExp(r"'list_refunds',\s*params: \{([\s\S]*?)\},\n\s*\);").firstMatch(source);
+      expect(match, isNotNull, reason: 'expected an inline params: { ... } map literal for list_refunds');
+      final fields = RegExp(r"'(p_\w+)':").allMatches(match!.group(1)!).map((m) => m.group(1)).toSet();
+      expect(fields, {
+        'p_facility_id',
+        'p_status',
+        'p_source_type',
+        'p_preset',
+        'p_start_date',
+        'p_end_date',
+        'p_limit',
+        'p_offset',
+      });
+      expect(match.group(1), contains("'p_limit': filters.limit ?? 100"));
+      expect(match.group(1), contains("'p_offset': filters.offset ?? 0"));
     });
 
-    test('listSettlementExceptions defaults to OPEN and reads via list_settlement_exceptions', () {
-      expect(source, contains("Future<List<SettlementException>> listSettlementExceptions(String facilityId, {String? status = 'OPEN'})"));
+    test('listSettlementExceptions defaults to OPEN and reads via list_settlement_exceptions with the Phase 7 filter params', () {
       expect(
         source,
-        contains("_client.rpc('list_settlement_exceptions', params: {'p_facility_id': facilityId, 'p_status': status})"),
+        contains('SettlementExceptionListFilters filters = const SettlementExceptionListFilters(),'),
       );
+      final match = RegExp(r"'list_settlement_exceptions',\s*params: \{([\s\S]*?)\},\n\s*\);").firstMatch(source);
+      expect(match, isNotNull, reason: 'expected an inline params: { ... } map literal for list_settlement_exceptions');
+      final fields = RegExp(r"'(p_\w+)':").allMatches(match!.group(1)!).map((m) => m.group(1)).toSet();
+      expect(fields, {'p_facility_id', 'p_status', 'p_source_type', 'p_preset', 'p_start_date', 'p_end_date'});
+    });
+
+    test('the OPEN default lives in the filters object, and an explicit null status means every status', () {
+      const defaults = SettlementExceptionListFilters();
+      expect(defaults.status, SettlementExceptionStatus.open);
+      expect(defaults.status?.toJson(), 'OPEN');
+      expect(const SettlementExceptionListFilters(status: null).status, isNull);
+      // An unfiltered refund list is Phase 6's behavior exactly.
+      const refundDefaults = RefundListFilters();
+      expect(refundDefaults.status, isNull);
+      expect(refundDefaults.sourceType, isNull);
+      expect(refundDefaults.dateRange, isNull);
+    });
+
+    test('a refund date-range filter is sent as a preset for the server to resolve, never as device-computed dates', () {
+      expect(source, contains("'p_preset': filters.dateRange?.preset.toJson(),"));
+      expect(source, contains("'p_start_date': filters.dateRange?.startDate,"));
+      expect(source, contains("'p_end_date': filters.dateRange?.endDate,"));
     });
 
     test('getCancellationPolicy reads via get_effective_cancellation_policy', () {

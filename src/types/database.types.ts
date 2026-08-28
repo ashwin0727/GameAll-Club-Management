@@ -1237,7 +1237,34 @@ export interface Database {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      finance_transactions_view: {
+        Row: {
+          id: string;
+          reference: string;
+          facility_id: string;
+          created_at: string;
+          paid_at: string | null;
+          effective_at: string;
+          source_type: "MEMBERSHIP" | "MEMBER_BOOKING" | "GUEST_BOOKING";
+          customer_name: string | null;
+          customer_phone: string | null;
+          booking_id: string | null;
+          membership_id: string | null;
+          payment_order_id: string | null;
+          amount_minor: number;
+          currency: string;
+          payment_method: string | null;
+          status: "created" | "paid" | "failed" | "refunded";
+          razorpay_order_id: string | null;
+          razorpay_payment_id: string | null;
+          refunded_minor: number;
+          pending_refund_minor: number;
+          net_minor: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       role: {
         Args: Record<string, never>;
@@ -1621,12 +1648,87 @@ export interface Database {
         Returns: Database["public"]["Tables"]["refunds"]["Row"];
       };
       list_refunds: {
-        Args: { p_facility_id: string };
+        Args: {
+          p_facility_id: string;
+          p_status?: string | null;
+          p_source_type?: string | null;
+          p_preset?: string | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
         Returns: Database["public"]["Tables"]["refunds"]["Row"][];
       };
       list_settlement_exceptions: {
-        Args: { p_facility_id: string; p_status?: string | null };
+        Args: {
+          p_facility_id: string;
+          p_status?: string | null;
+          p_source_type?: string | null;
+          p_preset?: string | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+        };
         Returns: Database["public"]["Tables"]["settlement_exceptions"]["Row"][];
+      };
+      get_finance_summary: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: {
+          gross_revenue_minor: number;
+          refunds_minor: number;
+          net_revenue_minor: number;
+          transaction_count: number;
+          successful_payment_count: number;
+          failed_payment_count: number;
+          pending_payment_count: number;
+          pending_refund_count: number;
+          settlement_exception_count: number;
+        }[];
+      };
+      get_revenue_breakdown: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: {
+          membership_revenue_minor: number;
+          member_booking_revenue_minor: number;
+          guest_booking_revenue_minor: number;
+          refunds_minor: number;
+          net_revenue_minor: number;
+          membership_included_usage_count: number;
+        }[];
+      };
+      get_revenue_trend: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null; p_granularity?: string };
+        Returns: { bucket_date: string; gross_minor: number; refund_minor: number; net_minor: number }[];
+      };
+      list_finance_transactions: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_source_type?: string | null;
+          p_status?: string | null;
+          p_search?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Database["public"]["Views"]["finance_transactions_view"]["Row"][];
+      };
+      count_finance_transactions: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_source_type?: string | null;
+          p_status?: string | null;
+          p_search?: string | null;
+        };
+        Returns: number;
+      };
+      get_finance_transaction: {
+        Args: { p_transaction_id: string };
+        Returns: Database["public"]["Views"]["finance_transactions_view"]["Row"];
       };
     };
     Enums: {

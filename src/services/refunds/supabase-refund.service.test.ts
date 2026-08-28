@@ -194,8 +194,35 @@ describe("SupabaseRefundService.listRefunds / listSettlementExceptions", () => {
 
     const [refund] = await service.listRefunds("facility-1");
 
-    expect(rpc).toHaveBeenCalledWith("list_refunds", { p_facility_id: "facility-1" });
+    expect(rpc).toHaveBeenCalledWith("list_refunds", {
+      p_facility_id: "facility-1",
+      p_status: null,
+      p_source_type: null,
+      p_preset: null,
+      p_start_date: null,
+      p_end_date: null,
+      p_limit: 100,
+      p_offset: 0,
+    });
     expect(refund).toMatchObject({ id: "r-1", policyPercentApplied: 100, razorpayRefundId: "rfnd_1", status: "PROCESSED" });
+  });
+
+  it("passes Finance → Refunds filters (status/source/date range) straight through to the RPC", async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    const service = new SupabaseRefundService({ rpc } as never);
+
+    await service.listRefunds("facility-1", { status: "PROCESSED", sourceType: "GUEST_BOOKING", dateRange: { preset: "THIS_MONTH" }, limit: 50, offset: 10 });
+
+    expect(rpc).toHaveBeenCalledWith("list_refunds", {
+      p_facility_id: "facility-1",
+      p_status: "PROCESSED",
+      p_source_type: "GUEST_BOOKING",
+      p_preset: "THIS_MONTH",
+      p_start_date: null,
+      p_end_date: null,
+      p_limit: 50,
+      p_offset: 10,
+    });
   });
 
   it("defaults listSettlementExceptions to OPEN only", async () => {
@@ -204,7 +231,30 @@ describe("SupabaseRefundService.listRefunds / listSettlementExceptions", () => {
 
     await service.listSettlementExceptions("facility-1");
 
-    expect(rpc).toHaveBeenCalledWith("list_settlement_exceptions", { p_facility_id: "facility-1", p_status: "OPEN" });
+    expect(rpc).toHaveBeenCalledWith("list_settlement_exceptions", {
+      p_facility_id: "facility-1",
+      p_status: "OPEN",
+      p_source_type: null,
+      p_preset: null,
+      p_start_date: null,
+      p_end_date: null,
+    });
+  });
+
+  it("passes Finance → Settlement Exceptions filters through, and null status means ALL", async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    const service = new SupabaseRefundService({ rpc } as never);
+
+    await service.listSettlementExceptions("facility-1", { status: null, sourceType: "MEMBERSHIP" });
+
+    expect(rpc).toHaveBeenCalledWith("list_settlement_exceptions", {
+      p_facility_id: "facility-1",
+      p_status: null,
+      p_source_type: "MEMBERSHIP",
+      p_preset: null,
+      p_start_date: null,
+      p_end_date: null,
+    });
   });
 });
 

@@ -32,6 +32,13 @@ enum AppErrorCode {
   membershipCapacityError,
   paymentGatewayError,
   paymentOrderError,
+  // Finance & Revenue Management — Phase 7. Deliberately distinct from
+  // `unauthorized`/`databaseError`: a facility-isolation rejection on a
+  // Finance read must never degrade into a silent ₹0 (spec §"Critical
+  // Facility Isolation Test": the expected result is DENIED, not zero).
+  financeAccessDenied,
+  invalidDateRange,
+  financeDataError,
   network,
   databaseError,
 }
@@ -66,6 +73,9 @@ const Map<AppErrorCode, String> _friendlyMessage = {
   AppErrorCode.membershipCapacityError: 'Unable to complete this action.',
   AppErrorCode.paymentGatewayError: 'Unable to reach the payment gateway. Please try again.',
   AppErrorCode.paymentOrderError: 'Unable to start this payment.',
+  AppErrorCode.financeAccessDenied: "You don't have access to this facility's financial data.",
+  AppErrorCode.invalidDateRange: 'Please choose a valid date range.',
+  AppErrorCode.financeDataError: 'Unable to load financial data. Please try again.',
   AppErrorCode.network: 'Network error. Check your connection and try again.',
   AppErrorCode.databaseError: 'Something went wrong. Please try again.',
 };

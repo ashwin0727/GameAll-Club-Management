@@ -170,15 +170,42 @@ supabase functions deploy create-razorpay-refund
 supabase functions deploy razorpay-webhook --no-verify-jwt
 ```
 
+## Finance & Revenue Management — Phase 7
+
+**No new Edge Functions.** Finance is a reporting layer over the existing
+`payments` / `refunds` / `settlement_exceptions` records — it never talks to
+Razorpay, so there is nothing that needs a secret and nothing to deploy
+here. All aggregation lives in Postgres (`0024_finance.sql`) as RLS-scoped,
+explicitly authorization-checked RPCs the clients call directly:
+
+- `get_finance_summary` — gross / refunds / net + transaction and
+  payment-outcome counts for a date range
+- `get_revenue_breakdown` — revenue by source (membership / member booking /
+  guest booking), plus included-membership usage as a count, never revenue
+- `get_revenue_trend` — daily/weekly/monthly buckets for the chart
+- `list_finance_transactions` / `count_finance_transactions` /
+  `get_finance_transaction` — server-side filtered, searched, paginated
+  transaction reads over `finance_transactions_view`
+
+Every date preset ("Today", "This Week", …) resolves to real timestamps in
+the **facility's own configured timezone** via `resolve_finance_date_range`
+— the clients never compute date boundaries themselves.
+
+`list_refunds` and `list_settlement_exceptions` (Phase 6) gained optional
+status/source/date-range filter parameters in this migration; every existing
+caller keeps working unchanged since the new parameters all default to "no
+filter".
+
 ### Running the shared-logic unit tests
 
 ```bash
 cd supabase/functions
-deno test --allow-net _shared/razorpay.test.ts _shared/settlement.test.ts _shared/refunds.test.ts
+deno test --allow-net _shared/razorpay.test.ts _shared/settlement.test.ts _shared/refunds.test.ts _shared/finance.test.ts
 ```
 
 No live Supabase or Razorpay connection needed — signature verification,
 status mapping, the payment/refund state-machine transitions, cancellation-
-policy percent calculation, refundable-amount/over-refund math, and the
-settlement routing/exception-reason logic are all pure functions; Razorpay
-HTTP calls are tested against a mocked `fetch`.
+policy percent calculation, refundable-amount/over-refund math, revenue
+aggregation (gross/refund/net, revenue-by-source classification, duplicate
+protection), and the settlement routing/exception-reason logic are all pure
+functions; Razorpay HTTP calls are tested against a mocked `fetch`.

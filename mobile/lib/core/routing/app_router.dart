@@ -10,6 +10,8 @@ import '../../features/authentication/sign_in_screen.dart';
 import '../../features/authentication/splash_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/finance/finance_screen.dart';
+import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
 import '../../features/members/members_screen.dart';
 import '../../features/membership_sessions/membership_sessions_screen.dart';
@@ -111,6 +113,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MembershipSessionsScreen(),
       ),
       GoRoute(path: AppRoutes.refunds, builder: (context, state) => const RefundsScreen()),
+      GoRoute(path: AppRoutes.finance, builder: (context, state) => const FinanceScreen()),
+      GoRoute(
+        path: AppRoutes.financeTransactions,
+        builder: (context, state) => const TransactionsScreen(),
+      ),
     ],
   );
 });

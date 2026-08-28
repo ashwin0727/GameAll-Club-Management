@@ -117,21 +117,51 @@ class RefundRepository {
     }
   }
 
-  Future<List<Refund>> listRefunds(String facilityId) async {
+  /// Phase 7 (0024_finance.sql) re-created `list_refunds` with status/source/
+  /// date-range/pagination parameters for the Finance → Refunds filters. All
+  /// of them default to "no filter" server-side, so `listRefunds(facilityId)`
+  /// with an empty [filters] returns exactly what Phase 6 returned.
+  Future<List<Refund>> listRefunds(String facilityId, {RefundListFilters filters = const RefundListFilters()}) async {
     try {
-      final rows = await _client.rpc('list_refunds', params: {'p_facility_id': facilityId});
+      final rows = await _client.rpc(
+        'list_refunds',
+        params: {
+          'p_facility_id': facilityId,
+          'p_status': filters.status?.toJson(),
+          'p_source_type': filters.sourceType?.toJson(),
+          'p_preset': filters.dateRange?.preset.toJson(),
+          'p_start_date': filters.dateRange?.startDate,
+          'p_end_date': filters.dateRange?.endDate,
+          'p_limit': filters.limit ?? 100,
+          'p_offset': filters.offset ?? 0,
+        },
+      );
       return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(Refund.fromJson).toList();
     } on PostgrestException catch (e) {
       throw AppException(AppErrorCode.paymentOrderError, e.message);
     }
   }
 
-  /// [status] defaults to 'OPEN' (matching the RPC's own default), mirroring
-  /// the web service's `listSettlementExceptions(facilityId, "OPEN")`
-  /// default. Pass null to see every status.
-  Future<List<SettlementException>> listSettlementExceptions(String facilityId, {String? status = 'OPEN'}) async {
+  /// [SettlementExceptionListFilters.status] defaults to OPEN (matching the
+  /// RPC's own default), mirroring the web service's `{ status: "OPEN" }`
+  /// default. Pass `status: null` to see every status. Phase 7 added the
+  /// source-type and date-range filters alongside it.
+  Future<List<SettlementException>> listSettlementExceptions(
+    String facilityId, {
+    SettlementExceptionListFilters filters = const SettlementExceptionListFilters(),
+  }) async {
     try {
-      final rows = await _client.rpc('list_settlement_exceptions', params: {'p_facility_id': facilityId, 'p_status': status});
+      final rows = await _client.rpc(
+        'list_settlement_exceptions',
+        params: {
+          'p_facility_id': facilityId,
+          'p_status': filters.status?.toJson(),
+          'p_source_type': filters.sourceType?.toJson(),
+          'p_preset': filters.dateRange?.preset.toJson(),
+          'p_start_date': filters.dateRange?.startDate,
+          'p_end_date': filters.dateRange?.endDate,
+        },
+      );
       return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(SettlementException.fromJson).toList();
     } on PostgrestException catch (e) {
       throw AppException(AppErrorCode.paymentOrderError, e.message);

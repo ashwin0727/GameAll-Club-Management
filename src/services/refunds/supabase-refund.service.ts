@@ -10,8 +10,10 @@ import type {
   CancellationPolicy,
   InitiateRefundInput,
   Refund,
+  RefundListFilters,
   RefundSubmission,
   SettlementException,
+  SettlementExceptionListFilters,
   UpsertCancellationPolicyInput,
 } from "@/features/refunds/types";
 import type { RefundService } from "@/services/refunds/refund.service";
@@ -165,14 +167,30 @@ export class SupabaseRefundService implements RefundService {
     return data ?? 0;
   }
 
-  async listRefunds(facilityId: string): Promise<Refund[]> {
-    const { data, error } = await this.supabase.rpc("list_refunds", { p_facility_id: facilityId });
+  async listRefunds(facilityId: string, filters: RefundListFilters = {}): Promise<Refund[]> {
+    const { data, error } = await this.supabase.rpc("list_refunds", {
+      p_facility_id: facilityId,
+      p_status: filters.status ?? null,
+      p_source_type: filters.sourceType ?? null,
+      p_preset: filters.dateRange?.preset ?? null,
+      p_start_date: filters.dateRange?.startDate ?? null,
+      p_end_date: filters.dateRange?.endDate ?? null,
+      p_limit: filters.limit ?? 100,
+      p_offset: filters.offset ?? 0,
+    });
     if (error) throw new ServiceError("PAYMENT_ORDER_ERROR", error.message);
     return (data ?? []).map(toRefund);
   }
 
-  async listSettlementExceptions(facilityId: string, status: "OPEN" | "RESOLVED" | null = "OPEN"): Promise<SettlementException[]> {
-    const { data, error } = await this.supabase.rpc("list_settlement_exceptions", { p_facility_id: facilityId, p_status: status });
+  async listSettlementExceptions(facilityId: string, filters: SettlementExceptionListFilters = { status: "OPEN" }): Promise<SettlementException[]> {
+    const { data, error } = await this.supabase.rpc("list_settlement_exceptions", {
+      p_facility_id: facilityId,
+      p_status: filters.status === undefined ? "OPEN" : filters.status,
+      p_source_type: filters.sourceType ?? null,
+      p_preset: filters.dateRange?.preset ?? null,
+      p_start_date: filters.dateRange?.startDate ?? null,
+      p_end_date: filters.dateRange?.endDate ?? null,
+    });
     if (error) throw new ServiceError("PAYMENT_ORDER_ERROR", error.message);
     return (data ?? []).map(toSettlementException);
   }

@@ -120,6 +120,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             tooltip: 'Refunds',
             onPressed: () => context.push(AppRoutes.refunds),
           ),
+          // Mirrors the web's NAV_ITEMS "Finance" entry (src/lib/constants.ts).
+          // This app has no drawer or bottom nav — every module is reached
+          // from these dashboard app-bar actions.
+          IconButton(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            tooltip: 'Finance',
+            onPressed: () => context.push(AppRoutes.finance),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign out',
