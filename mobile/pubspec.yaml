@@ -42,6 +42,16 @@ dependencies:
   postgrest: ^2.9.1
   http: ^1.2.2
   razorpay_flutter: ^1.4.0
+  # 2026 design system's single required typeface (Manrope) — the only new
+  # dependency the redesign adds. google_fonts fetches+caches the font at
+  # runtime and falls back to the platform default if unavailable, so a
+  # first-launch-offline device degrades gracefully rather than crashing.
+  google_fonts: ^6.2.1
+  # Already resolved transitively (supabase_flutter's storage backend) —
+  # declared directly here only so this app's own code can depend on it
+  # explicitly, to remember the user's Appearance (System/Light/Dark)
+  # preference across restarts. Never used for business/domain data.
+  shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:

@@ -355,7 +355,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       );
     }
     if (_gridError != null) {
-      return Text(_gridError!, style: const TextStyle(color: Colors.red));
+      return Text(_gridError!, style: const TextStyle(color: AppColors.destructive));
     }
     if (_visibleAreas.isEmpty) {
       return const Text('No courts configured for this sport.');
@@ -849,7 +849,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                   TextField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes (optional)')),
                   if (_error != null) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    Text(_error!, style: const TextStyle(color: AppColors.destructive)),
                   ],
                   const SizedBox(height: AppSpacing.lg),
                   PrimaryButton(
@@ -1146,7 +1146,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Text(_error!, style: const TextStyle(color: AppColors.destructive)),
               ],
               if (_canPay) ...[
                 const SizedBox(height: AppSpacing.lg),
@@ -1200,7 +1200,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                 ),
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text(_error!, style: const TextStyle(color: Colors.red)),
+                Text(_error!, style: const TextStyle(color: AppColors.destructive)),
               ],
               const SizedBox(height: AppSpacing.lg),
               Row(

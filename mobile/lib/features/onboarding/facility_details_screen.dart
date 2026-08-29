@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
@@ -113,7 +114,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                 const Text('This helps customers find and understand your facility.'),
                 const SizedBox(height: AppSpacing.xl),
                 if (_errorMessage != null) ...[
-                  Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                  Text(_errorMessage!, style: const TextStyle(color: AppColors.destructive)),
                   const SizedBox(height: AppSpacing.md),
                 ],
                 AppTextField(

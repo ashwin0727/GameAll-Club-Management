@@ -12,6 +12,14 @@ class AppSpacing {
   static const double xl = 24;
   static const double xxl = 32;
 
+  /// The rest of the spec's full 4px scale (4·8·12·16·20·24·32·40·48·64) —
+  /// additive only, so no existing screen's spacing shifts. `lg2` fills the
+  /// 16→24 gap the original xs/sm/md/lg/xl/xxl names skipped.
+  static const double lg2 = 20;
+  static const double xxxl = 40;
+  static const double huge = 48;
+  static const double massive = 64;
+
   /// Minimum touch target per the platform accessibility guidance this
   /// project follows throughout (44dp minimum, 48dp preferred).
   static const double minTouchTarget = 48;

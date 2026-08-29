@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,12 +7,14 @@ import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -33,6 +37,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _facilityId;
   String? _selectedSportId;
   DateRangePreset _preset = DateRangePreset.today;
+  int _revenueMonthOffset = 0;
 
   bool _isLoading = true;
   String? _loadError;
@@ -67,6 +72,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _facilityId!,
         facilitySportId: _selectedSportId,
         preset: _preset,
+        revenueMonthOffset: _revenueMonthOffset,
       );
       setState(() {
         _summary = summary;
@@ -93,10 +99,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('GameAll'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month),
+            icon: const Icon(Icons.calendar_month_outlined),
             tooltip: 'Bookings',
             onPressed: () => context.push(AppRoutes.bookings),
           ),
@@ -106,12 +112,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () => context.push(AppRoutes.guests),
           ),
           IconButton(
-            icon: const Icon(Icons.card_membership),
+            icon: const Icon(Icons.card_membership_outlined),
             tooltip: 'Members',
             onPressed: () => context.push(AppRoutes.members),
           ),
           IconButton(
-            icon: const Icon(Icons.event_repeat),
+            icon: const Icon(Icons.event_repeat_outlined),
             tooltip: 'Membership Sessions',
             onPressed: () => context.push(AppRoutes.membershipSessions),
           ),
@@ -128,228 +134,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             tooltip: 'Finance',
             onPressed: () => context.push(AppRoutes.finance),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => ref.read(sessionControllerProvider.notifier).signOut(),
+          // Sign out now lives on the Profile screen — this avatar is the
+          // one entry point to it (spec §"Profile").
+          Padding(
+            padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.sm),
+            child: InkWell(
+              onTap: () => context.push(AppRoutes.profile),
+              customBorder: const CircleBorder(),
+              child: AppAvatar(name: user?.fullName ?? '?', size: AppAvatarSize.small),
+            ),
           ),
         ],
       ),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading dashboard…')
+            ? const _DashboardSkeleton()
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ResponsivePage(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${_greeting()}${user?.fullName.split(' ').first != null ? ', ${user!.fullName.split(' ').first}' : ''} 👋',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        '${_summary!.facilityName}${_summary!.facilityCity.isNotEmpty ? ' · ${_summary!.facilityCity}' : ''}',
-                        style: const TextStyle(color: AppColors.muted),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
-                        children: [
-                          _SelectorChip<String?>(
-                            value: _selectedSportId,
-                            label: _selectedSportId == null
-                                ? 'All Sports'
-                                : _summary!.sports
-                                      .where((s) => s.facilitySportId == _selectedSportId)
-                                      .map((s) => s.sportName)
-                                      .firstOrNull ?? 'All Sports',
-                            onSelect: () async {
-                              final picked = await _showSportPicker(context, _summary!.sports);
-                              if (picked != _selectedSportId) {
-                                setState(() => _selectedSportId = picked);
-                                _load();
-                              }
-                            },
-                          ),
-                          _SelectorChip<DateRangePreset>(
-                            value: _preset,
-                            label: _presetLabels[_preset]!,
-                            onSelect: () async {
-                              final picked = await _showDatePresetPicker(context, _preset);
-                              if (picked != null && picked != _preset) {
-                                setState(() => _preset = picked);
-                                _load();
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      SecondaryButton(
-                        label: '+ New Booking',
-                        onPressed: () => context.push(AppRoutes.bookings),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      _KpiGrid(summary: _summary!),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Attention Required'),
-                      const SizedBox(height: AppSpacing.sm),
-                      AppCard(
-                        child: _summary!.attentionItems.isEmpty
-                            ? const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: AppColors.success, size: 18),
-                                  SizedBox(width: AppSpacing.sm),
-                                  Expanded(
-                                    child: Text('Everything looks good. No immediate attention required.'),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _summary!.attentionItems
-                                    .map((a) => Padding(
-                                          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                                          child: Text('⚠ ${a.message}'),
-                                        ))
-                                    .toList(),
-                              ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: "Today's Schedule"),
-                      const SizedBox(height: AppSpacing.sm),
-                      AppCard(
-                        child: _summary!.schedule.isEmpty
-                            ? const Text('No operating hours configured for today.')
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _summary!.schedule
-                                    .take(20)
-                                    .map(
-                                      (entry) => Padding(
-                                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                '${entry.time} · ${entry.sportName} — ${entry.playingAreaName}',
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            StatusBadge(
-                                              label: entry.status == ScheduleSlotStatus.booked
-                                                  ? 'Booked'
-                                                  : 'Available',
-                                              tone: entry.status == ScheduleSlotStatus.booked
-                                                  ? StatusTone.neutral
-                                                  : StatusTone.success,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Revenue by Sport'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Revenue by sport isn\'t available yet — it needs completed booking payments to report on.',
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Court/Turf Utilization'),
-                      const SizedBox(height: AppSpacing.sm),
-                      AppCard(
-                        child: _summary!.utilization.bySport.isEmpty
-                            ? const Text('No sports configured yet.')
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _summary!.utilization.bySport
-                                    .map(
-                                      (s) => Padding(
-                                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: Text(s.sportName)),
-                                            Text('${s.utilizationPercent}%'),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                              ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Memberships'),
-                      const SizedBox(height: AppSpacing.sm),
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${_summary!.memberships.active}', style: Theme.of(context).textTheme.titleLarge),
-                            Text(
-                              '${_summary!.memberships.expiringSoon} expiring soon · ${_summary!.memberships.newThisMonth} new this month',
-                              style: const TextStyle(color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Payments'),
-                      const SizedBox(height: AppSpacing.sm),
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CurrencyText(
-                              _summary!.payments.collectedInr,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            Text(
-                              '${Formatters.currencyInr(_summary!.payments.pendingInr)} pending · '
-                              '${Formatters.currencyInr(_summary!.payments.refundsInr)} refunded',
-                              style: const TextStyle(color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Live Activity'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Live check-ins and in-progress sessions aren\'t tracked yet.',
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Guest Players'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Guest player tracking isn\'t available yet.',
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Expenses'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Expense tracking isn\'t available yet.',
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Business Position'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Profit/loss reporting needs expenses to be tracked first.',
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      SectionHeader(title: 'Upcoming'),
-                      const SizedBox(height: AppSpacing.sm),
-                      const UnavailableCard(
-                        message: 'Tournaments and coaching sessions aren\'t available yet.',
-                      ),
-                    ],
+                  child: _DashboardBody(
+                    summary: _summary!,
+                    greeting: _greeting(),
+                    firstName: user?.fullName.split(' ').first,
+                    selectedSportId: _selectedSportId,
+                    preset: _preset,
+                    onPickSport: () async {
+                      final picked = await _showSportPicker(context, _summary!.sports);
+                      if (picked != _selectedSportId) {
+                        setState(() => _selectedSportId = picked);
+                        _load();
+                      }
+                    },
+                    onPickPreset: () async {
+                      final picked = await _showDatePresetPicker(context, _preset);
+                      if (picked != null && picked != _preset) {
+                        setState(() => _preset = picked);
+                        _load();
+                      }
+                    },
+                    revenueMonthOffset: _revenueMonthOffset,
+                    onPickRevenueMonth: () async {
+                      final picked = await _showRevenueMonthPicker(context, _revenueMonthOffset);
+                      if (picked != null && picked != _revenueMonthOffset) {
+                        setState(() => _revenueMonthOffset = picked);
+                        _load();
+                      }
+                    },
                   ),
                 ),
               ),
@@ -391,12 +223,1064 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
+
+  Future<int?> _showRevenueMonthPicker(BuildContext context, int current) {
+    return showModalBottomSheet<int>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (var offset = 0; offset < 12; offset++)
+              ListTile(
+                title: Text(revenueMonthLabel(offset)),
+                selected: offset == current,
+                onTap: () => Navigator.pop(context, offset),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _SelectorChip<T> extends StatelessWidget {
-  const _SelectorChip({required this.value, required this.label, required this.onSelect});
+const _monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  final T value;
+String revenueMonthLabel(int offset) {
+  if (offset == 0) return 'This Month';
+  if (offset == 1) return 'Last Month';
+  final now = DateTime.now();
+  final d = DateTime(now.year, now.month - offset, 1);
+  return '${_monthNamesShort[d.month - 1]} ${d.year}';
+}
+
+/// The whole scrolling dashboard body, in mobile-first priority order:
+/// greeting → filters → metrics → expiring alert → schedule → attention →
+/// memberships → revenue → utilization → quick actions.
+class _DashboardBody extends StatelessWidget {
+  const _DashboardBody({
+    required this.summary,
+    required this.greeting,
+    required this.firstName,
+    required this.selectedSportId,
+    required this.preset,
+    required this.onPickSport,
+    required this.onPickPreset,
+    required this.revenueMonthOffset,
+    required this.onPickRevenueMonth,
+  });
+
+  final DashboardSummary summary;
+  final String greeting;
+  final String? firstName;
+  final String? selectedSportId;
+  final DateRangePreset preset;
+  final VoidCallback onPickSport;
+  final VoidCallback onPickPreset;
+  final int revenueMonthOffset;
+  final VoidCallback onPickRevenueMonth;
+
+  String get _sportLabel => selectedSportId == null
+      ? 'All Sports'
+      : summary.sports
+                .where((s) => s.facilitySportId == selectedSportId)
+                .map((s) => s.sportName)
+                .firstOrNull ??
+            'All Sports';
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$greeting${firstName != null ? ', $firstName' : ''} 👋',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '${summary.facilityName}${summary.facilityCity.isNotEmpty ? ' · ${summary.facilityCity}' : ''}',
+          style: TextStyle(color: tokens.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            _SelectorChip(label: _sportLabel, onSelect: onPickSport),
+            _SelectorChip(label: _presetLabels[preset]!, onSelect: onPickPreset),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _MetricCarousel(kpis: summary.kpis),
+        if (summary.memberships.expiringSoon > 0) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _ExpiringMembershipCard(count: summary.memberships.expiringSoon),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: "Today's Schedule"),
+        const SizedBox(height: AppSpacing.sm),
+        _ScheduleTimeline(timeline: summary.scheduleTimeline, showNow: preset == DateRangePreset.today),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(
+          title: 'Revenue Overview',
+          trailing: _SelectorChip(
+            label: revenueMonthLabel(revenueMonthOffset),
+            onSelect: onPickRevenueMonth,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _RevenueOverviewCard(overview: summary.revenueOverview),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: 'Attention Required'),
+        const SizedBox(height: AppSpacing.sm),
+        _AttentionCard(items: summary.attentionItems),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: 'Memberships'),
+        const SizedBox(height: AppSpacing.sm),
+        _MembershipSummaryCard(memberships: summary.memberships),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: 'Court/Turf Utilization'),
+        const SizedBox(height: AppSpacing.sm),
+        _UtilizationCard(utilization: summary.utilization),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: 'Quick Actions'),
+        const SizedBox(height: AppSpacing.sm),
+        const _QuickActionGrid(),
+        const SizedBox(height: AppSpacing.xl),
+      ],
+    );
+  }
+}
+
+/// Horizontally scrolling KPI tiles (spec §"Owner Summary": compact metric
+/// cards, not four full-width cards stacked down the screen).
+class _MetricCarousel extends StatelessWidget {
+  const _MetricCarousel({required this.kpis});
+
+  final DashboardKpis kpis;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final tiles = <Widget>[
+      AppMetricCard(
+        label: 'Revenue',
+        value: Formatters.currencyInr(kpis.revenueInr.value),
+        changePercent: kpis.revenueInr.changePercent,
+        icon: Icons.account_balance_wallet_outlined,
+        accentColor: tokens.electricBlue,
+      ),
+      AppMetricCard(
+        label: 'Active Membership',
+        value: kpis.activeMemberships.value.toStringAsFixed(0),
+        changePercent: kpis.activeMemberships.changePercent,
+        icon: Icons.group_outlined,
+        accentColor: tokens.violet,
+      ),
+      AppMetricCard(
+        label: 'Guest Bookings',
+        value: kpis.guestBookings.value.toStringAsFixed(0),
+        changePercent: kpis.guestBookings.changePercent,
+        icon: Icons.group_add_outlined,
+        accentColor: tokens.warning,
+      ),
+      AppMetricCard(
+        label: 'Utilization',
+        value: '${kpis.utilizationPercent.value}%',
+        changePercent: kpis.utilizationPercent.changePercent,
+        icon: Icons.pie_chart_outline,
+        accentColor: tokens.primary,
+      ),
+    ];
+    return SizedBox(
+      height: 116,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: tiles.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, i) => SizedBox(width: 156, child: tiles[i]),
+      ),
+    );
+  }
+}
+
+class _ExpiringMembershipCard extends StatelessWidget {
+  const _ExpiringMembershipCard({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return AppCard(
+      onTap: () => context.push(AppRoutes.members),
+      child: Row(
+        children: [
+          Icon(Icons.card_membership_outlined, color: tokens.warning),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$count membership${count == 1 ? '' : 's'} expiring soon',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text('Tap to view members', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: tokens.textSecondary),
+        ],
+      ),
+    );
+  }
+}
+
+/// A positioned court-by-court timeline for today — one row per court, each
+/// block a real booking or confirmed membership session placed by its actual
+/// start/end within a window derived from today's operating hours. Scrolls
+/// horizontally; overlapping blocks in a court stack onto separate lanes.
+class _ScheduleTimeline extends StatefulWidget {
+  const _ScheduleTimeline({required this.timeline, required this.showNow});
+
+  final ScheduleTimeline timeline;
+  final bool showNow;
+
+  @override
+  State<_ScheduleTimeline> createState() => _ScheduleTimelineState();
+}
+
+class _ScheduleTimelineState extends State<_ScheduleTimeline> {
+  static const _hourWidth = 64.0;
+  static const _labelWidth = 96.0;
+  static const _laneHeight = 34.0;
+  static const _trackPad = 0.0;
+
+  String? _sportFilter;
+
+  String _hourTick(int hour) {
+    final h = hour % 24;
+    final h12 = h % 12 == 0 ? 12 : h % 12;
+    return '$h12 ${h < 12 ? 'AM' : 'PM'}';
+  }
+
+  Color _blockColor(BuildContext context, ScheduleBlockType type) {
+    switch (type) {
+      case ScheduleBlockType.member:
+        return context.tokens.success;
+      case ScheduleBlockType.guest:
+        return context.tokens.electricBlue;
+      case ScheduleBlockType.session:
+        return context.tokens.violet;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final timeline = widget.timeline;
+    final hours = timeline.endHour - timeline.startHour;
+    if (timeline.courts.isEmpty || hours <= 0) {
+      return const AppCard(child: Text('No courts configured yet.'));
+    }
+
+    final sportNames = timeline.courts.map((c) => c.sportName).toSet().toList()..sort();
+    final activeSport = sportNames.contains(_sportFilter) ? _sportFilter : null;
+    final courts = activeSport == null
+        ? timeline.courts
+        : timeline.courts.where((c) => c.sportName == activeSport).toList();
+
+    final trackWidth = hours * _hourWidth;
+    final windowMinutes = hours * 60;
+    double toX(int minute) => (minute - timeline.startHour * 60) / windowMinutes * trackWidth;
+
+    final now = DateTime.now();
+    final nowMinute = now.hour * 60 + now.minute;
+    final showNowLine =
+        widget.showNow && nowMinute >= timeline.startHour * 60 && nowMinute <= timeline.endHour * 60;
+
+    final rows = <Widget>[];
+    for (final court in courts) {
+      final rowHeight = court.laneCount * _laneHeight + _trackPad;
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: _labelWidth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      court.courtName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      court.sportName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(
+              width: trackWidth,
+              height: rowHeight,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < hours; i++)
+                    Positioned(
+                      left: i * _hourWidth,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(width: 1, color: tokens.borderColor.withValues(alpha: 0.4)),
+                    ),
+                  for (final block in court.blocks)
+                    Positioned(
+                      left: toX(block.startMinute),
+                      top: block.lane * _laneHeight,
+                      width: (toX(block.endMinute) - toX(block.startMinute)).clamp(6.0, trackWidth).toDouble(),
+                      height: _laneHeight,
+                      child: _block(context, block),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+      rows.add(Divider(height: 1, color: tokens.borderColor.withValues(alpha: 0.6)));
+    }
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (sportNames.length > 1) ...[
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final name in <String?>[null, ...sportNames])
+                  _SportFilterChip(
+                    label: name ?? 'All Courts',
+                    selected: activeSport == name,
+                    onTap: () => setState(() => _sportFilter = name),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: _labelWidth + trackWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: _labelWidth, bottom: 4),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < hours; i++)
+                          SizedBox(
+                            width: _hourWidth,
+                            child: Text(
+                              _hourTick(timeline.startHour + i),
+                              style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Stack(
+                    children: [
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows),
+                      if (showNowLine)
+                        Positioned(
+                          left: _labelWidth + toX(nowMinute),
+                          top: 0,
+                          bottom: 0,
+                          child: Container(width: 2, color: tokens.destructive),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: 4,
+            children: [
+              _legendDot(context, tokens.success, 'Member'),
+              _legendDot(context, tokens.electricBlue, 'Guest'),
+              _legendDot(context, tokens.violet, 'Membership session'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _block(BuildContext context, ScheduleBlock block) {
+    final color = _blockColor(context, block.type);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        border: Border.all(color: color.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            block.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+          ),
+          Text(
+            block.timeLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.85)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(BuildContext context, Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: context.tokens.textSecondary)),
+      ],
+    );
+  }
+}
+
+/// A pill in the Today's Schedule court/sport filter row.
+class _SportFilterChip extends StatelessWidget {
+  const _SportFilterChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 32),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? tokens.primary : tokens.surface1,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? tokens.primary : tokens.borderColor),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? tokens.onPrimary : tokens.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AttentionCard extends StatelessWidget {
+  const _AttentionCard({required this.items});
+
+  final List<AttentionItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    if (items.isEmpty) {
+      return AppCard(
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, color: tokens.success, size: 18),
+            const SizedBox(width: AppSpacing.sm),
+            const Expanded(child: Text("You're all caught up. No immediate attention required.")),
+          ],
+        ),
+      );
+    }
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.error_outline, size: 16, color: tokens.warning),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text(item.message)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MembershipSummaryCard extends StatelessWidget {
+  const _MembershipSummaryCard({required this.memberships});
+
+  final MembershipSummary memberships;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final total = memberships.active + memberships.expiringSoon + memberships.expired;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$total', style: Theme.of(context).textTheme.headlineSmall),
+          Text('Total members', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+          const SizedBox(height: AppSpacing.md),
+          if (total > 0)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Row(
+                children: [
+                  Expanded(flex: memberships.active, child: Container(height: 8, color: tokens.success)),
+                  Expanded(flex: memberships.expiringSoon, child: Container(height: 8, color: tokens.warning)),
+                  Expanded(flex: memberships.expired, child: Container(height: 8, color: tokens.destructive)),
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.xs,
+            children: [
+              _LegendDot(color: tokens.success, label: 'Active ${memberships.active}'),
+              _LegendDot(color: tokens.warning, label: 'Expiring ${memberships.expiringSoon}'),
+              _LegendDot(color: tokens.destructive, label: 'Expired ${memberships.expired}'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(color: context.tokens.textSecondary, fontSize: 12)),
+      ],
+    );
+  }
+}
+
+/// Collected revenue for the selected period, its change vs. the previous
+/// period, and a real day-by-day trend (mobile keeps this compact — the full
+/// breakdown lives on the Finance screen).
+class _RevenueOverviewCard extends StatelessWidget {
+  const _RevenueOverviewCard({required this.overview});
+
+  final RevenueOverview overview;
+
+  static double _niceCeil(num v) {
+    if (v <= 0) return 1000;
+    final p = math.pow(10, (math.log(v) / math.ln10).floor()).toDouble();
+    final n = v / p;
+    final step = n <= 1 ? 1 : (n <= 2 ? 2 : (n <= 5 ? 5 : 10));
+    return step * p;
+  }
+
+  static String _compactInr(num v) {
+    if (v >= 10000000) return '₹${(v / 10000000).toStringAsFixed(v % 10000000 == 0 ? 0 : 1)}Cr';
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(v % 100000 == 0 ? 0 : 1)}L';
+    if (v >= 1000) return '₹${(v / 1000).round()}K';
+    return '₹${v.round()}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final change = overview.changePercent;
+    final up = change != null && change > 0;
+    final down = change != null && change < 0;
+    final changeColor = up ? tokens.success : (down ? tokens.destructive : tokens.textSecondary);
+
+    final values = overview.points.map((p) => p.amountInr).toList();
+    final niceMax = _niceCeil(values.isEmpty ? 0 : values.reduce(math.max));
+    final yTicks = [1.0, 0.75, 0.5, 0.25, 0.0].map((f) => niceMax * f).toList();
+
+    final n = overview.points.length;
+    final tickCount = math.min(5, n);
+    final xTickIdx = [
+      for (var k = 0; k < tickCount; k++) tickCount <= 1 ? 0 : ((k / (tickCount - 1)) * (n - 1)).round(),
+    ];
+
+    return AppCard(
+      onTap: () => context.push(AppRoutes.finance),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CurrencyText(overview.totalInr, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Text('Total Revenue · ${overview.monthLabel}',
+                  style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+              if (change != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Icon(up ? Icons.arrow_upward : (down ? Icons.arrow_downward : Icons.remove),
+                    size: 12, color: changeColor),
+                Text('${change.abs().toStringAsFixed(1)}%',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: changeColor)),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 130,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final t in yTicks)
+                      Text(_compactInr(t), style: TextStyle(fontSize: 9, color: tokens.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: SizedBox(
+                  height: 130,
+                  child: CustomPaint(
+                    painter: _RevenueChartPainter(
+                      values: values,
+                      niceMax: niceMax,
+                      lineColor: tokens.primary,
+                      gridColor: tokens.borderColor.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 48),
+            child: Stack(
+              children: [
+                const SizedBox(height: 14, width: double.infinity),
+                for (final idx in xTickIdx)
+                  Align(
+                    alignment: Alignment(n <= 1 ? 0 : (idx / (n - 1)) * 2 - 1, 0),
+                    child: Text(
+                      _dayLabel(overview.points[idx].date),
+                      style: TextStyle(fontSize: 9, color: tokens.textSecondary),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: tokens.borderColor),
+          const SizedBox(height: AppSpacing.sm),
+          Text('Revenue Breakdown', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          _RevenueBreakdownChart(segments: overview.breakdown, total: overview.totalInr),
+        ],
+      ),
+    );
+  }
+
+  static Color breakdownColor(BuildContext context, RevenueBreakdownKey key) {
+    final tokens = context.tokens;
+    switch (key) {
+      case RevenueBreakdownKey.bookings:
+        return tokens.success;
+      case RevenueBreakdownKey.memberships:
+        return tokens.electricBlue;
+      case RevenueBreakdownKey.coaching:
+        return tokens.warning;
+      case RevenueBreakdownKey.other:
+        return tokens.violet;
+    }
+  }
+
+  static String _dayLabel(String iso) {
+    final parts = iso.split('-');
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 1;
+    final d = int.tryParse(parts.length > 2 ? parts[2] : '') ?? 1;
+    return '$d ${_monthNamesShort[m - 1]}';
+  }
+}
+
+class _RevenueChartPainter extends CustomPainter {
+  _RevenueChartPainter({
+    required this.values,
+    required this.niceMax,
+    required this.lineColor,
+    required this.gridColor,
+  });
+
+  final List<int> values;
+  final double niceMax;
+  final Color lineColor;
+  final Color gridColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      final y = size.height * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+    if (values.isEmpty) return;
+
+    final stepX = values.length > 1 ? size.width / (values.length - 1) : 0.0;
+    Offset pointAt(int i) {
+      final x = values.length > 1 ? i * stepX : size.width / 2;
+      final y = size.height - (values[i] / niceMax).clamp(0.0, 1.0) * size.height;
+      return Offset(x, y);
+    }
+
+    final linePath = Path()..moveTo(pointAt(0).dx, pointAt(0).dy);
+    for (var i = 1; i < values.length; i++) {
+      linePath.lineTo(pointAt(i).dx, pointAt(i).dy);
+    }
+    final fillPath = Path.from(linePath)
+      ..lineTo(pointAt(values.length - 1).dx, size.height)
+      ..lineTo(pointAt(0).dx, size.height)
+      ..close();
+
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [lineColor.withValues(alpha: 0.3), lineColor.withValues(alpha: 0.0)],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawPath(
+      linePath,
+      Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_RevenueChartPainter oldDelegate) =>
+      oldDelegate.values != values ||
+      oldDelegate.niceMax != niceMax ||
+      oldDelegate.lineColor != lineColor;
+}
+
+/// Donut + legend showing where the month's revenue came from.
+class _RevenueBreakdownChart extends StatelessWidget {
+  const _RevenueBreakdownChart({required this.segments, required this.total});
+
+  final List<RevenueBreakdownSegment> segments;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 96,
+          height: 96,
+          child: CustomPaint(
+            painter: _DonutPainter(
+              values: [for (final s in segments) s.amountInr.toDouble()],
+              colors: [for (final s in segments) _RevenueOverviewCard.breakdownColor(context, s.key)],
+              trackColor: tokens.surface2,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            children: [
+              for (final s in segments)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _RevenueOverviewCard.breakdownColor(context, s.key),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          s.count != null ? '${s.label} · ${s.count}' : s.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        s.unavailable ? '—' : Formatters.currencyInr(s.amountInr),
+                        style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                      ),
+                      const SizedBox(width: 6),
+                      SizedBox(
+                        width: 30,
+                        child: Text(
+                          '${total > 0 ? ((s.amountInr / total) * 100).round() : 0}%',
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  _DonutPainter({required this.values, required this.colors, required this.trackColor});
+
+  final List<double> values;
+  final List<Color> colors;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = 14.0;
+    final rect = Offset(stroke / 2, stroke / 2) &
+        Size(size.width - stroke, size.height - stroke);
+    canvas.drawArc(
+      rect,
+      0,
+      2 * math.pi,
+      false,
+      Paint()
+        ..color = trackColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke,
+    );
+    final total = values.fold<double>(0, (a, b) => a + b);
+    if (total <= 0) return;
+    var start = -math.pi / 2;
+    for (var i = 0; i < values.length; i++) {
+      if (values[i] <= 0) continue;
+      final sweep = (values[i] / total) * 2 * math.pi;
+      canvas.drawArc(
+        rect,
+        start,
+        sweep,
+        false,
+        Paint()
+          ..color = colors[i]
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke,
+      );
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DonutPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.colors != colors;
+}
+
+class _UtilizationCard extends StatelessWidget {
+  const _UtilizationCard({required this.utilization});
+
+  final UtilizationSummary utilization;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    if (utilization.bySport.isEmpty) {
+      return const AppCard(child: Text('No sports configured yet.'));
+    }
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final s in utilization.bySport)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(s.sportName)),
+                      Text('${s.utilizationPercent}%', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: (s.utilizationPercent / 100).clamp(0, 1).toDouble(),
+                      minHeight: 6,
+                      backgroundColor: tokens.surface2,
+                      valueColor: AlwaysStoppedAnimation(tokens.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2-column grid of real, currently-navigable destinations — never a tile
+/// that leads nowhere (spec §"Owner Home").
+class _QuickActionGrid extends StatelessWidget {
+  const _QuickActionGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = <_QuickActionData>[
+      _QuickActionData(Icons.add_circle_outline, 'Add Booking', AppRoutes.bookings),
+      _QuickActionData(Icons.person_add_alt_1_outlined, 'Add Member', AppRoutes.members),
+      _QuickActionData(Icons.event_available_outlined, 'Guest Slots', AppRoutes.membershipSessions),
+      _QuickActionData(Icons.groups_outlined, 'Add Guest', AppRoutes.guests),
+      _QuickActionData(Icons.account_balance_wallet_outlined, 'Finance', AppRoutes.finance),
+      _QuickActionData(Icons.currency_exchange, 'Refunds', AppRoutes.refunds),
+    ];
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: AppSpacing.sm,
+      crossAxisSpacing: AppSpacing.sm,
+      childAspectRatio: 2.8,
+      children: [
+        for (final a in actions)
+          _QuickAction(icon: a.icon, label: a.label, onTap: () => context.push(a.route)),
+      ],
+    );
+  }
+}
+
+class _QuickActionData {
+  const _QuickActionData(this.icon, this.label, this.route);
+  final IconData icon;
+  final String label;
+  final String route;
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: tokens.surface1,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: tokens.borderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: tokens.primary.withValues(alpha: 0.14), shape: BoxShape.circle),
+                child: Icon(icon, color: tokens.primary, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectorChip extends StatelessWidget {
+  const _SelectorChip({required this.label, required this.onSelect});
+
   final String label;
   final VoidCallback onSelect;
 
@@ -409,7 +1293,7 @@ class _SelectorChip<T> extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.tokens.borderColor),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -425,55 +1309,58 @@ class _SelectorChip<T> extends StatelessWidget {
   }
 }
 
-class _KpiGrid extends StatelessWidget {
-  const _KpiGrid({required this.summary});
-
-  final DashboardSummary summary;
+/// Structure-shaped placeholder shown while the summary loads — never a
+/// bare spinner, never a screen briefly rendered with fabricated zeros.
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 400;
-        final tiles = [
-          _KpiTile(label: 'Revenue', valueText: Formatters.currencyInr(summary.kpis.revenueInr.value)),
-          _KpiTile(label: 'Bookings', valueText: summary.kpis.bookings.value.toStringAsFixed(0)),
-          _KpiTile(label: 'Utilization', valueText: '${summary.kpis.utilizationPercent.value}%'),
-          _KpiTile(label: 'Active Members', valueText: summary.kpis.activeMembers.value.toStringAsFixed(0)),
-        ];
-        return Wrap(
-          spacing: AppSpacing.md,
-          runSpacing: AppSpacing.md,
-          children: tiles
-              .map((t) => SizedBox(width: isNarrow ? constraints.maxWidth : (constraints.maxWidth - AppSpacing.md) / 2, child: t))
-              .toList(),
-        );
-      },
+    return ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SkelBox(width: 220, height: 28),
+          const SizedBox(height: AppSpacing.sm),
+          const _SkelBox(width: 160, height: 14),
+          const SizedBox(height: AppSpacing.lg),
+          SizedBox(
+            height: 116,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 4,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (_, _) => const _SkelBox(width: 156, height: 116),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const _SkelBox(width: 140, height: 18),
+          const SizedBox(height: AppSpacing.sm),
+          const _SkelBox(height: 120),
+          const SizedBox(height: AppSpacing.xl),
+          const _SkelBox(width: 140, height: 18),
+          const SizedBox(height: AppSpacing.sm),
+          const _SkelBox(height: 88),
+        ],
+      ),
     );
   }
 }
 
-class _KpiTile extends StatelessWidget {
-  const _KpiTile({required this.label, required this.valueText});
+class _SkelBox extends StatelessWidget {
+  const _SkelBox({this.width = double.infinity, required this.height});
 
-  final String label;
-  final String valueText;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            valueText,
-            style: Theme.of(context).textTheme.titleLarge,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: context.tokens.surface2,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
     );
   }

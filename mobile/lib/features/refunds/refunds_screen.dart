@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -183,7 +184,7 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       if (_actionError != null) ...[
-                        Text(_actionError!, style: const TextStyle(color: Colors.red)),
+                        Text(_actionError!, style: const TextStyle(color: AppColors.destructive)),
                         const SizedBox(height: AppSpacing.sm),
                       ],
                       Text('Payment Received, Not Confirmed', style: Theme.of(context).textTheme.titleMedium),

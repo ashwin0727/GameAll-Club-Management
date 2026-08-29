@@ -203,7 +203,7 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
                     const Text('Add the playing areas available at your facility.'),
                     const SizedBox(height: AppSpacing.xl),
                     if (_continueError != null) ...[
-                      Text(_continueError!, style: const TextStyle(color: Colors.red)),
+                      Text(_continueError!, style: const TextStyle(color: AppColors.destructive)),
                       const SizedBox(height: AppSpacing.md),
                     ],
                     ..._facilitySports.map((fs) {

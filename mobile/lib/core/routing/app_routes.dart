@@ -30,4 +30,6 @@ class AppRoutes {
   /// the web reaches it at /finance/transactions.
   static const finance = '/finance';
   static const financeTransactions = '/finance/transactions';
+
+  static const profile = '/profile';
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -234,7 +235,7 @@ class _MemberProfileScreenState extends ConsumerState<MemberProfileScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                            style: OutlinedButton.styleFrom(foregroundColor: AppColors.destructive),
                             onPressed: _cancelMembership,
                             child: const Text('Cancel Membership'),
                           ),

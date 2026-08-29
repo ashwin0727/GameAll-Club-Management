@@ -129,7 +129,7 @@ class _SportsSetupScreenState extends ConsumerState<SportsSetupScreen> {
                     const Text('Select every sport this facility offers.'),
                     const SizedBox(height: AppSpacing.xl),
                     if (_submitError != null) ...[
-                      Text(_submitError!, style: const TextStyle(color: Colors.red)),
+                      Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
                       const SizedBox(height: AppSpacing.md),
                     ],
                     Wrap(

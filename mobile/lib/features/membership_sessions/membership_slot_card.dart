@@ -206,7 +206,7 @@ class _MembershipSlotCardState extends ConsumerState<MembershipSlotCard> {
             ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.xs),
-            Text(_error!, style: const TextStyle(color: Colors.red)),
+            Text(_error!, style: const TextStyle(color: AppColors.destructive)),
           ],
           const SizedBox(height: AppSpacing.sm),
           Wrap(

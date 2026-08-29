@@ -256,7 +256,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     if (_submitError != null) ...[
-                      Text(_submitError!, style: const TextStyle(color: Colors.red)),
+                      Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
                       const SizedBox(height: AppSpacing.md),
                     ],
                     ...displayOrder.map((dow) {
@@ -518,7 +518,7 @@ class _DayCard extends StatelessWidget {
         ],
         if (error != null) ...[
           const SizedBox(height: AppSpacing.xs),
-          Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+          Text(error!, style: const TextStyle(color: AppColors.destructive, fontSize: 12)),
         ],
       ],
     );

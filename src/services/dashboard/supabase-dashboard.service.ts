@@ -8,22 +8,43 @@ import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import {
   buildAttentionItems,
-  buildTodaysSchedule,
+  buildRevenueOverview,
+  buildScheduleTimeline,
   computeKpiValue,
   computeUtilization,
+  countActiveMemberships,
+  countPaidGuestBookings,
   resolveDateRange,
+  sumPaidRevenueInr,
   summarizeMemberships,
   summarizePayments,
   toUtilizationBookings,
+  type TimelineBooking,
 } from "@/features/dashboard/summary";
 import type { DashboardSummary } from "@/features/dashboard/types";
 import type { DashboardService, DashboardSummaryParams } from "@/services/dashboard/dashboard.service";
 import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 
-type BookingRow = { court_id: string; start_time: string; end_time: string; status: string };
-type MembershipRow = { status: string; end_date: string; created_at: string };
-type PaymentRow = { status: string; amount_inr: number; created_at: string };
+type BookingRow = {
+  id: string;
+  court_id: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  customer_type: "MEMBER" | "GUEST";
+  guest_name: string | null;
+  member_id: string | null;
+  payment_status: "PENDING" | "PAID" | "REFUNDED";
+};
+type MembershipRow = { id: string; status: string; end_date: string; created_at: string };
+type PaymentRow = {
+  status: string;
+  amount_inr: number;
+  created_at: string;
+  booking_id: string | null;
+  membership_id: string | null;
+};
 
 export class SupabaseDashboardService implements DashboardService {
   private readonly supabase: SupabaseClient<Database>;
@@ -56,17 +77,22 @@ export class SupabaseDashboardService implements DashboardService {
 
     const earliestFrom = previous ? previous.from : current.from;
 
-    const [bookingsRes, membershipsRes, paymentsRes, membershipSessionsRes] = await Promise.all([
+    // Revenue Overview panel has its own month filter, independent of `preset`.
+    const revenueMonthOffset = params.revenueMonthOffset ?? 0;
+    const revWindowFrom = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset - 1, 1).toISOString();
+    const revWindowTo = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset + 1, 1).toISOString();
+
+    const [bookingsRes, membershipsRes, paymentsRes, membershipSessionsRes, revenuePaymentsRes] = await Promise.all([
       this.supabase
         .from("bookings")
-        .select("court_id, start_time, end_time, status")
+        .select("id, court_id, start_time, end_time, status, customer_type, guest_name, member_id, payment_status")
         .eq("facility_id", facilityId)
         .gte("start_time", earliestFrom)
         .lt("start_time", current.to),
-      this.supabase.from("memberships").select("status, end_date, created_at").eq("facility_id", facilityId),
+      this.supabase.from("memberships").select("id, status, end_date, created_at").eq("facility_id", facilityId),
       this.supabase
         .from("payments")
-        .select("status, amount_inr, created_at")
+        .select("status, amount_inr, created_at, booking_id, membership_id")
         .eq("facility_id", facilityId)
         .gte("created_at", earliestFrom)
         .lt("created_at", current.to),
@@ -75,12 +101,19 @@ export class SupabaseDashboardService implements DashboardService {
         p_from: earliestFrom.slice(0, 10),
         p_to: current.to.slice(0, 10),
       }),
+      this.supabase
+        .from("payments")
+        .select("status, amount_inr, created_at, booking_id, membership_id")
+        .eq("facility_id", facilityId)
+        .gte("created_at", revWindowFrom)
+        .lt("created_at", revWindowTo),
     ]);
 
     if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
     if (membershipsRes.error) throw mapSupabaseError(membershipsRes.error);
     if (paymentsRes.error) throw mapSupabaseError(paymentsRes.error);
     if (membershipSessionsRes.error) throw mapSupabaseError(membershipSessionsRes.error);
+    if (revenuePaymentsRes.error) throw mapSupabaseError(revenuePaymentsRes.error);
 
     // Actual usage of a membership-protected slot (member or guest) occupies
     // court-time exactly like a regular booking, even though it's tracked in
@@ -108,7 +141,6 @@ export class SupabaseDashboardService implements DashboardService {
       : [];
 
     const currentPaymentSummary = summarizePayments(currentPayments);
-    const previousPaymentSummary = previous ? summarizePayments(previousPayments) : null;
 
     const activeCurrentBookings = currentBookings.filter((b) => b.status !== "cancelled");
     const activePreviousBookings = previousBookings.filter((b) => b.status !== "cancelled");
@@ -146,19 +178,98 @@ export class SupabaseDashboardService implements DashboardService {
     const membershipRows = (membershipsRes.data ?? []) as MembershipRow[];
     const memberships = summarizeMemberships(membershipRows, now);
 
-    const schedule_ = buildTodaysSchedule({
-      playingAreas: utilizationInput.playingAreas,
-      facilitySports: utilizationInput.facilitySports,
-      sports,
-      facilityOperatingDays: utilizationInput.facilityOperatingDays,
-      bookings: activeCurrentBookings.map((b) => ({
+    // "Today's Schedule" timeline — positioned blocks for real bookings and
+    // confirmed membership sessions on today's courts. Member names need a
+    // profiles lookup (bookings only carry member_id); guests carry their own.
+    const bookingRows = ((bookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id));
+    const memberIds = [...new Set(bookingRows.filter((b) => b.member_id).map((b) => b.member_id as string))];
+    const memberNames = new Map<string, string>();
+    if (memberIds.length > 0) {
+      const profilesRes = await this.supabase.from("profiles").select("id, full_name").in("id", memberIds);
+      if (profilesRes.error) throw mapSupabaseError(profilesRes.error);
+      for (const p of profilesRes.data ?? []) memberNames.set(p.id, p.full_name);
+    }
+
+    const timelineBookings: TimelineBooking[] = [
+      ...bookingRows.map((b) => ({
+        id: b.id,
         playingAreaId: b.court_id,
         startTime: b.start_time,
         endTime: b.end_time,
         status: b.status,
+        type: (b.customer_type === "GUEST" ? "GUEST" : "MEMBER") as TimelineBooking["type"],
+        label:
+          b.customer_type === "GUEST"
+            ? b.guest_name ?? "Guest booking"
+            : (b.member_id && memberNames.get(b.member_id)) || "Member booking",
       })),
+      ...(membershipSessionsRes.data ?? [])
+        .filter((s) => playingAreaIds.has(s.court_id))
+        .map((s, i) => ({
+          id: `session-${i}`,
+          playingAreaId: s.court_id,
+          startTime: `${s.session_date}T${s.start_time}`,
+          endTime: `${s.session_date}T${s.end_time}`,
+          status: "confirmed",
+          type: "SESSION" as const,
+          label: "Membership session",
+        })),
+    ];
+
+    const scheduleTimeline = buildScheduleTimeline({
+      playingAreas: utilizationInput.playingAreas,
+      facilitySports: utilizationInput.facilitySports,
+      sports,
+      facilityOperatingDays: utilizationInput.facilityOperatingDays,
+      bookings: timelineBookings,
       now,
     });
+
+    // KPI scoping: with a specific sport selected, Revenue is narrowed to
+    // payments for that sport's courts (via booking) or memberships enrolled
+    // in that sport's batches; Active Membership to those same memberships.
+    let sportScope: { bookingIds: Set<string>; membershipIds: Set<string> } | null = null;
+    let sportMembershipIds: Set<string> | null = null;
+    if (params.facilitySportId) {
+      const [batchesRes, batchMembersRes] = await Promise.all([
+        this.supabase.from("membership_batches").select("id, facility_sport_id").eq("facility_id", facilityId),
+        this.supabase.from("membership_batch_members").select("membership_id, batch_id"),
+      ]);
+      if (batchesRes.error) throw mapSupabaseError(batchesRes.error);
+      if (batchMembersRes.error) throw mapSupabaseError(batchMembersRes.error);
+      const batchSport = new Map((batchesRes.data ?? []).map((b) => [b.id, b.facility_sport_id] as const));
+      sportMembershipIds = new Set(
+        (batchMembersRes.data ?? [])
+          .filter((m) => m.membership_id != null && batchSport.get(m.batch_id) === params.facilitySportId)
+          .map((m) => m.membership_id as string),
+      );
+      sportScope = { bookingIds: new Set(bookingRows.map((b) => b.id)), membershipIds: sportMembershipIds };
+    }
+
+    const scopedCurrentPayments =
+      sportScope != null
+        ? currentPayments.filter(
+            (p) =>
+              (p.booking_id != null && sportScope!.bookingIds.has(p.booking_id)) ||
+              (p.membership_id != null && sportScope!.membershipIds.has(p.membership_id)),
+          )
+        : currentPayments;
+    const scopedCurrentPaymentSummary = sportScope != null ? summarizePayments(scopedCurrentPayments) : currentPaymentSummary;
+
+    const inWindow = (t: string, w: { from: string; to: string }) => t >= w.from && t < w.to;
+    const guestFilter = (b: BookingRow, w: { from: string; to: string }) =>
+      b.customer_type === "GUEST" && b.payment_status === "PAID" && b.status !== "cancelled" && inWindow(b.start_time, w);
+    const toGuestShape = (b: BookingRow) => ({ customerType: b.customer_type, paymentStatus: b.payment_status, status: b.status });
+    const currentGuestBookings = bookingRows.filter((b) => guestFilter(b, current)).map(toGuestShape);
+    const previousGuestBookings = previous ? bookingRows.filter((b) => guestFilter(b, previous)).map(toGuestShape) : [];
+
+    const revenuePayments = ((revenuePaymentsRes.data ?? []) as PaymentRow[]).filter(
+      (p) =>
+        sportScope == null ||
+        (p.booking_id != null && sportScope.bookingIds.has(p.booking_id)) ||
+        (p.membership_id != null && sportScope.membershipIds.has(p.membership_id)),
+    );
+    const revenueOverview = buildRevenueOverview(revenuePayments, now, revenueMonthOffset);
 
     return {
       facility: { id: facility.id, name: facility.name, city: facility.address.city },
@@ -169,23 +280,30 @@ export class SupabaseDashboardService implements DashboardService {
       selectedFacilitySportId: params.facilitySportId,
       period: current,
       kpis: {
-        revenueInr: computeKpiValue(currentPaymentSummary.collectedInr, previousPaymentSummary?.collectedInr ?? null),
-        bookings: computeKpiValue(activeCurrentBookings.length, previous ? activePreviousBookings.length : null),
+        revenueInr: computeKpiValue(
+          sumPaidRevenueInr(currentPayments, sportScope),
+          previous ? sumPaidRevenueInr(previousPayments, sportScope) : null,
+        ),
+        activeMemberships: computeKpiValue(countActiveMemberships(membershipRows, sportMembershipIds), null),
+        guestBookings: computeKpiValue(
+          countPaidGuestBookings(currentGuestBookings),
+          previous ? countPaidGuestBookings(previousGuestBookings) : null,
+        ),
         utilizationPercent: computeKpiValue(
           currentUtilization.overallPercent,
           previousUtilization?.overallPercent ?? null,
         ),
-        activeMembers: computeKpiValue(memberships.active, null),
       },
       revenueBySport: { available: false },
       utilization: currentUtilization,
-      schedule: schedule_,
+      scheduleTimeline,
+      revenueOverview,
       liveActivity: { available: false },
       memberships,
       guests: { available: false },
-      payments: currentPaymentSummary,
+      payments: scopedCurrentPaymentSummary,
       expenses: { available: false },
-      businessPosition: { revenueInr: currentPaymentSummary.collectedInr, expensesAvailable: false },
+      businessPosition: { revenueInr: scopedCurrentPaymentSummary.collectedInr, expensesAvailable: false },
       attentionItems: buildAttentionItems({
         membershipsExpiringSoon: memberships.expiringSoon,
         paymentsPendingInr: currentPaymentSummary.pendingInr,

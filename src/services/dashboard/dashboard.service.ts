@@ -5,6 +5,8 @@ export interface DashboardSummaryParams {
   facilitySportId: string | null;
   preset: DateRangePreset;
   custom?: { from: string; to: string };
+  /** Months back from the current month for the Revenue Overview panel (0 = this month). Independent of `preset`. */
+  revenueMonthOffset?: number;
 }
 
 /**

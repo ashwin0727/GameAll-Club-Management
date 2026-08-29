@@ -312,7 +312,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                     const Text('Define how much customers pay to use your courts and turfs.'),
                     const SizedBox(height: AppSpacing.xl),
                     if (_submitError != null) ...[
-                      Text(_submitError!, style: const TextStyle(color: Colors.red)),
+                      Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
                       const SizedBox(height: AppSpacing.md),
                     ],
                     ..._facilitySports.map((fs) {
@@ -521,7 +521,7 @@ class _PeriodsEditor extends StatelessWidget {
                 if (p.error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Text(p.error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    child: Text(p.error!, style: const TextStyle(color: AppColors.destructive, fontSize: 12)),
                   ),
               ],
             ),

@@ -7,6 +7,10 @@ import type {
   KpiValue,
   MembershipSummary,
   PaymentSummary,
+  ScheduleBlock,
+  ScheduleBlockType,
+  ScheduleCourtRow,
+  ScheduleTimeline,
   SportUtilizationEntry,
   UtilizationSummary,
 } from "@/features/dashboard/types";
@@ -228,64 +232,199 @@ export function summarizePayments(payments: { status: string; amount_inr: number
   return { collectedInr, pendingInr, refundsInr };
 }
 
-function formatSlotTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const hour = h ?? 0;
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  const meridiem = hour < 12 ? "AM" : "PM";
-  return `${String(hour12).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${meridiem}`;
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /**
- * One row per (playing area × operating slot) for today, marked BOOKED if
- * any non-cancelled booking overlaps that slot's window. Real, derived
- * entirely from actual operating hours + actual bookings — deliberately not
- * hour-by-hour granular, which would need booking-availability logic this
- * task explicitly excludes (that belongs to the future Bookings module).
+ * One bucket per calendar date in the period, summing paid revenue whose
+ * `created_at` lands on that day (local). Derived from payments already
+ * fetched for the KPIs — no extra query, no fabricated points.
  */
-export function buildTodaysSchedule(input: {
+export function buildRevenueTrend(
+  payments: { status: string; amount_inr: number; created_at: string }[],
+  period: DateRange,
+): { date: string; amountInr: number }[] {
+  const byDay = new Map<string, number>();
+  for (const p of payments) {
+    if (p.status !== "paid") continue;
+    const key = dayKey(startOfDay(new Date(p.created_at)));
+    byDay.set(key, (byDay.get(key) ?? 0) + p.amount_inr);
+  }
+  return datesInRange(period).map((d) => {
+    const key = dayKey(d);
+    return { date: key, amountInr: byDay.get(key) ?? 0 };
+  });
+}
+
+function formatClock(minuteOfDay: number): string {
+  const wrapped = ((minuteOfDay % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hour = Math.floor(wrapped / 60);
+  const minute = wrapped % 60;
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const meridiem = hour < 12 ? "AM" : "PM";
+  return `${hour12}:${String(minute).padStart(2, "0")} ${meridiem}`;
+}
+
+/** "5:00 – 6:00 PM" when both ends share a meridiem, else "11:30 AM – 1:00 PM". */
+function formatTimeRange(startMinute: number, endMinute: number): string {
+  const startHour = Math.floor((((startMinute % (24 * 60)) + 24 * 60) % (24 * 60)) / 60);
+  const endHour = Math.floor((((endMinute % (24 * 60)) + 24 * 60) % (24 * 60)) / 60);
+  const sameMeridiem = startHour < 12 === endHour < 12;
+  const start = sameMeridiem ? formatClock(startMinute).replace(/ (AM|PM)$/, "") : formatClock(startMinute);
+  return `${start} – ${formatClock(endMinute)}`;
+}
+
+export interface TimelineBooking {
+  id: string;
+  playingAreaId: string;
+  /** ISO instant. */
+  startTime: string;
+  endTime: string;
+  status: string;
+  type: ScheduleBlockType;
+  label: string;
+}
+
+/** Greedy lane assignment so overlapping blocks in one court sit side by side instead of hiding each other. */
+function packLanes(blocks: { startMinute: number; endMinute: number }[]): number[] {
+  const laneEnds: number[] = [];
+  const lanes: number[] = [];
+  const order = blocks.map((_, i) => i).sort((a, b) => blocks[a]!.startMinute - blocks[b]!.startMinute);
+  for (const i of order) {
+    const b = blocks[i]!;
+    let lane = laneEnds.findIndex((end) => end <= b.startMinute);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(b.endMinute);
+    } else {
+      laneEnds[lane] = b.endMinute;
+    }
+    lanes[i] = lane;
+  }
+  return lanes;
+}
+
+const DEFAULT_SCHEDULE_START_HOUR = 6;
+const DEFAULT_SCHEDULE_END_HOUR = 22;
+
+/**
+ * A positioned, court-by-court view of today's activity — one row per playing
+ * area (already sport-filtered by the caller), each block a real non-cancelled
+ * booking or a confirmed membership session, positioned by its actual local
+ * start/end.
+ *
+ * The hour axis comes from today's operating hours when configured, but the
+ * grid ALWAYS renders: with no operating hours it falls back to the span of
+ * today's bookings/sessions, or a default 6 AM–10 PM day when there is nothing
+ * at all. Bookings that fall outside operating hours extend the axis rather
+ * than being hidden.
+ */
+export function buildScheduleTimeline(input: {
   playingAreas: { id: string; name: string; facilitySportId: string }[];
   facilitySports: { id: string; sportId: string }[];
   sports: { id: string; name: string }[];
   facilityOperatingDays: OperatingDay[];
-  bookings: { playingAreaId: string; startTime: string; endTime: string; status: string }[];
+  bookings: TimelineBooking[];
   now: Date;
-}): import("@/features/dashboard/types").ScheduleEntry[] {
-  const todayDow = input.now.getDay() as OperatingDay["dayOfWeek"];
-  const todayDay = input.facilityOperatingDays.find((d) => d.dayOfWeek === todayDow);
-  if (!todayDay || todayDay.isClosed || todayDay.slots.length === 0) return [];
-
-  const activeBookings = input.bookings.filter((b) => b.status !== "cancelled");
-
-  const entries: import("@/features/dashboard/types").ScheduleEntry[] = [];
-  for (const area of input.playingAreas) {
-    const facilitySport = input.facilitySports.find((fs) => fs.id === area.facilitySportId);
-    const sport = input.sports.find((s) => s.id === facilitySport?.sportId);
-    for (const slot of todayDay.slots) {
-      const slotStart = toMinutes(slot.startTime);
-      let slotEnd = toMinutes(slot.endTime);
-      if (slotEnd <= slotStart) slotEnd += 24 * 60;
-
-      const isBooked = activeBookings.some((b) => {
-        if (b.playingAreaId !== area.id) return false;
-        const bookingDate = new Date(b.startTime);
-        if (bookingDate.getDay() !== todayDow) return false;
-        const bStart = bookingDate.getHours() * 60 + bookingDate.getMinutes();
-        const bEndDate = new Date(b.endTime);
-        const bEnd = bEndDate.getHours() * 60 + bEndDate.getMinutes();
-        return bStart < slotEnd && slotStart < (bEnd <= bStart ? bEnd + 24 * 60 : bEnd);
-      });
-
-      entries.push({
-        time: formatSlotTime(slot.startTime),
-        sportName: sport?.name ?? "Sport",
-        playingAreaName: area.name,
-        status: isBooked ? "BOOKED" : "AVAILABLE",
-      });
-    }
+}): ScheduleTimeline {
+  if (input.playingAreas.length === 0) {
+    return { startHour: 0, endHour: 0, courts: [] };
   }
 
-  return entries.sort((a, b) => a.time.localeCompare(b.time));
+  const todayDow = input.now.getDay() as OperatingDay["dayOfWeek"];
+  const todayDay = input.facilityOperatingDays.find((d) => d.dayOfWeek === todayDow);
+
+  const areaIds = new Set(input.playingAreas.map((a) => a.id));
+  const activeBookings = input.bookings.filter((b) => b.status !== "cancelled" && areaIds.has(b.playingAreaId));
+
+  // Each of today's blocks as absolute local minute-of-day (end may exceed 1440).
+  const blockSpans = activeBookings
+    .map((b) => {
+      const start = new Date(b.startTime);
+      const end = new Date(b.endTime);
+      if (start.getDay() !== todayDow) return null;
+      const startMin = start.getHours() * 60 + start.getMinutes();
+      let endMin = end.getHours() * 60 + end.getMinutes();
+      if (endMin <= startMin) endMin += 24 * 60;
+      return { id: b.id, playingAreaId: b.playingAreaId, label: b.label, type: b.type, startMin, endMin };
+    })
+    .filter((b): b is NonNullable<typeof b> => b !== null);
+
+  // Base window: operating hours if present, else the bookings' own span, else a default day.
+  let windowStart: number;
+  let windowEnd: number;
+  const hasOperatingHours = todayDay != null && !todayDay.isClosed && (todayDay.is24Hours || todayDay.slots.length > 0);
+  if (hasOperatingHours && todayDay!.is24Hours) {
+    windowStart = 0;
+    windowEnd = 24 * 60;
+  } else if (hasOperatingHours) {
+    windowStart = 24 * 60;
+    windowEnd = 0;
+    for (const slot of todayDay!.slots) {
+      const start = toMinutes(slot.startTime);
+      let end = toMinutes(slot.endTime);
+      if (end <= start) end += 24 * 60;
+      windowStart = Math.min(windowStart, start);
+      windowEnd = Math.max(windowEnd, end);
+    }
+  } else if (blockSpans.length > 0) {
+    windowStart = Math.min(...blockSpans.map((b) => b.startMin));
+    windowEnd = Math.max(...blockSpans.map((b) => b.endMin));
+  } else {
+    windowStart = DEFAULT_SCHEDULE_START_HOUR * 60;
+    windowEnd = DEFAULT_SCHEDULE_END_HOUR * 60;
+  }
+
+  // Extend the axis so a booking outside operating hours is still visible.
+  for (const b of blockSpans) {
+    windowStart = Math.min(windowStart, b.startMin);
+    windowEnd = Math.max(windowEnd, b.endMin);
+  }
+
+  let startHour = Math.floor(windowStart / 60);
+  let endHour = Math.ceil(windowEnd / 60);
+  const MIN_SPAN_HOURS = 6;
+  if (endHour - startHour < MIN_SPAN_HOURS) {
+    const pad = MIN_SPAN_HOURS - (endHour - startHour);
+    startHour = Math.max(0, startHour - Math.floor(pad / 2));
+    endHour = startHour + MIN_SPAN_HOURS;
+  }
+  endHour = Math.min(endHour, 30); // allow a little past midnight, never runaway
+  const winStartMin = startHour * 60;
+  const winEndMin = endHour * 60;
+
+  const courts: ScheduleCourtRow[] = input.playingAreas
+    .map((area) => {
+      const facilitySport = input.facilitySports.find((fs) => fs.id === area.facilitySportId);
+      const sport = input.sports.find((s) => s.id === facilitySport?.sportId);
+
+      const raw = blockSpans
+        .filter((b) => b.playingAreaId === area.id)
+        .map((b) => {
+          const timeLabel = formatTimeRange(b.startMin, b.endMin);
+          const startMinute = Math.max(b.startMin, winStartMin);
+          const endMinute = Math.min(b.endMin, winEndMin);
+          if (endMinute <= startMinute) return null;
+          return { id: b.id, label: b.label, type: b.type, startMinute, endMinute, timeLabel };
+        })
+        .filter((b): b is NonNullable<typeof b> => b !== null)
+        .sort((a, b) => a.startMinute - b.startMinute);
+
+      const lanes = packLanes(raw);
+      const blocks: ScheduleBlock[] = raw.map((b, i) => ({ ...b, lane: lanes[i] ?? 0 }));
+
+      return {
+        courtId: area.id,
+        courtName: area.name,
+        sportName: sport?.name ?? "Sport",
+        laneCount: Math.max(1, blocks.reduce((max, b) => Math.max(max, b.lane + 1), 0)),
+        blocks,
+      };
+    })
+    .sort((a, b) => a.courtName.localeCompare(b.courtName));
+
+  return { startHour, endHour, courts };
 }
 
 export function buildAttentionItems(input: {
@@ -308,4 +447,118 @@ export function buildAttentionItems(input: {
     });
   }
   return items;
+}
+/** When `sportScope` is given, a payment counts only if it's for a booking on the sport's
+ *  courts or a membership whose member is enrolled in a batch of that sport. */
+export function sumPaidRevenueInr(
+  payments: { status: string; amount_inr: number; booking_id?: string | null; membership_id?: string | null }[],
+  sportScope: { bookingIds: Set<string>; membershipIds: Set<string> } | null,
+): number {
+  let total = 0;
+  for (const p of payments) {
+    if (p.status !== "paid") continue;
+    if (sportScope) {
+      const inScope =
+        (p.booking_id != null && sportScope.bookingIds.has(p.booking_id)) ||
+        (p.membership_id != null && sportScope.membershipIds.has(p.membership_id));
+      if (!inScope) continue;
+    }
+    total += p.amount_inr;
+  }
+  return total;
+}
+
+/** Memberships active as of now. `restrictToIds` (batch-derived) narrows to a single sport. */
+export function countActiveMemberships(
+  memberships: { id: string; status: string }[],
+  restrictToIds: Set<string> | null,
+): number {
+  return memberships.filter((m) => m.status === "active" && (!restrictToIds || restrictToIds.has(m.id))).length;
+}
+
+/** Guest bookings that are both booked (not cancelled) and paid. Caller pre-filters by court and period. */
+export function countPaidGuestBookings(
+  bookings: { customerType: string; paymentStatus: string; status: string }[],
+): number {
+  return bookings.filter(
+    (b) => b.customerType === "GUEST" && b.paymentStatus === "PAID" && b.status !== "cancelled",
+  ).length;
+}
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Revenue for one calendar month plus the day-by-day series to plot it.
+ * `payments` must cover at least [prevMonthStart, monthEnd). The series is
+ * always one point per day of the month (zero-filled) so the chart renders
+ * even for a month with no revenue.
+ */
+type RevenuePayment = {
+  status: string;
+  amount_inr: number;
+  created_at: string;
+  booking_id?: string | null;
+  membership_id?: string | null;
+};
+
+export function buildRevenueOverview(
+  payments: RevenuePayment[],
+  now: Date,
+  monthOffset: number,
+): import("@/features/dashboard/types").RevenueOverview {
+  const monthStartD = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+  const monthEndD = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+  const prevMonthStartD = new Date(now.getFullYear(), now.getMonth() - monthOffset - 1, 1);
+
+  const paidInRange = (from: Date, to: Date) =>
+    payments.filter((p) => {
+      if (p.status !== "paid") return false;
+      const d = new Date(p.created_at);
+      return d >= from && d < to;
+    });
+
+  const monthPaid = paidInRange(monthStartD, monthEndD);
+  const totalInr = monthPaid.reduce((sum, p) => sum + p.amount_inr, 0);
+  const prevTotal = paidInRange(prevMonthStartD, monthStartD).reduce((sum, p) => sum + p.amount_inr, 0);
+  const changePercent = prevTotal === 0 ? null : ((totalInr - prevTotal) / prevTotal) * 100;
+
+  const points = buildRevenueTrend(payments, {
+    from: monthStartD.toISOString(),
+    to: monthEndD.toISOString(),
+  });
+
+  // Breakdown: bookings vs memberships come from the payment's linked entity;
+  // coaching has no payment source yet; "other" catches anything uncategorised.
+  let bookingCount = 0;
+  let bookingInr = 0;
+  let membershipCount = 0;
+  let membershipInr = 0;
+  let otherCount = 0;
+  let otherInr = 0;
+  for (const p of monthPaid) {
+    if (p.membership_id != null) {
+      membershipCount++;
+      membershipInr += p.amount_inr;
+    } else if (p.booking_id != null) {
+      bookingCount++;
+      bookingInr += p.amount_inr;
+    } else {
+      otherCount++;
+      otherInr += p.amount_inr;
+    }
+  }
+
+  return {
+    monthLabel: `${MONTH_NAMES[monthStartD.getMonth()]} ${monthStartD.getFullYear()}`,
+    monthStart: dayKey(monthStartD),
+    totalInr,
+    changePercent,
+    points,
+    breakdown: [
+      { key: "bookings", label: "Bookings", amountInr: bookingInr, count: bookingCount, unavailable: false },
+      { key: "memberships", label: "Memberships", amountInr: membershipInr, count: membershipCount, unavailable: false },
+      { key: "coaching", label: "Coaching", amountInr: 0, count: null, unavailable: true },
+      { key: "other", label: "Other", amountInr: otherInr, count: otherCount || null, unavailable: otherInr === 0 },
+    ],
+  };
 }

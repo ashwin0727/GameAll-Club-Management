@@ -204,38 +204,206 @@ void main() {
     });
   });
 
-  group('buildTodaysSchedule', () {
-    test('marks a slot BOOKED only when an active booking overlaps it', () {
-      final now = DateTime(2026, 8, 24, 10); // a Monday
-      final schedule = DashboardCalculator.buildTodaysSchedule(
-        playingAreas: [(id: 'court-1', name: 'Court 1', facilitySportId: 'fs-1')],
-        facilitySports: [(id: 'fs-1', sportId: 'sport-1')],
-        sports: [(id: 'sport-1', name: 'Badminton')],
-        facilityOperatingDays: [_openDay(1, start: '06:00', end: '12:00')],
-        bookings: [
-          (
-            playingAreaId: 'court-1',
-            startTime: DateTime(2026, 8, 24, 6),
-            endTime: DateTime(2026, 8, 24, 7),
-            status: 'confirmed',
-          ),
-        ],
-        now: now,
+  group('buildScheduleTimeline', () {
+    final areas = [
+      (id: 'court-1', name: 'Court 1', facilitySportId: 'fs-1'),
+      (id: 'court-2', name: 'Court 2', facilitySportId: 'fs-1'),
+    ];
+    const facilitySports = [(id: 'fs-1', sportId: 'sport-1')];
+    const sports = [(id: 'sport-1', name: 'Badminton')];
+
+    ({
+      String id,
+      String playingAreaId,
+      DateTime startTime,
+      DateTime endTime,
+      String status,
+      ScheduleBlockType type,
+      String label,
+    })
+    booking(String id, String court, int startH, int endH, {ScheduleBlockType type = ScheduleBlockType.member, String status = 'confirmed'}) {
+      return (
+        id: id,
+        playingAreaId: court,
+        startTime: DateTime(2026, 8, 24, startH),
+        endTime: DateTime(2026, 8, 24, endH),
+        status: status,
+        type: type,
+        label: id,
       );
-      expect(schedule, hasLength(1));
-      expect(schedule.first.status, ScheduleSlotStatus.booked);
+    }
+
+    test('derives the hour axis from operating slots and positions a block by its real time', () {
+      final timeline = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: areas,
+        facilitySports: facilitySports,
+        sports: sports,
+        facilityOperatingDays: [_openDay(1, start: '06:00', end: '22:00')],
+        bookings: [booking('Arun', 'court-1', 17, 18)],
+        now: DateTime(2026, 8, 24, 10), // Monday
+      );
+      expect(timeline.startHour, 6);
+      expect(timeline.endHour, 22);
+      expect(timeline.courts, hasLength(2));
+      final court1 = timeline.courts.firstWhere((c) => c.courtId == 'court-1');
+      expect(court1.blocks, hasLength(1));
+      expect(court1.blocks.first.startMinute, 17 * 60);
+      expect(court1.blocks.first.endMinute, 18 * 60);
+      expect(court1.blocks.first.lane, 0);
     });
 
-    test('is empty when the facility is closed today', () {
-      final schedule = DashboardCalculator.buildTodaysSchedule(
-        playingAreas: [(id: 'court-1', name: 'Court 1', facilitySportId: 'fs-1')],
-        facilitySports: [(id: 'fs-1', sportId: 'sport-1')],
-        sports: [(id: 'sport-1', name: 'Badminton')],
+    test('puts overlapping blocks in one court on separate lanes', () {
+      final timeline = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: [areas[0]],
+        facilitySports: facilitySports,
+        sports: sports,
+        facilityOperatingDays: [_openDay(1, start: '06:00', end: '22:00')],
+        bookings: [
+          booking('A', 'court-1', 17, 19),
+          booking('B', 'court-1', 18, 20, type: ScheduleBlockType.guest),
+        ],
+        now: DateTime(2026, 8, 24, 10),
+      );
+      final court1 = timeline.courts.first;
+      expect(court1.laneCount, 2);
+      expect(court1.blocks.map((b) => b.lane).toSet(), {0, 1});
+    });
+
+    test('still renders every court on a default 6am-10pm axis with no operating hours', () {
+      final closed = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: areas,
+        facilitySports: facilitySports,
+        sports: sports,
         facilityOperatingDays: [_closedDay(1)],
         bookings: const [],
         now: DateTime(2026, 8, 24, 10),
       );
-      expect(schedule, isEmpty);
+      expect(closed.courts, hasLength(2));
+      expect(closed.startHour, 6);
+      expect(closed.endHour, 22);
+      expect(closed.courts.every((c) => c.blocks.isEmpty), isTrue);
+    });
+
+    test('with no operating hours, still places bookings and fits the axis around them', () {
+      final timeline = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: [areas[0]],
+        facilitySports: facilitySports,
+        sports: sports,
+        facilityOperatingDays: [_closedDay(1)],
+        bookings: [booking('G', 'court-1', 19, 20, type: ScheduleBlockType.guest)],
+        now: DateTime(2026, 8, 24, 10),
+      );
+      expect(timeline.courts.first.blocks, hasLength(1));
+      expect(timeline.startHour, lessThanOrEqualTo(19));
+      expect(timeline.endHour, greaterThanOrEqualTo(20));
+    });
+
+    test('excludes cancelled bookings', () {
+      final open = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: [areas[0]],
+        facilitySports: facilitySports,
+        sports: sports,
+        facilityOperatingDays: [_openDay(1, start: '06:00', end: '22:00')],
+        bookings: [booking('X', 'court-1', 17, 18, status: 'cancelled')],
+        now: DateTime(2026, 8, 24, 10),
+      );
+      expect(open.courts.first.blocks, isEmpty);
+    });
+  });
+
+  group('buildRevenueTrend', () {
+    test('buckets paid revenue by local calendar day and zero-fills empty days', () {
+      final period = DateRange(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 27));
+      final trend = DashboardCalculator.buildRevenueTrend(
+        [
+          (status: 'paid', amountInr: 500, createdAt: DateTime(2026, 8, 24, 9)),
+          (status: 'paid', amountInr: 300, createdAt: DateTime(2026, 8, 24, 18)),
+          (status: 'created', amountInr: 999, createdAt: DateTime(2026, 8, 25, 10)),
+          (status: 'paid', amountInr: 200, createdAt: DateTime(2026, 8, 26, 10)),
+        ],
+        period,
+      );
+      expect(trend.map((p) => p.date).toList(), ['2026-08-24', '2026-08-25', '2026-08-26']);
+      expect(trend.map((p) => p.amountInr).toList(), [800, 0, 200]);
+    });
+  });
+
+  group('buildRevenueOverview', () {
+    final now = DateTime(2026, 8, 15);
+
+    ({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId}) pay(
+      int amount,
+      DateTime at, {
+      String status = 'paid',
+      String? bookingId,
+      String? membershipId,
+    }) => (status: status, amountInr: amount, createdAt: at, bookingId: bookingId, membershipId: membershipId);
+
+    test('totals the selected month, compares to previous, always returns a full day series', () {
+      final payments = [
+        pay(1000, DateTime(2026, 7, 10)),
+        pay(400, DateTime(2026, 8, 2), bookingId: 'b1'),
+        pay(600, DateTime(2026, 8, 20), membershipId: 'm1'),
+        pay(999, DateTime(2026, 8, 5), status: 'created'),
+      ];
+      final ov = DashboardCalculator.buildRevenueOverview(payments, now, 0);
+      expect(ov.monthLabel, 'Aug 2026');
+      expect(ov.totalInr, 1000);
+      expect(ov.changePercent, 0);
+      expect(ov.points, hasLength(31));
+      expect(ov.points.fold<int>(0, (s, p) => s + p.amountInr), 1000);
+      final byKey = {for (final s in ov.breakdown) s.key: s};
+      expect(byKey[RevenueBreakdownKey.bookings]!.amountInr, 400);
+      expect(byKey[RevenueBreakdownKey.bookings]!.count, 1);
+      expect(byKey[RevenueBreakdownKey.memberships]!.amountInr, 600);
+      expect(byKey[RevenueBreakdownKey.coaching]!.unavailable, isTrue);
+    });
+
+    test('returns a zero-filled month (non-empty) when there is no revenue', () {
+      final ov = DashboardCalculator.buildRevenueOverview(const [], now, 1);
+      expect(ov.monthLabel, 'Jul 2026');
+      expect(ov.totalInr, 0);
+      expect(ov.changePercent, isNull);
+      expect(ov.points, hasLength(31));
+      expect(ov.points.every((p) => p.amountInr == 0), isTrue);
+    });
+  });
+
+  group('KPI helpers (sport + date scoped)', () {
+    test('sumPaidRevenueInr sums paid payments, only in-scope ones under a sport', () {
+      final payments = [
+        (status: 'paid', amountInr: 500, bookingId: 'b1', membershipId: null),
+        (status: 'paid', amountInr: 300, bookingId: null, membershipId: 'm1'),
+        (status: 'paid', amountInr: 200, bookingId: 'b2', membershipId: null),
+        (status: 'created', amountInr: 999, bookingId: 'b1', membershipId: null),
+      ];
+      expect(DashboardCalculator.sumPaidRevenueInr(payments, null), 1000);
+      expect(
+        DashboardCalculator.sumPaidRevenueInr(payments, (bookingIds: {'b1'}, membershipIds: {'m1'})),
+        800,
+      );
+    });
+
+    test('countActiveMemberships counts active, restricted to a sport when given', () {
+      final memberships = [
+        (id: 'm1', status: 'active'),
+        (id: 'm2', status: 'active'),
+        (id: 'm3', status: 'expired'),
+      ];
+      expect(DashboardCalculator.countActiveMemberships(memberships, null), 2);
+      expect(DashboardCalculator.countActiveMemberships(memberships, {'m1', 'm3'}), 1);
+    });
+
+    test('countPaidGuestBookings counts only paid, non-cancelled guest bookings', () {
+      expect(
+        DashboardCalculator.countPaidGuestBookings([
+          (customerType: 'GUEST', paymentStatus: 'PAID', status: 'confirmed'),
+          (customerType: 'GUEST', paymentStatus: 'PENDING', status: 'confirmed'),
+          (customerType: 'GUEST', paymentStatus: 'PAID', status: 'cancelled'),
+          (customerType: 'MEMBER', paymentStatus: 'PAID', status: 'confirmed'),
+        ]),
+        1,
+      );
     });
   });
 }

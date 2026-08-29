@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -344,7 +345,7 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: AppSpacing.sm),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    Text(_error!, style: const TextStyle(color: AppColors.destructive)),
                   ],
                   const SizedBox(height: AppSpacing.md),
                   PrimaryButton(label: 'Add Batch', loadingLabel: 'Saving…', isLoading: _isSaving, onPressed: _addBatch),

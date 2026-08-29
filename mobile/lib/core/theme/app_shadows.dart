@@ -15,4 +15,11 @@ class AppShadows {
   static const List<BoxShadow> elevated = [
     BoxShadow(color: Color(0x1F000000), blurRadius: 24, offset: Offset(0, 8)),
   ];
+
+  /// The GameAll Green "focus ring" glow (spec: "Focused: GameAll Green
+  /// glow/ring") — used behind a focused input or a selected booking slot,
+  /// never as a permanent/idle decoration.
+  static List<BoxShadow> focusGlow(Color primary) => [
+    BoxShadow(color: primary.withValues(alpha: 0.28), blurRadius: 16, spreadRadius: 1),
+  ];
 }

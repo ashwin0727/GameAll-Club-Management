@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   bookingDurationMinutes,
   buildAttentionItems,
-  buildTodaysSchedule,
+  buildRevenueOverview,
+  buildRevenueTrend,
+  countActiveMemberships,
+  countPaidGuestBookings,
+  buildScheduleTimeline,
   computeKpiValue,
   computeUtilization,
   computeUtilizationPercent,
   operatingMinutesForDay,
   resolveDateRange,
   summarizeMemberships,
+  sumPaidRevenueInr,
   summarizePayments,
   toUtilizationBookings,
 } from "@/features/dashboard/summary";
@@ -211,47 +216,93 @@ describe("computeUtilization (sport/court utilization + court/turf breakdown)", 
   });
 });
 
-describe("buildTodaysSchedule", () => {
-  it("marks a slot BOOKED only when an active booking overlaps it", () => {
-    const now = new Date("2026-08-24T10:00:00.000Z"); // Monday
-    const schedule = buildTodaysSchedule({
-      playingAreas: [{ id: "court-1", name: "Court 1", facilitySportId: "fs-1" }],
-      facilitySports: [{ id: "fs-1", sportId: "sport-1" }],
-      sports: [{ id: "sport-1", name: "Badminton" }],
-      facilityOperatingDays: [openDay(1, "06:00", "12:00")],
+describe("buildScheduleTimeline", () => {
+  const areas = [
+    { id: "court-1", name: "Court 1", facilitySportId: "fs-1" },
+    { id: "court-2", name: "Court 2", facilitySportId: "fs-1" },
+  ];
+  const facilitySports = [{ id: "fs-1", sportId: "sport-1" }];
+  const sports = [{ id: "sport-1", name: "Badminton" }];
+  // 2026-08-24 is a Monday; local hours are used, so build times off the local Date constructor.
+  const local = (h: number, m = 0) => new Date(2026, 7, 24, h, m).toISOString();
+
+  it("derives the hour axis from today's operating slots and positions a block by its real time", () => {
+    const timeline = buildScheduleTimeline({
+      playingAreas: areas,
+      facilitySports,
+      sports,
+      facilityOperatingDays: [openDay(1, "06:00", "22:00")],
       bookings: [
-        { playingAreaId: "court-1", startTime: "2026-08-24T06:00:00.000Z", endTime: "2026-08-24T07:00:00.000Z", status: "confirmed" },
+        { id: "b1", playingAreaId: "court-1", startTime: local(17), endTime: local(18), status: "confirmed", type: "MEMBER", label: "Arun" },
       ],
-      now,
+      now: new Date(2026, 7, 24, 10),
     });
-    expect(schedule).toHaveLength(1);
-    expect(schedule[0]?.status).toBe("BOOKED");
+    expect(timeline.startHour).toBe(6);
+    expect(timeline.endHour).toBe(22);
+    expect(timeline.courts).toHaveLength(2);
+    const court1 = timeline.courts.find((c) => c.courtId === "court-1")!;
+    expect(court1.blocks).toHaveLength(1);
+    expect(court1.blocks[0]).toMatchObject({ startMinute: 17 * 60, endMinute: 18 * 60, type: "MEMBER", label: "Arun", lane: 0 });
   });
 
-  it("marks a slot AVAILABLE when nothing is booked", () => {
-    const now = new Date("2026-08-24T10:00:00.000Z");
-    const schedule = buildTodaysSchedule({
-      playingAreas: [{ id: "court-1", name: "Court 1", facilitySportId: "fs-1" }],
-      facilitySports: [{ id: "fs-1", sportId: "sport-1" }],
-      sports: [{ id: "sport-1", name: "Badminton" }],
-      facilityOperatingDays: [openDay(1)],
-      bookings: [],
-      now,
+  it("puts overlapping blocks in the same court on separate lanes", () => {
+    const timeline = buildScheduleTimeline({
+      playingAreas: [areas[0]!],
+      facilitySports,
+      sports,
+      facilityOperatingDays: [openDay(1, "06:00", "22:00")],
+      bookings: [
+        { id: "a", playingAreaId: "court-1", startTime: local(17), endTime: local(19), status: "confirmed", type: "MEMBER", label: "A" },
+        { id: "b", playingAreaId: "court-1", startTime: local(18), endTime: local(20), status: "confirmed", type: "GUEST", label: "B" },
+      ],
+      now: new Date(2026, 7, 24, 10),
     });
-    expect(schedule[0]?.status).toBe("AVAILABLE");
+    const court1 = timeline.courts[0]!;
+    expect(court1.laneCount).toBe(2);
+    expect(court1.blocks.map((b) => b.lane).sort()).toEqual([0, 1]);
   });
 
-  it("is empty when the facility is closed today", () => {
-    const now = new Date("2026-08-24T10:00:00.000Z");
-    const schedule = buildTodaysSchedule({
-      playingAreas: [{ id: "court-1", name: "Court 1", facilitySportId: "fs-1" }],
-      facilitySports: [{ id: "fs-1", sportId: "sport-1" }],
-      sports: [{ id: "sport-1", name: "Badminton" }],
+  it("still renders every court on a default 6am-10pm axis when the facility has no operating hours today", () => {
+    const closed = buildScheduleTimeline({
+      playingAreas: areas,
+      facilitySports,
+      sports,
       facilityOperatingDays: [closedDay(1)],
       bookings: [],
-      now,
+      now: new Date(2026, 7, 24, 10),
     });
-    expect(schedule).toEqual([]);
+    expect(closed.courts).toHaveLength(2);
+    expect(closed.startHour).toBe(6);
+    expect(closed.endHour).toBe(22);
+    expect(closed.courts.every((c) => c.blocks.length === 0)).toBe(true);
+  });
+
+  it("with no operating hours, still places bookings and fits the axis around them", () => {
+    const timeline = buildScheduleTimeline({
+      playingAreas: [areas[0]!],
+      facilitySports,
+      sports,
+      facilityOperatingDays: [closedDay(1)],
+      bookings: [{ id: "b", playingAreaId: "court-1", startTime: local(19), endTime: local(20), status: "confirmed", type: "GUEST", label: "Guest" }],
+      now: new Date(2026, 7, 24, 10),
+    });
+    expect(timeline.courts[0]!.blocks).toHaveLength(1);
+    expect(timeline.startHour).toBeLessThanOrEqual(19);
+    expect(timeline.endHour).toBeGreaterThanOrEqual(20);
+  });
+
+  it("excludes cancelled bookings", () => {
+    const open = buildScheduleTimeline({
+      playingAreas: [areas[0]!],
+      facilitySports,
+      sports,
+      facilityOperatingDays: [openDay(1, "06:00", "22:00")],
+      bookings: [
+        { id: "x", playingAreaId: "court-1", startTime: local(17), endTime: local(18), status: "cancelled", type: "MEMBER", label: "X" },
+      ],
+      now: new Date(2026, 7, 24, 10),
+    });
+    expect(open.courts[0]!.blocks).toEqual([]);
   });
 });
 
@@ -306,5 +357,109 @@ describe("buildAttentionItems (attention item generation, empty-state logic)", (
   it("generates one item per real condition when multiple apply", () => {
     const items = buildAttentionItems({ membershipsExpiringSoon: 2, paymentsPendingInr: 500 });
     expect(items.map((i) => i.id)).toEqual(["memberships-expiring", "payments-pending"]);
+  });
+});
+describe("buildRevenueTrend", () => {
+  it("buckets paid revenue by local calendar day and zero-fills empty days", () => {
+    const period = { from: new Date(2026, 7, 24).toISOString(), to: new Date(2026, 7, 27).toISOString() };
+    const trend = buildRevenueTrend(
+      [
+        { status: "paid", amount_inr: 500, created_at: new Date(2026, 7, 24, 9).toISOString() },
+        { status: "paid", amount_inr: 300, created_at: new Date(2026, 7, 24, 18).toISOString() },
+        { status: "created", amount_inr: 999, created_at: new Date(2026, 7, 25, 10).toISOString() },
+        { status: "paid", amount_inr: 200, created_at: new Date(2026, 7, 26, 10).toISOString() },
+      ],
+      period,
+    );
+    expect(trend).toEqual([
+      { date: "2026-08-24", amountInr: 800 },
+      { date: "2026-08-25", amountInr: 0 },
+      { date: "2026-08-26", amountInr: 200 },
+    ]);
+  });
+});
+
+describe("dashboard KPI helpers (sport + date scoped)", () => {
+  it("sumPaidRevenueInr sums only paid payments, and only in-scope ones when a sport is selected", () => {
+    const payments = [
+      { status: "paid", amount_inr: 500, booking_id: "b1", membership_id: null },
+      { status: "paid", amount_inr: 300, booking_id: null, membership_id: "m1" },
+      { status: "paid", amount_inr: 200, booking_id: "b2", membership_id: null },
+      { status: "created", amount_inr: 999, booking_id: "b1", membership_id: null },
+    ];
+    expect(sumPaidRevenueInr(payments, null)).toBe(1000);
+    expect(
+      sumPaidRevenueInr(payments, { bookingIds: new Set(["b1"]), membershipIds: new Set(["m1"]) }),
+    ).toBe(800);
+  });
+
+  it("countActiveMemberships counts active memberships, restricted to a sport's batch enrolment when given", () => {
+    const memberships = [
+      { id: "m1", status: "active" },
+      { id: "m2", status: "active" },
+      { id: "m3", status: "expired" },
+    ];
+    expect(countActiveMemberships(memberships, null)).toBe(2);
+    expect(countActiveMemberships(memberships, new Set(["m1", "m3"]))).toBe(1);
+  });
+
+  it("countPaidGuestBookings counts only guest bookings that are paid and not cancelled", () => {
+    expect(
+      countPaidGuestBookings([
+        { customerType: "GUEST", paymentStatus: "PAID", status: "confirmed" },
+        { customerType: "GUEST", paymentStatus: "PENDING", status: "confirmed" },
+        { customerType: "GUEST", paymentStatus: "PAID", status: "cancelled" },
+        { customerType: "MEMBER", paymentStatus: "PAID", status: "confirmed" },
+      ]),
+    ).toBe(1);
+  });
+});
+
+describe("buildRevenueOverview", () => {
+  const now = new Date(2026, 7, 15); // 15 Aug 2026
+
+  it("totals the selected month, compares to the previous month, and always returns a full day series", () => {
+    const payments = [
+      { status: "paid", amount_inr: 1000, created_at: new Date(2026, 6, 10).toISOString() }, // July
+      { status: "paid", amount_inr: 400, created_at: new Date(2026, 7, 2).toISOString() }, // Aug
+      { status: "paid", amount_inr: 600, created_at: new Date(2026, 7, 20).toISOString() }, // Aug
+      { status: "created", amount_inr: 999, created_at: new Date(2026, 7, 5).toISOString() },
+    ];
+    const ov = buildRevenueOverview(payments, now, 0);
+    expect(ov.monthLabel).toBe("Aug 2026");
+    expect(ov.totalInr).toBe(1000);
+    expect(ov.changePercent).toBe(0); // (1000 - 1000) / 1000
+    expect(ov.points).toHaveLength(31);
+    expect(ov.points.reduce((s, p) => s + p.amountInr, 0)).toBe(1000);
+  });
+
+  it("returns a zero-filled month (still non-empty) when there is no revenue", () => {
+    const ov = buildRevenueOverview([], now, 1); // July 2026
+    expect(ov.monthLabel).toBe("Jul 2026");
+    expect(ov.totalInr).toBe(0);
+    expect(ov.changePercent).toBeNull();
+    expect(ov.points).toHaveLength(31);
+    expect(ov.points.every((p) => p.amountInr === 0)).toBe(true);
+  });
+});
+
+describe("buildRevenueOverview breakdown", () => {
+  const now = new Date(2026, 7, 15);
+  it("splits the month's paid revenue into bookings / memberships / other, coaching stays unavailable", () => {
+    const ov = buildRevenueOverview(
+      [
+        { status: "paid", amount_inr: 400, created_at: new Date(2026, 7, 2).toISOString(), booking_id: "b1" },
+        { status: "paid", amount_inr: 100, created_at: new Date(2026, 7, 3).toISOString(), booking_id: "b2" },
+        { status: "paid", amount_inr: 600, created_at: new Date(2026, 7, 10).toISOString(), membership_id: "m1" },
+        { status: "paid", amount_inr: 50, created_at: new Date(2026, 7, 12).toISOString() },
+      ],
+      now,
+      0,
+    );
+    const by = Object.fromEntries(ov.breakdown.map((s) => [s.key, s]));
+    expect(by.bookings).toMatchObject({ amountInr: 500, count: 2 });
+    expect(by.memberships).toMatchObject({ amountInr: 600, count: 1 });
+    expect(by.other).toMatchObject({ amountInr: 50 });
+    expect(by.coaching).toMatchObject({ amountInr: 0, unavailable: true });
   });
 });

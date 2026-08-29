@@ -32,6 +32,7 @@ class DashboardRepository {
     String facilityId, {
     String? facilitySportId,
     required DateRangePreset preset,
+    int revenueMonthOffset = 0,
   }) async {
     final facility = await _facilityRepo.getFacility();
     if (facility == null || facility.id != facilityId) {
@@ -64,22 +65,32 @@ class DashboardRepository {
     try {
       final bookingsRows = await _client
           .from('bookings')
-          .select('court_id, start_time, end_time, status')
+          .select('id, court_id, start_time, end_time, status, customer_type, guest_name, member_id, payment_status')
           .eq('facility_id', facilityId)
           .gte('start_time', earliestFrom.toIso8601String())
           .lt('start_time', period.current.to.toIso8601String());
 
       final membershipsRows = await _client
           .from('memberships')
-          .select('status, end_date, created_at')
+          .select('id, status, end_date, created_at')
           .eq('facility_id', facilityId);
 
       final paymentsRows = await _client
           .from('payments')
-          .select('status, amount_inr, created_at')
+          .select('status, amount_inr, created_at, booking_id, membership_id')
           .eq('facility_id', facilityId)
           .gte('created_at', earliestFrom.toIso8601String())
           .lt('created_at', period.current.to.toIso8601String());
+
+      // Revenue Overview has its own month filter, independent of [preset].
+      final revWindowFrom = DateTime(now.year, now.month - revenueMonthOffset - 1, 1);
+      final revWindowTo = DateTime(now.year, now.month - revenueMonthOffset + 1, 1);
+      final revenuePaymentsRows = await _client
+          .from('payments')
+          .select('status, amount_inr, created_at, booking_id, membership_id')
+          .eq('facility_id', facilityId)
+          .gte('created_at', revWindowFrom.toIso8601String())
+          .lt('created_at', revWindowTo.toIso8601String());
 
       // Actual usage of a membership-protected slot (member or guest)
       // occupies court-time exactly like a regular booking, even though
@@ -141,27 +152,85 @@ class DashboardRepository {
                 .toList();
 
       final allPayments = (paymentsRows as List<dynamic>).cast<Map<String, dynamic>>();
-      final currentPayments = allPayments
-          .where((p) {
-            final createdAt = DateTime.parse(p['created_at'] as String);
-            return !createdAt.isBefore(period.current.from) && createdAt.isBefore(period.current.to);
-          })
-          .map((p) => (status: p['status'] as String, amountInr: p['amount_inr'] as int))
-          .toList();
-      final previousPayments = period.previous == null
-          ? const <({String status, int amountInr})>[]
-          : allPayments
-                .where((p) {
-                  final createdAt = DateTime.parse(p['created_at'] as String);
-                  return !createdAt.isBefore(period.previous!.from) && createdAt.isBefore(period.previous!.to);
-                })
-                .map((p) => (status: p['status'] as String, amountInr: p['amount_inr'] as int))
-                .toList();
 
-      final currentPaymentSummary = DashboardCalculator.summarizePayments(currentPayments);
-      final previousPaymentSummary = period.previous == null
-          ? null
-          : DashboardCalculator.summarizePayments(previousPayments);
+      List<({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt})>
+          paymentsInWindow(DateRange w) => allPayments
+              .map((p) => (
+                    status: p['status'] as String,
+                    amountInr: p['amount_inr'] as int,
+                    bookingId: p['booking_id'] as String?,
+                    membershipId: p['membership_id'] as String?,
+                    createdAt: DateTime.parse(p['created_at'] as String),
+                  ))
+              .where((p) => !p.createdAt.isBefore(w.from) && p.createdAt.isBefore(w.to))
+              .toList();
+      final currentPayments = paymentsInWindow(period.current);
+      final previousPayments = period.previous == null ? null : paymentsInWindow(period.previous!);
+
+      // When a specific sport is selected, revenue/active-membership are
+      // narrowed via booking court + membership batch enrolment (mirrors
+      // src/services/dashboard/supabase-dashboard.service.ts).
+      ({Set<String> bookingIds, Set<String> membershipIds})? sportScope;
+      Set<String>? sportMembershipIds;
+      if (facilitySportId != null) {
+        final batchRows = await _client
+            .from('membership_batches')
+            .select('id, facility_sport_id')
+            .eq('facility_id', facilityId);
+        final batchMemberRows =
+            await _client.from('membership_batch_members').select('membership_id, batch_id');
+        final batchSport = <String, String>{
+          for (final b in (batchRows as List).cast<Map<String, dynamic>>())
+            b['id'] as String: b['facility_sport_id'] as String,
+        };
+        sportMembershipIds = {
+          for (final m in (batchMemberRows as List).cast<Map<String, dynamic>>())
+            if (m['membership_id'] != null && batchSport[m['batch_id']] == facilitySportId)
+              m['membership_id'] as String,
+        };
+        sportScope = (
+          bookingIds: {
+            for (final b in bookingsRows.where((b) => playingAreaIds.contains(b['court_id']))) b['id'] as String,
+          },
+          membershipIds: sportMembershipIds,
+        );
+      }
+
+      final scope = sportScope;
+      bool paymentInScope(
+              ({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt}) p) =>
+          scope == null ||
+          (p.bookingId != null && scope.bookingIds.contains(p.bookingId)) ||
+          (p.membershipId != null && scope.membershipIds.contains(p.membershipId));
+
+      ({String status, int amountInr, String? bookingId, String? membershipId}) revenueShape(
+              ({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt}) p) =>
+          (status: p.status, amountInr: p.amountInr, bookingId: p.bookingId, membershipId: p.membershipId);
+
+      final scopedCurrentPayments = scope == null ? currentPayments : currentPayments.where(paymentInScope).toList();
+
+      final currentPaymentSummary = DashboardCalculator.summarizePayments(
+        scopedCurrentPayments.map((p) => (status: p.status, amountInr: p.amountInr)).toList(),
+      );
+
+      final revenuePayments = (revenuePaymentsRows as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((p) {
+            if (scope == null) return true;
+            final bid = p['booking_id'] as String?;
+            final mid = p['membership_id'] as String?;
+            return (bid != null && scope.bookingIds.contains(bid)) ||
+                (mid != null && scope.membershipIds.contains(mid));
+          })
+          .map((p) => (
+                status: p['status'] as String,
+                amountInr: p['amount_inr'] as int,
+                createdAt: DateTime.parse(p['created_at'] as String),
+                bookingId: p['booking_id'] as String?,
+                membershipId: p['membership_id'] as String?,
+              ))
+          .toList();
+      final revenueOverview = DashboardCalculator.buildRevenueOverview(revenuePayments, now, revenueMonthOffset);
 
       final utilizationPlayingAreas = playingAreas
           .map((a) => (id: a.id, name: a.name, facilitySportId: a.facilitySportId))
@@ -191,8 +260,9 @@ class DashboardRepository {
               period: period.previous!,
             );
 
+      final membershipMaps = (membershipsRows as List<dynamic>).cast<Map<String, dynamic>>().toList();
       final memberships = DashboardCalculator.summarizeMemberships(
-        (membershipsRows as List<dynamic>).cast<Map<String, dynamic>>().map((m) {
+        membershipMaps.map((m) {
           return (
             status: m['status'] as String,
             endDate: DateTime.parse(m['end_date'] as String),
@@ -200,6 +270,84 @@ class DashboardRepository {
           );
         }).toList(),
         now,
+      );
+
+      // Guest-booking KPI: guest bookings that are booked (not cancelled) and
+      // paid, on the (sport-filtered) courts, within a given window.
+      List<({String customerType, String paymentStatus, String status})> guestBookingShapes(DateRange w) => bookingsRows
+          .cast<Map<String, dynamic>>()
+          .where((b) => playingAreaIds.contains(b['court_id']))
+          .where((b) {
+            final st = DateTime.parse(b['start_time'] as String);
+            return !st.isBefore(w.from) && st.isBefore(w.to);
+          })
+          .map((b) => (
+                customerType: b['customer_type'] as String,
+                paymentStatus: b['payment_status'] as String? ?? 'PENDING',
+                status: b['status'] as String,
+              ))
+          .toList();
+
+      // "Today's Schedule" timeline — member names need a profiles lookup
+      // (bookings carry only member_id); guests carry their own name.
+      final todayBookingMaps =
+          bookingsRows.where((b) => playingAreaIds.contains(b['court_id'])).toList();
+      final memberIds = todayBookingMaps
+          .map((b) => b['member_id'] as String?)
+          .whereType<String>()
+          .toSet()
+          .toList();
+      final memberNames = <String, String>{};
+      if (memberIds.isNotEmpty) {
+        final profileRows = await _client.from('profiles').select('id, full_name').inFilter('id', memberIds);
+        for (final p in (profileRows as List<dynamic>).cast<Map<String, dynamic>>()) {
+          memberNames[p['id'] as String] = p['full_name'] as String;
+        }
+      }
+
+      final timelineBookings =
+          <({String id, String playingAreaId, DateTime startTime, DateTime endTime, String status, ScheduleBlockType type, String label})>[
+        ...todayBookingMaps.map((b) {
+          final isGuest = b['customer_type'] == 'GUEST';
+          final memberId = b['member_id'] as String?;
+          return (
+            id: b['id'] as String,
+            playingAreaId: b['court_id'] as String,
+            startTime: DateTime.parse(b['start_time'] as String),
+            endTime: DateTime.parse(b['end_time'] as String),
+            status: b['status'] as String,
+            type: isGuest ? ScheduleBlockType.guest : ScheduleBlockType.member,
+            label: isGuest
+                ? (b['guest_name'] as String? ?? 'Guest booking')
+                : (memberId != null ? memberNames[memberId] ?? 'Member booking' : 'Member booking'),
+          );
+        }),
+        ...membershipSessionRows
+            .cast<Map<String, dynamic>>()
+            .where((s) => playingAreaIds.contains(s['court_id']))
+            .toList()
+            .asMap()
+            .entries
+            .map(
+              (e) => (
+                id: 'session-${e.key}',
+                playingAreaId: e.value['court_id'] as String,
+                startTime: DateTime.parse('${e.value['session_date']}T${e.value['start_time']}'),
+                endTime: DateTime.parse('${e.value['session_date']}T${e.value['end_time']}'),
+                status: 'confirmed',
+                type: ScheduleBlockType.session,
+                label: 'Membership session',
+              ),
+            ),
+      ];
+
+      final scheduleTimeline = DashboardCalculator.buildScheduleTimeline(
+        playingAreas: utilizationPlayingAreas,
+        facilitySports: utilizationFacilitySports,
+        sports: utilizationSports,
+        facilityOperatingDays: operatingDays,
+        bookings: timelineBookings,
+        now: now,
       );
 
       return DashboardSummary(
@@ -216,28 +364,32 @@ class DashboardRepository {
         selectedFacilitySportId: facilitySportId,
         kpis: DashboardKpis(
           revenueInr: DashboardCalculator.computeKpiValue(
-            currentPaymentSummary.collectedInr,
-            previousPaymentSummary?.collectedInr,
+            DashboardCalculator.sumPaidRevenueInr(currentPayments.map(revenueShape).toList(), scope),
+            previousPayments == null
+                ? null
+                : DashboardCalculator.sumPaidRevenueInr(previousPayments.map(revenueShape).toList(), scope),
           ),
-          bookings: DashboardCalculator.computeKpiValue(
-            currentBookings.length,
-            period.previous == null ? null : previousBookings.length,
+          activeMemberships: DashboardCalculator.computeKpiValue(
+            DashboardCalculator.countActiveMemberships(
+              membershipMaps.map((m) => (id: m['id'] as String, status: m['status'] as String)).toList(),
+              sportMembershipIds,
+            ),
+            null,
+          ),
+          guestBookings: DashboardCalculator.computeKpiValue(
+            DashboardCalculator.countPaidGuestBookings(guestBookingShapes(period.current)),
+            period.previous == null
+                ? null
+                : DashboardCalculator.countPaidGuestBookings(guestBookingShapes(period.previous!)),
           ),
           utilizationPercent: DashboardCalculator.computeKpiValue(
             currentUtilization.overallPercent,
             previousUtilization?.overallPercent,
           ),
-          activeMembers: DashboardCalculator.computeKpiValue(memberships.active, null),
         ),
         utilization: currentUtilization,
-        schedule: DashboardCalculator.buildTodaysSchedule(
-          playingAreas: utilizationPlayingAreas,
-          facilitySports: utilizationFacilitySports,
-          sports: utilizationSports,
-          facilityOperatingDays: operatingDays,
-          bookings: currentBookings,
-          now: now,
-        ),
+        scheduleTimeline: scheduleTimeline,
+        revenueOverview: revenueOverview,
         memberships: memberships,
         payments: currentPaymentSummary,
         attentionItems: DashboardCalculator.buildAttentionItems(

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,10 +30,17 @@ class GameAllClubApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeControllerProvider);
     return MaterialApp.router(
       title: 'GameAll Club',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      // Dark is the primary visual direction (spec) — System/Light/Dark is
+      // the user's own Appearance choice (see ThemeModeController), never
+      // hard-coded to one theme.
+      themeMode: themeMode,
+      themeAnimationDuration: const Duration(milliseconds: 240),
       routerConfig: router,
       // Never suppress the platform's accessibility text scaling — a large
       // system font size must still produce a usable app (item 9/80).

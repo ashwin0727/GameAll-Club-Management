@@ -133,7 +133,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
           const Text('Review your setup before you start managing your facility.'),
           const SizedBox(height: AppSpacing.xl),
           if (_completeError != null) ...[
-            Text(_completeError!, style: const TextStyle(color: Colors.red)),
+            Text(_completeError!, style: const TextStyle(color: AppColors.destructive)),
             const SizedBox(height: AppSpacing.md),
           ],
           AppCard(
