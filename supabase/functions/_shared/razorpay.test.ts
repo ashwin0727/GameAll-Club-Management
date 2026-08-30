@@ -5,6 +5,8 @@ import {
   mapRazorpayPaymentStatus,
   nextPaymentOrderStatus,
   pickMostDecisivePayment,
+  mapSubscriptionEventToStatus,
+  unixToDateString,
   verifyPaymentSignature,
   verifyWebhookSignature,
 } from "./razorpay.ts";
@@ -147,4 +149,22 @@ Deno.test("pickMostDecisivePayment prefers captured over authorized over failed"
   assertEquals(pickMostDecisivePayment([authorized, failed])?.id, "pay_a");
   assertEquals(pickMostDecisivePayment([failed])?.id, "pay_f");
   assertEquals(pickMostDecisivePayment([]), null);
+});
+Deno.test("mapSubscriptionEventToStatus maps subscription.* events, null for the rest", () => {
+  assertEquals(mapSubscriptionEventToStatus("subscription.authenticated"), "authenticated");
+  assertEquals(mapSubscriptionEventToStatus("subscription.activated"), "active");
+  assertEquals(mapSubscriptionEventToStatus("subscription.charged"), "active");
+  assertEquals(mapSubscriptionEventToStatus("subscription.pending"), "pending");
+  assertEquals(mapSubscriptionEventToStatus("subscription.halted"), "halted");
+  assertEquals(mapSubscriptionEventToStatus("subscription.cancelled"), "cancelled");
+  assertEquals(mapSubscriptionEventToStatus("subscription.completed"), "completed");
+  assertEquals(mapSubscriptionEventToStatus("subscription.updated"), null);
+  assertEquals(mapSubscriptionEventToStatus("payment.captured"), null);
+});
+
+Deno.test("unixToDateString converts unix seconds to YYYY-MM-DD, null for falsy", () => {
+  assertEquals(unixToDateString(1_756_598_400), "2025-08-31");
+  assertEquals(unixToDateString(0), null);
+  assertEquals(unixToDateString(null), null);
+  assertEquals(unixToDateString(undefined), null);
 });

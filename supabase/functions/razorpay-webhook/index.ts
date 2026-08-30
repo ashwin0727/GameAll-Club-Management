@@ -16,7 +16,16 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { mapRazorpayPaymentStatus, mapRefundEventToStatus, verifyWebhookSignature, type RazorpayPayment, type RazorpayRefund } from "../_shared/razorpay.ts";
+import {
+  mapRazorpayPaymentStatus,
+  mapRefundEventToStatus,
+  mapSubscriptionEventToStatus,
+  unixToDateString,
+  verifyWebhookSignature,
+  type RazorpayPayment,
+  type RazorpayRefund,
+  type RazorpaySubscription,
+} from "../_shared/razorpay.ts";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -27,7 +36,23 @@ function jsonResponse(body: unknown, status: number): Response {
 // still recorded (for the audit trail) but never processed
 // (§"Only process events actually required by GameAll"). Phase 6 adds the
 // three refund.* events (spec §20).
-const HANDLED_EVENT_TYPES = new Set(["payment.authorized", "payment.captured", "payment.failed", "order.paid", "refund.created", "refund.processed", "refund.failed"]);
+const HANDLED_EVENT_TYPES = new Set([
+  "payment.authorized",
+  "payment.captured",
+  "payment.failed",
+  "order.paid",
+  "refund.created",
+  "refund.processed",
+  "refund.failed",
+  "subscription.authenticated",
+  "subscription.activated",
+  "subscription.charged",
+  "subscription.pending",
+  "subscription.halted",
+  "subscription.cancelled",
+  "subscription.completed",
+  "subscription.resumed",
+]);
 
 interface WebhookPayload {
   event: string;
@@ -35,6 +60,7 @@ interface WebhookPayload {
     payment?: { entity?: RazorpayPayment };
     order?: { entity?: { id?: string; amount?: number; currency?: string } };
     refund?: { entity?: RazorpayRefund };
+    subscription?: { entity?: RazorpaySubscription };
   };
 }
 
@@ -134,6 +160,10 @@ Deno.serve(async (req) => {
 });
 
 async function processEvent(supabase: SupabaseClient, payload: WebhookPayload): Promise<void> {
+  if (payload.event.startsWith("subscription.")) {
+    return processSubscriptionEvent(supabase, payload);
+  }
+
   const refundStatus = mapRefundEventToStatus(payload.event);
   if (refundStatus) {
     return processRefundEvent(supabase, payload, refundStatus);
@@ -196,6 +226,48 @@ async function processEvent(supabase: SupabaseClient, payload: WebhookPayload): 
 // those, but Razorpay's refund.created + refund.processed can legitimately
 // both arrive) is always safe to re-run.
 // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// processSubscriptionEvent — Phase 2. Every subscription.* event advances
+// the membership_subscriptions row's status (forward-only, via
+// apply_subscription_webhook), and subscription.charged additionally records
+// that cycle's money in `payments` and rolls the membership end_date
+// forward (record_subscription_charge, idempotent on razorpay_payment_id).
+// ─────────────────────────────────────────────────────────────────────────
+async function processSubscriptionEvent(supabase: SupabaseClient, payload: WebhookPayload): Promise<void> {
+  const sub = payload.payload?.subscription?.entity;
+  if (!sub?.id) {
+    console.log("[razorpay-webhook] subscription event carried no subscription entity", { eventType: payload.event });
+    return;
+  }
+
+  const status = mapSubscriptionEventToStatus(payload.event);
+  if (status) {
+    const { error } = await supabase.rpc("apply_subscription_webhook", {
+      p_razorpay_subscription_id: sub.id,
+      p_status: status,
+      p_charge_count: sub.paid_count ?? null,
+      p_current_start: unixToDateString(sub.current_start),
+      p_current_end: unixToDateString(sub.current_end),
+    });
+    if (error) throw new Error(`apply_subscription_webhook failed: ${error.message}`);
+  }
+
+  if (payload.event === "subscription.charged") {
+    const payment = payload.payload?.payment?.entity;
+    if (!payment?.id) {
+      console.warn("[razorpay-webhook] subscription.charged had no payment entity", { subscriptionId: sub.id });
+      return;
+    }
+    const { error } = await supabase.rpc("record_subscription_charge", {
+      p_razorpay_subscription_id: sub.id,
+      p_amount_inr: Math.round(payment.amount / 100),
+      p_razorpay_payment_id: payment.id,
+      p_paid_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`record_subscription_charge failed: ${error.message}`);
+  }
+}
+
 async function processRefundEvent(supabase: SupabaseClient, payload: WebhookPayload, status: "created" | "processed" | "failed"): Promise<void> {
   const refund = payload.payload?.refund?.entity;
   if (!refund) {

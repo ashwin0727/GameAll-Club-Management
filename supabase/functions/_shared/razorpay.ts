@@ -214,3 +214,54 @@ export function mapRefundEventToStatus(eventType: string): "created" | "processe
       return null;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Subscriptions — Phase 2 (recurring UPI AutoPay). Shared by razorpay-webhook
+// so the subscription.* event → membership_subscription_status mapping lives
+// in one place and is unit-testable.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type MembershipSubscriptionStatus =
+  | "created"
+  | "authenticated"
+  | "active"
+  | "pending"
+  | "halted"
+  | "cancelled"
+  | "completed";
+
+export interface RazorpaySubscription {
+  id: string;
+  status: string;
+  paid_count?: number;
+  current_start?: number | null;
+  current_end?: number | null;
+}
+
+/** Maps a `subscription.*` webhook event type to the apply_subscription_webhook status, or null for events we don't act on. */
+export function mapSubscriptionEventToStatus(eventType: string): MembershipSubscriptionStatus | null {
+  switch (eventType) {
+    case "subscription.authenticated":
+      return "authenticated";
+    case "subscription.activated":
+    case "subscription.charged":
+    case "subscription.resumed":
+      return "active";
+    case "subscription.pending":
+      return "pending";
+    case "subscription.halted":
+      return "halted";
+    case "subscription.cancelled":
+      return "cancelled";
+    case "subscription.completed":
+      return "completed";
+    default:
+      return null;
+  }
+}
+
+/** Unix seconds → "YYYY-MM-DD" (UTC), or null. */
+export function unixToDateString(seconds: number | null | undefined): string | null {
+  if (!seconds) return null;
+  return new Date(seconds * 1000).toISOString().slice(0, 10);
+}

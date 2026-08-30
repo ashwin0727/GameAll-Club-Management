@@ -1,12 +1,20 @@
 import type { Booking } from "@/features/bookings/types";
 import type { Member, MemberInput } from "@/features/members/types";
 import type {
+  AssignableBatch,
+  CreateMembershipFullInput,
   CreateMembershipInput,
   FacilityMemberRow,
   Membership,
+  MembershipListParams,
+  MembershipListResult,
+  MembershipPageSummary,
   MembershipPlan,
   MembershipPlanInput,
+  MembershipRevenuePoint,
+  MembershipSubscriptionInfo,
   MemberStats,
+  RevenueGranularity,
 } from "@/features/memberships/types";
 
 export interface MembershipService {
@@ -30,6 +38,24 @@ export interface MembershipService {
   updatePlan(planId: string, patch: Partial<MembershipPlanInput> & { isActive?: boolean }): Promise<MembershipPlan>;
   /** The single write path for both "assign a plan" and "renew" — renewal is just calling this again with a new start date. */
   createMembership(input: CreateMembershipInput): Promise<Membership>;
+  /** The full Create Membership page — get-or-create the member and record a self-contained membership + payment. */
+  createMembershipFull(input: CreateMembershipFullInput): Promise<Membership>;
+  /** Paginated, filterable, sortable list for the Memberships page. */
+  listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult>;
+  /** The five KPI tiles on the Memberships page, with month-over-month deltas. */
+  getMembershipPageSummary(facilityId: string): Promise<MembershipPageSummary>;
+  /** Starts (or reuses) a Razorpay Subscription for recurring UPI AutoPay on this membership. */
+  createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo>;
+  /** Membership revenue actually received, bucketed by day / month / year. */
+  getMembershipRevenueTimeseries(
+    facilityId: string,
+    granularity: RevenueGranularity,
+    range?: { from?: string; to?: string },
+  ): Promise<MembershipRevenuePoint[]>;
+  /** Time-slot batches with current roster counts, for assigning a membership to a per-hour slot. */
+  listAssignableBatches(facilityId: string, planId?: string): Promise<AssignableBatch[]>;
+  /** Places a member into a batch (per-hour slot); throws when the slot is full. */
+  assignMembershipToBatch(batchId: string, memberId: string, membershipId: string): Promise<void>;
   cancelMembership(membershipId: string): Promise<Membership>;
   getMemberStats(memberId: string, facilityId: string): Promise<MemberStats>;
   /** Every membership a member has held at this facility, most recent first — never overwritten by renewal. */

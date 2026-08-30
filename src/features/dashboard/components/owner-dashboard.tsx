@@ -169,43 +169,42 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
         </button>
       )}
 
-      {/* Today's Schedule | Revenue Overview */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5">
-        <Card className="space-y-3 p-4 sm:p-5 lg:col-span-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Today&apos;s Schedule</h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 px-0 text-xs"
-              onClick={() => router.push("/bookings")}
-            >
-              View All Bookings →
-            </Button>
-          </div>
-          <ScheduleTimelineView timeline={summary.scheduleTimeline} showNow={preset === "TODAY"} />
-        </Card>
+      {/* Today's Schedule */}
+      <Card className="space-y-3 overflow-hidden p-4 sm:p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Today&apos;s Schedule</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-0 text-xs"
+            onClick={() => router.push("/bookings")}
+          >
+            View All Bookings →
+          </Button>
+        </div>
+        <ScheduleTimelineView timeline={summary.scheduleTimeline} showNow={preset === "TODAY"} />
+      </Card>
 
-        <Card className="space-y-3 p-4 sm:p-5 lg:col-span-2">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">Revenue Overview</h3>
-            <select
-              aria-label="Revenue month"
-              value={revenueMonthOffset}
-              onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
-              className="h-8 rounded-md border border-input bg-secondary/60 px-2 text-xs"
-            >
-              {MONTH_OPTIONS.map((opt) => (
-                <option key={opt.offset} value={opt.offset}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <RevenueOverviewPanel overview={summary.revenueOverview} />
-        </Card>
-      </div>
+      {/* Revenue Overview */}
+      <Card className="space-y-3 overflow-hidden p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Revenue Overview</h3>
+          <select
+            aria-label="Revenue month"
+            value={revenueMonthOffset}
+            onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
+            className="h-8 rounded-md border border-input bg-secondary/60 px-2 text-xs"
+          >
+            {MONTH_OPTIONS.map((opt) => (
+              <option key={opt.offset} value={opt.offset}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <RevenueOverviewPanel overview={summary.revenueOverview} />
+      </Card>
 
       {/* Attention Required */}
       <div className="grid grid-cols-1 gap-4">
@@ -576,27 +575,29 @@ function RevenueOverviewPanel({ overview }: { overview: RevenueOverviewData }) {
   const up = overview.changePercent !== null && overview.changePercent > 0;
   const down = overview.changePercent !== null && overview.changePercent < 0;
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-2xl font-semibold text-foreground">{formatCurrencyINR(overview.totalInr)}</p>
-          <p className="text-xs text-muted-foreground">Total Revenue · {overview.monthLabel}</p>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+      <div className="min-w-0 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-2xl font-semibold text-foreground">{formatCurrencyINR(overview.totalInr)}</p>
+            <p className="text-xs text-muted-foreground">Total Revenue · {overview.monthLabel}</p>
+          </div>
+          {overview.changePercent !== null && (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                up && "bg-success/15 text-success",
+                down && "bg-destructive/15 text-destructive",
+                !up && !down && "bg-secondary text-muted-foreground",
+              )}
+            >
+              {up ? "↑" : down ? "↓" : "→"} {Math.abs(overview.changePercent).toFixed(1)}% vs last month
+            </span>
+          )}
         </div>
-        {overview.changePercent !== null && (
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-xs font-medium",
-              up && "bg-success/15 text-success",
-              down && "bg-destructive/15 text-destructive",
-              !up && !down && "bg-secondary text-muted-foreground",
-            )}
-          >
-            {up ? "↑" : down ? "↓" : "→"} {Math.abs(overview.changePercent).toFixed(1)}% vs last month
-          </span>
-        )}
+        <RevenueOverviewChart points={overview.points} />
       </div>
-      <RevenueOverviewChart points={overview.points} />
-      <div className="border-t border-border pt-3">
+      <div className="min-w-0 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
         <p className="mb-2 text-sm font-semibold">Revenue Breakdown</p>
         <RevenueBreakdownChart segments={overview.breakdown} total={overview.totalInr} />
       </div>

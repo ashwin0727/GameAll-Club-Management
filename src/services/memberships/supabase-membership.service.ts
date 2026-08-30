@@ -5,12 +5,21 @@ import { createClient } from "@/lib/supabase/client";
 import type { Booking } from "@/features/bookings/types";
 import type { Member, MemberInput } from "@/features/members/types";
 import type {
+  AssignableBatch,
+  CreateMembershipFullInput,
   CreateMembershipInput,
   FacilityMemberRow,
   Membership,
+  MembershipListParams,
+  MembershipListResult,
+  MembershipListStatus,
+  MembershipPageSummary,
   MembershipPlan,
   MembershipPlanInput,
+  MembershipRevenuePoint,
+  MembershipSubscriptionInfo,
   MemberStats,
+  RevenueGranularity,
 } from "@/features/memberships/types";
 import { toBooking } from "@/services/bookings/supabase-booking.service";
 import type { MembershipService } from "@/services/memberships/membership.service";
@@ -236,18 +245,19 @@ export class SupabaseMembershipService implements MembershipService {
       p_plan_id: input.planId,
       p_start_date: input.startDate,
       p_payment_status: input.paymentStatus ?? "created",
+      p_monthly_price_inr: input.monthlyPriceInr ?? null,
     });
 
     if (error) throw mapSupabaseError(error, { notFound: "MEMBERSHIP_PLAN_NOT_FOUND", invalid: "INVALID_MEMBERSHIP" });
     if (!data) throw new ServiceError("DATABASE_ERROR");
 
-    const { data: plan } = await this.supabase
-      .from("membership_plans")
-      .select("name")
-      .eq("id", data.plan_id)
-      .maybeSingle();
+    return toMembership(data, await this.planName(data.plan_id, data.name));
+  }
 
-    return toMembership(data, plan?.name ?? "");
+  private async planName(planId: string | null, ownName: string | null): Promise<string> {
+    if (!planId) return ownName ?? "Membership";
+    const { data } = await this.supabase.from("membership_plans").select("name").eq("id", planId).maybeSingle();
+    return data?.name ?? ownName ?? "Membership";
   }
 
   async cancelMembership(membershipId: string): Promise<Membership> {
@@ -255,13 +265,159 @@ export class SupabaseMembershipService implements MembershipService {
     if (error) throw mapSupabaseError(error, { notFound: "MEMBERSHIP_NOT_FOUND" });
     if (!data) throw new ServiceError("MEMBERSHIP_NOT_FOUND");
 
-    const { data: plan } = await this.supabase
-      .from("membership_plans")
-      .select("name")
-      .eq("id", data.plan_id)
-      .maybeSingle();
+    return toMembership(data, await this.planName(data.plan_id, data.name));
+  }
 
-    return toMembership(data, plan?.name ?? "");
+  async listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult> {
+    const { data, error } = await this.supabase.rpc("list_memberships", {
+      p_facility_id: facilityId,
+      p_search: params.search?.trim() || null,
+      p_status: params.status ?? null,
+      p_plan_id: params.planId ?? null,
+      p_sort: params.sort ?? "newest",
+      p_limit: params.perPage,
+      p_offset: (params.page - 1) * params.perPage,
+    });
+    if (error) throw mapSupabaseError(error);
+
+    const rows = (data ?? []).map((row) => ({
+      membershipId: row.membership_id,
+      memberId: row.member_id,
+      memberName: row.member_name,
+      memberPhone: row.member_phone,
+      memberEmail: row.member_email,
+      planId: row.plan_id,
+      planName: row.plan_name,
+      monthlyPriceInr: row.monthly_price_inr,
+      status: row.display_status as MembershipListStatus,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      daysLeft: row.days_left,
+      createdById: row.created_by,
+      createdByName: row.created_by_name,
+      slot: row.batch_name
+        ? {
+            name: row.batch_name,
+            daysOfWeek: row.batch_days ?? [],
+            startTime: row.batch_start ?? "",
+            endTime: row.batch_end ?? "",
+            courtName: row.batch_court,
+          }
+        : null,
+    }));
+    return { rows, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async getMembershipPageSummary(facilityId: string): Promise<MembershipPageSummary> {
+    const { data, error } = await this.supabase.rpc("get_membership_page_summary", { p_facility_id: facilityId });
+    if (error) throw mapSupabaseError(error);
+    const row = data?.[0];
+    const totalMembers = row?.total_members ?? 0;
+    const prev = row?.total_members_prev ?? 0;
+    const revenue = row?.revenue_inr ?? 0;
+    const revenuePrev = row?.revenue_prev_inr ?? 0;
+    const pctChange = (cur: number, before: number) => (before === 0 ? null : ((cur - before) / before) * 100);
+    return {
+      totalMembers,
+      totalMembersChangePct: pctChange(totalMembers, prev),
+      activeMembers: row?.active_members ?? 0,
+      activePctOfTotal: totalMembers === 0 ? 0 : ((row?.active_members ?? 0) / totalMembers) * 100,
+      expiringSoon: row?.expiring_soon ?? 0,
+      expiredMembers: row?.expired_members ?? 0,
+      revenueInr: revenue,
+      revenueChangePct: pctChange(revenue, revenuePrev),
+    };
+  }
+
+  async createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo> {
+    const { data, error } = await this.supabase.functions.invoke<
+      { subscriptionId: string; shortUrl: string | null; keyId: string } | { error: string }
+    >("create-membership-subscription", { body: { membershipId } });
+    if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+    if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+    return { subscriptionId: data.subscriptionId, shortUrl: data.shortUrl, keyId: data.keyId };
+  }
+
+  async getMembershipRevenueTimeseries(
+    facilityId: string,
+    granularity: RevenueGranularity,
+    range?: { from?: string; to?: string },
+  ): Promise<MembershipRevenuePoint[]> {
+    const { data, error } = await this.supabase.rpc("get_membership_revenue_timeseries", {
+      p_facility_id: facilityId,
+      p_granularity: granularity,
+      p_from: range?.from ?? null,
+      p_to: range?.to ?? null,
+    });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((row) => ({
+      bucket: row.bucket,
+      amountInr: row.amount_inr,
+      paymentCount: row.payment_count,
+    }));
+  }
+
+  async createMembershipFull(input: CreateMembershipFullInput): Promise<Membership> {
+    const { data, error } = await this.supabase.rpc("create_membership_full", {
+      p_facility_id: input.facilityId,
+      p_full_name: input.fullName,
+      p_phone: input.phone,
+      p_email: input.email ?? null,
+      p_date_of_birth: input.dateOfBirth ?? null,
+      p_gender: input.gender ?? null,
+      p_address: input.address ?? null,
+      p_name: input.name ?? null,
+      p_membership_type: input.membershipType,
+      p_max_family_members: input.maxFamilyMembers,
+      p_start_date: input.startDate,
+      p_duration_days: input.durationDays,
+      p_time_slot_start: input.timeSlotStart ?? null,
+      p_time_slot_end: input.timeSlotEnd ?? null,
+      p_description: input.description ?? null,
+      p_membership_fee_inr: input.membershipFeeInr,
+      p_registration_fee_inr: input.registrationFeeInr,
+      p_gst_percent: input.gstPercent,
+      p_payment_mode: input.paymentMode,
+      p_payment_methods: input.paymentMethods?.join(", ") || null,
+      p_payment_reference: input.paymentReference ?? null,
+      p_referral_member_id: input.referralMemberId ?? null,
+      p_discovery_source: input.discoverySource ?? null,
+      p_notes: input.notes ?? null,
+      p_monthly_price_inr: input.membershipFeeInr,
+    });
+    if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toMembership(data, data.name ?? "Membership");
+  }
+
+  async listAssignableBatches(facilityId: string, planId?: string): Promise<AssignableBatch[]> {
+    const { data, error } = await this.supabase.rpc("list_assignable_batches", {
+      p_facility_id: facilityId,
+      p_plan_id: planId ?? null,
+    });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((row) => ({
+      batchId: row.batch_id,
+      name: row.name,
+      planId: row.plan_id,
+      courtName: row.court_name,
+      sportName: row.sport_name,
+      daysOfWeek: row.days_of_week,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      capacity: row.capacity,
+      enrolledCount: row.enrolled_count,
+      spare: row.spare,
+    }));
+  }
+
+  async assignMembershipToBatch(batchId: string, memberId: string, membershipId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("assign_batch_member", {
+      p_batch_id: batchId,
+      p_member_id: memberId,
+      p_membership_id: membershipId,
+    });
+    if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP" });
   }
 
   async getMemberStats(memberId: string, facilityId: string): Promise<MemberStats> {

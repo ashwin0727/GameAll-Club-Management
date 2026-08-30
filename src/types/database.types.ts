@@ -9,6 +9,14 @@ export type FacilityRole = "owner" | "manager" | "staff";
 export type MembershipStatus = "active" | "expired" | "cancelled" | "pending";
 export type PaymentStatus = "created" | "paid" | "failed" | "refunded";
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type MembershipSubscriptionStatus =
+  | "created"
+  | "authenticated"
+  | "active"
+  | "pending"
+  | "halted"
+  | "cancelled"
+  | "completed";
 export type InventoryTxnType = "checkout" | "return" | "restock" | "damage";
 export type DbFacilityType =
   | "BADMINTON"
@@ -315,22 +323,56 @@ export interface Database {
           id: string;
           facility_id: string;
           member_id: string;
-          plan_id: string;
+          plan_id: string | null;
           status: MembershipStatus;
           start_date: string;
           end_date: string;
           auto_renew: boolean;
+          created_by: string | null;
+          monthly_price_inr: number | null;
+          name: string | null;
+          membership_type: "INDIVIDUAL" | "FAMILY" | "CORPORATE";
+          max_family_members: number;
+          duration_days: number | null;
+          time_slot_start: string | null;
+          time_slot_end: string | null;
+          description: string | null;
+          membership_fee_inr: number | null;
+          registration_fee_inr: number;
+          gst_percent: number;
+          total_amount_inr: number | null;
+          payment_reference: string | null;
+          referral_member_id: string | null;
+          discovery_source: string | null;
+          notes: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           facility_id: string;
           member_id: string;
-          plan_id: string;
+          plan_id?: string | null;
           status?: MembershipStatus;
           start_date: string;
           end_date: string;
           auto_renew?: boolean;
+          created_by?: string | null;
+          monthly_price_inr?: number | null;
+          name?: string | null;
+          membership_type?: "INDIVIDUAL" | "FAMILY" | "CORPORATE";
+          max_family_members?: number;
+          duration_days?: number | null;
+          time_slot_start?: string | null;
+          time_slot_end?: string | null;
+          description?: string | null;
+          membership_fee_inr?: number | null;
+          registration_fee_inr?: number;
+          gst_percent?: number;
+          total_amount_inr?: number | null;
+          payment_reference?: string | null;
+          referral_member_id?: string | null;
+          discovery_source?: string | null;
+          notes?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["memberships"]["Insert"]>;
@@ -354,6 +396,52 @@ export interface Database {
             columns: ["plan_id"];
             isOneToOne: false;
             referencedRelation: "membership_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      membership_subscriptions: {
+        Row: {
+          id: string;
+          membership_id: string;
+          facility_id: string;
+          member_id: string;
+          razorpay_plan_id: string;
+          razorpay_subscription_id: string;
+          razorpay_customer_id: string | null;
+          status: MembershipSubscriptionStatus;
+          amount_inr: number;
+          short_url: string | null;
+          charge_count: number;
+          current_start: string | null;
+          current_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          membership_id: string;
+          facility_id: string;
+          member_id: string;
+          razorpay_plan_id: string;
+          razorpay_subscription_id: string;
+          razorpay_customer_id?: string | null;
+          status?: MembershipSubscriptionStatus;
+          amount_inr: number;
+          short_url?: string | null;
+          charge_count?: number;
+          current_start?: string | null;
+          current_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["membership_subscriptions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "membership_subscriptions_membership_id_fkey";
+            columns: ["membership_id"];
+            isOneToOne: true;
+            referencedRelation: "memberships";
             referencedColumns: ["id"];
           },
         ];
@@ -770,6 +858,7 @@ export interface Database {
           email: string | null;
           date_of_birth: string | null;
           gender: string | null;
+          address: string | null;
           notes: string | null;
           status: "ACTIVE" | "INACTIVE";
           user_id: string | null;
@@ -784,6 +873,7 @@ export interface Database {
           email?: string | null;
           date_of_birth?: string | null;
           gender?: string | null;
+          address?: string | null;
           notes?: string | null;
           status?: "ACTIVE" | "INACTIVE";
           user_id?: string | null;
@@ -1384,8 +1474,181 @@ export interface Database {
           p_plan_id: string;
           p_start_date: string;
           p_payment_status?: PaymentStatus;
+          p_monthly_price_inr?: number | null;
         };
         Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      create_membership_full: {
+        Args: {
+          p_facility_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_email: string | null;
+          p_date_of_birth: string | null;
+          p_gender: string | null;
+          p_address: string | null;
+          p_name: string | null;
+          p_membership_type: string;
+          p_max_family_members: number;
+          p_start_date: string;
+          p_duration_days: number;
+          p_time_slot_start: string | null;
+          p_time_slot_end: string | null;
+          p_description: string | null;
+          p_membership_fee_inr: number;
+          p_registration_fee_inr: number;
+          p_gst_percent: number;
+          p_payment_mode: string;
+          p_payment_methods: string | null;
+          p_payment_reference: string | null;
+          p_referral_member_id: string | null;
+          p_discovery_source: string | null;
+          p_notes: string | null;
+          p_monthly_price_inr?: number | null;
+        };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      list_memberships: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_status?: string | null;
+          p_plan_id?: string | null;
+          p_sort?: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          membership_id: string;
+          member_id: string;
+          member_name: string;
+          member_phone: string;
+          member_email: string | null;
+          plan_id: string;
+          plan_name: string;
+          monthly_price_inr: number;
+          display_status: string;
+          start_date: string;
+          end_date: string;
+          days_left: number;
+          created_by: string | null;
+          created_by_name: string | null;
+          batch_name: string | null;
+          batch_days: number[] | null;
+          batch_start: string | null;
+          batch_end: string | null;
+          batch_court: string | null;
+          total_count: number;
+        }[];
+      };
+      list_assignable_batches: {
+        Args: { p_facility_id: string; p_plan_id?: string | null };
+        Returns: {
+          batch_id: string;
+          name: string;
+          plan_id: string;
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          enrolled_count: number;
+          spare: number;
+        }[];
+      };
+      get_public_signup_batches: {
+        Args: { p_facility_id: string; p_plan_id: string };
+        Returns: {
+          batchId: string;
+          name: string;
+          courtName: string;
+          sportName: string;
+          daysOfWeek: number[];
+          startTime: string;
+          endTime: string;
+          capacity: number;
+          spare: number;
+        }[];
+      };
+      get_membership_page_summary: {
+        Args: { p_facility_id: string };
+        Returns: {
+          total_members: number;
+          total_members_prev: number;
+          active_members: number;
+          expiring_soon: number;
+          expired_members: number;
+          revenue_inr: number;
+          revenue_prev_inr: number;
+        }[];
+      };
+      get_membership_revenue_timeseries: {
+        Args: {
+          p_facility_id: string;
+          p_granularity?: string;
+          p_from?: string | null;
+          p_to?: string | null;
+        };
+        Returns: { bucket: string; amount_inr: number; payment_count: number }[];
+      };
+      get_public_membership_signup_info: {
+        Args: { p_facility_id: string };
+        Returns: {
+          facilityId: string;
+          facilityName: string;
+          city: string;
+          plans: {
+            id: string;
+            name: string;
+            priceInr: number;
+            durationDays: number;
+            features: string[];
+          }[];
+        };
+      };
+      public_start_membership_signup: {
+        Args: {
+          p_facility_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_email: string;
+          p_plan_id: string;
+          p_batch_id?: string | null;
+        };
+        Returns: { membershipId: string; memberId: string; amountInr: number };
+      };
+      record_membership_subscription: {
+        Args: {
+          p_membership_id: string;
+          p_razorpay_plan_id: string;
+          p_razorpay_subscription_id: string;
+          p_amount_inr: number;
+          p_short_url?: string | null;
+          p_razorpay_customer_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["membership_subscriptions"]["Row"];
+      };
+      apply_subscription_webhook: {
+        Args: {
+          p_razorpay_subscription_id: string;
+          p_status: MembershipSubscriptionStatus;
+          p_charge_count?: number | null;
+          p_current_start?: string | null;
+          p_current_end?: string | null;
+        };
+        Returns: undefined;
+      };
+      record_subscription_charge: {
+        Args: {
+          p_razorpay_subscription_id: string;
+          p_amount_inr: number;
+          p_razorpay_payment_id: string;
+          p_paid_at?: string;
+        };
+        Returns: undefined;
       };
       search_facility_members: {
         Args: {
