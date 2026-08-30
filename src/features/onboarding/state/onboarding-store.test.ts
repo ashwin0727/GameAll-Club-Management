@@ -20,6 +20,7 @@ const sampleFacility = {
   onboardingStep: "FACILITY_DETAILS" as const,
   createdAt: "2026-08-20T00:00:00.000Z",
   updatedAt: "2026-08-20T00:00:00.000Z",
+  membershipAccessDays: [0, 1, 2, 3, 4, 5, 6],
 };
 
 describe("useOnboardingStore", () => {

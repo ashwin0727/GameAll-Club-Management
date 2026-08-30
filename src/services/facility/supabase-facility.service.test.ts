@@ -31,6 +31,7 @@ const FACILITY_ROW = {
   status: "ACTIVE",
   onboarding_step: "FACILITY_DETAILS",
   updated_at: "2026-01-01T00:00:00.000Z",
+  membership_access_days: [1, 2, 3, 4, 5],
 };
 
 const INPUT: FacilityInput = {
@@ -77,6 +78,16 @@ describe("SupabaseFacilityService", () => {
     const service = new SupabaseFacilityService({ auth, from } as never);
 
     expect(await service.getFacility()).toBeNull();
+  });
+
+  it("maps membership_access_days onto the Facility", async () => {
+    const auth = { getUser: vi.fn(async () => ({ data: { user: { id: "owner-1" } } })) };
+    const from = vi.fn(() => fakeQueryBuilder({ data: FACILITY_ROW, error: null }));
+    const service = new SupabaseFacilityService({ auth, from } as never);
+
+    const facility = await service.getFacility();
+
+    expect(facility?.membershipAccessDays).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("updateFacility never lets id or owner_id be part of the write payload", async () => {

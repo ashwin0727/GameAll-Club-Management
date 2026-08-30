@@ -47,11 +47,20 @@ export interface Facility {
   onboardingCompletedAt?: string;
   createdAt: string;
   updatedAt: string;
+  /** Days of week (0=Sun..6=Sat) a member may use the court. Pre-fills the
+   *  time-slot day picker on the Create Membership page. */
+  membershipAccessDays: number[];
 }
 
 export type FacilityInput = Omit<
   Facility,
-  "id" | "createdAt" | "updatedAt" | "status" | "onboardingStep" | "onboardingCompletedAt"
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "status"
+  | "onboardingStep"
+  | "onboardingCompletedAt"
+  | "membershipAccessDays"
 > & {
   status?: Facility["status"];
 };

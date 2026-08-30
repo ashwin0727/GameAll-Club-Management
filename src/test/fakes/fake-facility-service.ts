@@ -26,6 +26,7 @@ export class FakeFacilityService implements FacilityService {
       onboardingStep: "FACILITY_DETAILS",
       createdAt: now,
       updatedAt: now,
+      membershipAccessDays: [0, 1, 2, 3, 4, 5, 6],
     };
     this.facilities.push(facility);
     return facility;
