@@ -15,8 +15,10 @@ import { getMembershipService } from "@/services/memberships";
 import { useMembershipList, useMembershipSummary } from "@/features/memberships/hooks/use-memberships";
 import { MemberProfileDialog } from "@/features/memberships/components/member-profile-dialog";
 import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
+import { MembershipAccessDaysDialog } from "@/features/memberships/components/membership-access-days-dialog";
 import { MembershipRevenueTrend } from "@/features/memberships/components/membership-revenue-trend";
 import { formatSlot } from "@/features/memberships/slot-format";
+import { ALL_DAYS } from "@/features/memberships/slot-form";
 import type {
   FacilityMemberRow,
   MembershipListRow,
@@ -149,6 +151,8 @@ export function MembershipsPage() {
 
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [accessDaysOpen, setAccessDaysOpen] = useState(false);
+  const [accessDays, setAccessDays] = useState<number[]>(ALL_DAYS);
   const [profileRow, setProfileRow] = useState<FacilityMemberRow | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -162,6 +166,7 @@ export function MembershipsPage() {
         return;
       }
       setFacilityId(facility.id);
+      setAccessDays(facility.membershipAccessDays);
       setLoadState("ready");
       getMembershipService()
         .getFacilityPlans(facility.id)
@@ -253,6 +258,9 @@ export function MembershipsPage() {
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => setPlansOpen(true)}>
             Manage Plans
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setAccessDaysOpen(true)}>
+            Access Days
           </Button>
           <Button type="button" size="sm" onClick={() => router.push("/memberships/new")}>
             <Plus className="mr-1.5 h-4 w-4" />
@@ -522,6 +530,13 @@ export function MembershipsPage() {
       {facilityId && (
         <>
           <MembershipPlansDialog open={plansOpen} onOpenChange={setPlansOpen} facilityId={facilityId} />
+          <MembershipAccessDaysDialog
+            open={accessDaysOpen}
+            onOpenChange={setAccessDaysOpen}
+            facilityId={facilityId}
+            currentDays={accessDays}
+            onSaved={setAccessDays}
+          />
           <MemberProfileDialog
             open={profileRow !== null}
             onOpenChange={(o) => !o && setProfileRow(null)}
