@@ -95,6 +95,7 @@ export interface Database {
           onboarding_step: DbOnboardingStep;
           onboarding_completed_at: string | null;
           updated_at: string;
+          membership_access_days: number[];
         };
         Insert: {
           id?: string;
@@ -124,6 +125,7 @@ export interface Database {
           onboarding_step?: DbOnboardingStep;
           onboarding_completed_at?: string | null;
           updated_at?: string;
+          membership_access_days?: number[];
         };
         Update: Partial<Database["public"]["Tables"]["facilities"]["Insert"]>;
         Relationships: [
@@ -902,7 +904,7 @@ export interface Database {
         Row: {
           id: string;
           facility_id: string;
-          plan_id: string;
+          plan_id: string | null;
           facility_sport_id: string;
           court_id: string;
           name: string;
@@ -917,7 +919,7 @@ export interface Database {
         Insert: {
           id?: string;
           facility_id: string;
-          plan_id: string;
+          plan_id?: string | null;
           facility_sport_id: string;
           court_id: string;
           name: string;
@@ -1492,8 +1494,6 @@ export interface Database {
           p_max_family_members: number;
           p_start_date: string;
           p_duration_days: number;
-          p_time_slot_start: string | null;
-          p_time_slot_end: string | null;
           p_description: string | null;
           p_membership_fee_inr: number;
           p_registration_fee_inr: number;
@@ -1505,8 +1505,22 @@ export interface Database {
           p_discovery_source: string | null;
           p_notes: string | null;
           p_monthly_price_inr?: number | null;
+          p_batch_id?: string | null;
+          p_new_batch?: {
+            courtId: string;
+            facilitySportId: string;
+            daysOfWeek: number[];
+            startTime: string;
+            endTime: string;
+            capacity: number;
+            name?: string;
+          } | null;
         };
         Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
+      set_facility_membership_access_days: {
+        Args: { p_facility_id: string; p_days: number[] };
+        Returns: Database["public"]["Tables"]["facilities"]["Row"];
       };
       list_memberships: {
         Args: {
