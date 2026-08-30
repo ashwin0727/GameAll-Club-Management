@@ -137,6 +137,7 @@ export interface AssignableBatch {
   batchId: string;
   name: string;
   planId: string;
+  courtId: string;
   courtName: string;
   sportName: string;
   daysOfWeek: number[];

@@ -13,6 +13,8 @@ import { getMembershipService } from "@/services/memberships";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Member } from "@/features/members/types";
 import type { MembershipPaymentMode, MembershipType } from "@/features/memberships/types";
+import { CourtTimeSlotSection } from "@/features/memberships/components/court-time-slot-section";
+import { validateSlotSelection, toNewBatchPayload, ALL_DAYS, type SlotSelection } from "@/features/memberships/slot-form";
 
 const DURATIONS = [
   { label: "1 Month", days: 30 },
@@ -91,8 +93,8 @@ export function CreateMembershipPage() {
   const [durationDays, setDurationDays] = useState(0);
   const [maxFamily, setMaxFamily] = useState(1);
   const [description, setDescription] = useState("");
-  const [slotStart, setSlotStart] = useState("");
-  const [slotEnd, setSlotEnd] = useState("");
+  const [slot, setSlot] = useState<SlotSelection>({ kind: "none" });
+  const [accessDays, setAccessDays] = useState<number[]>(ALL_DAYS);
 
   // Charges
   const [fee, setFee] = useState("");
@@ -121,6 +123,7 @@ export function CreateMembershipPage() {
       .getFacility()
       .then((f) => {
         setFacilityId(f?.id ?? null);
+        if (f) setAccessDays(f.membershipAccessDays);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -157,7 +160,8 @@ export function CreateMembershipPage() {
     if (!fullName.trim() || !phone.trim()) return setError("Full name and phone number are required.");
     if (!durationDays) return setError("Select a membership duration.");
     if (mode !== "FREE" && charges.subTotal <= 0) return setError("Enter a membership fee.");
-    if (slotStart && slotEnd && slotEnd <= slotStart) return setError("Time slot end must be after the start.");
+    const slotError = validateSlotSelection(slot);
+    if (slotError) return setError(slotError);
 
     setSaving(true);
     setError(null);
@@ -175,8 +179,8 @@ export function CreateMembershipPage() {
         maxFamilyMembers: type === "FAMILY" ? maxFamily : 1,
         startDate,
         durationDays,
-        timeSlotStart: slotStart || undefined,
-        timeSlotEnd: slotEnd || undefined,
+        batchId: slot.kind === "existing" ? slot.batchId : undefined,
+        newBatch: slot.kind === "new" ? toNewBatchPayload(slot.draft) : undefined,
         description: description.trim() || undefined,
         membershipFeeInr: charges.subTotal,
         registrationFeeInr: charges.registration,
@@ -314,13 +318,16 @@ export function CreateMembershipPage() {
               ))}
             </select>
           </Field>
-          <Field label="Time Slot" hint="The hour the member plays each visit">
-            <div className="flex items-center gap-2">
-              <input type="time" value={slotStart} onChange={(e) => setSlotStart(e.target.value)} className={selectCls} />
-              <span className="text-sm text-muted-foreground">to</span>
-              <input type="time" value={slotEnd} onChange={(e) => setSlotEnd(e.target.value)} className={selectCls} />
-            </div>
-          </Field>
+          <div className="sm:col-span-2">
+            {facilityId && (
+              <CourtTimeSlotSection
+                value={slot}
+                onChange={setSlot}
+                facilityId={facilityId}
+                defaultAccessDays={accessDays}
+              />
+            )}
+          </div>
           <Field label="Max. Members (Family)" hint="Applicable only for Family membership">
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" disabled={type !== "FAMILY"} onClick={() => setMaxFamily((v) => Math.max(1, v - 1))}>

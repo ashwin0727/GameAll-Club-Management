@@ -410,6 +410,7 @@ export class SupabaseMembershipService implements MembershipService {
       batchId: row.batch_id,
       name: row.name,
       planId: row.plan_id,
+      courtId: row.court_id,
       courtName: row.court_name,
       sportName: row.sport_name,
       daysOfWeek: row.days_of_week,
