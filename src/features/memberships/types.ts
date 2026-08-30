@@ -136,7 +136,7 @@ export interface MembershipListRow {
 export interface AssignableBatch {
   batchId: string;
   name: string;
-  planId: string;
+  planId: string | null;
   courtId: string;
   courtName: string;
   sportName: string;

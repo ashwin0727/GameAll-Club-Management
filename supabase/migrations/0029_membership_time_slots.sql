@@ -47,6 +47,8 @@ create or replace function set_facility_membership_access_days(
   p_days smallint[]
 ) returns facilities
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   result facilities;
@@ -112,6 +114,8 @@ create function create_membership_full(
   p_new_batch jsonb default null
 ) returns memberships
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   v_member_id uuid;
@@ -130,6 +134,9 @@ declare
   v_capacity integer;
   v_batch_name text;
 begin
+  if not has_facility_role(p_facility_id, array['owner', 'manager', 'staff']::facility_role[]) then
+    raise exception 'Not authorized for this facility.' using errcode = '42501';
+  end if;
   if trim(coalesce(p_full_name, '')) = '' or trim(coalesce(p_phone, '')) = '' then
     raise exception 'Member name and phone are required.' using errcode = '23514';
   end if;
@@ -201,6 +208,9 @@ begin
     v_end := (p_new_batch->>'endTime')::time;
     v_capacity := (p_new_batch->>'capacity')::integer;
 
+    if v_start is null or v_end is null then
+      raise exception 'Time slot start and end are required.' using errcode = '23514';
+    end if;
     if coalesce(array_length(v_days, 1), 0) = 0 or not (v_days <@ array[0, 1, 2, 3, 4, 5, 6]::smallint[]) then
       raise exception 'Select at least one valid access day for the time slot.' using errcode = '23514';
     end if;

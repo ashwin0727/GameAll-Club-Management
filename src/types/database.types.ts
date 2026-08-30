@@ -1560,7 +1560,7 @@ export interface Database {
         Returns: {
           batch_id: string;
           name: string;
-          plan_id: string;
+          plan_id: string | null;
           court_id: string;
           court_name: string;
           facility_sport_id: string;

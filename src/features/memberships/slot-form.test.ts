@@ -60,7 +60,7 @@ describe("describeBatchOption", () => {
       batchId: "b1", name: "Evening", planId: null, courtId: "c1", courtName: "Court 1",
       sportName: "Badminton", daysOfWeek: [1, 3, 5], startTime: "06:00:00", endTime: "07:00:00",
       capacity: 6, enrolledCount: 4, spare: 2,
-    } as unknown as AssignableBatch;
+    } as AssignableBatch;
     expect(describeBatchOption(batch)).toBe("Mon/Wed/Fri · 6:00 AM – 7:00 AM · 4 / 6");
   });
 });

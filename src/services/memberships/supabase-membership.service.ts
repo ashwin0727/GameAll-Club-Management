@@ -385,7 +385,7 @@ export class SupabaseMembershipService implements MembershipService {
       p_batch_id: input.batchId ?? null,
       p_new_batch: input.newBatch ?? null,
     });
-    if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP" });
+    if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP", notFound: "INVALID_MEMBERSHIP" });
     if (!data) throw new ServiceError("DATABASE_ERROR");
     return toMembership(data, data.name ?? "Membership");
   }

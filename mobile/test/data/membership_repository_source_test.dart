@@ -63,8 +63,6 @@ void main() {
         'p_max_family_members',
         'p_start_date',
         'p_duration_days',
-        'p_time_slot_start',
-        'p_time_slot_end',
         'p_description',
         'p_membership_fee_inr',
         'p_registration_fee_inr',

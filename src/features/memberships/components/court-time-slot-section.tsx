@@ -75,6 +75,10 @@ export function CourtTimeSlotSection({
 
   function pickSport(id: string) {
     setFacilitySportId(id);
+    if (!id) {
+      onChange({ kind: "none" });
+      return;
+    }
     if (value.kind === "new") onChange({ kind: "new", draft: emptyDraft(id, value.draft.daysOfWeek) });
     else if (value.kind === "existing") onChange({ kind: "none" });
   }

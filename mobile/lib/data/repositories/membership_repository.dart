@@ -275,8 +275,6 @@ class MembershipRepository {
                   'p_max_family_members': input.maxFamilyMembers,
                   'p_start_date': _dateOnly(input.startDate),
                   'p_duration_days': input.durationDays,
-                  'p_time_slot_start': input.timeSlotStart,
-                  'p_time_slot_end': input.timeSlotEnd,
                   'p_description': input.description,
                   'p_membership_fee_inr': input.membershipFeeInr,
                   'p_registration_fee_inr': input.registrationFeeInr,
