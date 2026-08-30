@@ -76,8 +76,18 @@ export interface CreateMembershipFullInput {
   maxFamilyMembers: number;
   startDate: string;
   durationDays: number;
-  timeSlotStart?: string;
-  timeSlotEnd?: string;
+  /** Join an existing membership_batches time slot for this facility. */
+  batchId?: string;
+  /** Or create a new reserved court time slot. Mutually exclusive with batchId. */
+  newBatch?: {
+    courtId: string;
+    facilitySportId: string;
+    daysOfWeek: number[];
+    startTime: string; // "HH:mm"
+    endTime: string; // "HH:mm"
+    capacity: number;
+    name?: string;
+  };
   description?: string;
   // Charges
   membershipFeeInr: number;

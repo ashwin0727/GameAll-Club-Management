@@ -371,8 +371,6 @@ export class SupabaseMembershipService implements MembershipService {
       p_max_family_members: input.maxFamilyMembers,
       p_start_date: input.startDate,
       p_duration_days: input.durationDays,
-      p_time_slot_start: input.timeSlotStart ?? null,
-      p_time_slot_end: input.timeSlotEnd ?? null,
       p_description: input.description ?? null,
       p_membership_fee_inr: input.membershipFeeInr,
       p_registration_fee_inr: input.registrationFeeInr,
@@ -384,10 +382,22 @@ export class SupabaseMembershipService implements MembershipService {
       p_discovery_source: input.discoverySource ?? null,
       p_notes: input.notes ?? null,
       p_monthly_price_inr: input.membershipFeeInr,
+      p_batch_id: input.batchId ?? null,
+      p_new_batch: input.newBatch ?? null,
     });
     if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP" });
     if (!data) throw new ServiceError("DATABASE_ERROR");
     return toMembership(data, data.name ?? "Membership");
+  }
+
+  async setMembershipAccessDays(facilityId: string, days: number[]): Promise<number[]> {
+    const { data, error } = await this.supabase.rpc("set_facility_membership_access_days", {
+      p_facility_id: facilityId,
+      p_days: days,
+    });
+    if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return (data as { membership_access_days: number[] }).membership_access_days;
   }
 
   async listAssignableBatches(facilityId: string, planId?: string): Promise<AssignableBatch[]> {

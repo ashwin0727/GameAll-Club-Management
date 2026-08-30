@@ -40,6 +40,8 @@ export interface MembershipService {
   createMembership(input: CreateMembershipInput): Promise<Membership>;
   /** The full Create Membership page — get-or-create the member and record a self-contained membership + payment. */
   createMembershipFull(input: CreateMembershipFullInput): Promise<Membership>;
+  /** Owner/manager sets the facility's default membership access days (0=Sun..6=Sat); returns the saved set. */
+  setMembershipAccessDays(facilityId: string, days: number[]): Promise<number[]>;
   /** Paginated, filterable, sortable list for the Memberships page. */
   listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult>;
   /** The five KPI tiles on the Memberships page, with month-over-month deltas. */
