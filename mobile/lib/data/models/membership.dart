@@ -432,18 +432,16 @@ class MembershipSubscriptionInfo {
 // Memberships list page (web `list_memberships` / `get_membership_page_summary`).
 // ─────────────────────────────────────────────────────────────────────────
 
-/// The date-derived status the list shows — distinct from the raw
+/// The payment-driven status the list shows — distinct from the raw
 /// [MembershipStatus] enum. Mirrors the web `MembershipListStatus`.
-enum MembershipListStatus { active, expiringSoon, expired, cancelled }
+enum MembershipListStatus { paymentNotInitiated, active, inactive }
 
 MembershipListStatus membershipListStatusFromDb(String value) {
   switch (value) {
-    case 'expiring_soon':
-      return MembershipListStatus.expiringSoon;
-    case 'expired':
-      return MembershipListStatus.expired;
-    case 'cancelled':
-      return MembershipListStatus.cancelled;
+    case 'payment_not_initiated':
+      return MembershipListStatus.paymentNotInitiated;
+    case 'inactive':
+      return MembershipListStatus.inactive;
     case 'active':
     default:
       return MembershipListStatus.active;
@@ -454,29 +452,23 @@ String? membershipListStatusToDb(MembershipListStatus? value) {
   switch (value) {
     case null:
       return null;
+    case MembershipListStatus.paymentNotInitiated:
+      return 'payment_not_initiated';
     case MembershipListStatus.active:
       return 'active';
-    case MembershipListStatus.expiringSoon:
-      return 'expiring_soon';
-    case MembershipListStatus.expired:
-      return 'expired';
-    case MembershipListStatus.cancelled:
-      return 'cancelled';
+    case MembershipListStatus.inactive:
+      return 'inactive';
   }
 }
 
-enum MembershipListSort { newest, oldest, expiryAsc, expiryDesc, name }
+enum MembershipListSort { oldest, nextPayment, name }
 
 String membershipListSortToDb(MembershipListSort sort) {
   switch (sort) {
-    case MembershipListSort.newest:
-      return 'newest';
     case MembershipListSort.oldest:
       return 'oldest';
-    case MembershipListSort.expiryAsc:
-      return 'expiry_asc';
-    case MembershipListSort.expiryDesc:
-      return 'expiry_desc';
+    case MembershipListSort.nextPayment:
+      return 'next_payment';
     case MembershipListSort.name:
       return 'name';
   }
@@ -512,9 +504,6 @@ class MembershipListRow {
     required this.status,
     required this.startDate,
     required this.endDate,
-    required this.daysLeft,
-    this.createdById,
-    this.createdByName,
     this.slot,
   });
 
@@ -528,10 +517,9 @@ class MembershipListRow {
   final int monthlyPriceInr;
   final MembershipListStatus status;
   final DateTime startDate;
+
+  /// The date the paid period runs out — shown as "Next Payment Date".
   final DateTime endDate;
-  final int daysLeft;
-  final String? createdById;
-  final String? createdByName;
   final MembershipSlot? slot;
 
   factory MembershipListRow.fromJson(Map<String, dynamic> json) {
@@ -548,9 +536,6 @@ class MembershipListRow {
       status: membershipListStatusFromDb(json['display_status'] as String? ?? 'active'),
       startDate: DateTime.parse(json['start_date'] as String),
       endDate: DateTime.parse(json['end_date'] as String),
-      daysLeft: (json['days_left'] as num?)?.toInt() ?? 0,
-      createdById: json['created_by'] as String?,
-      createdByName: json['created_by_name'] as String?,
       slot: batchName == null
           ? null
           : MembershipSlot(
@@ -569,7 +554,7 @@ class MembershipListParams {
     this.search,
     this.status,
     this.planId,
-    this.sort = MembershipListSort.newest,
+    this.sort = MembershipListSort.oldest,
     required this.page,
     this.perPage = 10,
   });
@@ -589,7 +574,7 @@ class MembershipListResult {
   final int totalCount;
 }
 
-/// The five KPI values on top of the Memberships page — mirrors
+/// The four KPI values on top of the Memberships page — mirrors
 /// `get_membership_page_summary` plus the web's percent-change math.
 class MembershipPageSummary {
   const MembershipPageSummary({
@@ -597,8 +582,7 @@ class MembershipPageSummary {
     this.totalMembersChangePct,
     required this.activeMembers,
     required this.activePctOfTotal,
-    required this.expiringSoon,
-    required this.expiredMembers,
+    required this.inactiveMembers,
     required this.revenueInr,
     this.revenueChangePct,
   });
@@ -607,8 +591,7 @@ class MembershipPageSummary {
   final double? totalMembersChangePct;
   final int activeMembers;
   final double activePctOfTotal;
-  final int expiringSoon;
-  final int expiredMembers;
+  final int inactiveMembers;
   final int revenueInr;
   final double? revenueChangePct;
 
@@ -624,8 +607,7 @@ class MembershipPageSummary {
       totalMembersChangePct: pctChange(totalMembers, prev),
       activeMembers: active,
       activePctOfTotal: totalMembers == 0 ? 0 : (active / totalMembers) * 100,
-      expiringSoon: (json['expiring_soon'] as num?)?.toInt() ?? 0,
-      expiredMembers: (json['expired_members'] as num?)?.toInt() ?? 0,
+      inactiveMembers: (json['inactive_members'] as num?)?.toInt() ?? 0,
       revenueInr: revenue,
       revenueChangePct: pctChange(revenue, revenuePrev),
     );

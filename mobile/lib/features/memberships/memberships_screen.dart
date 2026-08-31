@@ -29,9 +29,8 @@ const _perPage = 10;
 const _statusFilters = <MembershipListStatus?>[
   null,
   MembershipListStatus.active,
-  MembershipListStatus.expiringSoon,
-  MembershipListStatus.expired,
-  MembershipListStatus.cancelled,
+  MembershipListStatus.paymentNotInitiated,
+  MembershipListStatus.inactive,
 ];
 
 /// Mirrors src/features/memberships/components/memberships-page.tsx — the
@@ -53,7 +52,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
   final _searchController = TextEditingController();
   String _search = '';
   MembershipListStatus? _status;
-  MembershipListSort _sort = MembershipListSort.newest;
+  MembershipListSort _sort = MembershipListSort.oldest;
   int _page = 1;
   Timer? _debounce;
 
@@ -178,6 +177,35 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     );
   }
 
+  Future<void> _confirmDelete(MembershipListRow row) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete member'),
+        content: Text(
+          'Permanently remove ${row.memberName}. This only works for members with no bookings and no settled payments.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: context.tokens.destructive)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(membershipRepositoryProvider).deleteMember(row.memberId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${row.memberName} deleted')));
+      _refresh();
+    } on AppException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   void _shareLink() {
     final facilityId = _facilityId;
     if (facilityId == null) return;
@@ -252,10 +280,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                                 underline: const SizedBox.shrink(),
                                 onChanged: (s) => s == null ? null : _setSort(s),
                                 items: const [
-                                  DropdownMenuItem(value: MembershipListSort.newest, child: Text('Newest First')),
                                   DropdownMenuItem(value: MembershipListSort.oldest, child: Text('Oldest First')),
-                                  DropdownMenuItem(value: MembershipListSort.expiryAsc, child: Text('Expiry: Soonest')),
-                                  DropdownMenuItem(value: MembershipListSort.expiryDesc, child: Text('Expiry: Latest')),
+                                  DropdownMenuItem(value: MembershipListSort.nextPayment, child: Text('Next Payment: Soonest')),
                                   DropdownMenuItem(value: MembershipListSort.name, child: Text('Name (A–Z)')),
                                 ],
                               ),
@@ -278,7 +304,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                           else ...[
                             ..._list.rows.map((row) => Padding(
                                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                  child: _MembershipRowCard(row: row),
+                                  child: _MembershipRowCard(row: row, onDelete: () => _confirmDelete(row)),
                                 )),
                             const SizedBox(height: AppSpacing.sm),
                             _Pagination(
@@ -329,14 +355,8 @@ class _SummaryGrid extends StatelessWidget {
         accentColor: tokens.success,
       ),
       AppMetricCard(
-        label: 'Expiring Soon',
-        value: '${summary.expiringSoon}',
-        icon: Icons.schedule,
-        accentColor: tokens.warning,
-      ),
-      AppMetricCard(
-        label: 'Expired',
-        value: '${summary.expiredMembers}',
+        label: 'Inactive Members',
+        value: '${summary.inactiveMembers}',
         icon: Icons.person_off_outlined,
         accentColor: tokens.destructive,
       ),
@@ -366,9 +386,10 @@ class _SummaryGrid extends StatelessWidget {
 }
 
 class _MembershipRowCard extends StatelessWidget {
-  const _MembershipRowCard({required this.row});
+  const _MembershipRowCard({required this.row, required this.onDelete});
 
   final MembershipListRow row;
+  final VoidCallback onDelete;
 
   String get _initials {
     final parts = row.memberName.split(' ').where((p) => p.isNotEmpty).take(2);
@@ -378,7 +399,7 @@ class _MembershipRowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final hint = membershipExpiryHint(row.status, row.daysLeft);
+    final overdue = isPastDate(row.endDate);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,6 +423,25 @@ class _MembershipRowCard extends StatelessWidget {
                 ),
               ),
               StatusBadge(label: membershipListStatusLabel(row.status), tone: membershipListStatusTone(row.status)),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, size: 20),
+                tooltip: 'More actions',
+                onSelected: (v) {
+                  if (v == 'delete') onDelete();
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: tokens.destructive),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Delete member', style: TextStyle(color: tokens.destructive)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -417,37 +457,21 @@ class _MembershipRowCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  '${Formatters.dateShort(row.startDate)} → ${Formatters.dateShort(row.endDate)}',
-                  style: AppTypography.caption(context),
+                child: Text('Started ${Formatters.dateShort(row.startDate)}', style: AppTypography.caption(context)),
+              ),
+              Text(
+                'Next payment ${Formatters.dateShort(row.endDate)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: overdue ? tokens.destructive : tokens.textSecondary,
                 ),
               ),
-              Text(hint.text, style: TextStyle(fontSize: 12, color: _toneColor(tokens, hint.tone), fontWeight: FontWeight.w600)),
             ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            row.createdById == null ? 'Self Registered' : 'Linked by ${row.createdByName ?? 'Staff'}',
-            style: TextStyle(fontSize: 11, color: tokens.textSecondary),
           ),
         ],
       ),
     );
-  }
-
-  Color _toneColor(AppColorTokens tokens, StatusTone tone) {
-    switch (tone) {
-      case StatusTone.success:
-        return tokens.success;
-      case StatusTone.warning:
-        return tokens.warning;
-      case StatusTone.danger:
-        return tokens.destructive;
-      case StatusTone.info:
-        return tokens.info;
-      case StatusTone.neutral:
-        return tokens.textSecondary;
-    }
   }
 }
 

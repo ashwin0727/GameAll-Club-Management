@@ -90,6 +90,11 @@ void main() {
       expect(source, contains("'get_membership_page_summary'"));
     });
 
+    test('deleteMember calls the guarded delete_member RPC and surfaces its 23514 verbatim', () {
+      expect(source, contains("'delete_member'"));
+      expect(source, contains("e.code == '23514'"));
+    });
+
     test('recurring subscription goes through the create-membership-subscription Edge Function', () {
       expect(source, contains("'create-membership-subscription'"));
       expect(source, contains('_client.functions.invoke'));

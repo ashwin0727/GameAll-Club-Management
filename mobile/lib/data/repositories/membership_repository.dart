@@ -361,6 +361,19 @@ class MembershipRepository {
     }
   }
 
+  /// Hard-delete a member that has no booking or settled-payment history —
+  /// the `delete_member` RPC (owner/manager, SECURITY DEFINER) enforces the
+  /// guard. Mirrors `deleteMember` on the web. The RPC's 23514 carries the
+  /// specific reason ("has booking or payment history…"), surfaced verbatim.
+  Future<void> deleteMember(String memberId) async {
+    try {
+      await _client.rpc('delete_member', params: {'p_member_id': memberId});
+    } on PostgrestException catch (e) {
+      if (e.code == '23514') throw AppException(AppErrorCode.invalidMember, e.message);
+      throw mapSupabaseError(e, notFound: AppErrorCode.memberNotFound);
+    }
+  }
+
   Future<MemberStats> getMemberStats(String memberId, String facilityId) async {
     try {
       final rows = await _client.rpc('get_member_stats', params: {'p_member_id': memberId, 'p_facility_id': facilityId});

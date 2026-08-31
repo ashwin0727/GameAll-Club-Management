@@ -3,43 +3,19 @@ import 'package:gameall_club_mobile/data/models/membership.dart';
 import 'package:gameall_club_mobile/features/memberships/membership_list_presentation.dart';
 import 'package:gameall_club_mobile/shared/widgets/misc.dart';
 
-/// Mirrors `memberships-page.tsx`'s `statusBadge` / `expiryHint`.
+/// Mirrors `memberships-page.tsx`'s `statusBadge` — the payment-driven
+/// three-state model.
 void main() {
   group('membershipListStatus label + tone', () {
-    test('every status maps to a label and a non-null tone', () {
+    test('every status maps to a label and a tone', () {
       for (final status in MembershipListStatus.values) {
         expect(membershipListStatusLabel(status), isNotEmpty);
         expect(membershipListStatusTone(status), isA<StatusTone>());
       }
+      expect(membershipListStatusLabel(MembershipListStatus.paymentNotInitiated), 'Payment Not Initiated');
       expect(membershipListStatusTone(MembershipListStatus.active), StatusTone.success);
-      expect(membershipListStatusTone(MembershipListStatus.expiringSoon), StatusTone.warning);
-      expect(membershipListStatusTone(MembershipListStatus.expired), StatusTone.danger);
-      expect(membershipListStatusTone(MembershipListStatus.cancelled), StatusTone.neutral);
-    });
-  });
-
-  group('membershipExpiryHint boundaries', () {
-    test('cancelled short-circuits regardless of days left', () {
-      final hint = membershipExpiryHint(MembershipListStatus.cancelled, 40);
-      expect(hint.text, 'Cancelled');
-      expect(hint.tone, StatusTone.neutral);
-    });
-
-    test('negative days -> expired N days ago (danger)', () {
-      final hint = membershipExpiryHint(MembershipListStatus.expired, -3);
-      expect(hint.text, 'Expired 3 days ago');
-      expect(hint.tone, StatusTone.danger);
-    });
-
-    test('zero days -> expires today (warning)', () {
-      final hint = membershipExpiryHint(MembershipListStatus.active, 0);
-      expect(hint.text, 'Expires today');
-      expect(hint.tone, StatusTone.warning);
-    });
-
-    test('within 30 days -> warning, beyond -> success', () {
-      expect(membershipExpiryHint(MembershipListStatus.active, 30).tone, StatusTone.warning);
-      expect(membershipExpiryHint(MembershipListStatus.active, 31).tone, StatusTone.success);
+      expect(membershipListStatusTone(MembershipListStatus.paymentNotInitiated), StatusTone.warning);
+      expect(membershipListStatusTone(MembershipListStatus.inactive), StatusTone.neutral);
     });
   });
 
@@ -49,6 +25,25 @@ void main() {
         expect(membershipListStatusFromDb(membershipListStatusToDb(status)!), status);
       }
       expect(membershipListStatusToDb(null), isNull);
+      expect(membershipListStatusFromDb('payment_not_initiated'), MembershipListStatus.paymentNotInitiated);
+      expect(membershipListStatusFromDb('inactive'), MembershipListStatus.inactive);
+    });
+  });
+
+  group('MembershipListSort db mapping', () {
+    test('maps to the RPC sort keys', () {
+      expect(membershipListSortToDb(MembershipListSort.oldest), 'oldest');
+      expect(membershipListSortToDb(MembershipListSort.nextPayment), 'next_payment');
+      expect(membershipListSortToDb(MembershipListSort.name), 'name');
+    });
+  });
+
+  group('isPastDate', () {
+    final now = DateTime(2026, 9, 1);
+    test('true for a date before today, false for today or later', () {
+      expect(isPastDate(DateTime(2026, 8, 31), now), isTrue);
+      expect(isPastDate(DateTime(2026, 9, 1), now), isFalse);
+      expect(isPastDate(DateTime(2026, 9, 2), now), isFalse);
     });
   });
 }

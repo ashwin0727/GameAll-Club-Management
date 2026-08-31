@@ -1,21 +1,19 @@
 import '../../data/models/membership.dart';
 import '../../shared/widgets/misc.dart';
 
-/// Pure status/expiry -> (label, tone, text) mappings for the Memberships
-/// list, so a row is never communicated by colour alone and the boundaries
-/// (expired / today / ≤30 days / >30 days) match `memberships-page.tsx`'s
-/// `statusBadge` / `expiryHint`.
+/// Pure status -> (label, tone) mapping for the Memberships list, so a row is
+/// never communicated by colour alone. Mirrors `memberships-page.tsx`'s
+/// `statusBadge` — the payment-driven three-state model
+/// (payment_not_initiated / active / inactive).
 
 String membershipListStatusLabel(MembershipListStatus status) {
   switch (status) {
     case MembershipListStatus.active:
       return 'Active';
-    case MembershipListStatus.expiringSoon:
-      return 'Expiring Soon';
-    case MembershipListStatus.expired:
-      return 'Expired';
-    case MembershipListStatus.cancelled:
-      return 'Cancelled';
+    case MembershipListStatus.paymentNotInitiated:
+      return 'Payment Not Initiated';
+    case MembershipListStatus.inactive:
+      return 'Inactive';
   }
 }
 
@@ -23,25 +21,17 @@ StatusTone membershipListStatusTone(MembershipListStatus status) {
   switch (status) {
     case MembershipListStatus.active:
       return StatusTone.success;
-    case MembershipListStatus.expiringSoon:
+    case MembershipListStatus.paymentNotInitiated:
       return StatusTone.warning;
-    case MembershipListStatus.expired:
-      return StatusTone.danger;
-    case MembershipListStatus.cancelled:
+    case MembershipListStatus.inactive:
       return StatusTone.neutral;
   }
 }
 
-class MembershipExpiryHint {
-  const MembershipExpiryHint(this.text, this.tone);
-
-  final String text;
-  final StatusTone tone;
-}
-
-MembershipExpiryHint membershipExpiryHint(MembershipListStatus status, int daysLeft) {
-  if (status == MembershipListStatus.cancelled) return const MembershipExpiryHint('Cancelled', StatusTone.neutral);
-  if (daysLeft < 0) return MembershipExpiryHint('Expired ${daysLeft.abs()} days ago', StatusTone.danger);
-  if (daysLeft == 0) return const MembershipExpiryHint('Expires today', StatusTone.warning);
-  return MembershipExpiryHint('$daysLeft days left', daysLeft <= 30 ? StatusTone.warning : StatusTone.success);
+/// True when [date] is before today (local midnight) — the "Next Payment
+/// Date" is rendered in the danger colour when it has already passed.
+bool isPastDate(DateTime date, [DateTime? now]) {
+  final n = now ?? DateTime.now();
+  final today = DateTime(n.year, n.month, n.day);
+  return DateTime(date.year, date.month, date.day).isBefore(today);
 }
