@@ -85,6 +85,10 @@ function statusBadge(status: MembershipListStatus) {
       return <Badge variant="warning">Payment Not Initiated</Badge>;
     case "inactive":
       return <Badge variant="secondary">Inactive</Badge>;
+    default:
+      // A stale RPC (migration 0030 not yet applied) can still send the old
+      // status strings — show the raw value rather than an empty cell.
+      return <Badge variant="secondary">{String(status).replace(/_/g, " ")}</Badge>;
   }
 }
 
