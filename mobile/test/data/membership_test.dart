@@ -219,4 +219,68 @@ void main() {
       expect(stats.sports, isEmpty);
     });
   });
+
+  group('MembershipDetail.fromJson', () {
+    test('parses the get_membership_detail jsonb document', () {
+      final d = MembershipDetail.fromJson({
+        'membershipId': 'ms-1',
+        'facilityId': 'fac-1',
+        'displayStatus': 'payment_not_initiated',
+        'member': {
+          'id': 'mem-1',
+          'fullName': 'Rahul Sharma',
+          'phone': '9876543210',
+          'email': 'r@e.com',
+          'dateOfBirth': '1992-04-12',
+          'gender': 'Male',
+          'address': 'Indiranagar',
+          'status': 'ACTIVE',
+          'memberSince': '2026-05-24T00:00:00Z',
+        },
+        'membership': {
+          'name': 'Premium',
+          'membershipType': 'FAMILY',
+          'rawStatus': 'active',
+          'startDate': '2026-05-24',
+          'endDate': '2026-06-24',
+          'durationDays': 31,
+          'maxFamilyMembers': 2,
+          'description': 'All courts',
+          'membershipFeeInr': 2500,
+          'registrationFeeInr': 500,
+          'gstPercent': 18,
+          'totalAmountInr': 3540,
+          'monthlyPriceInr': 2500,
+          'autoRenew': false,
+          'createdAt': '2026-05-24T11:20:00Z',
+        },
+        'payment': {
+          'amountInr': 3540,
+          'status': 'paid',
+          'method': 'upi',
+          'paidAt': '2026-05-24T11:23:00Z',
+          'createdAt': '2026-05-24T11:20:00Z',
+          'transactionId': 'UPI/4123/5598/2026',
+        },
+        'referralName': 'Sneha Reddy',
+        'createdByName': 'Arun Kumar',
+        'discoverySource': 'Friends',
+        'paymentReference': null,
+        'notes': null,
+        'slot': null,
+        'timeline': [
+          {'label': 'Membership created', 'actor': 'Arun Kumar', 'at': '2026-05-24T11:20:00Z'},
+          {'label': 'Payment received', 'actor': 'upi', 'at': '2026-05-24T11:23:00Z'},
+        ],
+      });
+
+      expect(d.displayStatus, MembershipListStatus.paymentNotInitiated);
+      expect(d.member.fullName, 'Rahul Sharma');
+      expect(d.membership.gstAmountInr, 540);
+      expect(d.payment!.transactionId, 'UPI/4123/5598/2026');
+      expect(d.referralName, 'Sneha Reddy');
+      expect(d.timeline, hasLength(2));
+      expect(d.timeline.first.label, 'Membership created');
+    });
+  });
 }

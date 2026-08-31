@@ -20,6 +20,7 @@ import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import 'membership_detail_screen.dart';
 import 'membership_list_presentation.dart';
 import 'membership_plans_sheet.dart';
 import 'slot_format.dart';
@@ -177,6 +178,13 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     );
   }
 
+  Future<void> _openDetail(MembershipListRow row) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MembershipDetailScreen(membershipId: row.membershipId)),
+    );
+    if (mounted) _refresh();
+  }
+
   Future<void> _confirmDelete(MembershipListRow row) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -304,7 +312,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                           else ...[
                             ..._list.rows.map((row) => Padding(
                                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                  child: _MembershipRowCard(row: row, onDelete: () => _confirmDelete(row)),
+                                  child: _MembershipRowCard(row: row, onView: () => _openDetail(row), onDelete: () => _confirmDelete(row)),
                                 )),
                             const SizedBox(height: AppSpacing.sm),
                             _Pagination(
@@ -386,9 +394,10 @@ class _SummaryGrid extends StatelessWidget {
 }
 
 class _MembershipRowCard extends StatelessWidget {
-  const _MembershipRowCard({required this.row, required this.onDelete});
+  const _MembershipRowCard({required this.row, required this.onView, required this.onDelete});
 
   final MembershipListRow row;
+  final VoidCallback onView;
   final VoidCallback onDelete;
 
   String get _initials {
@@ -401,6 +410,7 @@ class _MembershipRowCard extends StatelessWidget {
     final tokens = context.tokens;
     final overdue = isPastDate(row.endDate);
     return AppCard(
+      onTap: onView,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -427,9 +437,20 @@ class _MembershipRowCard extends StatelessWidget {
                 icon: const Icon(Icons.more_vert, size: 20),
                 tooltip: 'More actions',
                 onSelected: (v) {
+                  if (v == 'view') onView();
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'view',
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility_outlined, size: 18),
+                        SizedBox(width: AppSpacing.sm),
+                        Text('View details'),
+                      ],
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'delete',
                     child: Row(

@@ -649,3 +649,205 @@ class MemberStats {
     );
   }
 }
+// ─────────────────────────────────────────────────────────────────────────
+// Membership Details screen — one `get_membership_detail` jsonb document.
+// Mirrors the web `MembershipDetail`.
+// ─────────────────────────────────────────────────────────────────────────
+
+class MembershipTimelineEvent {
+  const MembershipTimelineEvent({required this.label, required this.actor, required this.at});
+
+  final String label;
+  final String actor;
+  final DateTime at;
+
+  factory MembershipTimelineEvent.fromJson(Map<String, dynamic> j) => MembershipTimelineEvent(
+        label: j['label'] as String,
+        actor: j['actor'] as String? ?? '',
+        at: DateTime.parse(j['at'] as String),
+      );
+}
+
+class MembershipDetailMember {
+  const MembershipDetailMember({
+    required this.id,
+    required this.fullName,
+    required this.phone,
+    this.email,
+    this.dateOfBirth,
+    this.gender,
+    this.address,
+    required this.status,
+    required this.memberSince,
+  });
+
+  final String id;
+  final String fullName;
+  final String phone;
+  final String? email;
+  final String? dateOfBirth;
+  final String? gender;
+  final String? address;
+  final String status;
+  final DateTime memberSince;
+
+  factory MembershipDetailMember.fromJson(Map<String, dynamic> j) => MembershipDetailMember(
+        id: j['id'] as String,
+        fullName: j['fullName'] as String,
+        phone: j['phone'] as String? ?? '',
+        email: j['email'] as String?,
+        dateOfBirth: j['dateOfBirth'] as String?,
+        gender: j['gender'] as String?,
+        address: j['address'] as String?,
+        status: j['status'] as String? ?? 'ACTIVE',
+        memberSince: DateTime.parse(j['memberSince'] as String),
+      );
+}
+
+class MembershipDetailMembership {
+  const MembershipDetailMembership({
+    required this.name,
+    required this.membershipType,
+    required this.rawStatus,
+    required this.startDate,
+    required this.endDate,
+    this.durationDays,
+    required this.maxFamilyMembers,
+    this.description,
+    required this.membershipFeeInr,
+    required this.registrationFeeInr,
+    required this.gstPercent,
+    required this.totalAmountInr,
+    required this.monthlyPriceInr,
+    required this.autoRenew,
+    required this.createdAt,
+  });
+
+  final String name;
+  final String membershipType;
+  final String rawStatus;
+  final DateTime startDate;
+  final DateTime endDate;
+  final int? durationDays;
+  final int maxFamilyMembers;
+  final String? description;
+  final int membershipFeeInr;
+  final int registrationFeeInr;
+  final num gstPercent;
+  final int totalAmountInr;
+  final int monthlyPriceInr;
+  final bool autoRenew;
+  final DateTime createdAt;
+
+  int get gstAmountInr {
+    final v = totalAmountInr - membershipFeeInr - registrationFeeInr;
+    return v > 0 ? v : 0;
+  }
+
+  factory MembershipDetailMembership.fromJson(Map<String, dynamic> j) => MembershipDetailMembership(
+        name: j['name'] as String? ?? 'Membership',
+        membershipType: j['membershipType'] as String? ?? 'INDIVIDUAL',
+        rawStatus: j['rawStatus'] as String? ?? 'active',
+        startDate: DateTime.parse(j['startDate'] as String),
+        endDate: DateTime.parse(j['endDate'] as String),
+        durationDays: (j['durationDays'] as num?)?.toInt(),
+        maxFamilyMembers: (j['maxFamilyMembers'] as num?)?.toInt() ?? 1,
+        description: j['description'] as String?,
+        membershipFeeInr: (j['membershipFeeInr'] as num?)?.toInt() ?? 0,
+        registrationFeeInr: (j['registrationFeeInr'] as num?)?.toInt() ?? 0,
+        gstPercent: (j['gstPercent'] as num?) ?? 0,
+        totalAmountInr: (j['totalAmountInr'] as num?)?.toInt() ?? 0,
+        monthlyPriceInr: (j['monthlyPriceInr'] as num?)?.toInt() ?? 0,
+        autoRenew: j['autoRenew'] as bool? ?? false,
+        createdAt: DateTime.parse(j['createdAt'] as String),
+      );
+}
+
+class MembershipDetailPayment {
+  const MembershipDetailPayment({
+    required this.amountInr,
+    required this.status,
+    this.method,
+    this.paidAt,
+    required this.createdAt,
+    this.transactionId,
+  });
+
+  final int amountInr;
+  final String status;
+  final String? method;
+  final DateTime? paidAt;
+  final DateTime createdAt;
+  final String? transactionId;
+
+  factory MembershipDetailPayment.fromJson(Map<String, dynamic> j) => MembershipDetailPayment(
+        amountInr: (j['amountInr'] as num?)?.toInt() ?? 0,
+        status: j['status'] as String? ?? 'created',
+        method: j['method'] as String?,
+        paidAt: j['paidAt'] != null ? DateTime.parse(j['paidAt'] as String) : null,
+        createdAt: DateTime.parse(j['createdAt'] as String),
+        transactionId: j['transactionId'] as String?,
+      );
+}
+
+class MembershipDetail {
+  const MembershipDetail({
+    required this.membershipId,
+    required this.facilityId,
+    required this.displayStatus,
+    required this.member,
+    required this.membership,
+    this.payment,
+    this.referralName,
+    this.createdByName,
+    this.discoverySource,
+    this.paymentReference,
+    this.notes,
+    this.slot,
+    required this.timeline,
+  });
+
+  final String membershipId;
+  final String facilityId;
+  final MembershipListStatus displayStatus;
+  final MembershipDetailMember member;
+  final MembershipDetailMembership membership;
+  final MembershipDetailPayment? payment;
+  final String? referralName;
+  final String? createdByName;
+  final String? discoverySource;
+  final String? paymentReference;
+  final String? notes;
+  final MembershipSlot? slot;
+  final List<MembershipTimelineEvent> timeline;
+
+  factory MembershipDetail.fromJson(Map<String, dynamic> j) {
+    final slotJson = j['slot'] as Map<String, dynamic>?;
+    final paymentJson = j['payment'] as Map<String, dynamic>?;
+    return MembershipDetail(
+      membershipId: j['membershipId'] as String,
+      facilityId: j['facilityId'] as String,
+      displayStatus: membershipListStatusFromDb(j['displayStatus'] as String? ?? 'active'),
+      member: MembershipDetailMember.fromJson(j['member'] as Map<String, dynamic>),
+      membership: MembershipDetailMembership.fromJson(j['membership'] as Map<String, dynamic>),
+      payment: paymentJson == null ? null : MembershipDetailPayment.fromJson(paymentJson),
+      referralName: j['referralName'] as String?,
+      createdByName: j['createdByName'] as String?,
+      discoverySource: j['discoverySource'] as String?,
+      paymentReference: j['paymentReference'] as String?,
+      notes: j['notes'] as String?,
+      slot: slotJson == null
+          ? null
+          : MembershipSlot(
+              name: 'Time slot',
+              daysOfWeek: ((slotJson['daysOfWeek'] as List<dynamic>?) ?? const []).map((d) => (d as num).toInt()).toList(),
+              startTime: slotJson['startTime'] as String? ?? '',
+              endTime: slotJson['endTime'] as String? ?? '',
+              courtName: slotJson['courtName'] as String?,
+            ),
+      timeline: ((j['timeline'] as List<dynamic>?) ?? const [])
+          .map((e) => MembershipTimelineEvent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}

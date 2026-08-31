@@ -361,6 +361,19 @@ class MembershipRepository {
     }
   }
 
+  /// Everything the Membership Details screen shows — one
+  /// `get_membership_detail` read returning a single jsonb document.
+  /// Mirrors `getMembershipDetail` on the web.
+  Future<MembershipDetail> getMembershipDetail(String membershipId) async {
+    try {
+      final doc = await _client.rpc('get_membership_detail', params: {'p_membership_id': membershipId});
+      return MembershipDetail.fromJson((doc as Map).cast<String, dynamic>());
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0002') throw AppException(AppErrorCode.membershipNotFound);
+      throw mapSupabaseError(e, notFound: AppErrorCode.membershipNotFound);
+    }
+  }
+
   /// Hard-delete a member that has no booking or settled-payment history —
   /// the `delete_member` RPC (owner/manager, SECURITY DEFINER) enforces the
   /// guard. Mirrors `deleteMember` on the web. The RPC's 23514 carries the
