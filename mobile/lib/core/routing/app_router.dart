@@ -13,7 +13,6 @@ import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/finance/finance_screen.dart';
 import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
-import '../../features/members/members_screen.dart';
 import '../../features/memberships/create_membership_screen.dart';
 import '../../features/memberships/memberships_screen.dart';
 import '../../features/membership_sessions/membership_sessions_screen.dart';
@@ -110,7 +109,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
       GoRoute(path: AppRoutes.bookings, builder: (context, state) => const BookingsScreen()),
       GoRoute(path: AppRoutes.guests, builder: (context, state) => const GuestsScreen()),
-      GoRoute(path: AppRoutes.members, builder: (context, state) => const MembersScreen()),
       GoRoute(path: AppRoutes.memberships, builder: (context, state) => const MembershipsScreen()),
       GoRoute(path: AppRoutes.membershipsNew, builder: (context, state) => const CreateMembershipScreen()),
       GoRoute(

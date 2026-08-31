@@ -112,11 +112,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () => context.push(AppRoutes.guests),
           ),
           IconButton(
-            icon: const Icon(Icons.card_membership_outlined),
-            tooltip: 'Members',
-            onPressed: () => context.push(AppRoutes.members),
-          ),
-          IconButton(
             icon: const Icon(Icons.workspace_premium_outlined),
             tooltip: 'Memberships',
             onPressed: () => context.push(AppRoutes.memberships),
@@ -1207,7 +1202,7 @@ class _QuickActionGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final actions = <_QuickActionData>[
       _QuickActionData(Icons.add_circle_outline, 'Add Booking', AppRoutes.bookings),
-      _QuickActionData(Icons.person_add_alt_1_outlined, 'Add Member', AppRoutes.members),
+      _QuickActionData(Icons.person_add_alt_1_outlined, 'Add Member', AppRoutes.memberships),
       _QuickActionData(Icons.event_available_outlined, 'Guest Slots', AppRoutes.membershipSessions),
       _QuickActionData(Icons.groups_outlined, 'Add Guest', AppRoutes.guests),
       _QuickActionData(Icons.account_balance_wallet_outlined, 'Finance', AppRoutes.finance),

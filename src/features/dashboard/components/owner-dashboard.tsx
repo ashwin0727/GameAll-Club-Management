@@ -21,7 +21,7 @@ const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
 
 const QUICK_ACTIONS: { label: string; href: string }[] = [
   { label: "Add Booking", href: "/bookings" },
-  { label: "Add Member", href: "/members" },
+  { label: "Add Member", href: "/memberships" },
   { label: "Guest Slots", href: "/membership-sessions" },
   { label: "Guest Players", href: "/guests" },
   { label: "Finance", href: "/finance" },
@@ -159,7 +159,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
       {memberships.expiringSoon > 0 && (
         <button
           type="button"
-          onClick={() => router.push("/members")}
+          onClick={() => router.push("/memberships")}
           className="flex w-full items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-left transition-colors hover:bg-warning/15"
         >
           <span className="text-sm font-medium text-foreground">
@@ -258,7 +258,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
             variant="ghost"
             size="sm"
             className="h-8 px-0 text-xs"
-            onClick={() => router.push("/members")}
+            onClick={() => router.push("/memberships")}
           >
             View Members →
           </Button>

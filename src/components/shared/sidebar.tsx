@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, CalendarClock, Boxes, Gamepad2, UserRound, CalendarCheck2, BadgeIndianRupee } from "lucide-react";
+import { LayoutDashboard, CalendarClock, Boxes, Gamepad2, UserRound, CalendarCheck2, BadgeIndianRupee } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
@@ -10,7 +10,6 @@ import { useUiStore } from "@/stores/ui-store";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
-  "/members": Users,
   "/memberships": BadgeIndianRupee,
   "/membership-sessions": CalendarCheck2,
   "/bookings": CalendarClock,
@@ -45,9 +44,8 @@ export function Sidebar({ role }: { role: Role }) {
         <nav className="flex-1 space-y-1 p-3">
           {items.map((item) => {
             const Icon = ICONS[item.href] ?? LayoutDashboard;
-            // Plain startsWith would also match "/membership-sessions" against
-            // the "/members" item (a literal string prefix, not a path
-            // boundary) — require an exact match or a "/" right after.
+            // Match the exact path or a real sub-path ("/memberships/new"),
+            // never a bare string prefix of a sibling route.
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link

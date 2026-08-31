@@ -18,7 +18,9 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/membership_repository.dart').readAsStringSync();
+    // Normalise line endings — git may check this file out with CRLF on
+    // Windows, and these are LF-based `contains` assertions.
+    source = File('lib/data/repositories/membership_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   group('Member creation is a plain customer record', () {

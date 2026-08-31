@@ -21,7 +21,6 @@ class AppRoutes {
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
   static const guests = '/guests';
-  static const members = '/members';
 
   /// Mirrors the web's NAV_ITEMS "Memberships" entry (src/lib/constants.ts)
   /// — the membership list at /memberships, the full create form at

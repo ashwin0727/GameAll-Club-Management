@@ -30,7 +30,6 @@ export const NAV_ITEMS: {
   roles: Role[];
 }[] = [
   { label: "Dashboard", href: "/dashboard", roles: ["admin", "staff", "member"] },
-  { label: "Members", href: "/members", roles: ["admin", "staff"] },
   { label: "Memberships", href: "/memberships", roles: ["admin", "staff"] },
   { label: "Membership Sessions", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
