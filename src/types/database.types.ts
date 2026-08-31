@@ -1602,6 +1602,10 @@ export interface Database {
         Args: { p_member_id: string };
         Returns: undefined;
       };
+      get_membership_detail: {
+        Args: { p_membership_id: string };
+        Returns: unknown;
+      };
       get_membership_revenue_timeseries: {
         Args: {
           p_facility_id: string;

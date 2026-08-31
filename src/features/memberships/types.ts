@@ -232,3 +232,64 @@ export interface MemberStats {
   pendingAmountMinor: number;
   sports: MemberSportPlayed[];
 }
+
+export interface MembershipTimelineEvent {
+  label: string;
+  actor: string;
+  at: string;
+}
+
+/** Everything the Membership Details page shows — one `get_membership_detail` read. */
+export interface MembershipDetail {
+  membershipId: string;
+  facilityId: string;
+  displayStatus: MembershipListStatus;
+  member: {
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+    dateOfBirth: string | null;
+    gender: string | null;
+    address: string | null;
+    status: string;
+    memberSince: string;
+  };
+  membership: {
+    name: string;
+    membershipType: string;
+    rawStatus: MembershipStatus;
+    startDate: string;
+    endDate: string;
+    durationDays: number | null;
+    maxFamilyMembers: number;
+    description: string | null;
+    membershipFeeInr: number;
+    registrationFeeInr: number;
+    gstPercent: number;
+    totalAmountInr: number;
+    monthlyPriceInr: number;
+    autoRenew: boolean;
+    createdAt: string;
+  };
+  payment: {
+    amountInr: number;
+    status: PaymentStatus;
+    method: string | null;
+    paidAt: string | null;
+    createdAt: string;
+    transactionId: string | null;
+  } | null;
+  referralName: string | null;
+  createdByName: string | null;
+  discoverySource: string | null;
+  paymentReference: string | null;
+  notes: string | null;
+  slot: {
+    courtName: string | null;
+    daysOfWeek: number[];
+    startTime: string;
+    endTime: string;
+  } | null;
+  timeline: MembershipTimelineEvent[];
+}

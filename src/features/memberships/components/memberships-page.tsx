@@ -28,15 +28,12 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getFacilityService } from "@/services/facility";
 import { getMembershipService } from "@/services/memberships";
 import { useMembershipList, useMembershipSummary } from "@/features/memberships/hooks/use-memberships";
-import { MemberProfileDialog } from "@/features/memberships/components/member-profile-dialog";
 import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
 import { MembershipAccessDaysDialog } from "@/features/memberships/components/membership-access-days-dialog";
 import { MembershipRevenueTrend } from "@/features/memberships/components/membership-revenue-trend";
 import { formatSlot } from "@/features/memberships/slot-format";
 import { ALL_DAYS } from "@/features/memberships/slot-form";
 import type {
-  FacilityMemberRow,
-  MembershipListRow,
   MembershipListSort,
   MembershipListStatus,
   MembershipPlan,
@@ -99,23 +96,6 @@ function isPastDate(iso: string): boolean {
   return d < today;
 }
 
-function toFacilityMemberRow(row: MembershipListRow): FacilityMemberRow {
-  const raw =
-    row.status === "inactive" ? "expired" : row.status === "payment_not_initiated" ? "pending" : "active";
-  return {
-    memberId: row.memberId,
-    fullName: row.memberName,
-    phone: row.memberPhone,
-    email: row.memberEmail,
-    membershipId: row.membershipId,
-    planId: row.planId,
-    planName: row.planName,
-    startDate: row.startDate,
-    endDate: row.endDate,
-    status: raw,
-  };
-}
-
 function KpiCard({
   icon: Icon,
   label,
@@ -164,7 +144,6 @@ export function MembershipsPage() {
   const [plansOpen, setPlansOpen] = useState(false);
   const [accessDaysOpen, setAccessDaysOpen] = useState(false);
   const [accessDays, setAccessDays] = useState<number[]>(ALL_DAYS);
-  const [profileRow, setProfileRow] = useState<FacilityMemberRow | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ memberId: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -485,7 +464,7 @@ export function MembershipsPage() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => setProfileRow(toFacilityMemberRow(row))}
+                            onClick={() => router.push(`/memberships/${row.membershipId}`)}
                           >
                             View
                           </Button>
@@ -562,13 +541,6 @@ export function MembershipsPage() {
             facilityId={facilityId}
             currentDays={accessDays}
             onSaved={setAccessDays}
-          />
-          <MemberProfileDialog
-            open={profileRow !== null}
-            onOpenChange={(o) => !o && setProfileRow(null)}
-            facilityId={facilityId}
-            member={profileRow}
-            onChanged={refetchAll}
           />
         </>
       )}

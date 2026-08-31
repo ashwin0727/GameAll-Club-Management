@@ -8,6 +8,7 @@ import type {
   Membership,
   MembershipListParams,
   MembershipListResult,
+  MembershipDetail,
   MembershipPageSummary,
   MembershipPlan,
   MembershipPlanInput,
@@ -48,6 +49,8 @@ export interface MembershipService {
   listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult>;
   /** The four KPI tiles on the Memberships page, with month-over-month deltas. */
   getMembershipPageSummary(facilityId: string): Promise<MembershipPageSummary>;
+  /** Everything the Membership Details page shows for one membership. */
+  getMembershipDetail(membershipId: string): Promise<MembershipDetail>;
   /** Starts (or reuses) a Razorpay Subscription for recurring UPI AutoPay on this membership. */
   createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo>;
   /** Membership revenue actually received, bucketed by day / month / year. */

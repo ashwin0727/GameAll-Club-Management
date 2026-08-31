@@ -398,5 +398,22 @@ describe("SupabaseMembershipService", () => {
       const service = new SupabaseMembershipService({ rpc } as never);
       await expect(service.deleteMember("gone")).rejects.toMatchObject({ code: "MEMBER_NOT_FOUND" });
     });
+
+    it("getMembershipDetail returns the RPC jsonb document as-is", async () => {
+      const doc = { membershipId: "ms-1", displayStatus: "active", member: { fullName: "Arun" }, timeline: [] };
+      const rpc = vi.fn(async () => ({ data: doc, error: null }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      const detail = await service.getMembershipDetail("ms-1");
+
+      expect(rpc).toHaveBeenCalledWith("get_membership_detail", { p_membership_id: "ms-1" });
+      expect(detail).toBe(doc);
+    });
+
+    it("getMembershipDetail maps P0002 to MEMBERSHIP_NOT_FOUND", async () => {
+      const rpc = vi.fn(async () => ({ data: null, error: { code: "P0002", message: "Membership not found" } }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await expect(service.getMembershipDetail("gone")).rejects.toMatchObject({ code: "MEMBERSHIP_NOT_FOUND" });
+    });
   });
 });

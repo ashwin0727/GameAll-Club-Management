@@ -13,6 +13,7 @@ import type {
   MembershipListParams,
   MembershipListResult,
   MembershipListStatus,
+  MembershipDetail,
   MembershipPageSummary,
   MembershipPlan,
   MembershipPlanInput,
@@ -323,6 +324,16 @@ export class SupabaseMembershipService implements MembershipService {
       revenueInr: revenue,
       revenueChangePct: pctChange(revenue, revenuePrev),
     };
+  }
+
+  async getMembershipDetail(membershipId: string): Promise<MembershipDetail> {
+    const { data, error } = await this.supabase.rpc("get_membership_detail", { p_membership_id: membershipId });
+    if (error) {
+      if (error.code === "P0002") throw new ServiceError("MEMBERSHIP_NOT_FOUND");
+      throw mapSupabaseError(error, { notFound: "MEMBERSHIP_NOT_FOUND" });
+    }
+    if (!data) throw new ServiceError("MEMBERSHIP_NOT_FOUND");
+    return data as MembershipDetail;
   }
 
   async deleteMember(memberId: string): Promise<void> {
