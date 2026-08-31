@@ -22,6 +22,13 @@ class AppRoutes {
   static const bookings = '/bookings';
   static const guests = '/guests';
   static const members = '/members';
+
+  /// Mirrors the web's NAV_ITEMS "Memberships" entry (src/lib/constants.ts)
+  /// — the membership list at /memberships, the full create form at
+  /// /memberships/new.
+  static const memberships = '/memberships';
+  static const membershipsNew = '/memberships/new';
+
   static const membershipSessions = '/membership-sessions';
   static const refunds = '/refunds';
 

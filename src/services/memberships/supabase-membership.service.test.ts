@@ -28,6 +28,7 @@ const MEMBERSHIP_ROW = {
   end_date: "2026-08-31",
   auto_renew: false,
   created_at: "2026-08-01T00:00:00.000Z",
+  name: "Premium",
 };
 
 describe("SupabaseMembershipService", () => {
@@ -218,6 +219,100 @@ describe("SupabaseMembershipService", () => {
 
       expect(rpc).toHaveBeenCalledWith("search_members", { p_facility_id: "facility-1", p_query: "Arun" });
       expect(results).toEqual([{ id: "member-1", fullName: "Arun Kumar", phone: "9999999999", email: null }]);
+    });
+  });
+
+  describe("createMembershipFull time slots", () => {
+    it("createMembershipFull passes a new-batch payload through to the RPC", async () => {
+      const rpc = vi.fn(async () => ({ data: { ...MEMBERSHIP_ROW, plan_id: null, name: "Premium" }, error: null }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      await service.createMembershipFull({
+        facilityId: "facility-1",
+        fullName: "Arun",
+        phone: "9999999999",
+        membershipType: "INDIVIDUAL",
+        maxFamilyMembers: 1,
+        startDate: "2026-09-01",
+        durationDays: 90,
+        membershipFeeInr: 1000,
+        registrationFeeInr: 0,
+        gstPercent: 0,
+        paymentMode: "PAID",
+        newBatch: {
+          courtId: "court-1",
+          facilitySportId: "fs-1",
+          daysOfWeek: [1, 2, 3, 4, 5],
+          startTime: "06:00",
+          endTime: "07:00",
+          capacity: 10,
+        },
+      });
+
+      expect(rpc).toHaveBeenCalledWith(
+        "create_membership_full",
+        expect.objectContaining({
+          p_batch_id: null,
+          p_new_batch: {
+            courtId: "court-1",
+            facilitySportId: "fs-1",
+            daysOfWeek: [1, 2, 3, 4, 5],
+            startTime: "06:00",
+            endTime: "07:00",
+            capacity: 10,
+          },
+        }),
+      );
+      const payload = (rpc.mock.calls[0] as unknown[])[1] as Record<string, unknown>;
+      expect(payload).not.toHaveProperty("p_time_slot_start");
+      expect(payload).not.toHaveProperty("p_time_slot_end");
+    });
+
+    it("createMembershipFull passes an existing batchId through", async () => {
+      const rpc = vi.fn(async () => ({ data: { ...MEMBERSHIP_ROW, plan_id: null, name: "Premium" }, error: null }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      await service.createMembershipFull({
+        facilityId: "facility-1",
+        fullName: "Arun",
+        phone: "9999999999",
+        membershipType: "INDIVIDUAL",
+        maxFamilyMembers: 1,
+        startDate: "2026-09-01",
+        durationDays: 90,
+        membershipFeeInr: 1000,
+        registrationFeeInr: 0,
+        gstPercent: 0,
+        paymentMode: "PAID",
+        batchId: "batch-9",
+      });
+
+      expect(rpc).toHaveBeenCalledWith(
+        "create_membership_full",
+        expect.objectContaining({ p_batch_id: "batch-9", p_new_batch: null }),
+      );
+    });
+
+    it("setMembershipAccessDays calls the RPC and returns the days", async () => {
+      const rpc = vi.fn(async () => ({
+        data: { id: "facility-1", membership_access_days: [1, 2, 3, 4, 5] },
+        error: null,
+      }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      const days = await service.setMembershipAccessDays("facility-1", [1, 2, 3, 4, 5]);
+
+      expect(rpc).toHaveBeenCalledWith("set_facility_membership_access_days", {
+        p_facility_id: "facility-1",
+        p_days: [1, 2, 3, 4, 5],
+      });
+      expect(days).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("setMembershipAccessDays maps an unauthorized error", async () => {
+      const rpc = vi.fn(async () => ({ data: null, error: { code: "42501", message: "no" } }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await expect(service.setMembershipAccessDays("f", [1])).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     });
   });
 });

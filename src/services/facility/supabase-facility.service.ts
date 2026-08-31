@@ -33,6 +33,7 @@ function toFacility(row: FacilityRow): Facility {
     onboardingCompletedAt: row.onboarding_completed_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    membershipAccessDays: row.membership_access_days ?? [0, 1, 2, 3, 4, 5, 6],
   };
 }
 

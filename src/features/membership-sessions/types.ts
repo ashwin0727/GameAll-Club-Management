@@ -1,7 +1,7 @@
 export interface MembershipBatch {
   id: string;
   facilityId: string;
-  planId: string;
+  planId: string | null;
   facilitySportId: string;
   courtId: string;
   name: string;

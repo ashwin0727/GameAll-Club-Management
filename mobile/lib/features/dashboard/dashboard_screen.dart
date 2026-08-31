@@ -117,6 +117,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () => context.push(AppRoutes.members),
           ),
           IconButton(
+            icon: const Icon(Icons.workspace_premium_outlined),
+            tooltip: 'Memberships',
+            onPressed: () => context.push(AppRoutes.memberships),
+          ),
+          IconButton(
             icon: const Icon(Icons.event_repeat_outlined),
             tooltip: 'Membership Sessions',
             onPressed: () => context.push(AppRoutes.membershipSessions),
@@ -416,7 +421,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return AppCard(
-      onTap: () => context.push(AppRoutes.members),
+      onTap: () => context.push(AppRoutes.memberships),
       child: Row(
         children: [
           Icon(Icons.card_membership_outlined, color: tokens.warning),
@@ -430,7 +435,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
-                Text('Tap to view members', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+                Text('Tap to view memberships', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
               ],
             ),
           ),

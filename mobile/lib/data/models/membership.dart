@@ -304,6 +304,334 @@ class MemberSportPlayed {
   final String sportName;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Full Create Membership page (web Phase 4) — a self-contained membership
+// with its own name / type / duration / fee / GST / time slot, written via
+// the `create_membership_full` RPC. Mirrors src/features/memberships/types.ts.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Matches the `membership_type` check constraint on `memberships`
+/// (0028_membership_creation_form.sql).
+enum MembershipType { individual, family, corporate }
+
+String membershipTypeToDb(MembershipType type) {
+  switch (type) {
+    case MembershipType.individual:
+      return 'INDIVIDUAL';
+    case MembershipType.family:
+      return 'FAMILY';
+    case MembershipType.corporate:
+      return 'CORPORATE';
+  }
+}
+
+String membershipTypeLabel(MembershipType type) {
+  switch (type) {
+    case MembershipType.individual:
+      return 'Individual';
+    case MembershipType.family:
+      return 'Family';
+    case MembershipType.corporate:
+      return 'Corporate';
+  }
+}
+
+/// `p_payment_mode` on `create_membership_full` — PAID collects now, PENDING
+/// collects later, FREE skips the payment row entirely.
+enum MembershipPaymentMode { paid, pending, free }
+
+String membershipPaymentModeToDb(MembershipPaymentMode mode) {
+  switch (mode) {
+    case MembershipPaymentMode.paid:
+      return 'PAID';
+    case MembershipPaymentMode.pending:
+      return 'PENDING';
+    case MembershipPaymentMode.free:
+      return 'FREE';
+  }
+}
+
+/// The full Create Membership payload. [startDate] is sent as an ISO date
+/// (YYYY-MM-DD); [timeSlotStart]/[timeSlotEnd] as 'HH:mm' (24h) or null.
+class CreateMembershipFullInput {
+  const CreateMembershipFullInput({
+    required this.facilityId,
+    required this.fullName,
+    required this.phone,
+    this.email,
+    this.dateOfBirth,
+    this.gender,
+    this.address,
+    this.name,
+    required this.membershipType,
+    required this.maxFamilyMembers,
+    required this.startDate,
+    required this.durationDays,
+    this.timeSlotStart,
+    this.timeSlotEnd,
+    this.description,
+    required this.membershipFeeInr,
+    required this.registrationFeeInr,
+    required this.gstPercent,
+    required this.paymentMode,
+    this.paymentMethods = const [],
+    this.paymentReference,
+    this.recurring = false,
+    this.referralMemberId,
+    this.discoverySource,
+    this.notes,
+  });
+
+  final String facilityId;
+  final String fullName;
+  final String phone;
+  final String? email;
+  final String? dateOfBirth;
+  final String? gender;
+  final String? address;
+  final String? name;
+  final MembershipType membershipType;
+  final int maxFamilyMembers;
+  final DateTime startDate;
+  final int durationDays;
+  final String? timeSlotStart;
+  final String? timeSlotEnd;
+  final String? description;
+  final int membershipFeeInr;
+  final int registrationFeeInr;
+  final double gstPercent;
+  final MembershipPaymentMode paymentMode;
+  final List<String> paymentMethods;
+  final String? paymentReference;
+  final bool recurring;
+  final String? referralMemberId;
+  final String? discoverySource;
+  final String? notes;
+}
+
+/// Razorpay-hosted UPI AutoPay mandate authorisation — returned by the
+/// `create-membership-subscription` Edge Function. [shortUrl] is the page
+/// the member opens to approve the recurring mandate.
+class MembershipSubscriptionInfo {
+  const MembershipSubscriptionInfo({required this.subscriptionId, required this.shortUrl, required this.keyId});
+
+  final String subscriptionId;
+  final String? shortUrl;
+  final String keyId;
+
+  factory MembershipSubscriptionInfo.fromJson(Map<String, dynamic> json) {
+    return MembershipSubscriptionInfo(
+      subscriptionId: json['subscriptionId'] as String,
+      shortUrl: json['shortUrl'] as String?,
+      keyId: json['keyId'] as String? ?? '',
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Memberships list page (web `list_memberships` / `get_membership_page_summary`).
+// ─────────────────────────────────────────────────────────────────────────
+
+/// The date-derived status the list shows — distinct from the raw
+/// [MembershipStatus] enum. Mirrors the web `MembershipListStatus`.
+enum MembershipListStatus { active, expiringSoon, expired, cancelled }
+
+MembershipListStatus membershipListStatusFromDb(String value) {
+  switch (value) {
+    case 'expiring_soon':
+      return MembershipListStatus.expiringSoon;
+    case 'expired':
+      return MembershipListStatus.expired;
+    case 'cancelled':
+      return MembershipListStatus.cancelled;
+    case 'active':
+    default:
+      return MembershipListStatus.active;
+  }
+}
+
+String? membershipListStatusToDb(MembershipListStatus? value) {
+  switch (value) {
+    case null:
+      return null;
+    case MembershipListStatus.active:
+      return 'active';
+    case MembershipListStatus.expiringSoon:
+      return 'expiring_soon';
+    case MembershipListStatus.expired:
+      return 'expired';
+    case MembershipListStatus.cancelled:
+      return 'cancelled';
+  }
+}
+
+enum MembershipListSort { newest, oldest, expiryAsc, expiryDesc, name }
+
+String membershipListSortToDb(MembershipListSort sort) {
+  switch (sort) {
+    case MembershipListSort.newest:
+      return 'newest';
+    case MembershipListSort.oldest:
+      return 'oldest';
+    case MembershipListSort.expiryAsc:
+      return 'expiry_asc';
+    case MembershipListSort.expiryDesc:
+      return 'expiry_desc';
+    case MembershipListSort.name:
+      return 'name';
+  }
+}
+
+/// The batch/time-slot a membership is enrolled in, when there is one.
+class MembershipSlot {
+  const MembershipSlot({
+    required this.name,
+    required this.daysOfWeek,
+    required this.startTime,
+    required this.endTime,
+    this.courtName,
+  });
+
+  final String name;
+  final List<int> daysOfWeek;
+  final String startTime;
+  final String endTime;
+  final String? courtName;
+}
+
+class MembershipListRow {
+  const MembershipListRow({
+    required this.membershipId,
+    required this.memberId,
+    required this.memberName,
+    required this.memberPhone,
+    this.memberEmail,
+    this.planId,
+    required this.planName,
+    required this.monthlyPriceInr,
+    required this.status,
+    required this.startDate,
+    required this.endDate,
+    required this.daysLeft,
+    this.createdById,
+    this.createdByName,
+    this.slot,
+  });
+
+  final String membershipId;
+  final String memberId;
+  final String memberName;
+  final String memberPhone;
+  final String? memberEmail;
+  final String? planId;
+  final String planName;
+  final int monthlyPriceInr;
+  final MembershipListStatus status;
+  final DateTime startDate;
+  final DateTime endDate;
+  final int daysLeft;
+  final String? createdById;
+  final String? createdByName;
+  final MembershipSlot? slot;
+
+  factory MembershipListRow.fromJson(Map<String, dynamic> json) {
+    final batchName = json['batch_name'] as String?;
+    return MembershipListRow(
+      membershipId: json['membership_id'] as String,
+      memberId: json['member_id'] as String,
+      memberName: json['member_name'] as String,
+      memberPhone: json['member_phone'] as String? ?? '',
+      memberEmail: json['member_email'] as String?,
+      planId: json['plan_id'] as String?,
+      planName: json['plan_name'] as String? ?? 'Membership',
+      monthlyPriceInr: (json['monthly_price_inr'] as num?)?.toInt() ?? 0,
+      status: membershipListStatusFromDb(json['display_status'] as String? ?? 'active'),
+      startDate: DateTime.parse(json['start_date'] as String),
+      endDate: DateTime.parse(json['end_date'] as String),
+      daysLeft: (json['days_left'] as num?)?.toInt() ?? 0,
+      createdById: json['created_by'] as String?,
+      createdByName: json['created_by_name'] as String?,
+      slot: batchName == null
+          ? null
+          : MembershipSlot(
+              name: batchName,
+              daysOfWeek: ((json['batch_days'] as List<dynamic>?) ?? const []).map((d) => (d as num).toInt()).toList(),
+              startTime: json['batch_start'] as String? ?? '',
+              endTime: json['batch_end'] as String? ?? '',
+              courtName: json['batch_court'] as String?,
+            ),
+    );
+  }
+}
+
+class MembershipListParams {
+  const MembershipListParams({
+    this.search,
+    this.status,
+    this.planId,
+    this.sort = MembershipListSort.newest,
+    required this.page,
+    this.perPage = 10,
+  });
+
+  final String? search;
+  final MembershipListStatus? status;
+  final String? planId;
+  final MembershipListSort sort;
+  final int page;
+  final int perPage;
+}
+
+class MembershipListResult {
+  const MembershipListResult({required this.rows, required this.totalCount});
+
+  final List<MembershipListRow> rows;
+  final int totalCount;
+}
+
+/// The five KPI values on top of the Memberships page — mirrors
+/// `get_membership_page_summary` plus the web's percent-change math.
+class MembershipPageSummary {
+  const MembershipPageSummary({
+    required this.totalMembers,
+    this.totalMembersChangePct,
+    required this.activeMembers,
+    required this.activePctOfTotal,
+    required this.expiringSoon,
+    required this.expiredMembers,
+    required this.revenueInr,
+    this.revenueChangePct,
+  });
+
+  final int totalMembers;
+  final double? totalMembersChangePct;
+  final int activeMembers;
+  final double activePctOfTotal;
+  final int expiringSoon;
+  final int expiredMembers;
+  final int revenueInr;
+  final double? revenueChangePct;
+
+  factory MembershipPageSummary.fromJson(Map<String, dynamic> json) {
+    double? pctChange(num current, num before) => before == 0 ? null : ((current - before) / before) * 100;
+    final totalMembers = (json['total_members'] as num?)?.toInt() ?? 0;
+    final prev = (json['total_members_prev'] as num?)?.toInt() ?? 0;
+    final revenue = (json['revenue_inr'] as num?)?.toInt() ?? 0;
+    final revenuePrev = (json['revenue_prev_inr'] as num?)?.toInt() ?? 0;
+    final active = (json['active_members'] as num?)?.toInt() ?? 0;
+    return MembershipPageSummary(
+      totalMembers: totalMembers,
+      totalMembersChangePct: pctChange(totalMembers, prev),
+      activeMembers: active,
+      activePctOfTotal: totalMembers == 0 ? 0 : (active / totalMembers) * 100,
+      expiringSoon: (json['expiring_soon'] as num?)?.toInt() ?? 0,
+      expiredMembers: (json['expired_members'] as num?)?.toInt() ?? 0,
+      revenueInr: revenue,
+      revenueChangePct: pctChange(revenue, revenuePrev),
+    );
+  }
+}
+
 /// Everything on the Member Profile screen — derived live from real
 /// bookings, never a maintained counter. Mirrors `get_member_stats`, same
 /// shape as `get_guest_stats`.

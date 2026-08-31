@@ -250,6 +250,117 @@ class MembershipRepository {
     }
   }
 
+  /// The full Create Membership page write path — a self-contained
+  /// membership (its own name / type / duration / fee / GST / time slot),
+  /// not a plan assignment. Mirrors `createMembershipFull` in
+  /// src/services/memberships/supabase-membership.service.ts: one RPC that
+  /// gets-or-creates the member, inserts the membership, computes the charge
+  /// total, and records the payment. See
+  /// supabase/migrations/0028_membership_creation_form.sql.
+  Future<Membership> createMembershipFull(CreateMembershipFullInput input) async {
+    try {
+      final row =
+          await _client.rpc(
+                'create_membership_full',
+                params: {
+                  'p_facility_id': input.facilityId,
+                  'p_full_name': input.fullName,
+                  'p_phone': input.phone,
+                  'p_email': input.email,
+                  'p_date_of_birth': input.dateOfBirth,
+                  'p_gender': input.gender,
+                  'p_address': input.address,
+                  'p_name': input.name,
+                  'p_membership_type': membershipTypeToDb(input.membershipType),
+                  'p_max_family_members': input.maxFamilyMembers,
+                  'p_start_date': _dateOnly(input.startDate),
+                  'p_duration_days': input.durationDays,
+                  'p_description': input.description,
+                  'p_membership_fee_inr': input.membershipFeeInr,
+                  'p_registration_fee_inr': input.registrationFeeInr,
+                  'p_gst_percent': input.gstPercent,
+                  'p_payment_mode': membershipPaymentModeToDb(input.paymentMode),
+                  'p_payment_methods': input.paymentMethods.isEmpty ? null : input.paymentMethods.join(', '),
+                  'p_payment_reference': input.paymentReference,
+                  'p_referral_member_id': input.referralMemberId,
+                  'p_discovery_source': input.discoverySource,
+                  'p_notes': input.notes,
+                  'p_monthly_price_inr': input.membershipFeeInr,
+                },
+              )
+              as Map<String, dynamic>;
+      return Membership.fromJson(row, planName: row['name'] as String? ?? 'Membership');
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, invalid: AppErrorCode.invalidMembership);
+    }
+  }
+
+  /// Generates a Razorpay UPI AutoPay mandate for a recurring membership —
+  /// invokes the `create-membership-subscription` Edge Function (the only
+  /// place the Razorpay secret exists). Mirrors the web service's
+  /// `createMembershipSubscription`. Same error mapping as
+  /// [PaymentRepository.createPaymentOrder].
+  Future<MembershipSubscriptionInfo> createMembershipSubscription(String membershipId) async {
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'create-membership-subscription',
+        body: {'membershipId': membershipId},
+      );
+    } on FunctionsHttpException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] is String) {
+        throw AppException(AppErrorCode.paymentGatewayError, details['error'] as String);
+      }
+      throw AppException(AppErrorCode.paymentGatewayError);
+    } on FunctionException {
+      throw AppException(AppErrorCode.paymentGatewayError);
+    }
+    final data = response.data;
+    if (data is! Map || data['error'] != null) throw AppException(AppErrorCode.paymentGatewayError);
+    return MembershipSubscriptionInfo.fromJson(data.cast<String, dynamic>());
+  }
+
+  /// The Memberships page list — every membership at the facility (not one
+  /// row per member), filtered / sorted / paginated server-side. Mirrors
+  /// `listMemberships` on the web; the plan is optional and the row falls
+  /// back to the membership's own name / fee / time slot.
+  Future<MembershipListResult> listMemberships(String facilityId, MembershipListParams params) async {
+    try {
+      final rows = await _client.rpc(
+        'list_memberships',
+        params: {
+          'p_facility_id': facilityId,
+          'p_search': params.search?.trim().isNotEmpty == true ? params.search!.trim() : null,
+          'p_status': membershipListStatusToDb(params.status),
+          'p_plan_id': params.planId,
+          'p_sort': membershipListSortToDb(params.sort),
+          'p_limit': params.perPage,
+          'p_offset': (params.page - 1) * params.perPage,
+        },
+      );
+      final list = (rows as List<dynamic>).cast<Map<String, dynamic>>();
+      return MembershipListResult(
+        rows: list.map(MembershipListRow.fromJson).toList(),
+        totalCount: list.isEmpty ? 0 : (list.first['total_count'] as num?)?.toInt() ?? 0,
+      );
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// The five KPI values above the Memberships list. Mirrors
+  /// `getMembershipPageSummary` on the web, including the percent-change math.
+  Future<MembershipPageSummary> getMembershipPageSummary(String facilityId) async {
+    try {
+      final rows = await _client.rpc('get_membership_page_summary', params: {'p_facility_id': facilityId});
+      final list = (rows as List<dynamic>).cast<Map<String, dynamic>>();
+      return MembershipPageSummary.fromJson(list.isEmpty ? const {} : list.first);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   Future<MemberStats> getMemberStats(String memberId, String facilityId) async {
     try {
       final rows = await _client.rpc('get_member_stats', params: {'p_member_id': memberId, 'p_facility_id': facilityId});

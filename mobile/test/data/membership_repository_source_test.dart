@@ -43,4 +43,54 @@ void main() {
       expect(source, contains('class MemberAlreadyExistsException implements Exception'));
     });
   });
+
+  group('Full Create Membership page write path (web Phase 4 parity)', () {
+    test('createMembershipFull calls the create_membership_full RPC', () {
+      expect(source, contains("_client.rpc(\n                'create_membership_full'"));
+    });
+
+    test('sends every param name the web service sends', () {
+      for (final param in const [
+        'p_facility_id',
+        'p_full_name',
+        'p_phone',
+        'p_email',
+        'p_date_of_birth',
+        'p_gender',
+        'p_address',
+        'p_name',
+        'p_membership_type',
+        'p_max_family_members',
+        'p_start_date',
+        'p_duration_days',
+        'p_description',
+        'p_membership_fee_inr',
+        'p_registration_fee_inr',
+        'p_gst_percent',
+        'p_payment_mode',
+        'p_payment_methods',
+        'p_payment_reference',
+        'p_referral_member_id',
+        'p_discovery_source',
+        'p_notes',
+        'p_monthly_price_inr',
+      ]) {
+        expect(source, contains("'$param':"), reason: 'missing $param');
+      }
+    });
+
+    test('payment methods are comma-joined, matching the web service', () {
+      expect(source, contains(".join(', ')"));
+    });
+
+    test('listMemberships / summary call the shared RPCs', () {
+      expect(source, contains("'list_memberships'"));
+      expect(source, contains("'get_membership_page_summary'"));
+    });
+
+    test('recurring subscription goes through the create-membership-subscription Edge Function', () {
+      expect(source, contains("'create-membership-subscription'"));
+      expect(source, contains('_client.functions.invoke'));
+    });
+  });
 }
