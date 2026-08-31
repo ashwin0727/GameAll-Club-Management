@@ -274,7 +274,7 @@ export class SupabaseMembershipService implements MembershipService {
       p_search: params.search?.trim() || null,
       p_status: params.status ?? null,
       p_plan_id: params.planId ?? null,
-      p_sort: params.sort ?? "newest",
+      p_sort: params.sort ?? "oldest",
       p_limit: params.perPage,
       p_offset: (params.page - 1) * params.perPage,
     });
@@ -292,9 +292,6 @@ export class SupabaseMembershipService implements MembershipService {
       status: row.display_status as MembershipListStatus,
       startDate: row.start_date,
       endDate: row.end_date,
-      daysLeft: row.days_left,
-      createdById: row.created_by,
-      createdByName: row.created_by_name,
       slot: row.batch_name
         ? {
             name: row.batch_name,
@@ -322,11 +319,19 @@ export class SupabaseMembershipService implements MembershipService {
       totalMembersChangePct: pctChange(totalMembers, prev),
       activeMembers: row?.active_members ?? 0,
       activePctOfTotal: totalMembers === 0 ? 0 : ((row?.active_members ?? 0) / totalMembers) * 100,
-      expiringSoon: row?.expiring_soon ?? 0,
-      expiredMembers: row?.expired_members ?? 0,
+      inactiveMembers: row?.inactive_members ?? 0,
       revenueInr: revenue,
       revenueChangePct: pctChange(revenue, revenuePrev),
     };
+  }
+
+  async deleteMember(memberId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("delete_member", { p_member_id: memberId });
+    if (!error) return;
+    // The RPC's 23514 carries the specific reason ("has booking or payment
+    // history…") — surface it verbatim rather than a generic message.
+    if (error.code === "23514") throw new ServiceError("INVALID_MEMBER", error.message);
+    throw mapSupabaseError(error, { notFound: "MEMBER_NOT_FOUND" });
   }
 
   async createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo> {

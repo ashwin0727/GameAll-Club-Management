@@ -42,9 +42,11 @@ export interface MembershipService {
   createMembershipFull(input: CreateMembershipFullInput): Promise<Membership>;
   /** Owner/manager sets the facility's default membership access days (0=Sun..6=Sat); returns the saved set. */
   setMembershipAccessDays(facilityId: string, days: number[]): Promise<number[]>;
+  /** Hard-delete a member with no booking or settled-payment history. Owner/manager only. */
+  deleteMember(memberId: string): Promise<void>;
   /** Paginated, filterable, sortable list for the Memberships page. */
   listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult>;
-  /** The five KPI tiles on the Memberships page, with month-over-month deltas. */
+  /** The four KPI tiles on the Memberships page, with month-over-month deltas. */
   getMembershipPageSummary(facilityId: string): Promise<MembershipPageSummary>;
   /** Starts (or reuses) a Razorpay Subscription for recurring UPI AutoPay on this membership. */
   createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo>;

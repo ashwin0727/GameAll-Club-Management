@@ -315,4 +315,88 @@ describe("SupabaseMembershipService", () => {
       await expect(service.setMembershipAccessDays("f", [1])).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     });
   });
+
+  describe("memberships page rework", () => {
+    it("listMemberships defaults the sort to 'oldest' and maps the new fields", async () => {
+      const rpc = vi.fn(async () => ({
+        data: [
+          {
+            membership_id: "ms-1",
+            member_id: "member-1",
+            member_name: "Arun",
+            member_phone: "9999999999",
+            member_email: null,
+            plan_id: null,
+            plan_name: "Premium",
+            monthly_price_inr: 1000,
+            display_status: "payment_not_initiated",
+            start_date: "2026-09-01",
+            end_date: "2026-12-01",
+            batch_name: null,
+            total_count: 1,
+          },
+        ],
+        error: null,
+      }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      const result = await service.listMemberships("facility-1", { page: 1, perPage: 10 });
+
+      expect(rpc).toHaveBeenCalledWith("list_memberships", expect.objectContaining({ p_sort: "oldest" }));
+      expect(result.rows[0]).toMatchObject({
+        membershipId: "ms-1",
+        status: "payment_not_initiated",
+        endDate: "2026-12-01",
+      });
+      expect(result.rows[0]).not.toHaveProperty("daysLeft");
+      expect(result.rows[0]).not.toHaveProperty("createdById");
+    });
+
+    it("getMembershipPageSummary maps inactive_members", async () => {
+      const rpc = vi.fn(async () => ({
+        data: [
+          {
+            total_members: 10,
+            total_members_prev: 8,
+            active_members: 6,
+            inactive_members: 3,
+            revenue_inr: 5000,
+            revenue_prev_inr: 4000,
+          },
+        ],
+        error: null,
+      }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+
+      const summary = await service.getMembershipPageSummary("facility-1");
+
+      expect(summary.inactiveMembers).toBe(3);
+      expect(summary.activeMembers).toBe(6);
+      expect(summary).not.toHaveProperty("expiringSoon");
+      expect(summary).not.toHaveProperty("expiredMembers");
+    });
+
+    it("deleteMember calls the delete_member RPC", async () => {
+      const rpc = vi.fn(async () => ({ error: null }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await service.deleteMember("member-1");
+      expect(rpc).toHaveBeenCalledWith("delete_member", { p_member_id: "member-1" });
+    });
+
+    it("deleteMember surfaces the RPC's 23514 message verbatim", async () => {
+      const rpc = vi.fn(async () => ({
+        error: { code: "23514", message: "This member has booking or payment history and cannot be deleted." },
+      }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await expect(service.deleteMember("member-1")).rejects.toMatchObject({
+        message: "This member has booking or payment history and cannot be deleted.",
+      });
+    });
+
+    it("deleteMember maps a missing member to MEMBER_NOT_FOUND", async () => {
+      const rpc = vi.fn(async () => ({ error: { code: "23503", message: "not found" } }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await expect(service.deleteMember("gone")).rejects.toMatchObject({ code: "MEMBER_NOT_FOUND" });
+    });
+  });
 });

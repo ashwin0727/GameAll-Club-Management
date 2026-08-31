@@ -2,14 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Link2, Plus, Users, UserCheck, Clock, UserX, Wallet } from "lucide-react";
+import { Link2, Plus, Users, UserCheck, UserMinus, Wallet, MoreVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ServiceError } from "@/services/shared/service-error";
 import { getFacilityService } from "@/services/facility";
 import { getMembershipService } from "@/services/memberships";
 import { useMembershipList, useMembershipSummary } from "@/features/memberships/hooks/use-memberships";
@@ -32,16 +47,13 @@ const PER_PAGE = 10;
 const STATUS_OPTIONS: { value: MembershipListStatus | ""; label: string }[] = [
   { value: "", label: "All Status" },
   { value: "active", label: "Active" },
-  { value: "expiring_soon", label: "Expiring Soon" },
-  { value: "expired", label: "Expired" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "payment_not_initiated", label: "Payment Not Initiated" },
+  { value: "inactive", label: "Inactive" },
 ];
 
 const SORT_OPTIONS: { value: MembershipListSort; label: string }[] = [
-  { value: "newest", label: "Newest First" },
   { value: "oldest", label: "Oldest First" },
-  { value: "expiry_asc", label: "Expiry: Soonest" },
-  { value: "expiry_desc", label: "Expiry: Latest" },
+  { value: "next_payment", label: "Next Payment: Soonest" },
   { value: "name", label: "Name (A–Z)" },
 ];
 
@@ -69,28 +81,23 @@ function statusBadge(status: MembershipListStatus) {
   switch (status) {
     case "active":
       return <Badge variant="success">Active</Badge>;
-    case "expiring_soon":
-      return <Badge variant="warning">Expiring Soon</Badge>;
-    case "expired":
-      return <Badge variant="destructive">Expired</Badge>;
-    case "cancelled":
-      return <Badge variant="secondary">Cancelled</Badge>;
+    case "payment_not_initiated":
+      return <Badge variant="warning">Payment Not Initiated</Badge>;
+    case "inactive":
+      return <Badge variant="secondary">Inactive</Badge>;
   }
 }
 
-function expiryHint(row: MembershipListRow): { text: string; className: string } {
-  if (row.status === "cancelled") return { text: "Cancelled", className: "text-muted-foreground" };
-  if (row.daysLeft < 0) return { text: `Expired ${Math.abs(row.daysLeft)} days ago`, className: "text-destructive" };
-  if (row.daysLeft === 0) return { text: "Expires today", className: "text-warning" };
-  return {
-    text: `${row.daysLeft} days left`,
-    className: row.daysLeft <= 30 ? "text-warning" : "text-success",
-  };
+function isPastDate(iso: string): boolean {
+  const d = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
 }
 
 function toFacilityMemberRow(row: MembershipListRow): FacilityMemberRow {
   const raw =
-    row.status === "expired" ? "expired" : row.status === "cancelled" ? "cancelled" : "active";
+    row.status === "inactive" ? "expired" : row.status === "payment_not_initiated" ? "pending" : "active";
   return {
     memberId: row.memberId,
     fullName: row.memberName,
@@ -146,7 +153,7 @@ export function MembershipsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState<MembershipListStatus | "">("");
   const [planId, setPlanId] = useState("");
-  const [sort, setSort] = useState<MembershipListSort>("newest");
+  const [sort, setSort] = useState<MembershipListSort>("oldest");
   const [page, setPage] = useState(1);
 
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
@@ -155,6 +162,9 @@ export function MembershipsPage() {
   const [accessDays, setAccessDays] = useState<number[]>(ALL_DAYS);
   const [profileRow, setProfileRow] = useState<FacilityMemberRow | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ memberId: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,11 +216,26 @@ export function MembershipsPage() {
   const rows = listQuery.data?.rows ?? [];
   const totalCount = listQuery.data?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
-  const hasFilters = Boolean(debouncedSearch || status || planId || sort !== "newest");
+  const hasFilters = Boolean(debouncedSearch || status || planId || sort !== "oldest");
 
   function refetchAll() {
     summaryQuery.refetch();
     listQuery.refetch();
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await getMembershipService().deleteMember(deleteTarget.memberId);
+      setDeleteTarget(null);
+      refetchAll();
+    } catch (err) {
+      setDeleteError(err instanceof ServiceError ? err.message : "Unable to delete this member.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function shareLink() {
@@ -229,8 +254,8 @@ export function MembershipsPage() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-16 w-full rounded-xl" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
@@ -270,7 +295,7 @@ export function MembershipsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summary ? (
           <>
             <KpiCard
@@ -297,18 +322,11 @@ export function MembershipsPage() {
               accent="#00D084"
             />
             <KpiCard
-              icon={Clock}
-              label="Expiring Soon"
-              value={String(summary.expiringSoon)}
-              hint="in next 30 days"
-              accent="#FFB020"
-            />
-            <KpiCard
-              icon={UserX}
-              label="Expired Members"
-              value={String(summary.expiredMembers)}
-              hint={summary.expiredMembers > 0 ? "Needs attention" : "All clear"}
-              hintClass={summary.expiredMembers > 0 ? "text-destructive" : "text-muted-foreground"}
+              icon={UserMinus}
+              label="Inactive Members"
+              value={String(summary.inactiveMembers)}
+              hint={summary.inactiveMembers > 0 ? "Not currently playing" : "All clear"}
+              hintClass={summary.inactiveMembers > 0 ? "text-destructive" : "text-muted-foreground"}
               accent="#FF4D67"
             />
             <KpiCard
@@ -329,7 +347,7 @@ export function MembershipsPage() {
             />
           </>
         ) : (
-          Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
         )}
       </div>
 
@@ -387,7 +405,7 @@ export function MembershipsPage() {
               setSearch("");
               setStatus("");
               setPlanId("");
-              setSort("newest");
+              setSort("oldest");
             }}
           >
             Clear Filters
@@ -405,8 +423,7 @@ export function MembershipsPage() {
                 <th className="px-4 py-3 font-medium">Membership Type</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Start Date</th>
-                <th className="px-4 py-3 font-medium">Expiry Date</th>
-                <th className="px-4 py-3 font-medium">Linked By</th>
+                <th className="px-4 py-3 font-medium">Next Payment Date</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -414,20 +431,19 @@ export function MembershipsPage() {
               {listQuery.isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/60">
-                    <td colSpan={7} className="px-4 py-3">
+                    <td colSpan={6} className="px-4 py-3">
                       <Skeleton className="h-8 w-full" />
                     </td>
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     {hasFilters ? "No memberships match these filters." : "No memberships yet."}
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => {
-                  const hint = expiryHint(row);
                   return (
                     <tr key={row.membershipId} className="border-b border-border/60 last:border-b-0">
                       <td className="px-4 py-3">
@@ -456,33 +472,39 @@ export function MembershipsPage() {
                       </td>
                       <td className="px-4 py-3">{statusBadge(row.status)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{fmtDate(row.startDate)}</td>
-                      <td className="px-4 py-3">
-                        <p className="text-foreground">{fmtDate(row.endDate)}</p>
-                        <p className={cn("text-xs", hint.className)}>{hint.text}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {row.createdById ? (
-                          <span className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="text-[10px]">
-                                {initials(row.createdByName ?? "?")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs text-foreground">{row.createdByName ?? "Staff"}</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Self Registered</span>
-                        )}
+                      <td className={cn("px-4 py-3", isPastDate(row.endDate) ? "text-destructive" : "text-foreground")}>
+                        {fmtDate(row.endDate)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setProfileRow(toFacilityMemberRow(row))}
-                        >
-                          View
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setProfileRow(toFacilityMemberRow(row))}
+                          >
+                            View
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => {
+                                  setDeleteError(null);
+                                  setDeleteTarget({ memberId: row.memberId, name: row.memberName });
+                                }}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete member
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -546,6 +568,48 @@ export function MembershipsPage() {
           />
         </>
       )}
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => {
+          if (!o && !deleting) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete member</DialogTitle>
+            <DialogDescription>
+              Permanently remove <span className="font-medium text-foreground">{deleteTarget?.name}</span>. This only
+              works for members with no bookings and no settled payments.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => {
+                setDeleteTarget(null);
+                setDeleteError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={confirmDelete}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

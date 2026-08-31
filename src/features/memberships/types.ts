@@ -104,8 +104,8 @@ export interface CreateMembershipFullInput {
   notes?: string;
 }
 
-export type MembershipListStatus = "active" | "expiring_soon" | "expired" | "cancelled";
-export type MembershipListSort = "newest" | "oldest" | "expiry_asc" | "expiry_desc" | "name";
+export type MembershipListStatus = "payment_not_initiated" | "active" | "inactive";
+export type MembershipListSort = "oldest" | "next_payment" | "name";
 
 export interface MembershipSlot {
   name: string;
@@ -126,10 +126,8 @@ export interface MembershipListRow {
   monthlyPriceInr: number;
   status: MembershipListStatus;
   startDate: string;
+  /** The date the paid period runs out — shown as "Next Payment Date". */
   endDate: string;
-  daysLeft: number;
-  createdById: string | null;
-  createdByName: string | null;
   slot: MembershipSlot | null;
 }
 
@@ -215,8 +213,7 @@ export interface MembershipPageSummary {
   totalMembersChangePct: number | null;
   activeMembers: number;
   activePctOfTotal: number;
-  expiringSoon: number;
-  expiredMembers: number;
+  inactiveMembers: number;
   revenueInr: number;
   revenueChangePct: number | null;
 }

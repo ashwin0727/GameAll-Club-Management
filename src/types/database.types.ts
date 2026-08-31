@@ -1593,11 +1593,14 @@ export interface Database {
           total_members: number;
           total_members_prev: number;
           active_members: number;
-          expiring_soon: number;
-          expired_members: number;
+          inactive_members: number;
           revenue_inr: number;
           revenue_prev_inr: number;
         }[];
+      };
+      delete_member: {
+        Args: { p_member_id: string };
+        Returns: undefined;
       };
       get_membership_revenue_timeseries: {
         Args: {
