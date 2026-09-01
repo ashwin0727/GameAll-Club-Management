@@ -334,7 +334,7 @@ export function PricingForm() {
       sportName: sport?.name ?? "Sport",
       areaLabel: label,
       areaCount: areasForSport.length,
-      defaultPeriod: sportState[fs.id]?.periods[0],
+      periods: sportState[fs.id]?.periods ?? [],
     };
   });
 
