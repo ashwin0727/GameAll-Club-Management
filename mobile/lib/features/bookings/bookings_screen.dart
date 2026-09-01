@@ -26,6 +26,7 @@ import '../../shared/widgets/booking_slot_chip.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../membership_sessions/membership_slot_card.dart';
+import 'guest_booking_screen.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 import 'booking_operations.dart';
@@ -260,18 +261,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
           ? null
           : FloatingActionButton.extended(
               onPressed: () async {
-                final booked = await showModalBottomSheet<Booking>(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (context) => QuickBookingSheet(
-                    facilityId: _facilityId!,
-                    facilitySports: _facilitySports,
-                    sports: _sports,
-                    areas: _areas,
-                    date: _selectedDate,
-                  ),
+                final booked = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(builder: (_) => const GuestBookingScreen()),
                 );
-                if (booked != null) _reloadGrid();
+                if (booked == true) _reloadGrid();
               },
               icon: const Icon(Icons.add),
               label: const Text('Create Booking'),
