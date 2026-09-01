@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -9,11 +10,16 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/guest_booking_dashboard.dart';
+import '../../data/models/payment.dart';
+import '../../data/models/refund.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import '../payments/payment_checkout_controller.dart';
+import '../payments/payment_status_panel.dart';
+import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
 
 const _perPage = 10;
@@ -316,6 +322,366 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
     );
   }
 
+  void _toast(String m) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _openEdit(String id) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => GuestBookingEditScreen(bookingId: id)),
+    );
+    if (changed == true) _reload();
+  }
+
+  Widget _rowMenu(GuestBookingRow r) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 18),
+      onSelected: (v) {
+        switch (v) {
+          case 'complete':
+            _complete(r);
+          case 'cancel':
+            _cancel(r);
+          case 'receipt':
+            _receipt(r);
+          case 'duplicate':
+            _duplicate(r);
+          case 'invoice':
+            _invoice(r);
+          case 'delete':
+            _delete(r);
+        }
+      },
+      itemBuilder: (_) => [
+        if (r.status != 'completed' && r.status != 'cancelled')
+          _mi('complete', 'Mark as Completed', 'Mark booking as completed'),
+        if (r.status != 'cancelled') _mi('cancel', 'Cancel Booking', 'Cancel this booking'),
+        _mi('receipt', 'Send Receipt', 'Send booking receipt to guest'),
+        _mi('duplicate', 'Duplicate Booking', 'Create a new booking'),
+        _mi('invoice', 'Download Invoice', 'Download invoice / bill'),
+        _mi('delete', 'Delete Booking', 'Permanently delete booking'),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _mi(String v, String title, String sub) => PopupMenuItem(
+        value: v,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(sub, style: TextStyle(fontSize: 11, color: AppColors.muted)),
+          ],
+        ),
+      );
+
+  Future<bool> _confirm(String title, String body, {String confirm = 'Confirm'}) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(title),
+            content: Text(body),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(confirm)),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _delete(GuestBookingRow r) async {
+    if (!await _confirm('Delete booking', 'Permanently delete ${r.code}? Bookings with a settled payment can\'t be deleted.', confirm: 'Delete')) return;
+    try {
+      await ref.read(bookingRepositoryProvider).deleteGuestBooking(r.bookingId);
+      _reload();
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _cancel(GuestBookingRow r) async {
+    final reason = TextEditingController();
+    final amount = TextEditingController(text: r.amountMinor != null ? '${(r.amountMinor! / 100)}' : '');
+    var refund = r.paymentStatus == 'PAID';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: const Text('Cancel booking'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(controller: reason, decoration: const InputDecoration(labelText: 'Reason (optional)')),
+              if (r.paymentStatus == 'PAID') ...[
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: refund,
+                  onChanged: (v) => setSt(() => refund = v ?? false),
+                  title: const Text('Issue a refund'),
+                ),
+                if (refund)
+                  TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Refund amount (₹)')),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Booking')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      if (r.paymentStatus == 'PAID') {
+        final total = r.amountMinor ?? 0;
+        final pct = refund && total > 0
+            ? ((double.tryParse(amount.text.trim()) ?? 0) * 100 * 100 / total).round().clamp(0, 100)
+            : 0;
+        await ref.read(refundRepositoryProvider).cancelBooking(
+              CancelBookingInput(bookingId: r.bookingId, reason: reason.text.trim().isEmpty ? null : reason.text.trim(), refundOverridePercent: pct),
+            );
+      } else {
+        await ref.read(bookingRepositoryProvider).cancelBooking(r.bookingId, reason: reason.text.trim().isEmpty ? null : reason.text.trim());
+      }
+      _reload();
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _receipt(GuestBookingRow r) async {
+    final email = TextEditingController();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Receipt'),
+        content: TextField(
+          controller: email,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'Guest email', hintText: 'guest@example.com'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Send')),
+        ],
+      ),
+    );
+    if (send != true) return;
+    if (!RegExp(r'^\S+@\S+\.\S+$').hasMatch(email.text.trim())) {
+      _toast('Enter a valid email address.');
+      return;
+    }
+    try {
+      await ref.read(bookingRepositoryProvider).sendBookingReceipt(r.bookingId, email.text.trim());
+      _toast('Receipt sent to ${email.text.trim()}');
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _duplicate(GuestBookingRow r) async {
+    final duration = r.endTime.difference(r.startTime);
+    var start = r.startTime.add(const Duration(days: 7));
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: const Text('Duplicate booking'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Creates a new booking with the same guest, court and players.'),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton(
+                onPressed: () async {
+                  final d = await showDatePicker(context: ctx, initialDate: start, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));
+                  if (d == null || !ctx.mounted) return;
+                  final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(start));
+                  if (t == null) return;
+                  setSt(() => start = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+                },
+                child: Text('${Formatters.dateShort(start)} · ${Formatters.time12h(_hm(start))}'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Duplicate')),
+          ],
+        ),
+      ),
+    );
+    if (go != true) return;
+    try {
+      final b = await ref.read(bookingRepositoryProvider).duplicateGuestBooking(r.bookingId, start, start.add(duration));
+      _reload();
+      await _collectAndComplete(bookingId: b.id, amountMinor: b.amountMinor, alreadyPaid: false, label: '${r.sportName ?? "Court"} · ${r.courtName}', guestName: r.guestName, guestPhone: r.guestPhone, promptOnly: true);
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _complete(GuestBookingRow r) async {
+    await _collectAndComplete(
+      bookingId: r.bookingId,
+      amountMinor: r.amountMinor,
+      alreadyPaid: r.paymentStatus == 'PAID',
+      label: '${r.sportName ?? "Court"} · ${r.courtName}',
+      guestName: r.guestName,
+      guestPhone: r.guestPhone,
+    );
+  }
+
+  /// Shared "collect payment then complete" flow. [promptOnly] skips the
+  /// final complete step (used right after Duplicate — the new booking is
+  /// just pending, not something to complete yet).
+  Future<void> _collectAndComplete({
+    required String bookingId,
+    required int? amountMinor,
+    required bool alreadyPaid,
+    required String label,
+    String? guestName,
+    String? guestPhone,
+    bool promptOnly = false,
+  }) async {
+    final facilityId = _facilityId;
+    if (facilityId == null) return;
+
+    if (alreadyPaid) {
+      if (!await _confirm('Mark as Completed', 'This booking is paid. Mark it completed?', confirm: 'Complete')) return;
+      try {
+        await ref.read(bookingRepositoryProvider).completeGuestBooking(bookingId);
+        _reload();
+      } on AppException catch (e) {
+        _toast(e.message);
+      }
+      return;
+    }
+
+    final method = TextEditingController(text: 'Cash');
+    final amount = TextEditingController(text: amountMinor != null ? '${(amountMinor / 100)}' : '');
+    var mode = 'offline';
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text(promptOnly ? 'Collect payment' : 'Mark as Completed'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final opt in const [('offline', 'Payment collected offline'), ('online', 'Collect online (Razorpay)')])
+                InkWell(
+                  onTap: () => setSt(() => mode = opt.$1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(mode == opt.$1 ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                            size: 18, color: mode == opt.$1 ? AppColors.primary : AppColors.muted),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: Text(opt.$2)),
+                      ],
+                    ),
+                  ),
+                ),
+              if (mode == 'offline') ...[
+                DropdownButtonFormField<String>(
+                  initialValue: method.text,
+                  decoration: const InputDecoration(labelText: 'Method'),
+                  items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  onChanged: (v) => method.text = v ?? 'Cash',
+                ),
+                TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount (₹)')),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(promptOnly ? 'Later' : 'Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, mode), child: const Text('Continue')),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    try {
+      if (choice == 'offline') {
+        await ref.read(bookingRepositoryProvider).recordGuestBookingPayment(
+              bookingId,
+              method.text.trim().isEmpty ? 'Cash' : method.text.trim(),
+              ((double.tryParse(amount.text.trim()) ?? 0) * 100).round(),
+            );
+      } else {
+        final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
+              CreatePaymentOrderInput(facilityId: facilityId, sourceType: PaymentSourceType.guestBooking, bookingId: bookingId),
+              contactName: guestName,
+              contactPhone: guestPhone,
+            );
+        if (result is CheckoutCancelled) return;
+        if (result is! CheckoutSettled) {
+          if (mounted) {
+            await showDialog<void>(
+              context: context,
+              builder: (_) => AlertDialog(content: PaymentStatusPanel(state: result, settledLabel: 'Payment received', resourceLabel: 'booking')),
+            );
+          }
+          _reload();
+          return;
+        }
+      }
+      if (!promptOnly) {
+        await ref.read(bookingRepositoryProvider).completeGuestBooking(bookingId);
+      }
+      _reload();
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
+  Future<void> _invoice(GuestBookingRow r) async {
+    final lines = <(String, String)>[
+      ('Booking ID', r.code),
+      ('Guest', '${r.guestName}${r.guestPhone != null ? ' · ${r.guestPhone}' : ''}'),
+      ('Sport / Court', '${r.sportName ?? '—'} · ${r.courtName}'),
+      ('Date', Formatters.dateShort(r.startTime)),
+      ('Time', '${Formatters.time12h(_hm(r.startTime))} – ${Formatters.time12h(_hm(r.endTime))}'),
+      ('Players', '${r.partySize}'),
+      ('Amount', r.amountMinor == null ? '—' : Formatters.currencyInr((r.amountMinor! / 100).round())),
+      ('Payment', '${r.paymentStatus}${r.paymentMethod != null ? ' · ${r.paymentMethod}' : ''}'),
+      ('Status', r.status),
+    ];
+    final text = ['GameAll — Invoice', ...lines.map((e) => '${e.$1}: ${e.$2}')].join('\n');
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invoice'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: lines.map((e) => Padding(padding: const EdgeInsets.symmetric(vertical: 3), child: Text('${e.$1}: ${e.$2}'))).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: text));
+              Navigator.pop(ctx);
+              _toast('Invoice copied');
+            },
+            child: const Text('Copy'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _list() {
     final rows = _rows;
     if (rows == null) {
@@ -337,6 +703,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: AppCard(
+              onTap: () => _openEdit(r.bookingId),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -355,6 +722,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                         ),
                       ),
                       StatusBadge(label: chip.label, tone: chip.tone),
+                      _rowMenu(r),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),

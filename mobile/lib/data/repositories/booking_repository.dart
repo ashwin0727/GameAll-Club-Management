@@ -165,4 +165,93 @@ class BookingRepository {
       throw mapSupabaseError(e);
     }
   }
+
+  Future<Booking?> getBooking(String bookingId) async {
+    try {
+      final row = await _client.from('bookings').select().eq('id', bookingId).maybeSingle();
+      return row == null ? null : Booking.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<Booking> updateGuestBooking(
+    String bookingId, {
+    required String guestName,
+    String? guestPhone,
+    required int partySize,
+    String? notes,
+  }) async {
+    try {
+      final row = await _client.rpc('update_guest_booking', params: {
+        'p_booking_id': bookingId,
+        'p_guest_name': guestName,
+        'p_guest_phone': guestPhone,
+        'p_party_size': partySize,
+        'p_notes': notes,
+      });
+      return Booking.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
+  Future<Booking> completeGuestBooking(String bookingId) async {
+    try {
+      final row = await _client.rpc('complete_guest_booking', params: {'p_booking_id': bookingId});
+      return Booking.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
+  Future<Booking> recordGuestBookingPayment(String bookingId, String method, int amountMinor) async {
+    try {
+      final row = await _client.rpc('record_guest_booking_payment', params: {
+        'p_booking_id': bookingId,
+        'p_method': method,
+        'p_amount_minor': amountMinor,
+      });
+      return Booking.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
+  Future<Booking> duplicateGuestBooking(String bookingId, DateTime newStart, DateTime newEnd) async {
+    try {
+      final row = await _client.rpc('duplicate_guest_booking', params: {
+        'p_booking_id': bookingId,
+        'p_new_start': newStart.toIso8601String(),
+        'p_new_end': newEnd.toIso8601String(),
+      });
+      return Booking.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
+  Future<void> deleteGuestBooking(String bookingId) async {
+    try {
+      await _client.rpc('delete_guest_booking', params: {'p_booking_id': bookingId});
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
+  Future<void> sendBookingReceipt(String bookingId, String email) async {
+    final FunctionResponse res;
+    try {
+      res = await _client.functions.invoke('send-booking-receipt', body: {'bookingId': bookingId, 'email': email});
+    } on FunctionsHttpException catch (e) {
+      final d = e.details;
+      throw AppException(AppErrorCode.databaseError, d is Map && d['error'] is String ? d['error'] as String : 'Could not send the receipt.');
+    } on FunctionException {
+      throw AppException(AppErrorCode.databaseError, 'Could not send the receipt.');
+    }
+    final data = res.data;
+    if (data is! Map || data['sent'] != true) {
+      throw AppException(AppErrorCode.databaseError, 'Could not send the receipt email.');
+    }
+  }
 }

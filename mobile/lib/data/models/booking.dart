@@ -62,6 +62,8 @@ class Booking {
     required this.paymentStatus,
     this.cancellationReason,
     this.notes,
+    this.partySize = 1,
+    this.paymentMethod,
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
@@ -84,6 +86,8 @@ class Booking {
   final PaymentStatus paymentStatus;
   final String? cancellationReason;
   final String? notes;
+  final int partySize;
+  final String? paymentMethod;
   final String createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -107,6 +111,8 @@ class Booking {
       paymentStatus: _paymentStatusFromDb(json['payment_status'] as String? ?? 'PENDING'),
       cancellationReason: json['cancellation_reason'] as String?,
       notes: json['notes'] as String?,
+      partySize: (json['party_size'] as num?)?.toInt() ?? 1,
+      paymentMethod: json['payment_method'] as String?,
       createdBy: json['created_by'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -132,6 +138,8 @@ class Booking {
       paymentStatus: paymentStatus ?? this.paymentStatus,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       notes: notes,
+      partySize: partySize,
+      paymentMethod: paymentMethod,
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
