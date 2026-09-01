@@ -10,6 +10,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking.dart';
 import '../../data/models/membership_session.dart';
+import '../../data/models/payment.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/models/playing_area.dart';
@@ -17,9 +18,11 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
+import '../payments/payment_checkout_controller.dart';
+import '../payments/payment_status_panel.dart';
 import 'booking_slots.dart';
 
-const _steps = ['Select Court & Time', 'Guest Details', 'Review & Confirm', 'Payment (Offline)'];
+const _steps = ['Select Court & Time', 'Guest Details', 'Review & Confirm', 'Payment'];
 
 String _hhmm(DateTime d) {
   final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
@@ -105,10 +108,15 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   final _players = TextEditingController(text: '2');
   final _notes = TextEditingController();
   String _paymentMethod = 'Cash';
+  String _payMode = 'offline'; // offline | online
 
   bool _submitting = false;
   String? _error;
   Booking? _booked;
+  Booking? _pendingBooking; // created, awaiting online payment
+  CheckoutResult? _paymentState;
+  bool _isPaying = false;
+  bool _isCheckingAgain = false;
 
   @override
   void initState() {
@@ -248,15 +256,65 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
               notes: notes.isEmpty ? null : notes,
               paymentStatus: PaymentStatus.pending,
               partySize: int.tryParse(_players.text.trim()) ?? 1,
-              paymentMethod: _paymentMethod,
+              paymentMethod: _payMode == 'online' ? 'Online (Razorpay)' : _paymentMethod,
             ),
           );
+
+      if (_payMode == 'online') {
+        _pendingBooking = b;
+        if (mounted) {
+          setState(() {
+            _submitting = false;
+            _isPaying = true;
+          });
+        }
+        try {
+          final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
+                CreatePaymentOrderInput(
+                  facilityId: _facilityId!,
+                  sourceType: PaymentSourceType.guestBooking,
+                  bookingId: b.id,
+                ),
+                contactName: _name.text.trim(),
+                contactPhone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+              );
+          if (!mounted) return;
+          if (result is CheckoutCancelled) {
+            setState(() => _paymentState = null);
+          } else {
+            setState(() => _paymentState = result);
+            if (result is CheckoutSettled) {
+              _booked = b.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid);
+            }
+          }
+        } on AppException catch (e) {
+          if (mounted) setState(() => _error = e.message);
+        } finally {
+          if (mounted) setState(() => _isPaying = false);
+        }
+        return;
+      }
+
       HapticFeedback.mediumImpact();
       if (mounted) setState(() => _booked = b);
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _checkAgain(String paymentOrderId) async {
+    setState(() => _isCheckingAgain = true);
+    try {
+      final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
+      if (!mounted) return;
+      setState(() => _paymentState = result);
+      if (result is CheckoutSettled && _pendingBooking != null) {
+        _booked = _pendingBooking!.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid);
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingAgain = false);
     }
   }
 
@@ -293,10 +351,21 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                               onPressed: _canNext ? () => setState(() => _step++) : null,
                               child: Text('Next: ${_steps[_step + 1]}', overflow: TextOverflow.ellipsis),
                             )
-                          : FilledButton(
-                              onPressed: _submitting ? null : _confirm,
-                              child: Text(_submitting ? 'Confirming…' : 'Confirm Booking'),
-                            ),
+                          : _paymentState != null
+                              ? OutlinedButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Go to Bookings'),
+                                )
+                              : FilledButton(
+                                  onPressed: (_submitting || _isPaying) ? null : _confirm,
+                                  child: Text(
+                                    (_submitting || _isPaying)
+                                        ? 'Processing…'
+                                        : _payMode == 'online'
+                                            ? 'Pay & Confirm'
+                                            : 'Confirm Booking',
+                                  ),
+                                ),
                     ),
                   ],
                 ),
@@ -323,7 +392,9 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Payment is to be collected offline at the venue.',
+              _booked!.paymentStatus == PaymentStatus.paid
+                  ? 'Payment received online. Nothing to collect at the venue.'
+                  : 'Payment is to be collected offline at the venue.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -649,48 +720,81 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   }
 
   Widget _stepPayment() {
+    final amount = _totalMinor == null ? 'the amount' : Formatters.currencyInr((_totalMinor! / 100).round());
+    if (_paymentState != null) {
+      return AppCard(
+        child: PaymentStatusPanel(
+          state: _paymentState,
+          settledLabel: 'Booking Confirmed',
+          resourceLabel: 'booking',
+          isCheckingAgain: _isCheckingAgain,
+          onCheckAgain: _paymentState is CheckoutPending
+              ? () => _checkAgain((_paymentState as CheckoutPending).paymentOrderId)
+              : null,
+          onRetry: _paymentState is CheckoutFailed
+              ? () {
+                  setState(() => _paymentState = null);
+                  _confirm();
+                }
+              : null,
+        ),
+      );
+    }
+    Widget option(String mode, String title, String subtitle) {
+      final selected = _payMode == mode;
+      return InkWell(
+        onTap: () => setState(() => _payMode = mode),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+            color: selected ? AppColors.primary.withValues(alpha: 0.06) : null,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  size: 18, color: selected ? AppColors.primary : AppColors.muted),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Payment (Offline)', style: Theme.of(context).textTheme.titleSmall),
+          Text('Payment', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: AppColors.mutedBackground,
-              borderRadius: BorderRadius.circular(AppRadius.md),
+          option('offline', 'Pay at venue',
+              'Collect $amount at the venue. Booking is created with payment status Pending.'),
+          option('online', 'Pay online now',
+              'Collect $amount now via Razorpay (UPI / card / net banking). Confirmed as Paid once it settles.'),
+          if (_payMode == 'offline') ...[
+            const SizedBox(height: AppSpacing.xs),
+            DropdownButtonFormField<String>(
+              initialValue: _paymentMethod,
+              decoration: const InputDecoration(labelText: 'Payment method (for your records)'),
+              items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
+              onChanged: (v) => setState(() => _paymentMethod = v ?? 'Cash'),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.info_outline, size: 16, color: AppColors.muted),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Payment is to be made offline', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text(
-                        'Collect ${_totalMinor == null ? 'the amount' : Formatters.currencyInr((_totalMinor! / 100).round())} '
-                        'at the venue. The booking is created with payment status Pending.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          DropdownButtonFormField<String>(
-            initialValue: _paymentMethod,
-            decoration: const InputDecoration(labelText: 'Payment method (for your records)'),
-            items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
-                .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                .toList(),
-            onChanged: (v) => setState(() => _paymentMethod = v ?? 'Cash'),
-          ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(_error!, style: const TextStyle(color: AppColors.destructive)),
