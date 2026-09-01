@@ -13,6 +13,7 @@ import type {
   MembershipSessionDetail,
   MembershipSessionListParams,
   MembershipSessionListResult,
+  MembershipSessionMemberRow,
   MembershipSessionOccurrence,
   MembershipSessionSlot,
   MembershipSessionsSummary,
@@ -313,7 +314,10 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
     return {
       batchId: d.batchId as string,
       facilityId: d.facilityId as string,
+      facilityName: (d.facilityName as string) ?? null,
+      facilityAddress: (d.facilityAddress as string) ?? null,
       name: d.name as string,
+      notes: (d.notes as string) ?? null,
       courtId: d.courtId as string,
       courtName: d.courtName as string,
       facilitySportId: d.facilitySportId as string,
@@ -334,6 +338,24 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
       runsToday: d.runsToday as boolean,
       nextOccurrenceDate: (d.nextOccurrenceDate as string) ?? null,
     };
+  }
+
+  async getSessionMembers(batchId: string): Promise<MembershipSessionMemberRow[]> {
+    const { data, error } = await this.supabase.rpc("list_membership_session_members", { p_batch_id: batchId });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      memberId: r.member_id,
+      fullName: r.full_name,
+      phone: r.phone,
+      status: r.status,
+      addedOn: r.added_on,
+    }));
+  }
+
+  async setSessionNotes(batchId: string, notes: string): Promise<void> {
+    const { error } = await this.supabase.rpc("set_membership_batch_notes", { p_batch_id: batchId, p_notes: notes });
+    if (error) throw mapCapacityError(error);
   }
 
   async listOccurrences(batchId: string, days = 30): Promise<MembershipSessionOccurrence[]> {

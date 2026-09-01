@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarClock, CalendarCheck2, CalendarDays, DoorOpen, Gauge, Plus, Link2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,6 @@ import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { formatSlot } from "@/features/memberships/slot-format";
 import { CreateSessionDialog } from "@/features/membership-sessions/components/create-session-dialog";
-import { SessionDetailDrawer } from "@/features/membership-sessions/components/session-detail-drawer";
 import type {
   MembershipSessionListRow,
   MembershipSessionStatus,
@@ -69,6 +69,7 @@ function statusBadge(s: MembershipSessionStatus) {
 }
 
 export function MembershipSessionsPage() {
+  const router = useRouter();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [summary, setSummary] = useState<MembershipSessionsSummary | null>(null);
   const [rows, setRows] = useState<MembershipSessionListRow[] | null>(null);
@@ -87,7 +88,7 @@ export function MembershipSessionsPage() {
   const [areas, setAreas] = useState<PlayingArea[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const openDetail = useCallback((batchId: string) => router.push(`/membership-sessions/${batchId}`), [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,8 +155,8 @@ export function MembershipSessionsPage() {
   if (!facilityId) return <Skeleton className="h-96 w-full rounded-xl" />;
 
   return (
-    <div className="flex gap-4">
-      <div className={cn("min-w-0 flex-1 space-y-6", selected && "hidden xl:block xl:flex-1")}>
+    <div>
+      <div className="min-w-0 space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold">Membership Sessions</h1>
@@ -264,7 +265,7 @@ export function MembershipSessionsPage() {
                       <td className="px-4 py-3">{statusBadge(r.status)}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button type="button" variant="outline" size="sm" onClick={() => setSelected(r.batchId)}>
+                          <Button type="button" variant="outline" size="sm" onClick={() => openDetail(r.batchId)}>
                             View
                           </Button>
                           <DropdownMenu>
@@ -274,7 +275,7 @@ export function MembershipSessionsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelected(r.batchId)}>Manage members</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDetail(r.batchId)}>View details</DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={async () => {
                                   await getMembershipSessionService().duplicateSession(r.batchId);
@@ -313,15 +314,6 @@ export function MembershipSessionsPage() {
           </div>
         </Card>
       </div>
-
-      {selected && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/40 xl:hidden" onClick={() => setSelected(null)} />
-          <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-border shadow-xl xl:static xl:z-0 xl:w-[400px] xl:shrink-0 xl:rounded-xl xl:border xl:shadow-none">
-            <SessionDetailDrawer batchId={selected} onClose={() => setSelected(null)} onChanged={reload} />
-          </div>
-        </>
-      )}
 
       {facilityId && (
         <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} facilityId={facilityId} onCreated={reload} />

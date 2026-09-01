@@ -9,6 +9,7 @@ import type {
   MembershipSessionDetail,
   MembershipSessionListParams,
   MembershipSessionListResult,
+  MembershipSessionMemberRow,
   MembershipSessionOccurrence,
   MembershipSessionSlot,
   MembershipSessionsSummary,
@@ -39,6 +40,8 @@ export interface MembershipSessionService {
   getSessionsSummary(facilityId: string): Promise<MembershipSessionsSummary>;
   listSessionsAdmin(facilityId: string, params: MembershipSessionListParams): Promise<MembershipSessionListResult>;
   getSessionDetail(batchId: string): Promise<MembershipSessionDetail>;
+  getSessionMembers(batchId: string): Promise<MembershipSessionMemberRow[]>;
+  setSessionNotes(batchId: string, notes: string): Promise<void>;
   listOccurrences(batchId: string, days?: number): Promise<MembershipSessionOccurrence[]>;
   listSessionBookings(batchId: string, limit?: number): Promise<MembershipSessionBookingRow[]>;
   listSessionActivity(batchId: string, limit?: number): Promise<MembershipSessionActivity[]>;

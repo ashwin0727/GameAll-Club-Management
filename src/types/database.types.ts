@@ -913,6 +913,8 @@ export interface Database {
           end_time: string;
           capacity: number;
           is_active: boolean;
+          notes: string | null;
+          created_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -928,6 +930,8 @@ export interface Database {
           end_time: string;
           capacity: number;
           is_active?: boolean;
+          notes?: string | null;
+          created_by?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1880,6 +1884,21 @@ export interface Database {
       get_membership_session_detail: {
         Args: { p_batch_id: string };
         Returns: unknown;
+      };
+      list_membership_session_members: {
+        Args: { p_batch_id: string };
+        Returns: {
+          id: string;
+          member_id: string;
+          full_name: string;
+          phone: string;
+          status: string;
+          added_on: string;
+        }[];
+      };
+      set_membership_batch_notes: {
+        Args: { p_batch_id: string; p_notes: string };
+        Returns: undefined;
       };
       list_membership_session_occurrences: {
         Args: { p_batch_id: string; p_days?: number };

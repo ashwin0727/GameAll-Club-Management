@@ -130,10 +130,22 @@ export interface MembershipSessionListResult {
   totalCount: number;
 }
 
+export interface MembershipSessionMemberRow {
+  id: string;
+  memberId: string;
+  fullName: string;
+  phone: string;
+  status: string;
+  addedOn: string;
+}
+
 export interface MembershipSessionDetail {
   batchId: string;
   facilityId: string;
+  facilityName: string | null;
+  facilityAddress: string | null;
   name: string;
+  notes: string | null;
   courtId: string;
   courtName: string;
   facilitySportId: string;
