@@ -16,6 +16,8 @@ import { getPricingService } from "@/services/pricing";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { formatCurrency } from "@/features/pricing/money";
+import { usePaymentCheckout } from "@/features/payments/use-payment-checkout";
+import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
@@ -23,7 +25,7 @@ import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import type { Facility } from "@/features/onboarding/types";
 
-const STEPS = ["Select Court & Time", "Guest Details", "Review & Confirm", "Payment (Offline)"] as const;
+const STEPS = ["Select Court & Time", "Guest Details", "Review & Confirm", "Payment"] as const;
 
 function hhmm(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -75,6 +77,7 @@ export function GuestBookingWizard() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [players, setPlayers] = useState("2");
+  const [payMode, setPayMode] = useState<"offline" | "online">("offline");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [notes, setNotes] = useState("");
 
@@ -82,6 +85,8 @@ export function GuestBookingWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [booked, setBooked] = useState<Booking | null>(null);
+  const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
+  const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
 
   useEffect(() => {
     let cancelled = false;
@@ -197,13 +202,67 @@ export function GuestBookingWizard() {
         notes: finalNotes,
         paymentStatus: "PENDING",
         partySize: Math.max(1, Number(players) || 1),
-        paymentMethod,
+        paymentMethod: payMode === "online" ? "Online (Razorpay)" : paymentMethod,
       });
+
+      if (payMode === "online") {
+        setSubmitting(false);
+        setPaymentState("processing");
+        const result = await startCheckout(
+          { facilityId: facility.id, sourceType: "GUEST_BOOKING", bookingId: b.id },
+          {
+            description: `${sportName} · ${court?.name ?? "Court"}`,
+            prefill: { name: guestName.trim(), contact: guestPhone.trim() || undefined, email: guestEmail.trim() || undefined },
+          },
+        );
+        if (result.status === "cancelled") {
+          setPaymentState(null);
+          return;
+        }
+        setPaymentState(result);
+        if (result.status === "settled") {
+          setBooked({ ...b, status: "confirmed", paymentStatus: "PAID" });
+        }
+        return;
+      }
+
       setBooked(b);
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to create this booking.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onCheckAgain() {
+    if (!paymentState || typeof paymentState === "string" || !("paymentOrderId" in paymentState)) return;
+    const result = await checkAgain(paymentState.paymentOrderId);
+    setPaymentState(result);
+    if (result.status === "settled" && booked == null && slot && court) {
+      setBooked({
+        id: "",
+        facilityId: facility!.id,
+        courtId,
+        facilitySportId: null,
+        memberId: null,
+        customerType: "GUEST",
+        guestPlayerId: null,
+        guestName: guestName.trim(),
+        guestPhone: guestPhone.trim() || null,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: "confirmed",
+        amountMinor: totalMinor,
+        currency,
+        paymentStatus: "PAID",
+        cancellationReason: null,
+        notes: null,
+        partySize: Math.max(1, Number(players) || 1),
+        paymentMethod: "Online (Razorpay)",
+        createdBy: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
     }
   }
 
@@ -220,7 +279,11 @@ export function GuestBookingWizard() {
         <p className="text-sm text-muted-foreground">
           {sportName} · {court?.name} · {fmtDateLong(date)} · {hhmm(booked.startTime)} – {hhmm(booked.endTime)}
         </p>
-        <p className="text-sm text-muted-foreground">Payment is to be collected offline at the venue.</p>
+        <p className="text-sm text-muted-foreground">
+          {booked.paymentStatus === "PAID"
+            ? "Payment received online. Nothing to collect at the venue."
+            : "Payment is to be collected offline at the venue."}
+        </p>
         <div className="flex justify-center gap-2">
           <Button type="button" variant="outline" onClick={() => router.push("/bookings")}>
             Back to Bookings
@@ -235,6 +298,8 @@ export function GuestBookingWizard() {
               setGuestPhone("");
               setGuestEmail("");
               setNotes("");
+              setPayMode("offline");
+              setPaymentState(null);
             }}
           >
             New Booking
@@ -478,28 +543,70 @@ export function GuestBookingWizard() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <p className="text-sm font-semibold">Payment (Offline)</p>
-              <div className="flex items-start gap-2 rounded-lg border border-border bg-secondary/40 p-3 text-sm">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Payment is to be made offline</p>
-                  <p className="text-muted-foreground">
-                    Collect {totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} at the venue. The booking is created
-                    with payment status <span className="font-medium">Pending</span>.
-                  </p>
-                </div>
-              </div>
-              <label className="block max-w-xs space-y-1 text-sm">
-                <span className="text-xs text-muted-foreground">Payment method (for your records)</span>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={selectCls}>
-                  {["Cash", "UPI", "Card", "Bank Transfer", "Other"].map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              <p className="text-sm font-semibold">Payment</p>
+
+              {paymentState ? (
+                <PaymentStatusPanel
+                  state={paymentState}
+                  settledLabel="Booking Confirmed"
+                  resourceLabel="booking"
+                  isCheckingAgain={isPaying}
+                  onCheckAgain={onCheckAgain}
+                  onRetry={() => {
+                    setPaymentState(null);
+                    void confirm();
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm",
+                        payMode === "offline" ? "border-primary bg-primary/5" : "border-border",
+                      )}
+                    >
+                      <input type="radio" name="pay-mode" className="mt-0.5" checked={payMode === "offline"} onChange={() => setPayMode("offline")} />
+                      <span>
+                        <span className="font-medium">Pay at venue</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Collect {totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} at the venue. Booking is created with
+                          payment status Pending.
+                        </span>
+                      </span>
+                    </label>
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm",
+                        payMode === "online" ? "border-primary bg-primary/5" : "border-border",
+                      )}
+                    >
+                      <input type="radio" name="pay-mode" className="mt-0.5" checked={payMode === "online"} onChange={() => setPayMode("online")} />
+                      <span>
+                        <span className="font-medium">Pay online now</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Collect {totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} now via Razorpay (UPI / card / net
+                          banking). The booking is confirmed as Paid once the payment settles.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {payMode === "offline" && (
+                    <label className="block max-w-xs space-y-1 text-sm">
+                      <span className="text-xs text-muted-foreground">Payment method (for your records)</span>
+                      <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={selectCls}>
+                        {["Cash", "UPI", "Card", "Bank Transfer", "Other"].map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -532,8 +639,10 @@ export function GuestBookingWizard() {
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-secondary/40 p-2.5 text-xs">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <div>
-              <p className="font-medium">Payment is to be made offline</p>
-              <p className="text-muted-foreground">You will pay at the venue</p>
+              <p className="font-medium">{payMode === "online" ? "Pay online now" : "Pay at the venue"}</p>
+              <p className="text-muted-foreground">
+                {payMode === "online" ? "Secure Razorpay checkout — UPI, card, net banking" : "Payment is collected offline"}
+              </p>
             </div>
           </div>
         </aside>
@@ -546,7 +655,7 @@ export function GuestBookingWizard() {
             Cancel
           </Button>
         ) : (
-          <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
+          <Button type="button" variant="outline" disabled={isPaying} onClick={() => setStep((s) => s - 1)}>
             Back
           </Button>
         )}
@@ -554,9 +663,17 @@ export function GuestBookingWizard() {
           <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
             Next: {STEPS[step + 1]} <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
+        ) : paymentState ? (
+          <Button type="button" variant="outline" onClick={() => router.push("/bookings")}>
+            Go to Bookings
+          </Button>
         ) : (
-          <Button type="button" onClick={confirm} disabled={submitting}>
-            {submitting ? "Confirming…" : "Confirm Booking"}
+          <Button type="button" onClick={confirm} disabled={submitting || isPaying}>
+            {submitting || isPaying
+              ? "Processing…"
+              : payMode === "online"
+                ? "Pay & Confirm"
+                : "Confirm Booking"}
           </Button>
         )}
       </div>
