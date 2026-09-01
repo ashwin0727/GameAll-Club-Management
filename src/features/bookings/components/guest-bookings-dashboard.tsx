@@ -271,13 +271,6 @@ export function GuestBookingsDashboard() {
     [areas, sportId],
   );
 
-  function resetFilters() {
-    setSearch("");
-    setSportId("");
-    setCourtId("");
-    setStatus("");
-    setPayment("");
-  }
 
   function exportCsv() {
     if (!rows) return;
@@ -502,55 +495,6 @@ export function GuestBookingsDashboard() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Filters</p>
-              <button type="button" onClick={resetFilters} className="text-xs text-primary">Reset</button>
-            </div>
-            <div className="mt-3 space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground">Status</span>
-                <select value={status} onChange={(e) => setStatus(e.target.value as BookingStatus | "")} className={cn(selectCls, "w-full")}>
-                  {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground">Payment Status</span>
-                <select value={payment} onChange={(e) => setPayment(e.target.value as PaymentStatus | "")} className={cn(selectCls, "w-full")}>
-                  {PAYMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground">Sport</span>
-                <select value={sportId} onChange={(e) => { setSportId(e.target.value); setCourtId(""); }} className={cn(selectCls, "w-full")}>
-                  <option value="">All Sports</option>
-                  {facilitySports.map((fs) => {
-                    const s = sports.find((sp) => sp.id === fs.sportId);
-                    return <option key={fs.id} value={fs.id}>{fs.customSportName ?? s?.name ?? "Sport"}</option>;
-                  })}
-                </select>
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground">Court</span>
-                <select value={courtId} onChange={(e) => setCourtId(e.target.value)} className={cn(selectCls, "w-full")}>
-                  <option value="">All Courts</option>
-                  {courtsForSport.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block space-y-1">
-                  <span className="text-xs text-muted-foreground">From</span>
-                  <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className={cn(selectCls, "w-full")} />
-                </label>
-                <label className="block space-y-1">
-                  <span className="text-xs text-muted-foreground">To</span>
-                  <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(selectCls, "w-full")} />
-                </label>
-              </div>
-              <Button type="button" size="sm" className="w-full" onClick={reload}>Apply Filters</Button>
-            </div>
-          </Card>
-
           <Card className="p-4">
             <p className="text-sm font-semibold">Booking Overview</p>
             <div className="mt-3">
