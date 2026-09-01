@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/membership_session.dart';
+import '../models/membership_session_dashboard.dart';
 
 /// These RPCs raise 23514 with an already-polished, specific message for
 /// every business-rule violation (capacity full, nothing to release, a
@@ -231,6 +232,125 @@ class MembershipSessionRepository {
   Future<void> cancelSlotBooking(String bookingId) async {
     try {
       await _client.rpc('cancel_membership_slot_booking', params: {'p_booking_id': bookingId});
+    } on PostgrestException catch (e) {
+      throw _mapCapacityError(e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Membership Sessions dashboard (0036) — mirrors
+  // src/services/membership-sessions/supabase-membership-session.service.ts.
+  // ---------------------------------------------------------------------------
+
+  Future<MembershipSessionsSummary> getSessionsSummary(String facilityId) async {
+    try {
+      final data = await _client.rpc('get_membership_sessions_summary', params: {'p_facility_id': facilityId});
+      return MembershipSessionsSummary.fromJson((data as Map).cast<String, dynamic>());
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<({List<MembershipSessionListRow> rows, int totalCount})> listSessionsAdmin(
+    String facilityId, {
+    String? search,
+    String? facilitySportId,
+    String? courtId,
+    String? status,
+    int? day,
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    try {
+      final rows = await _client.rpc('list_membership_sessions_admin', params: {
+        'p_facility_id': facilityId,
+        'p_search': search,
+        'p_facility_sport_id': facilitySportId,
+        'p_court_id': courtId,
+        'p_status': status,
+        'p_day': day,
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      final list = (rows as List<dynamic>).cast<Map<String, dynamic>>();
+      final total = list.isEmpty ? 0 : (list.first['total_count'] as num?)?.toInt() ?? 0;
+      return (rows: list.map(MembershipSessionListRow.fromJson).toList(), totalCount: total);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<MembershipSessionDetail> getSessionDetail(String batchId) async {
+    try {
+      final data = await _client.rpc('get_membership_session_detail', params: {'p_batch_id': batchId});
+      return MembershipSessionDetail.fromJson((data as Map).cast<String, dynamic>());
+    } on PostgrestException catch (e) {
+      throw _mapCapacityError(e);
+    }
+  }
+
+  Future<List<MembershipSessionOccurrence>> listOccurrences(String batchId, {int days = 30}) async {
+    try {
+      final rows = await _client.rpc(
+        'list_membership_session_occurrences',
+        params: {'p_batch_id': batchId, 'p_days': days},
+      );
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MembershipSessionOccurrence.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<List<MembershipSessionBookingRow>> listSessionBookings(String batchId, {int limit = 50}) async {
+    try {
+      final rows = await _client.rpc(
+        'list_membership_session_bookings',
+        params: {'p_batch_id': batchId, 'p_limit': limit},
+      );
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MembershipSessionBookingRow.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<List<MembershipSessionActivity>> listSessionActivity(String batchId, {int limit = 50}) async {
+    try {
+      final rows = await _client.rpc(
+        'list_membership_session_activity',
+        params: {'p_batch_id': batchId, 'p_limit': limit},
+      );
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MembershipSessionActivity.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<void> blockDate(String batchId, String date, {String? reason}) async {
+    try {
+      await _client.rpc(
+        'block_membership_batch_date',
+        params: {'p_batch_id': batchId, 'p_date': date, 'p_reason': reason},
+      );
+    } on PostgrestException catch (e) {
+      throw _mapCapacityError(e);
+    }
+  }
+
+  Future<void> unblockDate(String batchId, String date) async {
+    try {
+      await _client.rpc('unblock_membership_batch_date', params: {'p_batch_id': batchId, 'p_date': date});
+    } on PostgrestException catch (e) {
+      throw _mapCapacityError(e);
+    }
+  }
+
+  Future<MembershipBatch> duplicateSession(String batchId, {String? newName}) async {
+    try {
+      final row = await _client.rpc(
+        'duplicate_membership_batch',
+        params: {'p_batch_id': batchId, 'p_new_name': newName},
+      );
+      return MembershipBatch.fromJson(row as Map<String, dynamic>);
     } on PostgrestException catch (e) {
       throw _mapCapacityError(e);
     }
