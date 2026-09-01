@@ -9,6 +9,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking.dart';
+import '../../data/models/membership_session.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/models/playing_area.dart';
@@ -90,6 +91,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   DateTime _date = DateTime.now();
   BookingTimeSlot? _slot;
   List<BookingTimeSlot> _slots = [];
+  List<MembershipSessionSlot> _membershipSlots = [];
   bool _slotsLoading = false;
 
   final _name = TextEditingController();
@@ -186,17 +188,25 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       final facilitySchedule = await hoursRepo.getFacilitySchedule(_facilityId!);
       final day = (override ?? facilitySchedule)?.days.where((d) => d.dayOfWeek == dow).firstOrNull;
       final existing = await ref.read(bookingRepositoryProvider).getBookingsForCourtOnDate(courtId, _date);
+      final dateStr =
+          '${_date.year.toString().padLeft(4, '0')}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}';
+      List<MembershipSessionSlot> mSlots = const [];
+      try {
+        mSlots = await ref.read(membershipSessionRepositoryProvider).listSessionsForDate(_facilityId!, dateStr);
+      } on AppException catch (_) {}
       if (!mounted) return;
       setState(() {
         _slots = day == null
             ? []
             : computeAvailableSlots(_date, day, existing.map((b) => (startTime: b.startTime, endTime: b.endTime)).toList());
+        _membershipSlots = mSlots.where((m) => m.courtId == courtId).toList();
         _slotsLoading = false;
       });
     } on AppException catch (_) {
       if (mounted) {
         setState(() {
           _slots = [];
+          _membershipSlots = [];
           _slotsLoading = false;
         });
       }
@@ -442,8 +452,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 runSpacing: AppSpacing.sm,
                 children: _slots.map((s) {
                   final active = _slot?.startTime == s.startTime;
+                  final blocked = findMembershipSlot(_courtId!, s, _membershipSlots) != null;
+                  final bookable = s.available && !blocked;
                   return GestureDetector(
-                    onTap: s.available ? () => setState(() => _slot = s) : null,
+                    onTap: bookable ? () => setState(() => _slot = s) : null,
                     child: Container(
                       width: 100,
                       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -452,7 +464,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                         border: Border.all(color: active ? AppColors.primary : AppColors.border),
                         color: active
                             ? AppColors.primary.withValues(alpha: 0.1)
-                            : s.available
+                            : bookable
                                 ? null
                                 : AppColors.mutedBackground,
                       ),
@@ -460,14 +472,20 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                         children: [
                           Text(_hhmm(s.startTime), style: Theme.of(context).textTheme.bodyMedium),
                           Text(
-                            s.available ? 'Available' : 'Booked',
+                            blocked
+                                ? 'Blocked'
+                                : s.available
+                                    ? 'Available'
+                                    : 'Booked',
                             style: TextStyle(
                               fontSize: 11,
                               color: active
                                   ? AppColors.primary
-                                  : s.available
-                                      ? AppColors.success
-                                      : AppColors.muted,
+                                  : blocked
+                                      ? AppColors.warning
+                                      : s.available
+                                          ? AppColors.success
+                                          : AppColors.muted,
                             ),
                           ),
                         ],

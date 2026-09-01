@@ -13,10 +13,12 @@ import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { getBookingService } from "@/services/bookings";
 import { getPricingService } from "@/services/pricing";
+import { getMembershipSessionService } from "@/services/membership-sessions";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { formatCurrency } from "@/features/pricing/money";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
+import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import type { Facility } from "@/features/onboarding/types";
@@ -37,6 +39,17 @@ function toDateInput(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/** A slot whose local start falls inside a membership batch's protected window is not bookable ad-hoc. */
+function isMembershipBlocked(s: TimeSlot, membershipSlots: MembershipSessionSlot[]): boolean {
+  const start = new Date(s.startTime);
+  const minuteOfDay = start.getHours() * 60 + start.getMinutes();
+  return membershipSlots.some((m) => {
+    const [sh, sm] = m.startTime.split(":").map(Number);
+    const [eh, em] = m.endTime.split(":").map(Number);
+    return minuteOfDay >= (sh ?? 0) * 60 + (sm ?? 0) && minuteOfDay < (eh ?? 0) * 60 + (em ?? 0);
+  });
+}
+
 const selectCls =
   "h-11 w-full appearance-none rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
 
@@ -55,6 +68,7 @@ export function GuestBookingWizard() {
   const [date, setDate] = useState(() => new Date());
   const [slot, setSlot] = useState<TimeSlot | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [membershipSlots, setMembershipSlots] = useState<MembershipSessionSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [guestName, setGuestName] = useState("");
@@ -109,21 +123,25 @@ export function GuestBookingWizard() {
     }
     let cancelled = false;
     setSlotsLoading(true);
+    const dateStr = toDateInput(date);
     (async () => {
       const dow = date.getDay();
-      const [override, facilitySchedule, existing] = await Promise.all([
+      const [override, facilitySchedule, existing, mSlots] = await Promise.all([
         getOperatingHoursService().getPlayingAreaSchedule(courtId),
         getOperatingHoursService().getFacilitySchedule(facility.id),
         getBookingService().getBookingsForCourtOnDate(courtId, date),
+        getMembershipSessionService().listSessionsForDate(facility.id, dateStr).catch(() => [] as MembershipSessionSlot[]),
       ]);
       if (cancelled) return;
       const schedule = override ?? facilitySchedule;
       const day = schedule?.days.find((d) => d.dayOfWeek === dow) ?? null;
       setSlots(day ? computeAvailableSlots(date, day, existing) : []);
+      setMembershipSlots(mSlots.filter((m) => m.courtId === courtId));
       setSlotsLoading(false);
     })().catch(() => {
       if (!cancelled) {
         setSlots([]);
+        setMembershipSlots([]);
         setSlotsLoading(false);
       }
     });
@@ -356,24 +374,38 @@ export function GuestBookingWizard() {
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {slots.map((s) => {
                         const active = slot?.startTime === s.startTime;
+                        const blocked = isMembershipBlocked(s, membershipSlots);
+                        const bookable = s.available && !blocked;
+                        const label = blocked ? "Blocked" : s.available ? "Available" : "Booked";
                         return (
                           <button
                             key={s.startTime}
                             type="button"
-                            disabled={!s.available}
+                            disabled={!bookable}
                             onClick={() => setSlot(s)}
                             className={cn(
                               "rounded-lg border px-3 py-2 text-center transition",
                               active
                                 ? "border-primary bg-primary/10"
-                                : s.available
+                                : bookable
                                   ? "border-border hover:border-primary/50"
                                   : "cursor-not-allowed border-border bg-muted opacity-60",
                             )}
                           >
                             <p className="text-sm font-medium">{hhmm(s.startTime)}</p>
-                            <p className={cn("text-[11px]", active ? "text-primary" : s.available ? "text-success" : "text-muted-foreground line-through")}>
-                              {s.available ? "Available" : "Booked"}
+                            <p
+                              className={cn(
+                                "text-[11px]",
+                                active
+                                  ? "text-primary"
+                                  : blocked
+                                    ? "text-warning"
+                                    : s.available
+                                      ? "text-success"
+                                      : "text-muted-foreground line-through",
+                              )}
+                            >
+                              {blocked ? "Blocked · Membership" : label}
                             </p>
                           </button>
                         );
