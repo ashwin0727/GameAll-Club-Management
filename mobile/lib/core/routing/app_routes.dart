@@ -20,6 +20,7 @@ class AppRoutes {
 
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
+  static const guestBookings = '/guest-bookings';
   static const guests = '/guests';
 
   /// Mirrors the web's NAV_ITEMS "Memberships" entry (src/lib/constants.ts)

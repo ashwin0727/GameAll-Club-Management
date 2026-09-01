@@ -9,6 +9,7 @@ import '../../features/authentication/session_controller.dart';
 import '../../features/authentication/sign_in_screen.dart';
 import '../../features/authentication/splash_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
+import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/finance/finance_screen.dart';
 import '../../features/finance/transactions_screen.dart';
@@ -108,6 +109,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
       GoRoute(path: AppRoutes.bookings, builder: (context, state) => const BookingsScreen()),
+      GoRoute(path: AppRoutes.guestBookings, builder: (context, state) => const GuestBookingsScreen()),
       GoRoute(path: AppRoutes.guests, builder: (context, state) => const GuestsScreen()),
       GoRoute(path: AppRoutes.memberships, builder: (context, state) => const MembershipsScreen()),
       GoRoute(path: AppRoutes.membershipsNew, builder: (context, state) => const CreateMembershipScreen()),

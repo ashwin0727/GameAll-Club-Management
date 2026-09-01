@@ -152,6 +152,8 @@ class NewBookingInput {
     this.guestPhone,
     this.notes,
     this.paymentStatus = PaymentStatus.pending,
+    this.partySize = 1,
+    this.paymentMethod,
   });
 
   final String facilityId;
@@ -165,6 +167,8 @@ class NewBookingInput {
   final String? guestPhone;
   final String? notes;
   final PaymentStatus paymentStatus;
+  final int partySize;
+  final String? paymentMethod;
 }
 
 class RescheduleBookingInput {

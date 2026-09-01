@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/booking.dart';
+import '../models/guest_booking_dashboard.dart';
 
 /// Mirrors src/services/bookings/supabase-booking.service.ts — same
 /// `create_booking` RPC (validates operating hours + captures price
@@ -62,6 +63,8 @@ class BookingRepository {
           'p_notes': input.notes,
           'p_payment_status': paymentStatusToDb(input.paymentStatus),
           'p_guest_player_id': input.guestPlayerId,
+          'p_party_size': input.partySize,
+          'p_payment_method': input.paymentMethod,
         },
       );
       return Booking.fromJson(row as Map<String, dynamic>);
@@ -112,6 +115,52 @@ class BookingRepository {
     try {
       final rows = await _client.rpc('search_members', params: {'p_facility_id': facilityId, 'p_query': trimmed});
       return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MemberSearchResult.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<GuestBookingsSummary> getGuestBookingsSummary(String facilityId, String from, String to) async {
+    try {
+      final data = await _client.rpc('get_guest_bookings_summary', params: {
+        'p_facility_id': facilityId,
+        'p_from': from,
+        'p_to': to,
+      });
+      return GuestBookingsSummary.fromJson((data as Map).cast<String, dynamic>());
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<({List<GuestBookingRow> rows, int totalCount})> listGuestBookings(
+    String facilityId, {
+    String? search,
+    String? facilitySportId,
+    String? courtId,
+    String? status,
+    String? paymentStatus,
+    String? from,
+    String? to,
+    int limit = 10,
+    int offset = 0,
+  }) async {
+    try {
+      final rows = await _client.rpc('list_guest_bookings_admin', params: {
+        'p_facility_id': facilityId,
+        'p_search': search,
+        'p_facility_sport_id': facilitySportId,
+        'p_court_id': courtId,
+        'p_status': status,
+        'p_payment_status': paymentStatus,
+        'p_from': from,
+        'p_to': to,
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      final list = (rows as List<dynamic>).cast<Map<String, dynamic>>();
+      final total = list.isEmpty ? 0 : (list.first['total_count'] as num?)?.toInt() ?? 0;
+      return (rows: list.map(GuestBookingRow.fromJson).toList(), totalCount: total);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

@@ -107,6 +107,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () => context.push(AppRoutes.bookings),
           ),
           IconButton(
+            icon: const Icon(Icons.event_available_outlined),
+            tooltip: 'Guest Bookings',
+            onPressed: () => context.push(AppRoutes.guestBookings),
+          ),
+          IconButton(
             icon: const Icon(Icons.groups_outlined),
             tooltip: 'Guest Players',
             onPressed: () => context.push(AppRoutes.guests),

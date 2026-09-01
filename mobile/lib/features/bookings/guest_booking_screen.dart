@@ -102,7 +102,9 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _email = TextEditingController();
+  final _players = TextEditingController(text: '2');
   final _notes = TextEditingController();
+  String _paymentMethod = 'Cash';
 
   bool _submitting = false;
   String? _error;
@@ -116,7 +118,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _email, _notes]) {
+    for (final c in [_name, _phone, _email, _players, _notes]) {
       c.dispose();
     }
     super.dispose();
@@ -245,6 +247,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
               guestPhone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
               notes: notes.isEmpty ? null : notes,
               paymentStatus: PaymentStatus.pending,
+              partySize: int.tryParse(_players.text.trim()) ?? 1,
+              paymentMethod: _paymentMethod,
             ),
           );
       HapticFeedback.mediumImpact();
@@ -606,6 +610,13 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
+            controller: _players,
+            onChanged: (_) => setState(() {}),
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Players'),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
             controller: _notes,
             decoration: const InputDecoration(labelText: 'Notes (optional)'),
           ),
@@ -629,6 +640,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           _kv('Date', _dateLong(_date)),
           _kv('Time', _slot == null ? '—' : '${_hhmm(_slot!.startTime)} – ${_hhmm(_slot!.endTime)}'),
           _kv('Duration', '${_hours.toStringAsFixed(_hours == _hours.roundToDouble() ? 0 : 1)} hr'),
+          _kv('Players', _players.text.trim().isEmpty ? '1' : _players.text.trim()),
           if (_notes.text.trim().isNotEmpty) _kv('Notes', _notes.text.trim()),
           _kv('Total', _totalMinor == null ? '—' : Formatters.currencyInr((_totalMinor! / 100).round())),
         ],
@@ -669,6 +681,15 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          DropdownButtonFormField<String>(
+            initialValue: _paymentMethod,
+            decoration: const InputDecoration(labelText: 'Payment method (for your records)'),
+            items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
+                .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                .toList(),
+            onChanged: (v) => setState(() => _paymentMethod = v ?? 'Cash'),
           ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.sm),
