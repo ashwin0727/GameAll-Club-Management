@@ -22,6 +22,8 @@ export interface Booking {
   paymentStatus: PaymentStatus;
   cancellationReason: string | null;
   notes: string | null;
+  partySize: number;
+  paymentMethod: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +43,56 @@ export interface NewBookingInput {
   guestPhone?: string | null;
   notes?: string | null;
   paymentStatus?: PaymentStatus;
+  partySize?: number;
+  paymentMethod?: string | null;
+}
+
+export interface GuestBookingsSummary {
+  total: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+  pending: number;
+  totalRevenueMinor: number;
+  avgPerBookingMinor: number;
+  highestBookingMinor: number;
+  totalChangePct: number | null;
+  revenueChangePct: number | null;
+  trend: { date: string; amountMinor: number }[];
+}
+
+export interface GuestBookingRow {
+  bookingId: string;
+  code: string;
+  guestName: string;
+  guestPhone: string | null;
+  sportName: string | null;
+  courtName: string;
+  startTime: string;
+  endTime: string;
+  partySize: number;
+  amountMinor: number | null;
+  currency: string;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string | null;
+  status: BookingStatus;
+}
+
+export interface GuestBookingListParams {
+  search?: string;
+  facilitySportId?: string;
+  courtId?: string;
+  status?: BookingStatus;
+  paymentStatus?: PaymentStatus;
+  from?: string;
+  to?: string;
+  page: number;
+  perPage: number;
+}
+
+export interface GuestBookingListResult {
+  rows: GuestBookingRow[];
+  totalCount: number;
 }
 
 export interface RescheduleBookingInput {

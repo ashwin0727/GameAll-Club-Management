@@ -74,6 +74,8 @@ export function GuestBookingWizard() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  const [players, setPlayers] = useState("2");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [notes, setNotes] = useState("");
 
   const [priceMinor, setPriceMinor] = useState<number | null>(null);
@@ -194,6 +196,8 @@ export function GuestBookingWizard() {
         guestPhone: guestPhone.trim() || null,
         notes: finalNotes,
         paymentStatus: "PENDING",
+        partySize: Math.max(1, Number(players) || 1),
+        paymentMethod,
       });
       setBooked(b);
     } catch (err) {
@@ -443,6 +447,10 @@ export function GuestBookingWizard() {
                 <Input value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="Email address" type="email" />
               </label>
               <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground">Players</span>
+                <Input value={players} onChange={(e) => setPlayers(e.target.value)} inputMode="numeric" />
+              </label>
+              <label className="block space-y-1">
                 <span className="text-xs text-muted-foreground">Notes (optional)</span>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the venue should know" />
               </label>
@@ -461,6 +469,7 @@ export function GuestBookingWizard() {
                 <Row label="Date" value={fmtDateLong(date)} />
                 <Row label="Time" value={slot ? `${hhmm(slot.startTime)} – ${hhmm(slot.endTime)}` : "—"} />
                 <Row label="Duration" value={`${hours} Hour${hours === 1 ? "" : "s"}`} />
+                <Row label="Players" value={players} />
                 {notes && <Row label="Notes" value={notes} />}
                 <Row label="Total" value={totalMinor == null ? "—" : formatCurrency(totalMinor, currency)} />
               </dl>
@@ -480,6 +489,16 @@ export function GuestBookingWizard() {
                   </p>
                 </div>
               </div>
+              <label className="block max-w-xs space-y-1 text-sm">
+                <span className="text-xs text-muted-foreground">Payment method (for your records)</span>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={selectCls}>
+                  {["Cash", "UPI", "Card", "Bank Transfer", "Other"].map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           )}

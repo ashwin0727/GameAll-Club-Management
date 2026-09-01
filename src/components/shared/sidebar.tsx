@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, Boxes, Gamepad2, UserRound, CalendarCheck2, BadgeIndianRupee } from "lucide-react";
+import { LayoutDashboard, CalendarClock, Boxes, Gamepad2, UserRound, CalendarCheck2, BadgeIndianRupee, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
@@ -13,6 +13,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/memberships": BadgeIndianRupee,
   "/membership-sessions": CalendarCheck2,
   "/bookings": CalendarClock,
+  "/guest-bookings": CalendarRange,
   "/guests": UserRound,
   "/inventory": Boxes,
 };

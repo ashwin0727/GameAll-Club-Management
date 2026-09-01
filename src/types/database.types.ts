@@ -766,6 +766,8 @@ export interface Database {
           cancellation_reason: string | null;
           guest_player_id: string | null;
           notes: string | null;
+          party_size: number;
+          payment_method: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -788,6 +790,8 @@ export interface Database {
           cancellation_reason?: string | null;
           guest_player_id?: string | null;
           notes?: string | null;
+          party_size?: number;
+          payment_method?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -1438,8 +1442,45 @@ export interface Database {
           p_notes: string | null;
           p_payment_status?: "PENDING" | "PAID" | "REFUNDED";
           p_guest_player_id?: string | null;
+          p_party_size?: number;
+          p_payment_method?: string | null;
         };
         Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      get_guest_bookings_summary: {
+        Args: { p_facility_id: string; p_from: string; p_to: string };
+        Returns: unknown;
+      };
+      list_guest_bookings_admin: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+          p_status?: string | null;
+          p_payment_status?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          booking_id: string;
+          code: string;
+          guest_name: string;
+          guest_phone: string | null;
+          sport_name: string | null;
+          court_name: string;
+          start_time: string;
+          end_time: string;
+          party_size: number;
+          amount_minor: number | null;
+          currency: string;
+          payment_status: "PENDING" | "PAID" | "REFUNDED";
+          payment_method: string | null;
+          status: string;
+          total_count: number;
+        }[];
       };
       find_or_create_guest: {
         Args: {

@@ -23,6 +23,8 @@ function booking(overrides: Partial<Booking> = {}): Booking {
     paymentStatus: "PENDING",
     cancellationReason: null,
     notes: null,
+    partySize: 1,
+    paymentMethod: null,
     createdBy: "u1",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

@@ -1,4 +1,11 @@
-import type { Booking, NewBookingInput, RescheduleBookingInput } from "@/features/bookings/types";
+import type {
+  Booking,
+  GuestBookingListParams,
+  GuestBookingListResult,
+  GuestBookingsSummary,
+  NewBookingInput,
+  RescheduleBookingInput,
+} from "@/features/bookings/types";
 
 export interface BookingService {
   /** Bookings for a court on one calendar day (any status), earliest first. */
@@ -22,4 +29,8 @@ export interface BookingService {
    * membership plan to be searchable/bookable.
    */
   searchMembers(facilityId: string, query: string): Promise<{ id: string; fullName: string; phone: string; email: string | null }[]>;
+  /** Guest Bookings dashboard — KPI tiles, status donut and revenue trend for GUEST bookings in [from, to] (YYYY-MM-DD). */
+  getGuestBookingsSummary(facilityId: string, from: string, to: string): Promise<GuestBookingsSummary>;
+  /** Guest Bookings dashboard — the filterable, paginated table of GUEST bookings. */
+  listGuestBookings(facilityId: string, params: GuestBookingListParams): Promise<GuestBookingListResult>;
 }
