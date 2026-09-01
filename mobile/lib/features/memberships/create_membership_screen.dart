@@ -63,6 +63,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   String? _gender;
 
   // Membership
+  List<MembershipPlan> _plans = [];
+  String? _planId;
   final _name = TextEditingController();
   final _description = TextEditingController();
   MembershipType _type = MembershipType.individual;
@@ -129,6 +131,21 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
 
   void _onChargesChanged() => setState(() {});
 
+  void _applyPlan(String? id) {
+    setState(() {
+      _planId = (id == null || id.isEmpty) ? null : id;
+      MembershipPlan? plan;
+      for (final p in _plans) {
+        if (p.id == _planId) plan = p;
+      }
+      if (plan != null) {
+        _name.text = plan.name;
+        _durationDays = plan.durationDays;
+        _fee.text = plan.priceInr.toString();
+      }
+    });
+  }
+
   Future<void> _load() async {
     try {
       final facility = await ref.read(facilityRepositoryProvider).getFacility();
@@ -138,6 +155,10 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         _loading = false;
         _loadError = facility == null ? 'Complete your facility setup before creating a membership.' : null;
       });
+      if (facility != null) {
+        final plans = await ref.read(membershipRepositoryProvider).getFacilityPlans(facility.id, activeOnly: true);
+        if (mounted) setState(() => _plans = plans);
+      }
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -350,6 +371,28 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           n: 2,
           title: 'Membership Details',
           children: [
+            if (_plans.isNotEmpty)
+              _labeled(
+                'Plan',
+                hint: _planId != null
+                    ? 'Fee and duration are set by the plan'
+                    : 'Or leave as Custom and enter the fee below',
+                child: DropdownButtonFormField<String>(
+                  initialValue: _planId ?? '',
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem(value: '', child: Text('Custom (no plan)')),
+                    ..._plans.map((p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text(
+                            '${p.name} — ${Formatters.currencyInr(p.priceInr)} · ${p.durationDays} days',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )),
+                  ],
+                  onChanged: _applyPlan,
+                ),
+              ),
             _labeled('Membership Name', required: true, hint: 'e.g., Premium Membership', child: TextField(controller: _name, decoration: const InputDecoration(hintText: 'Enter membership name'))),
             _labeled(
               'Membership Type',
@@ -385,14 +428,31 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
             _labeled(
               'Duration',
               required: true,
-              hint: _endDate == null ? 'e.g., 3 Months, 6 Months, 1 Year' : 'Ends ${Formatters.dateShort(_endDate!)}',
-              child: _Dropdown<int>(
-                value: _durationDays == 0 ? null : _durationDays,
-                hint: 'Select duration',
-                items: _durations.map((d) => d.days).toList(),
-                labelOf: (days) => _durations.firstWhere((d) => d.days == days).label,
-                onChanged: (d) => setState(() => _durationDays = d ?? 0),
-              ),
+              hint: _planId != null
+                  ? 'Set by the plan'
+                  : _endDate == null
+                      ? 'e.g., 3 Months, 6 Months, 1 Year'
+                      : 'Ends ${Formatters.dateShort(_endDate!)}',
+              child: _planId != null
+                  ? InputDecorator(
+                      decoration: const InputDecoration(enabled: false),
+                      child: Text(
+                        _durationDays > 0 ? '$_durationDays days' : '—',
+                        style: TextStyle(color: context.tokens.textSecondary),
+                      ),
+                    )
+                  : _Dropdown<int>(
+                      value: _durationDays == 0 ? null : _durationDays,
+                      hint: 'Select duration',
+                      items: _durations.map((d) => d.days).toList(),
+                      labelOf: (days) {
+                        for (final d in _durations) {
+                          if (d.days == days) return d.label;
+                        }
+                        return '$days days';
+                      },
+                      onChanged: (d) => setState(() => _durationDays = d ?? 0),
+                    ),
             ),
             _labeled(
               'Time Slot',
@@ -453,7 +513,17 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           n: 3,
           title: 'Membership Charges',
           children: [
-            _labeled('Membership Fee', required: true, child: TextField(controller: _fee, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '))),
+            _labeled(
+              'Membership Fee',
+              required: true,
+              hint: _planId != null ? 'Set by the selected plan' : null,
+              child: TextField(
+                controller: _fee,
+                enabled: _planId == null,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '),
+              ),
+            ),
             _labeled('Registration Fee', hint: 'One-time, if applicable', child: TextField(controller: _regFee, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '))),
             _labeled('GST (%)', hint: 'Applicable tax percentage', child: TextField(controller: _gst, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Enter GST percentage'))),
             const SizedBox(height: AppSpacing.sm),
