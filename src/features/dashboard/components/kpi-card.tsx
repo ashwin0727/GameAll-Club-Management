@@ -28,8 +28,24 @@ export function KpiCard({
 
   return (
     <Card
-      className="stat-enter space-y-1.5 p-4 transition-shadow hover:shadow-md sm:p-5"
-      style={{ "--stat-delay": `${index * 70}ms` } as React.CSSProperties}
+      className={cn(
+        "stat-enter space-y-1.5 p-4 transition-shadow sm:p-5",
+        // A soft lift tinted with the tile's own accent, so each KPI reads
+        // as its own colour rather than four identical white boxes.
+        accentColor && "border-[var(--kpi-tint)] shadow-[0_6px_20px_-8px_var(--kpi-shadow)] hover:shadow-[0_10px_26px_-8px_var(--kpi-shadow-hover)]",
+      )}
+      style={
+        {
+          "--stat-delay": `${index * 70}ms`,
+          ...(accentColor
+            ? {
+                "--kpi-tint": `${accentColor}3d`,
+                "--kpi-shadow": `${accentColor}40`,
+                "--kpi-shadow-hover": `${accentColor}66`,
+              }
+            : {}),
+        } as React.CSSProperties
+      }
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>

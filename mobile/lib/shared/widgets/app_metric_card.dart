@@ -52,7 +52,12 @@ class AppMetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surface1,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.borderColor),
+        // A soft lift tinted with the tile's own accent, so each KPI reads
+        // as its own colour rather than four identical white boxes.
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.20), blurRadius: 18, offset: const Offset(0, 6)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
