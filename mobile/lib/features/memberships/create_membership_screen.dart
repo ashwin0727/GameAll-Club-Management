@@ -103,15 +103,42 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   String? _error;
   String? _mandateUrl; // non-null (possibly empty) once the success panel shows
 
+  /// Edit mode: the form serialised right after prefill. "Save Changes" is
+  /// enabled only while [_snapshot] differs from this.
+  String? _initialSnapshot;
+
   @override
   void initState() {
     super.initState();
-    _fee.addListener(_onChargesChanged);
-    _regFee.addListener(_onChargesChanged);
-    _gst.addListener(_onChargesChanged);
+    for (final c in [_fullName, _phone, _email, _address, _name, _description, _fee, _regFee, _gst, _notes]) {
+      c.addListener(_onChargesChanged);
+    }
     _referralQuery.addListener(_onReferralQueryChanged);
     _load();
   }
+
+  String _snapshot() => [
+        _fullName.text.trim(),
+        _phone.text.trim(),
+        _email.text.trim(),
+        _address.text.trim(),
+        _dob?.toIso8601String() ?? '',
+        _gender ?? '',
+        _name.text.trim(),
+        _type.name,
+        _startDate.toIso8601String(),
+        _durationDays,
+        _type == MembershipType.family ? _maxFamily : 1,
+        _description.text.trim(),
+        num.tryParse(_fee.text.trim()) ?? 0,
+        num.tryParse(_regFee.text.trim()) ?? 0,
+        num.tryParse(_gst.text.trim()) ?? 0,
+        _referral?.id ?? '',
+        _discovery ?? '',
+        _notes.text.trim(),
+      ].join('|');
+
+  bool get _dirty => !_isEdit || (_initialSnapshot != null && _snapshot() != _initialSnapshot);
 
   @override
   void dispose() {
@@ -189,6 +216,15 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           }
           _discovery = _discoverySources.contains(d.discoverySource) ? d.discoverySource : null;
           _notes.text = d.notes ?? '';
+          // The membership is self-contained (no plan_id) — surface the plan
+          // it was created from by matching on name, for display only.
+          for (final p in _plans) {
+            if (p.name.trim().toLowerCase() == d.membership.name.trim().toLowerCase()) {
+              _planId = p.id;
+              break;
+            }
+          }
+          _initialSnapshot = _snapshot();
         });
       }
     } on AppException catch (e) {
@@ -497,12 +533,12 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
             _labeled(
               'Duration',
               required: true,
-              hint: _planId != null
+              hint: _planId != null && !_isEdit
                   ? 'Set by the plan'
                   : _endDate == null
                       ? 'e.g., 3 Months, 6 Months, 1 Year'
                       : 'Ends ${Formatters.dateShort(_endDate!)}',
-              child: _planId != null
+              child: _planId != null && !_isEdit
                   ? InputDecorator(
                       decoration: const InputDecoration(enabled: false),
                       child: Text(
@@ -586,10 +622,10 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
             _labeled(
               'Membership Fee',
               required: true,
-              hint: _planId != null ? 'Set by the selected plan' : null,
+              hint: _planId != null && !_isEdit ? 'Set by the selected plan' : null,
               child: TextField(
                 controller: _fee,
-                enabled: _planId == null,
+                enabled: _planId == null || _isEdit,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '),
               ),
@@ -733,7 +769,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           label: _isEdit ? 'Save Changes' : 'Create Membership',
           loadingLabel: _isEdit ? 'Saving…' : 'Creating…',
           isLoading: _saving,
-          onPressed: _facilityId == null ? null : _submit,
+          onPressed: _facilityId == null || (_isEdit && !_dirty) ? null : _submit,
         ),
         if (!_isEdit) ...[
           const SizedBox(height: AppSpacing.sm),
