@@ -1482,6 +1482,26 @@ export interface Database {
           total_count: number;
         }[];
       };
+      update_guest_booking: {
+        Args: { p_booking_id: string; p_guest_name: string; p_guest_phone: string | null; p_party_size: number; p_notes: string | null };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      complete_guest_booking: {
+        Args: { p_booking_id: string };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      record_guest_booking_payment: {
+        Args: { p_booking_id: string; p_method: string; p_amount_minor: number };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      duplicate_guest_booking: {
+        Args: { p_booking_id: string; p_new_start: string; p_new_end: string };
+        Returns: Database["public"]["Tables"]["bookings"]["Row"];
+      };
+      delete_guest_booking: {
+        Args: { p_booking_id: string };
+        Returns: undefined;
+      };
       find_or_create_guest: {
         Args: {
           p_facility_id: string;

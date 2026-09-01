@@ -106,6 +106,71 @@ export class SupabaseBookingService implements BookingService {
     return toBooking(data);
   }
 
+  async getBooking(bookingId: string): Promise<Booking | null> {
+    const { data, error } = await this.supabase.from("bookings").select("*").eq("id", bookingId).maybeSingle();
+    if (error) throw mapSupabaseError(error);
+    return data ? toBooking(data) : null;
+  }
+
+  async updateGuestBooking(
+    bookingId: string,
+    patch: { guestName: string; guestPhone?: string | null; partySize: number; notes?: string | null },
+  ): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc("update_guest_booking", {
+      p_booking_id: bookingId,
+      p_guest_name: patch.guestName,
+      p_guest_phone: patch.guestPhone ?? null,
+      p_party_size: patch.partySize,
+      p_notes: patch.notes ?? null,
+    });
+    if (error) throw mapSupabaseError(error, { notFound: "BOOKING_NOT_FOUND", invalid: "INVALID_BOOKING" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toBooking(data);
+  }
+
+  async completeGuestBooking(bookingId: string): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc("complete_guest_booking", { p_booking_id: bookingId });
+    if (error) throw mapSupabaseError(error, { notFound: "BOOKING_NOT_FOUND", invalid: "INVALID_BOOKING" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toBooking(data);
+  }
+
+  async recordGuestBookingPayment(bookingId: string, method: string, amountMinor: number): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc("record_guest_booking_payment", {
+      p_booking_id: bookingId,
+      p_method: method,
+      p_amount_minor: amountMinor,
+    });
+    if (error) throw mapSupabaseError(error, { notFound: "BOOKING_NOT_FOUND", invalid: "INVALID_BOOKING" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toBooking(data);
+  }
+
+  async duplicateGuestBooking(bookingId: string, newStart: string, newEnd: string): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc("duplicate_guest_booking", {
+      p_booking_id: bookingId,
+      p_new_start: newStart,
+      p_new_end: newEnd,
+    });
+    if (error) throw mapSupabaseError(error, { notFound: "BOOKING_NOT_FOUND", invalid: "INVALID_BOOKING" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toBooking(data);
+  }
+
+  async deleteGuestBooking(bookingId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("delete_guest_booking", { p_booking_id: bookingId });
+    if (error) throw mapSupabaseError(error, { notFound: "BOOKING_NOT_FOUND", invalid: "INVALID_BOOKING" });
+  }
+
+  async sendBookingReceipt(bookingId: string, email: string): Promise<void> {
+    const { data, error } = await this.supabase.functions.invoke<{ sent?: boolean; error?: string }>("send-booking-receipt", {
+      body: { bookingId, email },
+    });
+    if (error || !data || "error" in data) {
+      throw new ServiceError("DATABASE_ERROR", (data as { error?: string })?.error ?? "Could not send the receipt email.");
+    }
+  }
+
   async rescheduleBooking(input: RescheduleBookingInput): Promise<Booking> {
     const { data, error } = await this.supabase.rpc("reschedule_booking", {
       p_booking_id: input.bookingId,

@@ -2,32 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CalendarRange,
-  CheckCircle2,
-  CheckCheck,
-  Clock,
-  Download,
-  Eye,
-  MoreVertical,
-  Plus,
-  TrendingUp,
-  Wallet,
-  XCircle,
-} from "lucide-react";
+import { CalendarRange, CheckCircle2, CheckCheck, Clock, Download, Plus, TrendingUp, Wallet, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
+import { GuestBookingActions } from "@/features/bookings/components/guest-booking-actions";
 import { getFacilityService } from "@/services/facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
@@ -184,6 +167,7 @@ function Sparkline({ points }: { points: number[] }) {
 export function GuestBookingsDashboard() {
   const router = useRouter();
   const [facilityId, setFacilityId] = useState<string | null>(null);
+  const [facilityName, setFacilityName] = useState("");
   const [currency, setCurrency] = useState("INR");
 
   const [summary, setSummary] = useState<GuestBookingsSummary | null>(null);
@@ -214,6 +198,7 @@ export function GuestBookingsDashboard() {
       const f = await getFacilityService().getFacility();
       if (cancelled || !f) return;
       setFacilityId(f.id);
+      setFacilityName(f.name);
       const [fs, allSports, pa] = await Promise.all([
         getSportsService().getFacilitySports(f.id),
         getSportsService().getActiveSports(),
@@ -462,21 +447,7 @@ export function GuestBookingsDashboard() {
                           </td>
                           <td className="px-4 py-3">{statusBadge(r.status)}</td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button type="button" variant="ghost" size="icon" aria-label="View" onClick={() => router.push("/bookings")}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button type="button" variant="ghost" size="icon" aria-label="More">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => router.push("/bookings")}>Open in Bookings</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                            <GuestBookingActions row={r} facilityId={facilityId} facilityName={facilityName} onChanged={reload} />
                           </td>
                         </tr>
                       );

@@ -33,4 +33,21 @@ export interface BookingService {
   getGuestBookingsSummary(facilityId: string, from: string, to: string): Promise<GuestBookingsSummary>;
   /** Guest Bookings dashboard — the filterable, paginated table of GUEST bookings. */
   listGuestBookings(facilityId: string, params: GuestBookingListParams): Promise<GuestBookingListResult>;
+  /** A single booking row (any type) — used by the Guest Booking edit page. */
+  getBooking(bookingId: string): Promise<Booking | null>;
+  /** Edit a guest booking's guest fields. Reschedule stays on rescheduleBooking. */
+  updateGuestBooking(
+    bookingId: string,
+    patch: { guestName: string; guestPhone?: string | null; partySize: number; notes?: string | null },
+  ): Promise<Booking>;
+  /** Mark a guest booking completed. */
+  completeGuestBooking(bookingId: string): Promise<Booking>;
+  /** Record an offline-collected payment and flip the booking to PAID. */
+  recordGuestBookingPayment(bookingId: string, method: string, amountMinor: number): Promise<Booking>;
+  /** Clone a guest booking into a new PENDING booking at newStart/newEnd (ISO). */
+  duplicateGuestBooking(bookingId: string, newStart: string, newEnd: string): Promise<Booking>;
+  /** Permanently delete a guest booking (blocked when it has a settled/refunded payment). */
+  deleteGuestBooking(bookingId: string): Promise<void>;
+  /** Email a PDF receipt for a guest booking (send-booking-receipt edge fn). */
+  sendBookingReceipt(bookingId: string, email: string): Promise<void>;
 }
