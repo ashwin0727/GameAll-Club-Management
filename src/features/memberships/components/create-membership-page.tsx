@@ -12,7 +12,7 @@ import { getFacilityService } from "@/services/facility";
 import { getMembershipService } from "@/services/memberships";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Member } from "@/features/members/types";
-import type { MembershipPaymentMode, MembershipType } from "@/features/memberships/types";
+import type { MembershipPaymentMode, MembershipPlan, MembershipType } from "@/features/memberships/types";
 import { CourtTimeSlotSection } from "@/features/memberships/components/court-time-slot-section";
 import { validateSlotSelection, toNewBatchPayload, ALL_DAYS, type SlotSelection } from "@/features/memberships/slot-form";
 
@@ -87,6 +87,8 @@ export function CreateMembershipPage() {
   const [address, setAddress] = useState("");
 
   // Membership
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [planId, setPlanId] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState<MembershipType>("INDIVIDUAL");
   const [startDate, setStartDate] = useState(todayIso());
@@ -123,11 +125,26 @@ export function CreateMembershipPage() {
       .getFacility()
       .then((f) => {
         setFacilityId(f?.id ?? null);
-        if (f) setAccessDays(f.membershipAccessDays);
+        if (f) {
+          setAccessDays(f.membershipAccessDays);
+          getMembershipService()
+            .getFacilityPlans(f.id, { activeOnly: true })
+            .then(setPlans)
+            .catch(() => undefined);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  function applyPlan(id: string) {
+    setPlanId(id);
+    const plan = plans.find((p) => p.id === id);
+    if (!plan) return;
+    setName(plan.name);
+    setDurationDays(plan.durationDays);
+    setFee(String(plan.priceInr));
+  }
 
   useEffect(() => {
     const q = referralQuery.trim();
@@ -292,6 +309,21 @@ export function CreateMembershipPage() {
       <Card className="p-5">
         <SectionHeader n={2} title="Membership Details" />
         <div className="grid gap-4 sm:grid-cols-2">
+          {plans.length > 0 && (
+            <Field
+              label="Plan"
+              hint={planId ? "Fee and duration are set by the plan" : "Or leave as Custom and enter the fee below"}
+            >
+              <select value={planId} onChange={(e) => applyPlan(e.target.value)} className={selectCls}>
+                <option value="">Custom (no plan)</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — ₹{p.priceInr.toLocaleString("en-IN")} · {p.durationDays} days
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Membership Name" required hint="e.g., Premium Membership">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter membership name" />
           </Field>
@@ -308,14 +340,22 @@ export function CreateMembershipPage() {
           <Field label="Start Date" required>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={selectCls} />
           </Field>
-          <Field label="Duration" required hint="e.g., 3 Months, 6 Months, 1 Year">
-            <select value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} className={selectCls}>
+          <Field label="Duration" required hint={planId ? "Set by the plan" : "e.g., 3 Months, 6 Months, 1 Year"}>
+            <select
+              value={durationDays}
+              onChange={(e) => setDurationDays(Number(e.target.value))}
+              disabled={!!planId}
+              className={`${selectCls} disabled:opacity-60`}
+            >
               <option value={0}>Select duration</option>
               {DURATIONS.map((d) => (
                 <option key={d.days} value={d.days}>
                   {d.label}
                 </option>
               ))}
+              {planId && !DURATIONS.some((d) => d.days === durationDays) && durationDays > 0 && (
+                <option value={durationDays}>{durationDays} days</option>
+              )}
             </select>
           </Field>
           <div className="sm:col-span-2">
@@ -358,8 +398,16 @@ export function CreateMembershipPage() {
       <Card className="p-5">
         <SectionHeader n={3} title="Membership Charges" />
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Membership Fee" required>
-            <Input value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Enter amount" type="number" min={0} />
+          <Field label="Membership Fee" required hint={planId ? "Set by the selected plan" : undefined}>
+            <Input
+              value={fee}
+              onChange={(e) => setFee(e.target.value)}
+              placeholder="Enter amount"
+              type="number"
+              min={0}
+              disabled={!!planId}
+              className="disabled:cursor-not-allowed disabled:opacity-60"
+            />
           </Field>
           <Field label="Registration Fee" hint="One-time, (if applicable)">
             <Input value={regFee} onChange={(e) => setRegFee(e.target.value)} placeholder="Enter amount" type="number" min={0} />
