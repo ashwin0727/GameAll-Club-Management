@@ -1842,6 +1842,90 @@ export interface Database {
         Args: { p_facility_id: string; p_from: string; p_to: string };
         Returns: { court_id: string; session_date: string; start_time: string; end_time: string }[];
       };
+      get_membership_sessions_summary: {
+        Args: { p_facility_id: string };
+        Returns: unknown;
+      };
+      list_membership_sessions_admin: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+          p_status?: string | null;
+          p_day?: number | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          batch_id: string;
+          name: string;
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          roster_count: number;
+          released_today: number;
+          guest_booked_today: number;
+          utilization_pct: number;
+          status: string;
+          is_active: boolean;
+          total_count: number;
+        }[];
+      };
+      get_membership_session_detail: {
+        Args: { p_batch_id: string };
+        Returns: unknown;
+      };
+      list_membership_session_occurrences: {
+        Args: { p_batch_id: string; p_days?: number };
+        Returns: {
+          occurrence_date: string;
+          is_blocked: boolean;
+          block_reason: string | null;
+          materialized: boolean;
+          member_count: number;
+          guest_count: number;
+          released_capacity: number;
+        }[];
+      };
+      list_membership_session_bookings: {
+        Args: { p_batch_id: string; p_limit?: number };
+        Returns: {
+          booking_id: string;
+          session_date: string;
+          participant_type: string;
+          participant_name: string;
+          slot_source: string;
+          status: string;
+          amount_minor: number | null;
+          created_at: string;
+        }[];
+      };
+      list_membership_session_activity: {
+        Args: { p_batch_id: string; p_limit?: number };
+        Returns: { kind: string; actor: string | null; detail: string; at: string }[];
+      };
+      block_membership_batch_date: {
+        Args: { p_batch_id: string; p_date: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      unblock_membership_batch_date: {
+        Args: { p_batch_id: string; p_date: string };
+        Returns: undefined;
+      };
+      duplicate_membership_batch: {
+        Args: { p_batch_id: string; p_new_name?: string | null };
+        Returns: Database["public"]["Tables"]["membership_batches"]["Row"];
+      };
+      membership_batch_roster_count: {
+        Args: { p_batch_id: string };
+        Returns: number;
+      };
       create_payment_order: {
         Args: {
           p_facility_id: string;

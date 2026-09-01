@@ -82,3 +82,103 @@ export interface MembershipSessionBooking {
   createdBy: string;
   createdAt: string;
 }
+// ─────────────────────────────────────────────────────────────────────────
+// Membership Sessions dashboard (Phase 9).
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface MembershipSessionsSummary {
+  totalSessions: number;
+  activeSessions: number;
+  todaysSessions: number;
+  guestSlotsReleased: number;
+  avgUtilizationPct: number;
+}
+
+export type MembershipSessionStatus = "active" | "paused" | "full";
+
+export interface MembershipSessionListRow {
+  batchId: string;
+  name: string;
+  courtId: string;
+  courtName: string;
+  facilitySportId: string;
+  sportName: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  rosterCount: number;
+  releasedToday: number;
+  guestBookedToday: number;
+  utilizationPct: number;
+  status: MembershipSessionStatus;
+  isActive: boolean;
+}
+
+export interface MembershipSessionListParams {
+  search?: string;
+  facilitySportId?: string;
+  courtId?: string;
+  status?: MembershipSessionStatus;
+  day?: number;
+  page: number;
+  perPage: number;
+}
+
+export interface MembershipSessionListResult {
+  rows: MembershipSessionListRow[];
+  totalCount: number;
+}
+
+export interface MembershipSessionDetail {
+  batchId: string;
+  facilityId: string;
+  name: string;
+  courtId: string;
+  courtName: string;
+  facilitySportId: string;
+  sportName: string;
+  planName: string | null;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  isActive: boolean;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  rosterCount: number;
+  guestsBookedToday: number;
+  releasedToday: number;
+  availableToRelease: number;
+  runsToday: boolean;
+  nextOccurrenceDate: string | null;
+}
+
+export interface MembershipSessionOccurrence {
+  occurrenceDate: string;
+  isBlocked: boolean;
+  blockReason: string | null;
+  materialized: boolean;
+  memberCount: number;
+  guestCount: number;
+  releasedCapacity: number;
+}
+
+export interface MembershipSessionBookingRow {
+  bookingId: string;
+  sessionDate: string;
+  participantType: "MEMBER" | "GUEST";
+  participantName: string;
+  slotSource: "MEMBERSHIP" | "RELEASED";
+  status: "CONFIRMED" | "CANCELLED";
+  amountMinor: number | null;
+  createdAt: string;
+}
+
+export interface MembershipSessionActivity {
+  kind: string;
+  actor: string | null;
+  detail: string;
+  at: string;
+}

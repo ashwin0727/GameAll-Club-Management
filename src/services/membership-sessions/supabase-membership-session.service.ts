@@ -6,9 +6,16 @@ import type {
   MembershipBatch,
   MembershipBatchInput,
   MembershipBatchMember,
+  MembershipSessionActivity,
   MembershipSessionBooking,
+  MembershipSessionBookingRow,
   MembershipSessionCapacity,
+  MembershipSessionDetail,
+  MembershipSessionListParams,
+  MembershipSessionListResult,
+  MembershipSessionOccurrence,
   MembershipSessionSlot,
+  MembershipSessionsSummary,
 } from "@/features/membership-sessions/types";
 import type { MembershipSessionService } from "@/services/membership-sessions/membership-session.service";
 import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
@@ -250,5 +257,134 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
   async cancelSlotBooking(bookingId: string): Promise<void> {
     const { error } = await this.supabase.rpc("cancel_membership_slot_booking", { p_booking_id: bookingId });
     if (error) throw mapCapacityError(error);
+  }
+
+  async getSessionsSummary(facilityId: string): Promise<MembershipSessionsSummary> {
+    const { data, error } = await this.supabase.rpc("get_membership_sessions_summary", { p_facility_id: facilityId });
+    if (error) throw mapSupabaseError(error);
+    const d = (data ?? {}) as Record<string, number>;
+    return {
+      totalSessions: d.totalSessions ?? 0,
+      activeSessions: d.activeSessions ?? 0,
+      todaysSessions: d.todaysSessions ?? 0,
+      guestSlotsReleased: d.guestSlotsReleased ?? 0,
+      avgUtilizationPct: d.avgUtilizationPct ?? 0,
+    };
+  }
+
+  async listSessionsAdmin(facilityId: string, params: MembershipSessionListParams): Promise<MembershipSessionListResult> {
+    const { data, error } = await this.supabase.rpc("list_membership_sessions_admin", {
+      p_facility_id: facilityId,
+      p_search: params.search?.trim() || null,
+      p_facility_sport_id: params.facilitySportId ?? null,
+      p_court_id: params.courtId ?? null,
+      p_status: params.status ?? null,
+      p_day: params.day ?? null,
+      p_limit: params.perPage,
+      p_offset: (params.page - 1) * params.perPage,
+    });
+    if (error) throw mapSupabaseError(error);
+    const rows = (data ?? []).map((r) => ({
+      batchId: r.batch_id,
+      name: r.name,
+      courtId: r.court_id,
+      courtName: r.court_name,
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      daysOfWeek: r.days_of_week ?? [],
+      startTime: r.start_time,
+      endTime: r.end_time,
+      capacity: r.capacity,
+      rosterCount: r.roster_count,
+      releasedToday: r.released_today,
+      guestBookedToday: r.guest_booked_today,
+      utilizationPct: r.utilization_pct,
+      status: r.status as MembershipSessionListResult["rows"][number]["status"],
+      isActive: r.is_active,
+    }));
+    return { rows, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async getSessionDetail(batchId: string): Promise<MembershipSessionDetail> {
+    const { data, error } = await this.supabase.rpc("get_membership_session_detail", { p_batch_id: batchId });
+    if (error) throw mapSupabaseError(error, { notFound: "MEMBERSHIP_BATCH_NOT_FOUND" });
+    if (!data) throw new ServiceError("MEMBERSHIP_BATCH_NOT_FOUND");
+    const d = data as Record<string, unknown>;
+    return {
+      batchId: d.batchId as string,
+      facilityId: d.facilityId as string,
+      name: d.name as string,
+      courtId: d.courtId as string,
+      courtName: d.courtName as string,
+      facilitySportId: d.facilitySportId as string,
+      sportName: d.sportName as string,
+      planName: (d.planName as string) ?? null,
+      daysOfWeek: (d.daysOfWeek as number[]) ?? [],
+      startTime: d.startTime as string,
+      endTime: d.endTime as string,
+      capacity: d.capacity as number,
+      isActive: d.isActive as boolean,
+      createdByName: (d.createdByName as string) ?? null,
+      createdAt: d.createdAt as string,
+      updatedAt: d.updatedAt as string,
+      rosterCount: d.rosterCount as number,
+      guestsBookedToday: d.guestsBookedToday as number,
+      releasedToday: d.releasedToday as number,
+      availableToRelease: d.availableToRelease as number,
+      runsToday: d.runsToday as boolean,
+      nextOccurrenceDate: (d.nextOccurrenceDate as string) ?? null,
+    };
+  }
+
+  async listOccurrences(batchId: string, days = 30): Promise<MembershipSessionOccurrence[]> {
+    const { data, error } = await this.supabase.rpc("list_membership_session_occurrences", { p_batch_id: batchId, p_days: days });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((r) => ({
+      occurrenceDate: r.occurrence_date,
+      isBlocked: r.is_blocked,
+      blockReason: r.block_reason ?? null,
+      materialized: r.materialized,
+      memberCount: r.member_count,
+      guestCount: r.guest_count,
+      releasedCapacity: r.released_capacity,
+    }));
+  }
+
+  async listSessionBookings(batchId: string, limit = 50): Promise<MembershipSessionBookingRow[]> {
+    const { data, error } = await this.supabase.rpc("list_membership_session_bookings", { p_batch_id: batchId, p_limit: limit });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((r) => ({
+      bookingId: r.booking_id,
+      sessionDate: r.session_date,
+      participantType: r.participant_type as "MEMBER" | "GUEST",
+      participantName: r.participant_name,
+      slotSource: r.slot_source as "MEMBERSHIP" | "RELEASED",
+      status: r.status as "CONFIRMED" | "CANCELLED",
+      amountMinor: r.amount_minor ?? null,
+      createdAt: r.created_at,
+    }));
+  }
+
+  async listSessionActivity(batchId: string, limit = 30): Promise<MembershipSessionActivity[]> {
+    const { data, error } = await this.supabase.rpc("list_membership_session_activity", { p_batch_id: batchId, p_limit: limit });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((r) => ({ kind: r.kind, actor: r.actor ?? null, detail: r.detail, at: r.at }));
+  }
+
+  async blockDate(batchId: string, date: string, reason?: string): Promise<void> {
+    const { error } = await this.supabase.rpc("block_membership_batch_date", { p_batch_id: batchId, p_date: date, p_reason: reason ?? null });
+    if (error) throw mapSupabaseError(error);
+  }
+
+  async unblockDate(batchId: string, date: string): Promise<void> {
+    const { error } = await this.supabase.rpc("unblock_membership_batch_date", { p_batch_id: batchId, p_date: date });
+    if (error) throw mapSupabaseError(error);
+  }
+
+  async duplicateSession(batchId: string, newName?: string): Promise<MembershipBatch> {
+    const { data, error } = await this.supabase.rpc("duplicate_membership_batch", { p_batch_id: batchId, p_new_name: newName ?? null });
+    if (error) throw mapSupabaseError(error, { notFound: "MEMBERSHIP_BATCH_NOT_FOUND" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toBatch(data);
   }
 }
