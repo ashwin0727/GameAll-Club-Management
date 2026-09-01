@@ -16,6 +16,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -360,149 +361,54 @@ class _DashboardBody extends StatelessWidget {
   }
 }
 
-/// One full-width KPI card at a time, advancing itself every 5s (spec
-/// §"Owner Summary": compact metric cards, not four full-width cards
-/// stacked down the screen — here they share one slot instead).
-///
-/// Auto-advance pauses while the owner is swiping and resumes after, so it
-/// never yanks a card away mid-gesture, and each card replays its count-up
-/// as it slides in.
-class _MetricCarousel extends StatefulWidget {
+/// The dashboard's KPI tiles, shown one at a time by [MetricCarousel].
+class _MetricCarousel extends StatelessWidget {
   const _MetricCarousel({required this.kpis});
 
   final DashboardKpis kpis;
 
   @override
-  State<_MetricCarousel> createState() => _MetricCarouselState();
-}
-
-class _MetricCarouselState extends State<_MetricCarousel> {
-  static const _interval = Duration(seconds: 5);
-
-  final _controller = PageController();
-  Timer? _timer;
-  int _page = 0;
-  int _count = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTimer();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(_interval, (_) {
-      if (!mounted || _count == 0 || !_controller.hasClients) return;
-      final next = (_page + 1) % _count;
-      // Reduced motion still advances (otherwise 3 of 4 KPIs stay hidden)
-      // but jumps instead of sliding.
-      if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-        _controller.jumpToPage(next);
-      } else {
-        _controller.animateToPage(next, duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final kpis = widget.kpis;
-    final tiles = <Widget>[
-      AppMetricCard(
-        label: 'Revenue',
-        value: Formatters.currencyInr(kpis.revenueInr.value),
-        countTo: kpis.revenueInr.value,
-        formatValue: (v) => Formatters.currencyInr(v.round()),
-        changePercent: kpis.revenueInr.changePercent,
-        icon: Icons.account_balance_wallet_outlined,
-        accentColor: tokens.electricBlue,
-      ),
-      AppMetricCard(
-        label: 'Active Membership',
-        value: kpis.activeMemberships.value.toStringAsFixed(0),
-        countTo: kpis.activeMemberships.value,
-        formatValue: (v) => v.round().toString(),
-        changePercent: kpis.activeMemberships.changePercent,
-        icon: Icons.group_outlined,
-        accentColor: tokens.violet,
-      ),
-      AppMetricCard(
-        label: 'Guest Bookings',
-        value: kpis.guestBookings.value.toStringAsFixed(0),
-        countTo: kpis.guestBookings.value,
-        formatValue: (v) => v.round().toString(),
-        changePercent: kpis.guestBookings.changePercent,
-        icon: Icons.group_add_outlined,
-        accentColor: tokens.warning,
-      ),
-      AppMetricCard(
-        label: 'Utilization',
-        value: '${kpis.utilizationPercent.value}%',
-        countTo: kpis.utilizationPercent.value,
-        formatValue: (v) => '${v.round()}%',
-        changePercent: kpis.utilizationPercent.changePercent,
-        icon: Icons.pie_chart_outline,
-        accentColor: tokens.primary,
-      ),
-    ];
-    _count = tiles.length;
-    return SizedBox(
-      height: 132,
-      child: Column(
-        children: [
-          Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (n) {
-                // Hold the timer while the owner is dragging, restart it
-                // from zero once they let go.
-                if (n is ScrollStartNotification && n.dragDetails != null) {
-                  _timer?.cancel();
-                } else if (n is ScrollEndNotification) {
-                  _startTimer();
-                }
-                return false;
-              },
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: tiles.length,
-                onPageChanged: (i) => setState(() => _page = i),
-                itemBuilder: (context, i) => KeyedSubtree(
-                  // Re-keying the active card replays its entrance and
-                  // count-up each time it slides into view.
-                  key: ValueKey('kpi-$i-${_page == i}'),
-                  child: tiles[i],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < tiles.length; i++)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: _page == i ? 16 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: _page == i ? tokens.primary : tokens.borderColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+    return MetricCarousel(
+      cards: [
+        AppMetricCard(
+          label: 'Revenue',
+          value: Formatters.currencyInr(kpis.revenueInr.value),
+          countTo: kpis.revenueInr.value,
+          formatValue: (v) => Formatters.currencyInr(v.round()),
+          changePercent: kpis.revenueInr.changePercent,
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: tokens.electricBlue,
+        ),
+        AppMetricCard(
+          label: 'Active Membership',
+          value: kpis.activeMemberships.value.toStringAsFixed(0),
+          countTo: kpis.activeMemberships.value,
+          formatValue: (v) => v.round().toString(),
+          changePercent: kpis.activeMemberships.changePercent,
+          icon: Icons.group_outlined,
+          accentColor: tokens.violet,
+        ),
+        AppMetricCard(
+          label: 'Guest Bookings',
+          value: kpis.guestBookings.value.toStringAsFixed(0),
+          countTo: kpis.guestBookings.value,
+          formatValue: (v) => v.round().toString(),
+          changePercent: kpis.guestBookings.changePercent,
+          icon: Icons.group_add_outlined,
+          accentColor: tokens.warning,
+        ),
+        AppMetricCard(
+          label: 'Utilization',
+          value: '${kpis.utilizationPercent.value}%',
+          countTo: kpis.utilizationPercent.value,
+          formatValue: (v) => '${v.round()}%',
+          changePercent: kpis.utilizationPercent.changePercent,
+          icon: Icons.pie_chart_outline,
+          accentColor: tokens.primary,
+        ),
+      ],
     );
   }
 }

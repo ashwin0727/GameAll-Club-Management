@@ -17,6 +17,7 @@ import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
@@ -374,47 +375,43 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final cards = <Widget>[
-      AppMetricCard(
-        label: 'Total Members',
-        value: '${summary.totalMembers}',
-        changePercent: summary.totalMembersChangePct,
-        icon: Icons.groups_outlined,
-        accentColor: tokens.violet,
-      ),
-      AppMetricCard(
-        label: 'Active Members',
-        value: '${summary.activeMembers}',
-        icon: Icons.verified_user_outlined,
-        accentColor: tokens.success,
-      ),
-      AppMetricCard(
-        label: 'Payment Incomplete',
-        value: '${summary.paymentIncompleteMembers}',
-        icon: Icons.person_off_outlined,
-        accentColor: tokens.destructive,
-      ),
-      AppMetricCard(
-        label: 'Revenue (this month)',
-        value: Formatters.currencyInr(summary.revenueInr),
-        changePercent: summary.revenueChangePct,
-        icon: Icons.account_balance_wallet_outlined,
-        accentColor: tokens.electricBlue,
-      ),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth > 560 ? 3 : 2;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppSpacing.sm,
-          crossAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.7,
-          children: cards,
-        );
-      },
+    return MetricCarousel(
+      cards: [
+        AppMetricCard(
+          label: 'Total Members',
+          value: '${summary.totalMembers}',
+          countTo: summary.totalMembers,
+          formatValue: (v) => v.round().toString(),
+          changePercent: summary.totalMembersChangePct,
+          icon: Icons.groups_outlined,
+          accentColor: tokens.violet,
+        ),
+        AppMetricCard(
+          label: 'Active Members',
+          value: '${summary.activeMembers}',
+          countTo: summary.activeMembers,
+          formatValue: (v) => v.round().toString(),
+          icon: Icons.verified_user_outlined,
+          accentColor: tokens.success,
+        ),
+        AppMetricCard(
+          label: 'Payment Incomplete',
+          value: '${summary.paymentIncompleteMembers}',
+          countTo: summary.paymentIncompleteMembers,
+          formatValue: (v) => v.round().toString(),
+          icon: Icons.person_off_outlined,
+          accentColor: tokens.destructive,
+        ),
+        AppMetricCard(
+          label: 'Revenue (this month)',
+          value: Formatters.currencyInr(summary.revenueInr),
+          countTo: summary.revenueInr,
+          formatValue: (v) => Formatters.currencyInr(v.round()),
+          changePercent: summary.revenueChangePct,
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: tokens.electricBlue,
+        ),
+      ],
     );
   }
 }

@@ -24,6 +24,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useCountUp } from "@/features/dashboard/use-count-up";
 import { ServiceError } from "@/services/shared/service-error";
 import { getFacilityService } from "@/services/facility";
 import { getMembershipService } from "@/services/memberships";
@@ -103,6 +104,9 @@ function KpiCard({
   hint,
   hintClass,
   accent,
+  countTo,
+  format,
+  index = 0,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -110,9 +114,30 @@ function KpiCard({
   hint?: string;
   hintClass?: string;
   accent: string;
+  /** Numeric target for the count-up; requires `format`. Without both, `value` renders as-is. */
+  countTo?: number;
+  format?: (v: number) => string;
+  /** Position in the KPI row — staggers the entrance left-to-right. */
+  index?: number;
 }) {
+  const animated = useCountUp(countTo ?? 0);
+  const animating = countTo !== undefined && format !== undefined;
+
   return (
-    <Card className="p-4">
+    <Card
+      className={cn(
+        "stat-enter p-4 transition-shadow",
+        "border-[var(--kpi-tint)] shadow-[0_6px_20px_-8px_var(--kpi-shadow)] hover:shadow-[0_10px_26px_-8px_var(--kpi-shadow-hover)]",
+      )}
+      style={
+        {
+          "--stat-delay": `${index * 70}ms`,
+          "--kpi-tint": `${accent}3d`,
+          "--kpi-shadow": `${accent}40`,
+          "--kpi-shadow-hover": `${accent}66`,
+        } as React.CSSProperties
+      }
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <span
@@ -122,7 +147,11 @@ function KpiCard({
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+      {/* The animated figure is decorative motion over the same number — the
+          accessible name always carries the settled value. */}
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground" aria-label={value}>
+        <span aria-hidden>{animating ? format(Math.round(animated)) : value}</span>
+      </p>
       {hint && <p className={cn("mt-0.5 text-xs", hintClass ?? "text-muted-foreground")}>{hint}</p>}
     </Card>
   );
@@ -314,6 +343,9 @@ export function MembershipsPage() {
                   : "text-destructive"
               }
               accent="#8B5CF6"
+              countTo={summary.totalMembers}
+              format={(v) => String(v)}
+              index={0}
             />
             <KpiCard
               icon={UserCheck}
@@ -321,6 +353,9 @@ export function MembershipsPage() {
               value={String(summary.activeMembers)}
               hint={`${Math.round(summary.activePctOfTotal * 10) / 10}% of total members`}
               accent="#00D084"
+              countTo={summary.activeMembers}
+              format={(v) => String(v)}
+              index={1}
             />
             <KpiCard
               icon={UserMinus}
@@ -329,6 +364,9 @@ export function MembershipsPage() {
               hint={summary.paymentIncompleteMembers > 0 ? "Payment due / overdue" : "All paid up"}
               hintClass={summary.paymentIncompleteMembers > 0 ? "text-destructive" : "text-muted-foreground"}
               accent="#FF4D67"
+              countTo={summary.paymentIncompleteMembers}
+              format={(v) => String(v)}
+              index={2}
             />
             <KpiCard
               icon={Wallet}
@@ -345,6 +383,9 @@ export function MembershipsPage() {
                   : "text-destructive"
               }
               accent="#5B6CFF"
+              countTo={summary.revenueInr}
+              format={inr}
+              index={3}
             />
           </>
         ) : (
@@ -415,7 +456,7 @@ export function MembershipsPage() {
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden p-0">
+      <Card className="stat-enter overflow-hidden p-0" style={{ "--stat-delay": "300ms" } as React.CSSProperties}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border text-left text-xs text-muted-foreground">

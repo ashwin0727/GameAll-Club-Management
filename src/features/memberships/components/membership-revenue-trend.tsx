@@ -33,7 +33,7 @@ export function MembershipRevenueTrend({ facilityId }: { facilityId: string }) {
   const total = points.reduce((s, p) => s + p.amountInr, 0);
 
   return (
-    <Card className="space-y-3 p-4 sm:p-5">
+    <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "360ms" } as React.CSSProperties}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold">Membership Revenue Received</h3>
@@ -64,13 +64,18 @@ export function MembershipRevenueTrend({ facilityId }: { facilityId: string }) {
         <p className="py-6 text-center text-sm text-muted-foreground">No membership revenue received yet.</p>
       ) : (
         <div className="space-y-1.5">
-          {points.map((p) => (
+          {points.map((p, i) => (
             <div key={p.bucket} className="flex items-center gap-2 text-xs">
               <span className="w-20 shrink-0 text-muted-foreground">{label(p.bucket, grain)}</span>
               <div className="h-4 flex-1 overflow-hidden rounded bg-secondary">
                 <div
-                  className="h-full rounded bg-primary"
-                  style={{ width: `${Math.max((p.amountInr / max) * 100, 2)}%` }}
+                  className="bar-grow h-full rounded bg-primary"
+                  style={
+                    {
+                      width: `${Math.max((p.amountInr / max) * 100, 2)}%`,
+                      "--bar-delay": `${120 + i * 60}ms`,
+                    } as React.CSSProperties
+                  }
                 />
               </div>
               <span className="w-20 shrink-0 text-right font-medium text-foreground">{inr(p.amountInr)}</span>
