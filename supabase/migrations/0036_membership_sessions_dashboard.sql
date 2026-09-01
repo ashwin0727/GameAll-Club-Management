@@ -405,7 +405,8 @@ language sql
 stable
 as $$
   select * from (
-    select 'created'::text, null::text, 'Session created'::text, b.created_at
+    select 'created'::text as kind, null::text as actor,
+           'Session created'::text as detail, b.created_at as at
     from membership_batches b where b.id = p_batch_id
     union all
     select 'member_added', null, mem.full_name || ' added to the session', bm.created_at
