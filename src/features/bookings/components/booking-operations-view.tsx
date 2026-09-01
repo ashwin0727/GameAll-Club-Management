@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFacilityService } from "@/services/facility";
@@ -31,6 +32,7 @@ function isToday(d: Date): boolean {
 }
 
 export function BookingOperationsView() {
+  const router = useRouter();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
 
@@ -238,7 +240,7 @@ export function BookingOperationsView() {
             </Button>
           )}
         </div>
-        <Button type="button" onClick={() => setBookingDialog({})}>
+        <Button type="button" onClick={() => router.push("/bookings/new")}>
           + Create Booking
         </Button>
       </div>
