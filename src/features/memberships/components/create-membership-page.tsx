@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check } from "lucide-react";
@@ -122,6 +122,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mandateUrl, setMandateUrl] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(!membershipId);
 
   useEffect(() => {
     (async () => {
@@ -133,10 +134,10 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
           return;
         }
         setAccessDays(f.membershipAccessDays);
-        getMembershipService()
+        const facilityPlans = await getMembershipService()
           .getFacilityPlans(f.id, { activeOnly: true })
-          .then(setPlans)
-          .catch(() => undefined);
+          .catch(() => [] as MembershipPlan[]);
+        setPlans(facilityPlans);
 
         if (membershipId) {
           const d = await getMembershipService().getMembershipDetail(membershipId);
@@ -163,6 +164,11 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             setSlotSportId(d.slot.facilitySportId);
             setCurrentBatchId(d.slot.batchId);
           }
+          // The membership is self-contained (no plan_id stored) — surface the
+          // plan it was created from by matching on name, for display only.
+          const matched = facilityPlans.find((p) => p.name.trim().toLowerCase() === d.membership.name.trim().toLowerCase());
+          if (matched) setPlanId(matched.id);
+          setPrefilled(true);
         }
         setLoading(false);
       } catch {
@@ -205,6 +211,39 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
     const registration = num(regFee);
     return { subTotal, gstAmount, registration, total: subTotal + gstAmount + registration };
   }, [fee, gst, regFee]);
+
+  // Edit mode: enable "Save Changes" only when the form actually differs from
+  // what was loaded (reverting a change disables it again).
+  const formKey = useMemo(
+    () =>
+      JSON.stringify({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        dob,
+        gender,
+        address: address.trim(),
+        name: name.trim(),
+        type,
+        startDate,
+        durationDays,
+        maxFamily: type === "FAMILY" ? maxFamily : 1,
+        description: description.trim(),
+        fee: num(fee),
+        regFee: num(regFee),
+        gst: num(gst),
+        slot,
+        referralId: referral?.id ?? null,
+        discovery,
+        notes: notes.trim(),
+      }),
+    [fullName, phone, email, dob, gender, address, name, type, startDate, durationDays, maxFamily, description, fee, regFee, gst, slot, referral, discovery, notes],
+  );
+  const initialKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prefilled && initialKeyRef.current === null) initialKeyRef.current = formKey;
+  }, [prefilled, formKey]);
+  const isDirty = !isEdit || (initialKeyRef.current !== null && formKey !== initialKeyRef.current);
 
   async function submit() {
     if (!facilityId) return;
@@ -414,11 +453,11 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
           <Field label="Start Date" required>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={selectCls} />
           </Field>
-          <Field label="Duration" required hint={planId ? "Set by the plan" : "e.g., 3 Months, 6 Months, 1 Year"}>
+          <Field label="Duration" required hint={planId && !isEdit ? "Set by the plan" : "e.g., 3 Months, 6 Months, 1 Year"}>
             <select
               value={durationDays}
               onChange={(e) => setDurationDays(Number(e.target.value))}
-              disabled={!!planId}
+              disabled={!!planId && !isEdit}
               className={`${selectCls} disabled:opacity-60`}
             >
               <option value={0}>Select duration</option>
@@ -474,14 +513,14 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
       <Card className="p-5">
         <SectionHeader n={3} title="Membership Charges" />
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Membership Fee" required hint={planId ? "Set by the selected plan" : undefined}>
+          <Field label="Membership Fee" required hint={planId && !isEdit ? "Set by the selected plan" : undefined}>
             <Input
               value={fee}
               onChange={(e) => setFee(e.target.value)}
               placeholder="Enter amount"
               type="number"
               min={0}
-              disabled={!!planId}
+              disabled={!!planId && !isEdit}
               className="disabled:cursor-not-allowed disabled:opacity-60"
             />
           </Field>
@@ -629,7 +668,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
         >
           Cancel
         </Button>
-        <Button type="button" onClick={submit} disabled={saving}>
+        <Button type="button" onClick={submit} disabled={saving || (isEdit && !isDirty)}>
           {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Membership"}
         </Button>
       </div>
