@@ -295,6 +295,62 @@ class MembershipRepository {
     }
   }
 
+  /// Edit an existing membership + its member. No payment side-effects (the
+  /// Edit screen hides the payment section). Mirrors `updateMembershipFull`
+  /// in src/services/memberships/supabase-membership.service.ts. The reserved
+  /// court time slot is left untouched (mobile has no slot editor yet).
+  Future<Membership> updateMembershipFull(
+    String membershipId, {
+    required String fullName,
+    required String phone,
+    String? email,
+    String? dateOfBirth,
+    String? gender,
+    String? address,
+    String? name,
+    required MembershipType membershipType,
+    required int maxFamilyMembers,
+    required DateTime startDate,
+    required int durationDays,
+    String? description,
+    required int membershipFeeInr,
+    required int registrationFeeInr,
+    required num gstPercent,
+    String? referralMemberId,
+    String? discoverySource,
+    String? notes,
+  }) async {
+    try {
+      final row = await _client.rpc(
+        'update_membership_full',
+        params: {
+          'p_membership_id': membershipId,
+          'p_full_name': fullName,
+          'p_phone': phone,
+          'p_email': email,
+          'p_date_of_birth': dateOfBirth,
+          'p_gender': gender,
+          'p_address': address,
+          'p_name': name,
+          'p_membership_type': membershipTypeToDb(membershipType),
+          'p_max_family_members': maxFamilyMembers,
+          'p_start_date': _dateOnly(startDate),
+          'p_duration_days': durationDays,
+          'p_description': description,
+          'p_membership_fee_inr': membershipFeeInr,
+          'p_registration_fee_inr': registrationFeeInr,
+          'p_gst_percent': gstPercent,
+          'p_referral_member_id': referralMemberId,
+          'p_discovery_source': discoverySource,
+          'p_notes': notes,
+        },
+      ) as Map<String, dynamic>;
+      return Membership.fromJson(row, planName: row['name'] as String? ?? 'Membership');
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, invalid: AppErrorCode.invalidMembership);
+    }
+  }
+
   /// Generates a Razorpay UPI AutoPay mandate for a recurring membership —
   /// invokes the `create-membership-subscription` Edge Function (the only
   /// place the Razorpay secret exists). Mirrors the web service's

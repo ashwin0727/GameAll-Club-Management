@@ -10,13 +10,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/validators.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import 'create_membership_screen.dart';
 import 'membership_list_presentation.dart';
 import 'slot_format.dart';
 
@@ -71,15 +71,8 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
   Future<void> _edit() async {
     final d = _detail;
     if (d == null) return;
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _EditMemberSheet(
-        memberId: d.member.id,
-        initialName: d.member.fullName,
-        initialPhone: d.member.phone,
-        initialEmail: d.member.email ?? '',
-      ),
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => CreateMembershipScreen(membershipId: d.membershipId)),
     );
     if (saved == true) _load();
   }
@@ -401,100 +394,3 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       );
 }
 
-class _EditMemberSheet extends ConsumerStatefulWidget {
-  const _EditMemberSheet({
-    required this.memberId,
-    required this.initialName,
-    required this.initialPhone,
-    required this.initialEmail,
-  });
-
-  final String memberId;
-  final String initialName;
-  final String initialPhone;
-  final String initialEmail;
-
-  @override
-  ConsumerState<_EditMemberSheet> createState() => _EditMemberSheetState();
-}
-
-class _EditMemberSheetState extends ConsumerState<_EditMemberSheet> {
-  late final _name = TextEditingController(text: widget.initialName);
-  late final _phone = TextEditingController(text: widget.initialPhone);
-  late final _email = TextEditingController(text: widget.initialEmail);
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _phone.dispose();
-    _email.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final nameError = Validators.name(_name.text);
-    if (nameError != null) return setState(() => _error = nameError);
-    final phoneError = Validators.phone(_phone.text);
-    if (phoneError != null) return setState(() => _error = phoneError);
-    if (_email.text.trim().isNotEmpty) {
-      final emailError = Validators.email(_email.text);
-      if (emailError != null) return setState(() => _error = emailError);
-    }
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      await ref.read(membershipRepositoryProvider).updateMember(
-            widget.memberId,
-            fullName: _name.text.trim(),
-            phone: _phone.text.trim(),
-            email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-          );
-      if (mounted) Navigator.of(context).pop(true);
-    } on AppException catch (e) {
-      setState(() => _error = e.message);
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Edit Member', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: AppSpacing.md),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Full name')),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: _phone,
-              decoration: const InputDecoration(labelText: 'Phone'),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: _email,
-              decoration: const InputDecoration(labelText: 'Email (optional)'),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(_error!, style: const TextStyle(color: AppColors.destructive)),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(label: 'Save', loadingLabel: 'Saving…', isLoading: _saving, onPressed: _save),
-          ],
-        ),
-      ),
-    );
-  }
-}

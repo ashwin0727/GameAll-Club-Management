@@ -25,7 +25,12 @@ import 'membership_status.dart';
 /// assignment. Pops `true` when a membership was created so the list can
 /// refresh.
 class CreateMembershipScreen extends ConsumerStatefulWidget {
-  const CreateMembershipScreen({super.key});
+  const CreateMembershipScreen({super.key, this.membershipId});
+
+  /// When set, the screen edits this membership instead of creating one:
+  /// every field is prefilled, the Payment Mode section is hidden, and Save
+  /// calls `update_membership_full` (no payment side-effects).
+  final String? membershipId;
 
   @override
   ConsumerState<CreateMembershipScreen> createState() => _CreateMembershipScreenState();
@@ -50,6 +55,7 @@ const _discoverySources = [
 ];
 
 class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen> {
+  bool get _isEdit => widget.membershipId != null;
   String? _facilityId;
   bool _loading = true;
   String? _loadError;
@@ -159,6 +165,32 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         final plans = await ref.read(membershipRepositoryProvider).getFacilityPlans(facility.id, activeOnly: true);
         if (mounted) setState(() => _plans = plans);
       }
+      if (widget.membershipId != null) {
+        final d = await ref.read(membershipRepositoryProvider).getMembershipDetail(widget.membershipId!);
+        if (!mounted) return;
+        setState(() {
+          _fullName.text = d.member.fullName;
+          _phone.text = d.member.phone;
+          _email.text = d.member.email ?? '';
+          _address.text = d.member.address ?? '';
+          _dob = d.member.dateOfBirth == null ? null : DateTime.tryParse(d.member.dateOfBirth!);
+          _gender = _genders.contains(d.member.gender) ? d.member.gender : null;
+          _name.text = d.membership.name;
+          _type = membershipTypeFromDb(d.membership.membershipType);
+          _startDate = d.membership.startDate;
+          _durationDays = d.membership.durationDays ?? 0;
+          _maxFamily = d.membership.maxFamilyMembers < 1 ? 1 : d.membership.maxFamilyMembers;
+          _description.text = d.membership.description ?? '';
+          _fee.text = d.membership.membershipFeeInr == 0 ? '' : d.membership.membershipFeeInr.toString();
+          _regFee.text = d.membership.registrationFeeInr == 0 ? '' : d.membership.registrationFeeInr.toString();
+          _gst.text = d.membership.gstPercent == 0 ? '' : d.membership.gstPercent.toString();
+          if (d.referralMemberId != null && d.referralName != null) {
+            _referral = MemberSearchResult(id: d.referralMemberId!, fullName: d.referralName!, phone: '');
+          }
+          _discovery = _discoverySources.contains(d.discoverySource) ? d.discoverySource : null;
+          _notes.text = d.notes ?? '';
+        });
+      }
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -209,9 +241,46 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
       if (emailError != null) return setState(() => _error = emailError);
     }
     if (_durationDays <= 0) return setState(() => _error = 'Select a membership duration.');
-    if (_mode != MembershipPaymentMode.free && _charges.subTotal <= 0) {
+    if (!_isEdit && _mode != MembershipPaymentMode.free && _charges.subTotal <= 0) {
       return setState(() => _error = 'Enter a membership fee.');
     }
+
+    if (_isEdit) {
+      setState(() {
+        _saving = true;
+        _error = null;
+      });
+      try {
+        await ref.read(membershipRepositoryProvider).updateMembershipFull(
+              widget.membershipId!,
+              fullName: _fullName.text.trim(),
+              phone: _phone.text.trim(),
+              email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+              dateOfBirth: _dob == null ? null : _dateOnly(_dob!),
+              gender: _gender,
+              address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+              name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+              membershipType: _type,
+              maxFamilyMembers: _type == MembershipType.family ? _maxFamily : 1,
+              startDate: _startDate,
+              durationDays: _durationDays,
+              description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+              membershipFeeInr: _charges.subTotal,
+              registrationFeeInr: _charges.registration,
+              gstPercent: num.tryParse(_gst.text.trim())?.toDouble().clamp(0, double.infinity) ?? 0,
+              referralMemberId: _referral?.id,
+              discoverySource: _discovery,
+              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+            );
+        if (mounted) Navigator.of(context).pop(true);
+      } on AppException catch (e) {
+        if (mounted) setState(() => _error = e.message);
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+      return;
+    }
+
     final start = _time24(_slotStart);
     final end = _time24(_slotEnd);
     if (start != null && end != null && end.compareTo(start) <= 0) {
@@ -277,7 +346,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Membership')),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit Membership' : 'Create Membership')),
       body: SafeArea(
         child: _loading
             ? const LoadingView(message: 'Loading…')
@@ -298,7 +367,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        Text('Register a new member', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tokens.textSecondary)),
+        Text(_isEdit ? "Update this member's details" : 'Register a new member', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tokens.textSecondary)),
         const SizedBox(height: AppSpacing.lg),
 
         // ── 1 · Member Information ──────────────────────────────────────
@@ -454,6 +523,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                       onChanged: (d) => setState(() => _durationDays = d ?? 0),
                     ),
             ),
+            if (!_isEdit)
             _labeled(
               'Time Slot',
               hint: 'The hour the member plays each visit',
@@ -548,7 +618,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           ],
         ),
 
-        // ── 4 · Payment Mode ──────────────────────────────────────────
+        // ── 4 · Payment Mode (create only — payment is not edited here) ─
+        if (!_isEdit)
         _Section(
           n: 4,
           title: 'Payment Mode',
@@ -659,15 +730,17 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         ],
         const SizedBox(height: AppSpacing.lg),
         PrimaryButton(
-          label: 'Create Membership',
-          loadingLabel: 'Creating…',
+          label: _isEdit ? 'Save Changes' : 'Create Membership',
+          loadingLabel: _isEdit ? 'Saving…' : 'Creating…',
           isLoading: _saving,
           onPressed: _facilityId == null ? null : _submit,
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Center(
-          child: Text('Secure registration · You can edit details later', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
-        ),
+        if (!_isEdit) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Center(
+            child: Text('Secure registration · You can edit details later', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
       ],
     );

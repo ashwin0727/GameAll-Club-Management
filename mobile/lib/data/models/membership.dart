@@ -325,6 +325,17 @@ String membershipTypeToDb(MembershipType type) {
   }
 }
 
+MembershipType membershipTypeFromDb(String? value) {
+  switch ((value ?? '').toUpperCase()) {
+    case 'FAMILY':
+      return MembershipType.family;
+    case 'CORPORATE':
+      return MembershipType.corporate;
+    default:
+      return MembershipType.individual;
+  }
+}
+
 String membershipTypeLabel(MembershipType type) {
   switch (type) {
     case MembershipType.individual:
@@ -805,6 +816,7 @@ class MembershipDetail {
     required this.membership,
     this.payment,
     this.referralName,
+    this.referralMemberId,
     this.createdByName,
     this.discoverySource,
     this.paymentReference,
@@ -820,6 +832,7 @@ class MembershipDetail {
   final MembershipDetailMembership membership;
   final MembershipDetailPayment? payment;
   final String? referralName;
+  final String? referralMemberId;
   final String? createdByName;
   final String? discoverySource;
   final String? paymentReference;
@@ -838,6 +851,7 @@ class MembershipDetail {
       membership: MembershipDetailMembership.fromJson(j['membership'] as Map<String, dynamic>),
       payment: paymentJson == null ? null : MembershipDetailPayment.fromJson(paymentJson),
       referralName: j['referralName'] as String?,
+      referralMemberId: j['referralMemberId'] as String?,
       createdByName: j['createdByName'] as String?,
       discoverySource: j['discoverySource'] as String?,
       paymentReference: j['paymentReference'] as String?,

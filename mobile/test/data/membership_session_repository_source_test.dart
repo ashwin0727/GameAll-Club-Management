@@ -77,8 +77,10 @@ void main() {
     test('write paths route errors through the capacity mapper, not the generic one', () {
       // createBatch, updateBatch's rpc call, assignBatchMember,
       // removeBatchMember, getOrCreateSession, bookMembershipSlot,
-      // releaseCapacity, restoreCapacity, bookGuestSlot, cancelSlotBooking.
-      const expectedCapacitySensitiveWrites = 10;
+      // releaseCapacity, restoreCapacity, bookGuestSlot, cancelSlotBooking,
+      // plus the dashboard writes: getSessionDetail, setSessionNotes,
+      // blockDate, unblockDate, duplicateSession.
+      const expectedCapacitySensitiveWrites = 15;
       final capacityErrorThrows = RegExp(r'throw _mapCapacityError\(e\);').allMatches(source).length;
       expect(capacityErrorThrows, expectedCapacitySensitiveWrites);
     });
