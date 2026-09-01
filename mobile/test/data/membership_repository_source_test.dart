@@ -90,6 +90,10 @@ void main() {
       expect(source, contains("'get_membership_page_summary'"));
     });
 
+    test('recordMembershipPayment calls the record_membership_payment RPC', () {
+      expect(source, contains("'record_membership_payment'"));
+    });
+
     test('deleteMember calls the guarded delete_member RPC and surfaces its 23514 verbatim', () {
       expect(source, contains("'delete_member'"));
       expect(source, contains("e.code == '23514'"));

@@ -434,12 +434,12 @@ class MembershipSubscriptionInfo {
 
 /// The payment-driven status the list shows — distinct from the raw
 /// [MembershipStatus] enum. Mirrors the web `MembershipListStatus`.
-enum MembershipListStatus { paymentNotInitiated, active, inactive }
+enum MembershipListStatus { paymentIncomplete, active, inactive }
 
 MembershipListStatus membershipListStatusFromDb(String value) {
   switch (value) {
-    case 'payment_not_initiated':
-      return MembershipListStatus.paymentNotInitiated;
+    case 'payment_incomplete':
+      return MembershipListStatus.paymentIncomplete;
     case 'inactive':
       return MembershipListStatus.inactive;
     case 'active':
@@ -452,8 +452,8 @@ String? membershipListStatusToDb(MembershipListStatus? value) {
   switch (value) {
     case null:
       return null;
-    case MembershipListStatus.paymentNotInitiated:
-      return 'payment_not_initiated';
+    case MembershipListStatus.paymentIncomplete:
+      return 'payment_incomplete';
     case MembershipListStatus.active:
       return 'active';
     case MembershipListStatus.inactive:
@@ -582,7 +582,7 @@ class MembershipPageSummary {
     this.totalMembersChangePct,
     required this.activeMembers,
     required this.activePctOfTotal,
-    required this.inactiveMembers,
+    required this.paymentIncompleteMembers,
     required this.revenueInr,
     this.revenueChangePct,
   });
@@ -591,7 +591,7 @@ class MembershipPageSummary {
   final double? totalMembersChangePct;
   final int activeMembers;
   final double activePctOfTotal;
-  final int inactiveMembers;
+  final int paymentIncompleteMembers;
   final int revenueInr;
   final double? revenueChangePct;
 
@@ -607,7 +607,7 @@ class MembershipPageSummary {
       totalMembersChangePct: pctChange(totalMembers, prev),
       activeMembers: active,
       activePctOfTotal: totalMembers == 0 ? 0 : (active / totalMembers) * 100,
-      inactiveMembers: (json['inactive_members'] as num?)?.toInt() ?? 0,
+      paymentIncompleteMembers: (json['payment_incomplete_members'] as num?)?.toInt() ?? 0,
       revenueInr: revenue,
       revenueChangePct: pctChange(revenue, revenuePrev),
     );
@@ -767,6 +767,7 @@ class MembershipDetailPayment {
   const MembershipDetailPayment({
     required this.amountInr,
     required this.status,
+    required this.settled,
     this.method,
     this.paidAt,
     required this.createdAt,
@@ -775,6 +776,10 @@ class MembershipDetailPayment {
 
   final int amountInr;
   final String status;
+
+  /// A real settlement (gateway charge or an owner "record payment"
+  /// confirmation) — `status = 'paid'` alone is not enough.
+  final bool settled;
   final String? method;
   final DateTime? paidAt;
   final DateTime createdAt;
@@ -783,6 +788,7 @@ class MembershipDetailPayment {
   factory MembershipDetailPayment.fromJson(Map<String, dynamic> j) => MembershipDetailPayment(
         amountInr: (j['amountInr'] as num?)?.toInt() ?? 0,
         status: j['status'] as String? ?? 'created',
+        settled: j['settled'] as bool? ?? (j['paidAt'] != null),
         method: j['method'] as String?,
         paidAt: j['paidAt'] != null ? DateTime.parse(j['paidAt'] as String) : null,
         createdAt: DateTime.parse(j['createdAt'] as String),

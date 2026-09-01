@@ -10,8 +10,8 @@ String membershipListStatusLabel(MembershipListStatus status) {
   switch (status) {
     case MembershipListStatus.active:
       return 'Active';
-    case MembershipListStatus.paymentNotInitiated:
-      return 'Payment Not Initiated';
+    case MembershipListStatus.paymentIncomplete:
+      return 'Payment Incomplete';
     case MembershipListStatus.inactive:
       return 'Inactive';
   }
@@ -21,7 +21,7 @@ StatusTone membershipListStatusTone(MembershipListStatus status) {
   switch (status) {
     case MembershipListStatus.active:
       return StatusTone.success;
-    case MembershipListStatus.paymentNotInitiated:
+    case MembershipListStatus.paymentIncomplete:
       return StatusTone.warning;
     case MembershipListStatus.inactive:
       return StatusTone.neutral;

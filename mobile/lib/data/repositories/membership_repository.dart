@@ -361,6 +361,23 @@ class MembershipRepository {
     }
   }
 
+  /// The explicit "cash received" confirmation for a payment-incomplete
+  /// membership — settles the current billing cycle and rolls the next
+  /// payment date forward if it had lapsed. Mirrors `recordMembershipPayment`
+  /// on the web. Owner/manager/staff only (enforced by the RPC).
+  Future<void> recordMembershipPayment(String membershipId, {String method = 'cash'}) async {
+    try {
+      await _client.rpc('record_membership_payment', params: {
+        'p_membership_id': membershipId,
+        'p_method': method,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0002') throw AppException(AppErrorCode.membershipNotFound);
+      if (e.code == '23514') throw AppException(AppErrorCode.invalidMembership, e.message);
+      throw mapSupabaseError(e);
+    }
+  }
+
   /// Everything the Membership Details screen shows — one
   /// `get_membership_detail` read returning a single jsonb document.
   /// Mirrors `getMembershipDetail` on the web.

@@ -225,7 +225,7 @@ void main() {
       final d = MembershipDetail.fromJson({
         'membershipId': 'ms-1',
         'facilityId': 'fac-1',
-        'displayStatus': 'payment_not_initiated',
+        'displayStatus': 'payment_incomplete',
         'member': {
           'id': 'mem-1',
           'fullName': 'Rahul Sharma',
@@ -257,8 +257,9 @@ void main() {
         'payment': {
           'amountInr': 3540,
           'status': 'paid',
+          'settled': false,
           'method': 'upi',
-          'paidAt': '2026-05-24T11:23:00Z',
+          'paidAt': null,
           'createdAt': '2026-05-24T11:20:00Z',
           'transactionId': 'UPI/4123/5598/2026',
         },
@@ -274,9 +275,10 @@ void main() {
         ],
       });
 
-      expect(d.displayStatus, MembershipListStatus.paymentNotInitiated);
+      expect(d.displayStatus, MembershipListStatus.paymentIncomplete);
       expect(d.member.fullName, 'Rahul Sharma');
       expect(d.membership.gstAmountInr, 540);
+      expect(d.payment!.settled, isFalse);
       expect(d.payment!.transactionId, 'UPI/4123/5598/2026');
       expect(d.referralName, 'Sneha Reddy');
       expect(d.timeline, hasLength(2));

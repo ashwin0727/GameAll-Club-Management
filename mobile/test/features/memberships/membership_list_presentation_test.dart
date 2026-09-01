@@ -12,9 +12,9 @@ void main() {
         expect(membershipListStatusLabel(status), isNotEmpty);
         expect(membershipListStatusTone(status), isA<StatusTone>());
       }
-      expect(membershipListStatusLabel(MembershipListStatus.paymentNotInitiated), 'Payment Not Initiated');
+      expect(membershipListStatusLabel(MembershipListStatus.paymentIncomplete), 'Payment Incomplete');
       expect(membershipListStatusTone(MembershipListStatus.active), StatusTone.success);
-      expect(membershipListStatusTone(MembershipListStatus.paymentNotInitiated), StatusTone.warning);
+      expect(membershipListStatusTone(MembershipListStatus.paymentIncomplete), StatusTone.warning);
       expect(membershipListStatusTone(MembershipListStatus.inactive), StatusTone.neutral);
     });
   });
@@ -25,7 +25,7 @@ void main() {
         expect(membershipListStatusFromDb(membershipListStatusToDb(status)!), status);
       }
       expect(membershipListStatusToDb(null), isNull);
-      expect(membershipListStatusFromDb('payment_not_initiated'), MembershipListStatus.paymentNotInitiated);
+      expect(membershipListStatusFromDb('payment_incomplete'), MembershipListStatus.paymentIncomplete);
       expect(membershipListStatusFromDb('inactive'), MembershipListStatus.inactive);
     });
   });

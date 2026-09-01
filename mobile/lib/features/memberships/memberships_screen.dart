@@ -30,7 +30,7 @@ const _perPage = 10;
 const _statusFilters = <MembershipListStatus?>[
   null,
   MembershipListStatus.active,
-  MembershipListStatus.paymentNotInitiated,
+  MembershipListStatus.paymentIncomplete,
   MembershipListStatus.inactive,
 ];
 
@@ -185,6 +185,32 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     if (mounted) _refresh();
   }
 
+  Future<void> _recordPayment(MembershipListRow row) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Record payment'),
+        content: Text(
+          "Mark this billing cycle as paid for ${row.memberName}. Use this when you've collected the payment outside the app.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Record payment')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(membershipRepositoryProvider).recordMembershipPayment(row.membershipId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment recorded')));
+      _refresh();
+    } on AppException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
   Future<void> _confirmDelete(MembershipListRow row) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -312,7 +338,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                           else ...[
                             ..._list.rows.map((row) => Padding(
                                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                  child: _MembershipRowCard(row: row, onView: () => _openDetail(row), onDelete: () => _confirmDelete(row)),
+                                  child: _MembershipRowCard(row: row, onView: () => _openDetail(row), onRecordPayment: row.status == MembershipListStatus.paymentIncomplete ? () => _recordPayment(row) : null, onDelete: () => _confirmDelete(row)),
                                 )),
                             const SizedBox(height: AppSpacing.sm),
                             _Pagination(
@@ -363,8 +389,8 @@ class _SummaryGrid extends StatelessWidget {
         accentColor: tokens.success,
       ),
       AppMetricCard(
-        label: 'Inactive Members',
-        value: '${summary.inactiveMembers}',
+        label: 'Payment Incomplete',
+        value: '${summary.paymentIncompleteMembers}',
         icon: Icons.person_off_outlined,
         accentColor: tokens.destructive,
       ),
@@ -394,10 +420,11 @@ class _SummaryGrid extends StatelessWidget {
 }
 
 class _MembershipRowCard extends StatelessWidget {
-  const _MembershipRowCard({required this.row, required this.onView, required this.onDelete});
+  const _MembershipRowCard({required this.row, required this.onView, this.onRecordPayment, required this.onDelete});
 
   final MembershipListRow row;
   final VoidCallback onView;
+  final VoidCallback? onRecordPayment;
   final VoidCallback onDelete;
 
   String get _initials {
@@ -438,6 +465,7 @@ class _MembershipRowCard extends StatelessWidget {
                 tooltip: 'More actions',
                 onSelected: (v) {
                   if (v == 'view') onView();
+                  if (v == 'record') onRecordPayment?.call();
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (context) => [
@@ -451,6 +479,17 @@ class _MembershipRowCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onRecordPayment != null)
+                    const PopupMenuItem(
+                      value: 'record',
+                      child: Row(
+                        children: [
+                          Icon(Icons.payments_outlined, size: 18),
+                          SizedBox(width: AppSpacing.sm),
+                          Text('Record payment'),
+                        ],
+                      ),
+                    ),
                   PopupMenuItem(
                     value: 'delete',
                     child: Row(

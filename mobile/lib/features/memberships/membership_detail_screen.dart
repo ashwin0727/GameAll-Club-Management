@@ -88,20 +88,27 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
     final d = _detail;
     if (d == null) return;
     final isDelete = kind == 'delete';
+    final isRecord = kind == 'record';
+    final title = isDelete ? 'Delete member' : isRecord ? 'Record payment' : 'Cancel membership';
+    final body = isDelete
+        ? 'Permanently remove ${d.member.fullName}. This only works when they have no bookings and no settled payments.'
+        : isRecord
+            ? "Mark this billing cycle as paid. Use this when you've collected the payment outside the app; it also advances the next payment date if it had already passed."
+            : 'End this membership now. The record is kept for history.';
+    final confirmLabel = isDelete ? 'Delete' : isRecord ? 'Record payment' : 'Cancel Membership';
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isDelete ? 'Delete member' : 'Cancel membership'),
-        content: Text(
-          isDelete
-              ? 'Permanently remove ${d.member.fullName}. This only works when they have no bookings and no settled payments.'
-              : 'End this membership now. The record is kept for history.',
-        ),
+        title: Text(title),
+        content: Text(body),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(isRecord ? 'Cancel' : 'Keep')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(isDelete ? 'Delete' : 'Cancel Membership', style: TextStyle(color: context.tokens.destructive)),
+            child: Text(
+              confirmLabel,
+              style: TextStyle(color: isRecord ? null : context.tokens.destructive),
+            ),
           ),
         ],
       ),
@@ -114,7 +121,11 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         if (mounted) context.pop();
         return;
       }
-      await repo.cancelMembership(d.membershipId);
+      if (isRecord) {
+        await repo.recordMembershipPayment(d.membershipId);
+      } else {
+        await repo.cancelMembership(d.membershipId);
+      }
       _load();
     } on AppException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -143,10 +154,14 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         title: const Text('Membership Details'),
         actions: [
           if (d != null) ...[
+            if (d.displayStatus == MembershipListStatus.paymentIncomplete && d.membership.rawStatus != 'cancelled')
+              TextButton(onPressed: () => _confirm('record'), child: const Text('Record Payment')),
             IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Edit', onPressed: _edit),
             PopupMenuButton<String>(
               onSelected: _confirm,
               itemBuilder: (context) => [
+                if (d.displayStatus == MembershipListStatus.paymentIncomplete && d.membership.rawStatus != 'cancelled')
+                  const PopupMenuItem(value: 'record', child: Text('Record payment')),
                 if (d.displayStatus == MembershipListStatus.active && d.membership.rawStatus != 'cancelled')
                   const PopupMenuItem(value: 'cancel', child: Text('Cancel membership')),
                 PopupMenuItem(
@@ -212,7 +227,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                 _stat(context, 'Member Since', Formatters.dateShort(d.member.memberSince)),
                 _stat(context, 'Linked By', d.createdByName ?? 'Self registered'),
                 _stat(context, 'Start Date', Formatters.dateShort(m.startDate)),
-                _stat(context, 'Payment Status', (d.payment?.status ?? 'pending').toUpperCase()),
+                _stat(context, 'Payment Status', (d.payment?.settled ?? false) ? 'PAID' : 'PENDING'),
                 _stat(context, m.autoRenew ? 'Next Payment' : 'Expiry', Formatters.dateShort(m.endDate)),
               ],
             ),
@@ -267,7 +282,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
             d.payment == null ? '—' : Formatters.dateTimeShort(d.payment!.paidAt ?? d.payment!.createdAt)),
         if (d.payment?.transactionId != null) _row(context, 'Transaction ID', d.payment!.transactionId!),
         if (d.paymentReference != null) _row(context, 'Reference', d.paymentReference!),
-        _row(context, 'Payment Status', (d.payment?.status ?? 'pending').toUpperCase()),
+        _row(context, 'Payment Status', (d.payment?.settled ?? false) ? 'PAID' : 'PENDING'),
       ]),
       const SizedBox(height: AppSpacing.md),
 
