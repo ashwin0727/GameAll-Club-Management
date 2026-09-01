@@ -320,7 +320,7 @@ export class SupabaseMembershipService implements MembershipService {
       totalMembersChangePct: pctChange(totalMembers, prev),
       activeMembers: row?.active_members ?? 0,
       activePctOfTotal: totalMembers === 0 ? 0 : ((row?.active_members ?? 0) / totalMembers) * 100,
-      inactiveMembers: row?.inactive_members ?? 0,
+      paymentIncompleteMembers: row?.payment_incomplete_members ?? 0,
       revenueInr: revenue,
       revenueChangePct: pctChange(revenue, revenuePrev),
     };
@@ -334,6 +334,17 @@ export class SupabaseMembershipService implements MembershipService {
     }
     if (!data) throw new ServiceError("MEMBERSHIP_NOT_FOUND");
     return data as MembershipDetail;
+  }
+
+  async recordMembershipPayment(membershipId: string, method?: string): Promise<void> {
+    const { error } = await this.supabase.rpc("record_membership_payment", {
+      p_membership_id: membershipId,
+      p_method: method ?? "cash",
+    });
+    if (!error) return;
+    if (error.code === "P0002") throw new ServiceError("MEMBERSHIP_NOT_FOUND");
+    if (error.code === "23514") throw new ServiceError("INVALID_MEMBERSHIP", error.message);
+    throw mapSupabaseError(error);
   }
 
   async deleteMember(memberId: string): Promise<void> {

@@ -104,7 +104,7 @@ export interface CreateMembershipFullInput {
   notes?: string;
 }
 
-export type MembershipListStatus = "payment_not_initiated" | "active" | "inactive";
+export type MembershipListStatus = "payment_incomplete" | "active" | "inactive";
 export type MembershipListSort = "oldest" | "next_payment" | "name";
 
 export interface MembershipSlot {
@@ -213,7 +213,7 @@ export interface MembershipPageSummary {
   totalMembersChangePct: number | null;
   activeMembers: number;
   activePctOfTotal: number;
-  inactiveMembers: number;
+  paymentIncompleteMembers: number;
   revenueInr: number;
   revenueChangePct: number | null;
 }
@@ -275,6 +275,7 @@ export interface MembershipDetail {
   payment: {
     amountInr: number;
     status: PaymentStatus;
+    settled: boolean;
     method: string | null;
     paidAt: string | null;
     createdAt: string;

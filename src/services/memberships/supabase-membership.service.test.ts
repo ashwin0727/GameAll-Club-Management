@@ -352,14 +352,14 @@ describe("SupabaseMembershipService", () => {
       expect(result.rows[0]).not.toHaveProperty("createdById");
     });
 
-    it("getMembershipPageSummary maps inactive_members", async () => {
+    it("getMembershipPageSummary maps payment_incomplete_members", async () => {
       const rpc = vi.fn(async () => ({
         data: [
           {
             total_members: 10,
             total_members_prev: 8,
             active_members: 6,
-            inactive_members: 3,
+            payment_incomplete_members: 3,
             revenue_inr: 5000,
             revenue_prev_inr: 4000,
           },
@@ -370,10 +370,24 @@ describe("SupabaseMembershipService", () => {
 
       const summary = await service.getMembershipPageSummary("facility-1");
 
-      expect(summary.inactiveMembers).toBe(3);
+      expect(summary.paymentIncompleteMembers).toBe(3);
       expect(summary.activeMembers).toBe(6);
-      expect(summary).not.toHaveProperty("expiringSoon");
-      expect(summary).not.toHaveProperty("expiredMembers");
+      expect(summary).not.toHaveProperty("inactiveMembers");
+    });
+
+    it("recordMembershipPayment calls the record_membership_payment RPC", async () => {
+      const rpc = vi.fn(async () => ({ error: null }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await service.recordMembershipPayment("ms-1");
+      expect(rpc).toHaveBeenCalledWith("record_membership_payment", { p_membership_id: "ms-1", p_method: "cash" });
+    });
+
+    it("recordMembershipPayment surfaces a 23514 message verbatim", async () => {
+      const rpc = vi.fn(async () => ({ error: { code: "23514", message: "This membership is cancelled." } }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      await expect(service.recordMembershipPayment("ms-1")).rejects.toMatchObject({
+        message: "This membership is cancelled.",
+      });
     });
 
     it("deleteMember calls the delete_member RPC", async () => {

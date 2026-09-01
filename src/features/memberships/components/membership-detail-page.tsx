@@ -9,6 +9,7 @@ import {
   MoreVertical,
   Trash2,
   Ban,
+  IndianRupee,
   Phone,
   Mail,
   Cake,
@@ -72,8 +73,8 @@ function statusBadge(status: MembershipListStatus) {
   switch (status) {
     case "active":
       return <Badge variant="success">Active</Badge>;
-    case "payment_not_initiated":
-      return <Badge variant="warning">Payment Not Initiated</Badge>;
+    case "payment_incomplete":
+      return <Badge variant="warning">Payment Incomplete</Badge>;
     case "inactive":
       return <Badge variant="secondary">Inactive</Badge>;
     default:
@@ -122,7 +123,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const [confirm, setConfirm] = useState<null | "delete" | "cancel">(null);
+  const [confirm, setConfirm] = useState<null | "delete" | "cancel" | "record">(null);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -186,7 +187,11 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
         router.push("/memberships");
         return;
       }
-      await getMembershipService().cancelMembership(detail.membershipId);
+      if (confirm === "record") {
+        await getMembershipService().recordMembershipPayment(detail.membershipId);
+      } else {
+        await getMembershipService().cancelMembership(detail.membershipId);
+      }
       setConfirm(null);
       load();
     } catch (err) {
@@ -224,11 +229,17 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
         </div>
         {detail && (
           <div className="flex flex-wrap items-center gap-2">
+            {detail.displayStatus === "payment_incomplete" && detail.membership.rawStatus !== "cancelled" && (
+              <Button type="button" size="sm" onClick={() => { setActionError(null); setConfirm("record"); }}>
+                <IndianRupee className="mr-1.5 h-4 w-4" />
+                Record Payment
+              </Button>
+            )}
             <Button type="button" variant="outline" size="sm" onClick={openEdit}>
               <Pencil className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
-            <Button type="button" size="sm" onClick={() => router.push("/memberships/new")}>
+            <Button type="button" variant="outline" size="sm" onClick={() => router.push("/memberships/new")}>
               <Plus className="mr-1.5 h-4 w-4" />
               Create Membership
             </Button>
@@ -451,24 +462,33 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
         </DialogContent>
       </Dialog>
 
-      {/* Delete / Cancel confirm */}
+      {/* Record / Delete / Cancel confirm */}
       <Dialog open={confirm !== null} onOpenChange={(o) => !acting && !o && setConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{confirm === "delete" ? "Delete member" : "Cancel membership"}</DialogTitle>
+            <DialogTitle>
+              {confirm === "delete" ? "Delete member" : confirm === "record" ? "Record payment" : "Cancel membership"}
+            </DialogTitle>
             <DialogDescription>
               {confirm === "delete"
                 ? "Permanently remove this member. This only works when they have no bookings and no settled payments."
-                : "End this membership now. The record is kept for history."}
+                : confirm === "record"
+                  ? "Mark this billing cycle as paid. Use this when you've collected the payment outside the app; it also advances the next payment date if it had already passed."
+                  : "End this membership now. The record is kept for history."}
             </DialogDescription>
           </DialogHeader>
           {actionError && <p className="text-sm text-destructive">{actionError}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" disabled={acting} onClick={() => setConfirm(null)}>
-              Keep
+              {confirm === "record" ? "Cancel" : "Keep"}
             </Button>
-            <Button type="button" variant="destructive" disabled={acting} onClick={runAction}>
-              {acting ? "Working…" : confirm === "delete" ? "Delete" : "Cancel Membership"}
+            <Button
+              type="button"
+              variant={confirm === "record" ? "default" : "destructive"}
+              disabled={acting}
+              onClick={runAction}
+            >
+              {acting ? "Working…" : confirm === "delete" ? "Delete" : confirm === "record" ? "Record payment" : "Cancel Membership"}
             </Button>
           </DialogFooter>
         </DialogContent>

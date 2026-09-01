@@ -1593,7 +1593,7 @@ export interface Database {
           total_members: number;
           total_members_prev: number;
           active_members: number;
-          inactive_members: number;
+          payment_incomplete_members: number;
           revenue_inr: number;
           revenue_prev_inr: number;
         }[];
@@ -1601,6 +1601,10 @@ export interface Database {
       delete_member: {
         Args: { p_member_id: string };
         Returns: undefined;
+      };
+      record_membership_payment: {
+        Args: { p_membership_id: string; p_method?: string };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
       };
       get_membership_detail: {
         Args: { p_membership_id: string };

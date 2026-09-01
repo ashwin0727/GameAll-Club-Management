@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Link2, Plus, Users, UserCheck, UserMinus, Wallet, MoreVertical, Trash2 } from "lucide-react";
+import { Link2, Plus, Users, UserCheck, UserMinus, Wallet, MoreVertical, Trash2, Eye, IndianRupee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -44,7 +44,7 @@ const PER_PAGE = 10;
 const STATUS_OPTIONS: { value: MembershipListStatus | ""; label: string }[] = [
   { value: "", label: "All Status" },
   { value: "active", label: "Active" },
-  { value: "payment_not_initiated", label: "Payment Not Initiated" },
+  { value: "payment_incomplete", label: "Payment Incomplete" },
   { value: "inactive", label: "Inactive" },
 ];
 
@@ -78,8 +78,8 @@ function statusBadge(status: MembershipListStatus) {
   switch (status) {
     case "active":
       return <Badge variant="success">Active</Badge>;
-    case "payment_not_initiated":
-      return <Badge variant="warning">Payment Not Initiated</Badge>;
+    case "payment_incomplete":
+      return <Badge variant="warning">Payment Incomplete</Badge>;
     case "inactive":
       return <Badge variant="secondary">Inactive</Badge>;
     default:
@@ -148,6 +148,9 @@ export function MembershipsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ memberId: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<{ id: string; name: string } | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,6 +207,21 @@ export function MembershipsPage() {
   function refetchAll() {
     summaryQuery.refetch();
     listQuery.refetch();
+  }
+
+  async function confirmPayment() {
+    if (!payTarget) return;
+    setPaying(true);
+    setPayError(null);
+    try {
+      await getMembershipService().recordMembershipPayment(payTarget.id);
+      setPayTarget(null);
+      refetchAll();
+    } catch (err) {
+      setPayError(err instanceof ServiceError ? err.message : "Unable to record this payment.");
+    } finally {
+      setPaying(false);
+    }
   }
 
   async function confirmDelete() {
@@ -306,10 +324,10 @@ export function MembershipsPage() {
             />
             <KpiCard
               icon={UserMinus}
-              label="Inactive Members"
-              value={String(summary.inactiveMembers)}
-              hint={summary.inactiveMembers > 0 ? "Not currently playing" : "All clear"}
-              hintClass={summary.inactiveMembers > 0 ? "text-destructive" : "text-muted-foreground"}
+              label="Payment Incomplete"
+              value={String(summary.paymentIncompleteMembers)}
+              hint={summary.paymentIncompleteMembers > 0 ? "Payment due / overdue" : "All paid up"}
+              hintClass={summary.paymentIncompleteMembers > 0 ? "text-destructive" : "text-muted-foreground"}
               accent="#FF4D67"
             />
             <KpiCard
@@ -475,6 +493,16 @@ export function MembershipsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => router.push(`/memberships/${row.membershipId}`)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View details
+                              </DropdownMenuItem>
+                              {row.status === "payment_incomplete" && (
+                                <DropdownMenuItem onClick={() => setPayTarget({ id: row.membershipId, name: row.memberName })}>
+                                  <IndianRupee className="mr-2 h-4 w-4" />
+                                  Record payment
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() => {
@@ -544,6 +572,36 @@ export function MembershipsPage() {
           />
         </>
       )}
+
+      <Dialog
+        open={payTarget !== null}
+        onOpenChange={(o) => {
+          if (!o && !paying) {
+            setPayTarget(null);
+            setPayError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record payment</DialogTitle>
+            <DialogDescription>
+              Mark this billing cycle as paid for{" "}
+              <span className="font-medium text-foreground">{payTarget?.name}</span>. Use this when you&apos;ve collected
+              the payment outside the app.
+            </DialogDescription>
+          </DialogHeader>
+          {payError && <p className="text-sm text-destructive">{payError}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={paying} onClick={() => setPayTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="button" disabled={paying} onClick={confirmPayment}>
+              {paying ? "Recording…" : "Record payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deleteTarget !== null}

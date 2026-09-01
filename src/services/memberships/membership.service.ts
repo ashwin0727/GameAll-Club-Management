@@ -45,6 +45,8 @@ export interface MembershipService {
   setMembershipAccessDays(facilityId: string, days: number[]): Promise<number[]>;
   /** Hard-delete a member with no booking or settled-payment history. Owner/manager only. */
   deleteMember(memberId: string): Promise<void>;
+  /** The explicit "cash received" confirmation for a payment-incomplete membership; returns the updated membership row shape is not needed. */
+  recordMembershipPayment(membershipId: string, method?: string): Promise<void>;
   /** Paginated, filterable, sortable list for the Memberships page. */
   listMemberships(facilityId: string, params: MembershipListParams): Promise<MembershipListResult>;
   /** The four KPI tiles on the Memberships page, with month-over-month deltas. */
