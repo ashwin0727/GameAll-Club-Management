@@ -521,60 +521,74 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
     final showNowLine =
         widget.showNow && nowMinute >= timeline.startHour * 60 && nowMinute <= timeline.endHour * 60;
 
+    // The grid settles first (ruler, then each court row), then the
+    // bookings wipe open in the order they start during the day.
+    const rulerSettleMs = 120;
     final rows = <Widget>[];
-    for (final court in courts) {
+    for (var rowIndex = 0; rowIndex < courts.length; rowIndex++) {
+      final court = courts[rowIndex];
       final rowHeight = court.laneCount * _laneHeight + _trackPad;
+      final rowDelayMs = rulerSettleMs + rowIndex * 55;
       rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: _labelWidth,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        _DelayedEnter(
+          delay: Duration(milliseconds: rowDelayMs),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: _labelWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        court.courtName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        court.sportName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: trackWidth,
+                height: rowHeight,
+                child: Stack(
                   children: [
-                    Text(
-                      court.courtName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      court.sportName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: tokens.textSecondary),
-                    ),
+                    for (var i = 0; i < hours; i++)
+                      Positioned(
+                        left: i * _hourWidth,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(width: 1, color: tokens.borderColor.withValues(alpha: 0.4)),
+                      ),
+                    for (final block in court.blocks)
+                      Positioned(
+                        left: toX(block.startMinute),
+                        top: block.lane * _laneHeight,
+                        width: (toX(block.endMinute) - toX(block.startMinute)).clamp(6.0, trackWidth).toDouble(),
+                        height: _laneHeight,
+                        child: _DelayedWipe(
+                          delay: Duration(
+                            milliseconds:
+                                rowDelayMs + 140 + (toX(block.startMinute) / (trackWidth == 0 ? 1 : trackWidth) * 260).round(),
+                          ),
+                          child: _block(context, block),
+                        ),
+                      ),
                   ],
                 ),
               ),
-            ),
-            SizedBox(
-              width: trackWidth,
-              height: rowHeight,
-              child: Stack(
-                children: [
-                  for (var i = 0; i < hours; i++)
-                    Positioned(
-                      left: i * _hourWidth,
-                      top: 0,
-                      bottom: 0,
-                      child: Container(width: 1, color: tokens.borderColor.withValues(alpha: 0.4)),
-                    ),
-                  for (final block in court.blocks)
-                    Positioned(
-                      left: toX(block.startMinute),
-                      top: block.lane * _laneHeight,
-                      width: (toX(block.endMinute) - toX(block.startMinute)).clamp(6.0, trackWidth).toDouble(),
-                      height: _laneHeight,
-                      child: _block(context, block),
-                    ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
       rows.add(Divider(height: 1, color: tokens.borderColor.withValues(alpha: 0.6)));
@@ -601,6 +615,9 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
           ],
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            // Keyed on the filter so switching sports replays the reveal
+            // rather than snapping the new grid into place.
+            key: ValueKey(activeSport ?? '__all'),
             child: SizedBox(
               width: _labelWidth + trackWidth,
               child: Column(
@@ -613,9 +630,13 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
                         for (var i = 0; i < hours; i++)
                           SizedBox(
                             width: _hourWidth,
-                            child: Text(
-                              _hourTick(timeline.startHour + i),
-                              style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                            child: _DelayedEnter(
+                              delay: Duration(milliseconds: i * 18),
+                              slideX: 0,
+                              child: Text(
+                                _hourTick(timeline.startHour + i),
+                                style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                              ),
                             ),
                           ),
                       ],
@@ -629,7 +650,11 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
                           left: _labelWidth + toX(nowMinute),
                           top: 0,
                           bottom: 0,
-                          child: Container(width: 2, color: tokens.destructive),
+                          child: _DelayedEnter(
+                            delay: Duration(milliseconds: rulerSettleMs + courts.length * 55 + 260),
+                            slideX: 0,
+                            child: Container(width: 2, color: tokens.destructive),
+                          ),
                         ),
                     ],
                   ),
@@ -693,6 +718,100 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
       ],
     );
   }
+}
+
+/// Drives a 0→1 value for chart/bar reveals (line draw, donut sweep,
+/// progress fill). Returns the settled state immediately under reduced
+/// motion, so the figure is never withheld from someone who opted out.
+class _AnimatedProgress extends StatelessWidget {
+  const _AnimatedProgress({
+    required this.builder,
+    required this.duration,
+    this.delay = Duration.zero,
+  });
+
+  final Widget Function(double progress) builder;
+  final Duration duration;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return builder(1);
+    final totalMs = duration.inMilliseconds + delay.inMilliseconds;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
+      builder: (context, t, _) => builder(t.clamp(0, 1)),
+    );
+  }
+}
+
+/// Today's Schedule motion primitives — a delayed fade/slide for the grid
+/// (ruler ticks, court rows) and a delayed left-to-right wipe for the
+/// booking blocks, so the day reveals in the order it happens. Both are
+/// skipped when the platform asks for reduced motion.
+class _DelayedEnter extends StatelessWidget {
+  const _DelayedEnter({required this.delay, required this.child, this.slideX = -8});
+
+  final Duration delay;
+  final Widget child;
+  final double slideX;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    const runMs = 420;
+    final totalMs = runMs + delay.inMilliseconds;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0, 1),
+        child: Transform.translate(offset: Offset(slideX * (1 - t), 0), child: child),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Reveals its child left-to-right by clipping rather than scaling, so the
+/// booking label inside never stretches.
+class _DelayedWipe extends StatelessWidget {
+  const _DelayedWipe({required this.delay, required this.child});
+
+  final Duration delay;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
+    const runMs = 460;
+    final totalMs = runMs + delay.inMilliseconds;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0, 1),
+        child: ClipRect(clipper: _WipeClipper(t.clamp(0, 1)), child: child),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _WipeClipper extends CustomClipper<Rect> {
+  const _WipeClipper(this.progress);
+
+  final double progress;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * progress, size.height);
+
+  @override
+  bool shouldReclip(_WipeClipper oldClipper) => oldClipper.progress != progress;
 }
 
 /// A pill in the Today's Schedule court/sport filter row.
@@ -914,12 +1033,16 @@ class _RevenueOverviewCard extends StatelessWidget {
               Expanded(
                 child: SizedBox(
                   height: 130,
-                  child: CustomPaint(
-                    painter: _RevenueChartPainter(
-                      values: values,
-                      niceMax: niceMax,
-                      lineColor: tokens.primary,
-                      gridColor: tokens.borderColor.withValues(alpha: 0.4),
+                  child: _AnimatedProgress(
+                    duration: const Duration(milliseconds: 900),
+                    builder: (t) => CustomPaint(
+                      painter: _RevenueChartPainter(
+                        values: values,
+                        niceMax: niceMax,
+                        lineColor: tokens.primary,
+                        gridColor: tokens.borderColor.withValues(alpha: 0.4),
+                        progress: t,
+                      ),
                     ),
                   ),
                 ),
@@ -982,12 +1105,16 @@ class _RevenueChartPainter extends CustomPainter {
     required this.niceMax,
     required this.lineColor,
     required this.gridColor,
+    this.progress = 1,
   });
 
   final List<int> values;
   final double niceMax;
   final Color lineColor;
   final Color gridColor;
+
+  /// 0..1 — how much of the trend has been drawn, left to right.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1016,6 +1143,13 @@ class _RevenueChartPainter extends CustomPainter {
       ..lineTo(pointAt(0).dx, size.height)
       ..close();
 
+    final t = progress.clamp(0.0, 1.0);
+    if (t <= 0) return;
+
+    // The fill wipes in behind the line; the line itself is drawn by
+    // extracting the leading portion of the path, so it truly "draws".
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width * t, size.height));
     canvas.drawPath(
       fillPath,
       Paint()
@@ -1025,21 +1159,28 @@ class _RevenueChartPainter extends CustomPainter {
           colors: [lineColor.withValues(alpha: 0.3), lineColor.withValues(alpha: 0.0)],
         ).createShader(Offset.zero & size),
     );
-    canvas.drawPath(
-      linePath,
-      Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeJoin = StrokeJoin.round,
-    );
+    canvas.restore();
+
+    final strokePaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeJoin = StrokeJoin.round;
+    if (t >= 1) {
+      canvas.drawPath(linePath, strokePaint);
+    } else {
+      for (final metric in linePath.computeMetrics()) {
+        canvas.drawPath(metric.extractPath(0, metric.length * t), strokePaint);
+      }
+    }
   }
 
   @override
   bool shouldRepaint(_RevenueChartPainter oldDelegate) =>
       oldDelegate.values != values ||
       oldDelegate.niceMax != niceMax ||
-      oldDelegate.lineColor != lineColor;
+      oldDelegate.lineColor != lineColor ||
+      oldDelegate.progress != progress;
 }
 
 /// Donut + legend showing where the month's revenue came from.
@@ -1058,11 +1199,15 @@ class _RevenueBreakdownChart extends StatelessWidget {
         SizedBox(
           width: 96,
           height: 96,
-          child: CustomPaint(
-            painter: _DonutPainter(
-              values: [for (final s in segments) s.amountInr.toDouble()],
-              colors: [for (final s in segments) _RevenueOverviewCard.breakdownColor(context, s.key)],
-              trackColor: tokens.surface2,
+          child: _AnimatedProgress(
+            duration: const Duration(milliseconds: 820),
+            builder: (t) => CustomPaint(
+              painter: _DonutPainter(
+                values: [for (final s in segments) s.amountInr.toDouble()],
+                colors: [for (final s in segments) _RevenueOverviewCard.breakdownColor(context, s.key)],
+                trackColor: tokens.surface2,
+                progress: t,
+              ),
             ),
           ),
         ),
@@ -1118,11 +1263,14 @@ class _RevenueBreakdownChart extends StatelessWidget {
 }
 
 class _DonutPainter extends CustomPainter {
-  _DonutPainter({required this.values, required this.colors, required this.trackColor});
+  _DonutPainter({required this.values, required this.colors, required this.trackColor, this.progress = 1});
 
   final List<double> values;
   final List<Color> colors;
   final Color trackColor;
+
+  /// 0..1 — how far the ring has swept open, clockwise from 12 o'clock.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1141,27 +1289,35 @@ class _DonutPainter extends CustomPainter {
     );
     final total = values.fold<double>(0, (a, b) => a + b);
     if (total <= 0) return;
+    // One clockwise sweep reveals the whole ring, so each segment appears in
+    // order rather than the colours all fading in at once.
+    final revealed = (progress.clamp(0.0, 1.0)) * 2 * math.pi;
     var start = -math.pi / 2;
+    var drawn = 0.0;
     for (var i = 0; i < values.length; i++) {
       if (values[i] <= 0) continue;
       final sweep = (values[i] / total) * 2 * math.pi;
-      canvas.drawArc(
-        rect,
-        start,
-        sweep,
-        false,
-        Paint()
-          ..color = colors[i]
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = stroke,
-      );
+      final visible = (revealed - drawn).clamp(0.0, sweep);
+      if (visible > 0) {
+        canvas.drawArc(
+          rect,
+          start,
+          visible,
+          false,
+          Paint()
+            ..color = colors[i]
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = stroke,
+        );
+      }
       start += sweep;
+      drawn += sweep;
     }
   }
 
   @override
   bool shouldRepaint(_DonutPainter oldDelegate) =>
-      oldDelegate.values != values || oldDelegate.colors != colors;
+      oldDelegate.values != values || oldDelegate.colors != colors || oldDelegate.progress != progress;
 }
 
 class _UtilizationCard extends StatelessWidget {
@@ -1179,7 +1335,7 @@ class _UtilizationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final s in utilization.bySport)
+          for (final (i, s) in utilization.bySport.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Column(
@@ -1194,11 +1350,16 @@ class _UtilizationCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: (s.utilizationPercent / 100).clamp(0, 1).toDouble(),
-                      minHeight: 6,
-                      backgroundColor: tokens.surface2,
-                      valueColor: AlwaysStoppedAnimation(tokens.primary),
+                    // Each bar fills from empty, staggered down the list.
+                    child: _AnimatedProgress(
+                      duration: const Duration(milliseconds: 700),
+                      delay: Duration(milliseconds: 160 + i * 90),
+                      builder: (t) => LinearProgressIndicator(
+                        value: (s.utilizationPercent / 100).clamp(0, 1).toDouble() * t,
+                        minHeight: 6,
+                        backgroundColor: tokens.surface2,
+                        valueColor: AlwaysStoppedAnimation(tokens.primary),
+                      ),
                     ),
                   ),
                 ],

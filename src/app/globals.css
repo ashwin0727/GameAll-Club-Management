@@ -94,6 +94,138 @@
     animation: auth-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--stat-delay, 0ms);
   }
+
+  /* Today's Schedule — the grid settles first (ruler, then each court row
+     sliding in), then the bookings wipe open left-to-right along the
+     timeline, so the eye follows the day in the order it happens. */
+  .schedule-tick-enter {
+    animation: schedule-fade 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--tick-delay, 0ms);
+  }
+
+  .schedule-row-enter {
+    animation: schedule-row-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--row-delay, 0ms);
+  }
+
+  /* clip-path rather than scaleX: the block reveals without distorting the
+     label text inside it. */
+  .schedule-block-enter {
+    animation: schedule-block-enter 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--block-delay, 0ms);
+  }
+
+  .schedule-now-enter {
+    animation: schedule-now-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--now-delay, 0ms);
+    transform-origin: top;
+  }
+
+  /* Revenue trend: the line draws left-to-right (pathLength="1", so no
+     measurement needed) and the area fill wipes in behind it. */
+  .chart-line-draw {
+    animation: chart-line-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--draw-delay, 0ms);
+  }
+
+  .chart-area-wipe {
+    animation: chart-area-wipe 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--draw-delay, 0ms);
+  }
+
+  /* Donut segments sweep open by shifting the dash pattern, so each arc
+     grows from its own start point rather than the whole ring fading. */
+  .donut-sweep {
+    animation: donut-sweep 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--sweep-delay, 0ms);
+  }
+
+  /* Progress/utilization bars grow from their left edge. */
+  .bar-grow {
+    animation: bar-grow 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--bar-delay, 0ms);
+    transform-origin: left center;
+  }
+}
+
+@keyframes chart-line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-area-wipe {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes donut-sweep {
+  from {
+    stroke-dashoffset: var(--dash-from, 0);
+  }
+  to {
+    stroke-dashoffset: var(--dash-to, 0);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes schedule-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes schedule-row-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes schedule-block-enter {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0 round 2px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 2px);
+  }
+}
+
+@keyframes schedule-now-enter {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes auth-enter {
@@ -109,7 +241,15 @@
 
 @media (prefers-reduced-motion: reduce) {
   .auth-enter,
-  .stat-enter {
+  .stat-enter,
+  .schedule-tick-enter,
+  .schedule-row-enter,
+  .schedule-block-enter,
+  .schedule-now-enter,
+  .chart-line-draw,
+  .chart-area-wipe,
+  .donut-sweep,
+  .bar-grow {
     animation: none;
   }
 }

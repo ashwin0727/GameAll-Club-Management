@@ -170,7 +170,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
       )}
 
       {/* Today's Schedule */}
-      <Card className="space-y-3 overflow-hidden p-4 sm:p-5">
+      <Card className="stat-enter space-y-3 overflow-hidden p-4 sm:p-5" style={{ "--stat-delay": "300ms" } as React.CSSProperties}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold">Today&apos;s Schedule</h3>
           <Button
@@ -187,7 +187,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
       </Card>
 
       {/* Revenue Overview */}
-      <Card className="space-y-3 overflow-hidden p-4 sm:p-5">
+      <Card className="stat-enter space-y-3 overflow-hidden p-4 sm:p-5" style={{ "--stat-delay": "360ms" } as React.CSSProperties}>
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Revenue Overview</h3>
           <select
@@ -208,7 +208,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
 
       {/* Attention Required */}
       <div className="grid grid-cols-1 gap-4">
-        <Card className="space-y-3 p-4 sm:p-5">
+        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "420ms" } as React.CSSProperties}>
           <h3 className="text-sm font-semibold">Attention Required</h3>
           {summary.attentionItems.length === 0 ? (
             <p className="text-sm text-success">You&apos;re all caught up. No immediate attention required.</p>
@@ -237,14 +237,14 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
 
       {/* Memberships | Utilization */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="space-y-3 p-4 sm:p-5">
+        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "480ms" } as React.CSSProperties}>
           <h3 className="text-sm font-semibold">Memberships</h3>
           <div>
             <p className="text-2xl font-semibold text-foreground">{memberTotal}</p>
             <p className="text-xs text-muted-foreground">Total members</p>
           </div>
           {memberTotal > 0 && (
-            <div className="flex h-2 overflow-hidden rounded-full">
+            <div className="bar-grow flex h-2 overflow-hidden rounded-full" style={{ "--bar-delay": "160ms" } as React.CSSProperties}>
               <span className="bg-success" style={{ flexGrow: memberships.active }} />
               <span className="bg-warning" style={{ flexGrow: memberships.expiringSoon }} />
               <span className="bg-destructive" style={{ flexGrow: memberships.expired }} />
@@ -264,7 +264,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           </Button>
         </Card>
 
-        <Card className="space-y-3 p-4 sm:p-5">
+        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "540ms" } as React.CSSProperties}>
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Court / Turf Utilization</h3>
             <span className="text-sm font-medium text-foreground">{summary.utilization.overallPercent}%</span>
@@ -273,7 +273,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
             <p className="text-sm text-muted-foreground">No sports configured yet.</p>
           ) : (
             <div className="space-y-2">
-              {summary.utilization.bySport.map((sport) => (
+              {summary.utilization.bySport.map((sport, i) => (
                 <div key={sport.facilitySportId} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{sport.sportName}</span>
@@ -281,8 +281,13 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${Math.min(Math.max(sport.utilizationPercent, 0), 100)}%` }}
+                      className="bar-grow h-full rounded-full bg-primary"
+                      style={
+                        {
+                          width: `${Math.min(Math.max(sport.utilizationPercent, 0), 100)}%`,
+                          "--bar-delay": `${160 + i * 90}ms`,
+                        } as React.CSSProperties
+                      }
                     />
                   </div>
                 </div>
@@ -293,7 +298,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
       </div>
 
       {/* Quick Actions */}
-      <Card className="space-y-3 p-4 sm:p-5">
+      <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "600ms" } as React.CSSProperties}>
         <h3 className="text-sm font-semibold">Quick Actions</h3>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {QUICK_ACTIONS.map((action) => (
@@ -318,6 +323,8 @@ const HOUR_WIDTH = 68;
 const LABEL_WIDTH = 116;
 const LANE_HEIGHT = 34;
 const TRACK_PADDING = 0;
+/** How long the hour ruler takes to settle before the court rows start. */
+const RULER_SETTLE_MS = 120;
 
 const BLOCK_STYLES: Record<ScheduleBlockType, string> = {
   MEMBER: "border-emerald-500/70 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
@@ -380,12 +387,18 @@ function ScheduleTimelineView({ timeline, showNow }: { timeline: ScheduleTimelin
           })}
         </div>
       )}
-      <div className="overflow-x-auto">
+      {/* Keyed on the filter so switching sports replays the reveal rather
+          than snapping the new grid into place. */}
+      <div className="overflow-x-auto" key={activeSport ?? "__all"}>
         <div style={{ width: LABEL_WIDTH + trackWidth }} className="min-w-full">
           {/* Hour ruler */}
           <div className="flex border-b border-border pb-1" style={{ paddingLeft: LABEL_WIDTH }}>
             {Array.from({ length: hours }).map((_, i) => (
-              <div key={i} className="shrink-0 text-xs text-muted-foreground" style={{ width: HOUR_WIDTH }}>
+              <div
+                key={i}
+                className="schedule-tick-enter shrink-0 text-xs text-muted-foreground"
+                style={{ width: HOUR_WIDTH, "--tick-delay": `${i * 18}ms` } as React.CSSProperties}
+              >
                 {formatHourTick(timeline.startHour + i)}
               </div>
             ))}
@@ -393,10 +406,15 @@ function ScheduleTimelineView({ timeline, showNow }: { timeline: ScheduleTimelin
 
           {/* Court rows */}
           <div className="relative">
-            {courts.map((court) => {
+            {courts.map((court, rowIndex) => {
               const rowHeight = court.laneCount * LANE_HEIGHT + TRACK_PADDING;
+              const rowDelay = RULER_SETTLE_MS + rowIndex * 55;
               return (
-                <div key={court.courtId} className="flex border-b border-border/60 last:border-b-0">
+                <div
+                  key={court.courtId}
+                  className="schedule-row-enter flex border-b border-border/60 last:border-b-0"
+                  style={{ "--row-delay": `${rowDelay}ms` } as React.CSSProperties}
+                >
                   <div className="shrink-0 py-2 pr-2" style={{ width: LABEL_WIDTH }}>
                     <p className="text-xs font-medium text-foreground">{court.courtName}</p>
                     <p className="truncate text-[11px] text-muted-foreground">{court.sportName}</p>
@@ -415,15 +433,20 @@ function ScheduleTimelineView({ timeline, showNow }: { timeline: ScheduleTimelin
                         key={block.id}
                         title={`${block.label} · ${block.timeLabel}`}
                         className={cn(
-                          "absolute flex flex-col justify-center overflow-hidden rounded-[2px] border px-1.5",
+                          "schedule-block-enter absolute flex flex-col justify-center overflow-hidden rounded-[2px] border px-1.5 transition-transform duration-150 hover:z-10 hover:scale-[1.02]",
                           BLOCK_STYLES[block.type],
                         )}
-                        style={{
-                          left: toX(block.startMinute),
-                          width: Math.max(toX(block.endMinute) - toX(block.startMinute), 6),
-                          top: block.lane * LANE_HEIGHT,
-                          height: LANE_HEIGHT,
-                        }}
+                        style={
+                          {
+                            left: toX(block.startMinute),
+                            width: Math.max(toX(block.endMinute) - toX(block.startMinute), 6),
+                            top: block.lane * LANE_HEIGHT,
+                            height: LANE_HEIGHT,
+                            // Rows land first, then each booking wipes open in
+                            // the order it starts during the day.
+                            "--block-delay": `${rowDelay + 140 + (toX(block.startMinute) / Math.max(trackWidth, 1)) * 260}ms`,
+                          } as React.CSSProperties
+                        }
                       >
                         <p className="truncate text-[11px] font-semibold leading-tight">{block.label}</p>
                         <p className="truncate text-[10px] leading-tight opacity-80">{block.timeLabel}</p>
@@ -436,8 +459,13 @@ function ScheduleTimelineView({ timeline, showNow }: { timeline: ScheduleTimelin
 
             {nowInWindow && (
               <div
-                className="pointer-events-none absolute top-0 z-10 h-full border-l-2 border-destructive"
-                style={{ left: LABEL_WIDTH + toX(nowMinute) }}
+                className="schedule-now-enter pointer-events-none absolute top-0 z-10 h-full border-l-2 border-destructive"
+                style={
+                  {
+                    left: LABEL_WIDTH + toX(nowMinute),
+                    "--now-delay": `${RULER_SETTLE_MS + courts.length * 55 + 260}ms`,
+                  } as React.CSSProperties
+                }
               >
                 <span className="absolute -left-6 -top-0.5 rounded bg-destructive px-1 text-[10px] font-semibold text-white">
                   {formatHourTick(now.getHours())}
@@ -539,14 +567,19 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
                 <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
               </linearGradient>
             </defs>
-            <path d={areaPath} fill="url(#revenue-fill)" />
+            <path className="chart-area-wipe" d={areaPath} fill="url(#revenue-fill)" />
+            {/* pathLength=1 normalises the dash maths, so the line draws
+                itself left-to-right without measuring the real path. */}
             <path
+              className="chart-line-draw"
               d={linePath}
               fill="none"
               stroke="hsl(var(--primary))"
               strokeWidth={2}
               strokeLinejoin="round"
               vectorEffect="non-scaling-stroke"
+              pathLength={1}
+              strokeDasharray={1}
             />
           </svg>
         </div>
@@ -595,11 +628,12 @@ function RevenueOverviewPanel({ overview }: { overview: RevenueOverviewData }) {
             </span>
           )}
         </div>
-        <RevenueOverviewChart points={overview.points} />
+        {/* Keyed on the month so paging replays the draw-in. */}
+        <RevenueOverviewChart key={overview.monthLabel} points={overview.points} />
       </div>
       <div className="min-w-0 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
         <p className="mb-2 text-sm font-semibold">Revenue Breakdown</p>
-        <RevenueBreakdownChart segments={overview.breakdown} total={overview.totalInr} />
+        <RevenueBreakdownChart key={overview.monthLabel} segments={overview.breakdown} total={overview.totalInr} />
       </div>
     </div>
   );
@@ -629,13 +663,16 @@ function RevenueBreakdownChart({
       <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0 -rotate-90" role="img" aria-label="Revenue breakdown">
         <circle cx="50" cy="50" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="14" />
         {total > 0 &&
-          segments.map((seg) => {
+          segments.map((seg, i) => {
             if (seg.amountInr <= 0) return null;
             const len = (seg.amountInr / drawTotal) * C;
             const dash = `${len} ${C - len}`;
+            // Shifting the dash offset by the arc's own length hides it
+            // entirely, so animating back to -offset sweeps it open.
             const el = (
               <circle
                 key={seg.key}
+                className="donut-sweep"
                 cx="50"
                 cy="50"
                 r={R}
@@ -644,6 +681,13 @@ function RevenueBreakdownChart({
                 strokeWidth="14"
                 strokeDasharray={dash}
                 strokeDashoffset={-offset}
+                style={
+                  {
+                    "--dash-from": -offset + len,
+                    "--dash-to": -offset,
+                    "--sweep-delay": `${120 + i * 110}ms`,
+                  } as React.CSSProperties
+                }
               />
             );
             offset += len;
