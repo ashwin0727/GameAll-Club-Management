@@ -96,10 +96,40 @@ class MembershipSessionListRow {
       );
 }
 
+class MembershipSessionMemberRow {
+  const MembershipSessionMemberRow({
+    required this.id,
+    required this.memberId,
+    required this.fullName,
+    required this.phone,
+    required this.status,
+    required this.addedOn,
+  });
+
+  final String id;
+  final String memberId;
+  final String fullName;
+  final String phone;
+  final String status;
+  final DateTime addedOn;
+
+  factory MembershipSessionMemberRow.fromJson(Map<String, dynamic> j) => MembershipSessionMemberRow(
+        id: j['id'] as String,
+        memberId: j['member_id'] as String,
+        fullName: j['full_name'] as String? ?? 'Member',
+        phone: j['phone'] as String? ?? '',
+        status: j['status'] as String? ?? 'ACTIVE',
+        addedOn: DateTime.parse(j['added_on'] as String),
+      );
+}
+
 class MembershipSessionDetail {
   const MembershipSessionDetail({
     required this.batchId,
     required this.facilityId,
+    this.facilityName,
+    this.facilityAddress,
+    this.notes,
     required this.name,
     required this.courtName,
     required this.sportName,
@@ -122,6 +152,9 @@ class MembershipSessionDetail {
 
   final String batchId;
   final String facilityId;
+  final String? facilityName;
+  final String? facilityAddress;
+  final String? notes;
   final String name;
   final String courtName;
   final String sportName;
@@ -144,6 +177,9 @@ class MembershipSessionDetail {
   factory MembershipSessionDetail.fromJson(Map<String, dynamic> j) => MembershipSessionDetail(
         batchId: j['batchId'] as String,
         facilityId: j['facilityId'] as String,
+        facilityName: j['facilityName'] as String?,
+        facilityAddress: j['facilityAddress'] as String?,
+        notes: j['notes'] as String?,
         name: j['name'] as String? ?? 'Session',
         courtName: j['courtName'] as String? ?? '',
         sportName: j['sportName'] as String? ?? '',

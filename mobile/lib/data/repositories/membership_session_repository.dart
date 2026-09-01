@@ -289,6 +289,23 @@ class MembershipSessionRepository {
     }
   }
 
+  Future<List<MembershipSessionMemberRow>> getSessionMembers(String batchId) async {
+    try {
+      final rows = await _client.rpc('list_membership_session_members', params: {'p_batch_id': batchId});
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(MembershipSessionMemberRow.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<void> setSessionNotes(String batchId, String notes) async {
+    try {
+      await _client.rpc('set_membership_batch_notes', params: {'p_batch_id': batchId, 'p_notes': notes});
+    } on PostgrestException catch (e) {
+      throw _mapCapacityError(e);
+    }
+  }
+
   Future<List<MembershipSessionOccurrence>> listOccurrences(String batchId, {int days = 30}) async {
     try {
       final rows = await _client.rpc(
