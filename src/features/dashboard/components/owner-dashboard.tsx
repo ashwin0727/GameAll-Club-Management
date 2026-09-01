@@ -149,10 +149,10 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Revenue" kpi={summary.kpis.revenueInr} format={formatCurrencyINR} icon={Wallet} accentColor="#5B6CFF" />
-        <KpiCard label="Active Membership" kpi={summary.kpis.activeMemberships} format={(v) => String(v)} icon={Users} accentColor="#8B5CF6" />
-        <KpiCard label="Guest Bookings" kpi={summary.kpis.guestBookings} format={(v) => String(v)} icon={Users} accentColor="#FFB020" />
-        <KpiCard label="Utilization" kpi={summary.kpis.utilizationPercent} format={(v) => `${v}%`} icon={ChartPie} accentColor="#00F08A" />
+        <KpiCard index={0} label="Revenue" kpi={summary.kpis.revenueInr} format={formatCurrencyINR} icon={Wallet} accentColor="#5B6CFF" />
+        <KpiCard index={1} label="Active Membership" kpi={summary.kpis.activeMemberships} format={(v) => String(v)} icon={Users} accentColor="#8B5CF6" />
+        <KpiCard index={2} label="Guest Bookings" kpi={summary.kpis.guestBookings} format={(v) => String(v)} icon={Users} accentColor="#FFB020" />
+        <KpiCard index={3} label="Utilization" kpi={summary.kpis.utilizationPercent} format={(v) => `${v}%`} icon={ChartPie} accentColor="#00F08A" />
       </div>
 
       {/* Expiring-membership alert — only when there's actually something to act on */}

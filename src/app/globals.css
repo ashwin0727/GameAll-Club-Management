@@ -87,6 +87,13 @@
   .auth-enter {
     animation: auth-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+
+  /* Dashboard KPI cards: the same motion language, staggered per card via
+     an inline --stat-delay so the row reads left-to-right on landing. */
+  .stat-enter {
+    animation: auth-enter 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--stat-delay, 0ms);
+  }
 }
 
 @keyframes auth-enter {
@@ -101,7 +108,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-enter {
+  .auth-enter,
+  .stat-enter {
     animation: none;
   }
 }
