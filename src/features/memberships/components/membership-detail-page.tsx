@@ -24,7 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +41,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getMembershipService } from "@/services/memberships";
 import { formatSlot } from "@/features/memberships/slot-format";
-import { validateMemberPhone } from "@/features/members/validation";
 import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipDetail, MembershipListStatus } from "@/features/memberships/types";
 
@@ -116,13 +114,6 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editError, setEditError] = useState<string | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-
   const [confirm, setConfirm] = useState<null | "delete" | "cancel" | "record">(null);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -145,37 +136,6 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [membershipId]);
-
-  function openEdit() {
-    if (!detail) return;
-    setEditName(detail.member.fullName);
-    setEditPhone(detail.member.phone);
-    setEditEmail(detail.member.email ?? "");
-    setEditError(null);
-    setEditOpen(true);
-  }
-
-  async function saveEdit() {
-    if (!detail) return;
-    if (editName.trim().length < 2) return setEditError("Enter at least 2 characters.");
-    const phoneError = validateMemberPhone(editPhone);
-    if (phoneError) return setEditError(phoneError);
-    setSavingEdit(true);
-    setEditError(null);
-    try {
-      await getMembershipService().updateMember(detail.member.id, {
-        fullName: editName.trim(),
-        phone: editPhone.trim(),
-        email: editEmail.trim() || undefined,
-      });
-      setEditOpen(false);
-      load();
-    } catch (err) {
-      setEditError(err instanceof ServiceError ? err.message : "Unable to save changes.");
-    } finally {
-      setSavingEdit(false);
-    }
-  }
 
   async function runAction() {
     if (!detail || !confirm) return;
@@ -235,7 +195,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 Record Payment
               </Button>
             )}
-            <Button type="button" variant="outline" size="sm" onClick={openEdit}>
+            <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/memberships/${membershipId}/edit`)}>
               <Pencil className="mr-1.5 h-4 w-4" />
               Edit
             </Button>
@@ -429,38 +389,6 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
           </Card>
         </>
       )}
-
-      {/* Edit member dialog */}
-      <Dialog open={editOpen} onOpenChange={(o) => !savingEdit && setEditOpen(o)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Member</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="md_name">Full name</Label>
-              <Input id="md_name" value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="md_phone">Phone</Label>
-              <Input id="md_phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="9876543210" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="md_email">Email</Label>
-              <Input id="md_email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} type="email" />
-            </div>
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={savingEdit} onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={saveEdit} disabled={savingEdit}>
-              {savingEdit ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Record / Delete / Cancel confirm */}
       <Dialog open={confirm !== null} onOpenChange={(o) => !acting && !o && setConfirm(null)}>

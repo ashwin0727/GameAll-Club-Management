@@ -282,15 +282,52 @@ export interface MembershipDetail {
     transactionId: string | null;
   } | null;
   referralName: string | null;
+  referralMemberId: string | null;
   createdByName: string | null;
   discoverySource: string | null;
   paymentReference: string | null;
   notes: string | null;
   slot: {
+    batchId: string;
+    courtId: string;
+    facilitySportId: string;
     courtName: string | null;
+    capacity: number;
     daysOfWeek: number[];
     startTime: string;
     endTime: string;
   } | null;
   timeline: MembershipTimelineEvent[];
+}
+
+/** Edit Membership — the Create form reopened in edit mode. No payment fields. */
+export interface UpdateMembershipFullInput {
+  fullName: string;
+  phone: string;
+  email?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  name?: string;
+  membershipType: MembershipType;
+  maxFamilyMembers: number;
+  startDate: string;
+  durationDays: number;
+  batchId?: string;
+  newBatch?: {
+    courtId: string;
+    facilitySportId: string;
+    daysOfWeek: number[];
+    startTime: string;
+    endTime: string;
+    capacity: number;
+    name?: string;
+  };
+  description?: string;
+  membershipFeeInr: number;
+  registrationFeeInr: number;
+  gstPercent: number;
+  referralMemberId?: string;
+  discoverySource?: string;
+  notes?: string;
 }

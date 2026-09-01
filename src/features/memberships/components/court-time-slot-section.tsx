@@ -28,17 +28,27 @@ export function CourtTimeSlotSection({
   onChange,
   facilityId,
   defaultAccessDays,
+  initialFacilitySportId,
+  currentBatchId,
 }: {
   value: SlotSelection;
   onChange: (s: SlotSelection) => void;
   facilityId: string;
   defaultAccessDays: number[];
+  /** Preselect the sport dropdown (edit mode — so the current slot's radios show). */
+  initialFacilitySportId?: string;
+  /** The batch the member is already in (edit mode) — always selectable even at 0 spare. */
+  currentBatchId?: string;
 }) {
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [areas, setAreas] = useState<PlayingArea[]>([]);
   const [batches, setBatches] = useState<AssignableBatch[]>([]);
-  const [facilitySportId, setFacilitySportId] = useState("");
+  const [facilitySportId, setFacilitySportId] = useState(initialFacilitySportId ?? "");
+
+  useEffect(() => {
+    if (initialFacilitySportId) setFacilitySportId(initialFacilitySportId);
+  }, [initialFacilitySportId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,22 +142,27 @@ export function CourtTimeSlotSection({
             <span>No reserved slot</span>
           </label>
 
-          {batchesForSport.map((b) => (
-            <label key={b.batchId} className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name="slot-kind"
-                disabled={b.spare <= 0}
-                checked={value.kind === "existing" && value.batchId === b.batchId}
-                onChange={() => onChange({ kind: "existing", batchId: b.batchId })}
-                className="mt-1"
-              />
-              <span className={b.spare <= 0 ? "text-muted-foreground" : undefined}>
-                {b.courtName} · {describeBatchOption(b)}
-                {b.spare <= 0 && " — full, raise its capacity in Membership Sessions"}
-              </span>
-            </label>
-          ))}
+          {batchesForSport.map((b) => {
+            const isCurrent = currentBatchId === b.batchId;
+            const disabled = b.spare <= 0 && !isCurrent;
+            return (
+              <label key={b.batchId} className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="slot-kind"
+                  disabled={disabled}
+                  checked={value.kind === "existing" && value.batchId === b.batchId}
+                  onChange={() => onChange({ kind: "existing", batchId: b.batchId })}
+                  className="mt-1"
+                />
+                <span className={disabled ? "text-muted-foreground" : undefined}>
+                  {b.courtName} · {describeBatchOption(b)}
+                  {isCurrent && " — current slot"}
+                  {disabled && " — full, raise its capacity in Membership Sessions"}
+                </span>
+              </label>
+            );
+          })}
 
           <label className="flex items-start gap-2 text-sm">
             <input

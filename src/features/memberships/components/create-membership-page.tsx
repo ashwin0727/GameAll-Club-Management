@@ -72,11 +72,14 @@ function Field({ label, required, hint, children }: { label: string; required?: 
 
 const selectCls = "h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm";
 
-export function CreateMembershipPage() {
+export function CreateMembershipPage({ membershipId }: { membershipId?: string } = {}) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const isEdit = !!membershipId;
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slotSportId, setSlotSportId] = useState<string | undefined>(undefined);
+  const [currentBatchId, setCurrentBatchId] = useState<string | undefined>(undefined);
 
   // Member
   const [fullName, setFullName] = useState("");
@@ -121,21 +124,52 @@ export function CreateMembershipPage() {
   const [mandateUrl, setMandateUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    getFacilityService()
-      .getFacility()
-      .then((f) => {
+    (async () => {
+      try {
+        const f = await getFacilityService().getFacility();
         setFacilityId(f?.id ?? null);
-        if (f) {
-          setAccessDays(f.membershipAccessDays);
-          getMembershipService()
-            .getFacilityPlans(f.id, { activeOnly: true })
-            .then(setPlans)
-            .catch(() => undefined);
+        if (!f) {
+          setLoading(false);
+          return;
+        }
+        setAccessDays(f.membershipAccessDays);
+        getMembershipService()
+          .getFacilityPlans(f.id, { activeOnly: true })
+          .then(setPlans)
+          .catch(() => undefined);
+
+        if (membershipId) {
+          const d = await getMembershipService().getMembershipDetail(membershipId);
+          setFullName(d.member.fullName);
+          setPhone(d.member.phone);
+          setEmail(d.member.email ?? "");
+          setDob(d.member.dateOfBirth ?? "");
+          setGender(d.member.gender ?? "");
+          setAddress(d.member.address ?? "");
+          setName(d.membership.name);
+          setType(d.membership.membershipType as MembershipType);
+          setStartDate(d.membership.startDate);
+          setDurationDays(d.membership.durationDays ?? 0);
+          setMaxFamily(d.membership.maxFamilyMembers || 1);
+          setDescription(d.membership.description ?? "");
+          setFee(String(d.membership.membershipFeeInr || ""));
+          setRegFee(d.membership.registrationFeeInr ? String(d.membership.registrationFeeInr) : "");
+          setGst(d.membership.gstPercent ? String(d.membership.gstPercent) : "");
+          if (d.referralMemberId && d.referralName) setReferral({ id: d.referralMemberId, fullName: d.referralName });
+          setDiscovery(d.discoverySource ?? "");
+          setNotes(d.notes ?? "");
+          if (d.slot) {
+            setSlot({ kind: "existing", batchId: d.slot.batchId });
+            setSlotSportId(d.slot.facilitySportId);
+            setCurrentBatchId(d.slot.batchId);
+          }
         }
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+      } catch {
+        setLoading(false);
+      }
+    })();
+  }, [membershipId]);
 
   function applyPlan(id: string) {
     setPlanId(id);
@@ -176,12 +210,47 @@ export function CreateMembershipPage() {
     if (!facilityId) return;
     if (!fullName.trim() || !phone.trim()) return setError("Full name and phone number are required.");
     if (!durationDays) return setError("Select a membership duration.");
-    if (mode !== "FREE" && charges.subTotal <= 0) return setError("Enter a membership fee.");
+    if (!isEdit && mode !== "FREE" && charges.subTotal <= 0) return setError("Enter a membership fee.");
     const slotError = validateSlotSelection(slot);
     if (slotError) return setError(slotError);
 
     setSaving(true);
     setError(null);
+
+    if (isEdit && membershipId) {
+      try {
+        await getMembershipService().updateMembershipFull(membershipId, {
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim() || undefined,
+          dateOfBirth: dob || undefined,
+          gender: gender || undefined,
+          address: address.trim() || undefined,
+          name: name.trim() || undefined,
+          membershipType: type,
+          maxFamilyMembers: type === "FAMILY" ? maxFamily : 1,
+          startDate,
+          durationDays,
+          batchId: slot.kind === "existing" ? slot.batchId : undefined,
+          newBatch: slot.kind === "new" ? toNewBatchPayload(slot.draft) : undefined,
+          description: description.trim() || undefined,
+          membershipFeeInr: charges.subTotal,
+          registrationFeeInr: charges.registration,
+          gstPercent: num(gst),
+          referralMemberId: referral?.id,
+          discoverySource: discovery || undefined,
+          notes: notes.trim() || undefined,
+        });
+        queryClient.invalidateQueries({ queryKey: ["membership-list"] });
+        queryClient.invalidateQueries({ queryKey: ["membership-summary"] });
+        router.push(`/memberships/${membershipId}`);
+      } catch (err) {
+        setError(err instanceof ServiceError ? err.message : "Unable to save this membership.");
+        setSaving(false);
+      }
+      return;
+    }
+
     try {
       const membership = await getMembershipService().createMembershipFull({
         facilityId,
@@ -259,12 +328,17 @@ export function CreateMembershipPage() {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center gap-3">
-        <Button type="button" variant="ghost" size="sm" onClick={() => router.push("/memberships")}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships")}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold">Create Membership</h1>
-          <p className="text-sm text-muted-foreground">Register a new member</p>
+          <h1 className="text-xl font-semibold">{isEdit ? "Edit Membership" : "Create Membership"}</h1>
+          <p className="text-sm text-muted-foreground">{isEdit ? "Update this member's details" : "Register a new member"}</p>
         </div>
       </div>
 
@@ -365,6 +439,8 @@ export function CreateMembershipPage() {
                 onChange={setSlot}
                 facilityId={facilityId}
                 defaultAccessDays={accessDays}
+                initialFacilitySportId={slotSportId}
+                currentBatchId={currentBatchId}
               />
             )}
           </div>
@@ -433,7 +509,8 @@ export function CreateMembershipPage() {
         </div>
       </Card>
 
-      {/* 4 — Payment Mode */}
+      {/* 4 — Payment Mode (create only — payment is not edited from here) */}
+      {!isEdit && (
       <Card className="p-5">
         <SectionHeader n={4} title="Payment Mode" />
         <div className="flex flex-wrap gap-6">
@@ -481,6 +558,7 @@ export function CreateMembershipPage() {
           </div>
         )}
       </Card>
+      )}
 
       {/* 5 — Additional Information */}
       <Card className="p-5">
@@ -544,14 +622,20 @@ export function CreateMembershipPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button type="button" variant="outline" onClick={() => router.push("/memberships")}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships")}
+        >
           Cancel
         </Button>
         <Button type="button" onClick={submit} disabled={saving}>
-          {saving ? "Creating…" : "Create Membership"}
+          {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Membership"}
         </Button>
       </div>
-      <p className="text-center text-xs text-muted-foreground">Secure registration · You can edit details later</p>
+      {!isEdit && (
+        <p className="text-center text-xs text-muted-foreground">Secure registration · You can edit details later</p>
+      )}
     </div>
   );
 }

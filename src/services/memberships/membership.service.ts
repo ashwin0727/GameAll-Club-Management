@@ -4,6 +4,7 @@ import type {
   AssignableBatch,
   CreateMembershipFullInput,
   CreateMembershipInput,
+  UpdateMembershipFullInput,
   FacilityMemberRow,
   Membership,
   MembershipListParams,
@@ -41,6 +42,8 @@ export interface MembershipService {
   createMembership(input: CreateMembershipInput): Promise<Membership>;
   /** The full Create Membership page — get-or-create the member and record a self-contained membership + payment. */
   createMembershipFull(input: CreateMembershipFullInput): Promise<Membership>;
+  /** Edit an existing membership + its member + reserved court slot. No payment side-effects. */
+  updateMembershipFull(membershipId: string, input: UpdateMembershipFullInput): Promise<Membership>;
   /** Owner/manager sets the facility's default membership access days (0=Sun..6=Sat); returns the saved set. */
   setMembershipAccessDays(facilityId: string, days: number[]): Promise<number[]>;
   /** Hard-delete a member with no booking or settled-payment history. Owner/manager only. */

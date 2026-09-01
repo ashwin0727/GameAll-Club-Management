@@ -1522,6 +1522,40 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["memberships"]["Row"];
       };
+      update_membership_full: {
+        Args: {
+          p_membership_id: string;
+          p_full_name: string;
+          p_phone: string;
+          p_email: string | null;
+          p_date_of_birth: string | null;
+          p_gender: string | null;
+          p_address: string | null;
+          p_name: string | null;
+          p_membership_type: string;
+          p_max_family_members: number;
+          p_start_date: string;
+          p_duration_days: number;
+          p_description: string | null;
+          p_membership_fee_inr: number;
+          p_registration_fee_inr: number;
+          p_gst_percent: number;
+          p_referral_member_id: string | null;
+          p_discovery_source: string | null;
+          p_notes: string | null;
+          p_batch_id?: string | null;
+          p_new_batch?: {
+            courtId: string;
+            facilitySportId: string;
+            daysOfWeek: number[];
+            startTime: string;
+            endTime: string;
+            capacity: number;
+            name?: string;
+          } | null;
+        };
+        Returns: Database["public"]["Tables"]["memberships"]["Row"];
+      };
       set_facility_membership_access_days: {
         Args: { p_facility_id: string; p_days: number[] };
         Returns: Database["public"]["Tables"]["facilities"]["Row"];

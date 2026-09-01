@@ -7,6 +7,7 @@ import type { Member, MemberInput } from "@/features/members/types";
 import type {
   AssignableBatch,
   CreateMembershipFullInput,
+  UpdateMembershipFullInput,
   CreateMembershipInput,
   FacilityMemberRow,
   Membership,
@@ -413,6 +414,38 @@ export class SupabaseMembershipService implements MembershipService {
       p_new_batch: input.newBatch ?? null,
     });
     if (error) throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP", notFound: "INVALID_MEMBERSHIP" });
+    if (!data) throw new ServiceError("DATABASE_ERROR");
+    return toMembership(data, data.name ?? "Membership");
+  }
+
+  async updateMembershipFull(membershipId: string, input: UpdateMembershipFullInput): Promise<Membership> {
+    const { data, error } = await this.supabase.rpc("update_membership_full", {
+      p_membership_id: membershipId,
+      p_full_name: input.fullName,
+      p_phone: input.phone,
+      p_email: input.email ?? null,
+      p_date_of_birth: input.dateOfBirth ?? null,
+      p_gender: input.gender ?? null,
+      p_address: input.address ?? null,
+      p_name: input.name ?? null,
+      p_membership_type: input.membershipType,
+      p_max_family_members: input.maxFamilyMembers,
+      p_start_date: input.startDate,
+      p_duration_days: input.durationDays,
+      p_description: input.description ?? null,
+      p_membership_fee_inr: input.membershipFeeInr,
+      p_registration_fee_inr: input.registrationFeeInr,
+      p_gst_percent: input.gstPercent,
+      p_referral_member_id: input.referralMemberId ?? null,
+      p_discovery_source: input.discoverySource ?? null,
+      p_notes: input.notes ?? null,
+      p_batch_id: input.batchId ?? null,
+      p_new_batch: input.newBatch ?? null,
+    });
+    if (error) {
+      if (error.code === "P0002") throw new ServiceError("MEMBERSHIP_NOT_FOUND");
+      throw mapSupabaseError(error, { invalid: "INVALID_MEMBERSHIP", notFound: "MEMBERSHIP_NOT_FOUND" });
+    }
     if (!data) throw new ServiceError("DATABASE_ERROR");
     return toMembership(data, data.name ?? "Membership");
   }
