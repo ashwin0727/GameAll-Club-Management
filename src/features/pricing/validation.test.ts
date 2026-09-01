@@ -115,6 +115,27 @@ describe("peak/off-peak logic", () => {
   });
 });
 
+describe("base rate + more-specific override (same priority)", () => {
+  const allDaysBase = rule({ dayType: "ALL_DAYS", coversFullDay: true, amountMinor: 30000 });
+  const weekendPeak = rule({ dayType: "WEEKENDS", coversFullDay: false, startTime: "18:00", endTime: "21:00", amountMinor: 35000 });
+
+  it("uses the base rate on a weekday", () => {
+    expect(resolvePrice([allDaysBase, weekendPeak], "fs-badminton", null, new Date("2026-08-25"), "19:00")?.amountMinor).toBe(30000);
+  });
+
+  it("uses the base rate on a weekend outside the override window", () => {
+    expect(resolvePrice([allDaysBase, weekendPeak], "fs-badminton", null, new Date("2026-08-29"), "10:00")?.amountMinor).toBe(30000);
+  });
+
+  it("uses the weekend override inside its window, even though both rules match and priorities tie", () => {
+    expect(resolvePrice([allDaysBase, weekendPeak], "fs-badminton", null, new Date("2026-08-29"), "19:00")?.amountMinor).toBe(35000);
+  });
+
+  it("resolves the override regardless of rule order in the list", () => {
+    expect(resolvePrice([weekendPeak, allDaysBase], "fs-badminton", null, new Date("2026-08-29"), "19:00")?.amountMinor).toBe(35000);
+  });
+});
+
 describe("playing-area override / sport-level inheritance (pricing resolution priority)", () => {
   const sportDefault = rule({ amountMinor: 40000, priority: 0 });
   const courtOverride = rule({ amountMinor: 45000, playingAreaId: "court-3", priority: 10 });

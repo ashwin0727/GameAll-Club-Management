@@ -55,12 +55,17 @@ int? _resolvePriceMinor(List<PricingRule> rules, String facilitySportId, String?
       .where((r) => r.playingAreaId == null || r.playingAreaId == courtId)
       .toList();
   if (matches.isEmpty) return null;
+  // Specificity: a windowed rule beats a full-day one, and a day-scoped
+  // rule (WEEKDAYS/WEEKENDS) beats ALL_DAYS — so an "all days ₹300" base
+  // with a "weekends 6-9pm ₹350" override resolves to ₹350 in that window.
+  int spec(PricingRule r) => (r.coversFullDay ? 0 : 2) + (r.dayType == 'ALL_DAYS' ? 0 : 1);
   matches.sort((a, b) {
-    // court-specific beats sport-level, then higher priority.
+    // court-specific beats sport-level, then priority, then specificity.
     final ac = a.playingAreaId != null ? 1 : 0;
     final bc = b.playingAreaId != null ? 1 : 0;
     if (ac != bc) return bc - ac;
-    return b.priority - a.priority;
+    if (a.priority != b.priority) return b.priority - a.priority;
+    return spec(b) - spec(a);
   });
   return matches.first.amountMinor;
 }

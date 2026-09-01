@@ -160,11 +160,18 @@ export function resolvePrice(
     return t >= start && t < end;
   }
 
+  // A more specific rule wins over a broader one at the same priority: a
+  // day-scoped rule (WEEKDAYS/WEEKENDS) beats ALL_DAYS, and a time-windowed
+  // rule beats a full-day one. So an "all days ₹300" base with a "weekends
+  // 6-9pm ₹350" override resolves to ₹350 inside that window.
+  const specificity = (r: PricingRule) => (r.coversFullDay ? 0 : 2) + (r.dayType === "ALL_DAYS" ? 0 : 1);
+  const pick = (a: PricingRule, b: PricingRule) => b.priority - a.priority || specificity(b) - specificity(a);
+
   const areaRules = playingAreaId ? rules.filter((r) => r.playingAreaId === playingAreaId && matches(r)) : [];
-  if (areaRules.length > 0) return areaRules.sort((a, b) => b.priority - a.priority)[0]!;
+  if (areaRules.length > 0) return areaRules.sort(pick)[0]!;
 
   const sportRules = rules.filter((r) => !r.playingAreaId && matches(r));
-  if (sportRules.length > 0) return sportRules.sort((a, b) => b.priority - a.priority)[0]!;
+  if (sportRules.length > 0) return sportRules.sort(pick)[0]!;
 
   return null;
 }
