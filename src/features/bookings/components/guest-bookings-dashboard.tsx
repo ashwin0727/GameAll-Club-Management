@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
 import { getFacilityService } from "@/services/facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
@@ -381,8 +382,14 @@ export function GuestBookingsDashboard() {
             <select aria-label="Payment" value={payment} onChange={(e) => setPayment(e.target.value as PaymentStatus | "")} className={selectCls}>
               {PAYMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <input type="date" aria-label="From" value={from} onChange={(e) => setFrom(e.target.value)} className={selectCls} />
-            <input type="date" aria-label="To" value={to} onChange={(e) => setTo(e.target.value)} className={selectCls} />
+            <DateRangePicker
+              from={from}
+              to={to}
+              onChange={(f, t) => {
+                setFrom(f);
+                setTo(t);
+              }}
+            />
             <Button type="button" variant="outline" size="sm" onClick={exportCsv}>
               <Download className="mr-1.5 h-4 w-4" /> Export
             </Button>
