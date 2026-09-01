@@ -2,8 +2,9 @@
 // create-membership-subscription — Membership Subscriptions, Phase 2.
 //
 // Turns an existing (pending) membership into a Razorpay Subscription so the
-// player can authorise a UPI AutoPay mandate once and be charged monthly
-// automatically. Callable from:
+// player can authorise a UPI AutoPay mandate once and be charged
+// automatically on the membership's own Duration cadence (monthly for a
+// 1-month membership, yearly for a 1-year one, etc.). Callable from:
 //   • the signed-in Memberships page (staff creates a recurring link), and
 //   • the public /join/<facilityId> page (anon key) — which has already
 //     created the membership via public_start_membership_signup.
@@ -38,8 +39,20 @@ function jsonResponse(body: unknown, status: number): Response {
 
 interface Req {
   membershipId: string;
-  /** How many monthly cycles to authorise the mandate for (default 120 = 10 years). */
+  /** How many billing cycles to authorise the mandate for. Default: ~10 years of the membership's own cadence. */
   totalCount?: number;
+}
+
+/**
+ * Map the membership's Duration (duration_days, the value chosen on the
+ * Create Membership form: 30 / 90 / 180 / 365) to a Razorpay plan cadence.
+ * Razorpay has no "quarterly" — 3 / 6 months are `monthly` with an interval.
+ */
+function billingCycle(durationDays: number): { period: "monthly" | "yearly"; interval: number; label: string } {
+  const d = durationDays > 0 ? durationDays : 30;
+  if (d >= 360) return { period: "yearly", interval: Math.max(1, Math.round(d / 365)), label: "yearly" };
+  const months = Math.max(1, Math.round(d / 30));
+  return { period: "monthly", interval: months, label: months === 1 ? "monthly" : `every ${months} months` };
 }
 
 async function razorpay(path: string, keyId: string, keySecret: string, body: unknown) {
@@ -81,7 +94,9 @@ Deno.serve(async (req) => {
 
   const { data: membership, error: mErr } = await supabase
     .from("memberships")
-    .select("id, facility_id, member_id, plan_id, monthly_price_inr, membership_plans(name, price_inr, duration_days)")
+    .select(
+      "id, facility_id, member_id, plan_id, name, monthly_price_inr, duration_days, membership_plans(name, price_inr, duration_days)",
+    )
     .eq("id", payload.membershipId)
     .maybeSingle();
   if (mErr) return jsonResponse({ error: "Lookup failed." }, 500);
@@ -100,14 +115,22 @@ Deno.serve(async (req) => {
   const amountInr = membership.monthly_price_inr ?? plan?.price_inr ?? 0;
   if (amountInr <= 0) return jsonResponse({ error: "This plan has no recurring price." }, 400);
   const amountMinor = amountInr * 100;
-  const totalCount = Math.min(Math.max(payload.totalCount ?? 120, 1), 1200);
+
+  // Bill on the membership's own Duration cadence — a 1-year membership must
+  // charge yearly on Razorpay, not monthly.
+  const durationDays = (membership as { duration_days?: number }).duration_days ?? plan?.duration_days ?? 30;
+  const cycle = billingCycle(durationDays);
+  // ~10 years of cover, in the plan's own cadence, capped to Razorpay's max.
+  const defaultCycles = cycle.period === "yearly" ? Math.ceil(10 / cycle.interval) : Math.ceil(120 / cycle.interval);
+  const totalCount = Math.min(Math.max(payload.totalCount ?? defaultCycles, 1), 1200);
+  const planLabel = (membership as { name?: string }).name ?? plan?.name ?? "Membership";
 
   try {
     const rzpPlan = await razorpay("/plans", keyId, keySecret, {
-      period: "monthly",
-      interval: 1,
-      item: { name: `${plan?.name ?? "Membership"} · monthly`, amount: amountMinor, currency: "INR" },
-      notes: { facility_id: membership.facility_id, plan_id: membership.plan_id },
+      period: cycle.period,
+      interval: cycle.interval,
+      item: { name: `${planLabel} · ${cycle.label}`, amount: amountMinor, currency: "INR" },
+      notes: { facility_id: membership.facility_id, plan_id: membership.plan_id, duration_days: String(durationDays) },
     });
 
     const subscription = await razorpay("/subscriptions", keyId, keySecret, {
