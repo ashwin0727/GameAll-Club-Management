@@ -354,7 +354,7 @@ export function GuestBookingsDashboard() {
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
+      <div className="space-y-4">
         <div className="min-w-0 space-y-4">
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
@@ -493,8 +493,8 @@ export function GuestBookingsDashboard() {
           </Card>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
+        {/* Overview — below the table, side by side */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <p className="text-sm font-semibold">Booking Overview</p>
             <div className="mt-3">
