@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/providers/query-provider";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, APP_SUBTITLE } from "@/lib/constants";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -11,8 +11,8 @@ const figtree = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Club Management`,
-  description: "Membership, booking, and inventory management for GameAll Club.",
+  title: `${APP_NAME} — ${APP_SUBTITLE}`,
+  description: `Membership, booking, and inventory management for ${APP_NAME}.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

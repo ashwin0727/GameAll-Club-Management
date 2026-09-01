@@ -1,7 +1,11 @@
-export const APP_NAME = "GameAll Club";
+/** The brand: "GameAll" reading over "Club Management" wherever the logo lockup appears. */
+export const APP_NAME = "GameAll";
+export const APP_SUBTITLE = "Club Management";
+/** The logo asset, served from /public (and mirrored at mobile/assets/images). */
+export const APP_LOGO_SRC = "/logo-icon.png";
 
 /** Product wordmark and pitch used across splash, welcome and the auth screens. */
-export const PRODUCT_NAME = "Turf Management";
+export const PRODUCT_NAME = APP_NAME;
 export const PRODUCT_TAGLINE = "Manage your facility. Grow your business.";
 
 /** Sports the platform ships with; mirrors the seeded `sports` table. */

@@ -1,38 +1,26 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { PRODUCT_NAME } from "@/lib/constants";
+import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE } from "@/lib/constants";
 
 /**
- * The product logo: a court outline with a centre line and serve dot. Drawn as
- * inline SVG so it inherits `currentColor` and needs no asset request on the
- * splash screen's critical path.
+ * The GameAll logo. A transparent PNG, so it sits correctly on both the light
+ * and dark surfaces without a per-theme variant.
  */
 export function BrandLogo({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 40 40"
-      role="img"
+    <Image
+      src={APP_LOGO_SRC}
+      alt=""
       aria-hidden="true"
-      className={cn("h-10 w-10", className)}
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect
-        x="3.5"
-        y="3.5"
-        width="33"
-        height="33"
-        rx="9"
-        className="fill-primary/10 stroke-primary"
-        strokeWidth="2"
-      />
-      <path d="M20 8v24" className="stroke-primary" strokeWidth="2" />
-      <path d="M9 20h22" className="stroke-primary/50" strokeWidth="2" />
-      <circle cx="20" cy="20" r="3.5" className="fill-primary" />
-    </svg>
+      width={512}
+      height={512}
+      priority
+      className={cn("h-10 w-10 object-contain", className)}
+    />
   );
 }
 
+/** Logo + "GameAll" over "Club Management" — the full brand lockup. */
 export function BrandMark({
   className,
   size = "default",
@@ -43,13 +31,18 @@ export function BrandMark({
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <BrandLogo className={size === "lg" ? "h-12 w-12" : "h-9 w-9"} />
-      <span
-        className={cn(
-          "font-semibold tracking-tight text-foreground",
-          size === "lg" ? "text-2xl" : "text-lg",
-        )}
-      >
-        {PRODUCT_NAME}
+      <span className="flex flex-col leading-tight">
+        <span
+          className={cn(
+            "font-semibold tracking-tight text-foreground",
+            size === "lg" ? "text-2xl" : "text-lg",
+          )}
+        >
+          {APP_NAME}
+        </span>
+        <span className={cn("text-muted-foreground", size === "lg" ? "text-sm" : "text-xs")}>
+          {APP_SUBTITLE}
+        </span>
       </span>
     </div>
   );

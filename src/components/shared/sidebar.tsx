@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, Boxes, Gamepad2, UserRound, CalendarCheck2, BadgeIndianRupee, CalendarRange } from "lucide-react";
+import { LayoutDashboard, CalendarClock, Boxes, UserRound, CalendarCheck2, BadgeIndianRupee, CalendarRange } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "@/lib/constants";
+import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -38,9 +39,12 @@ export function Sidebar({ role }: { role: Role }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <Gamepad2 className="h-5 w-5 text-primary" />
-          <span className="font-semibold">GameAll Club</span>
+        <div className="flex h-16 items-center gap-2.5 border-b border-border px-4">
+          <Image src={APP_LOGO_SRC} alt="" aria-hidden width={512} height={512} priority className="h-9 w-9 object-contain" />
+          <span className="flex flex-col leading-tight">
+            <span className="font-semibold">{APP_NAME}</span>
+            <span className="text-[11px] text-muted-foreground">{APP_SUBTITLE}</span>
+          </span>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {items.map((item) => {

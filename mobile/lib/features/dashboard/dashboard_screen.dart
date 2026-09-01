@@ -101,7 +101,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GameAll'),
+        // The brand lockup: logo + "GameAll" over "Club Management".
+        titleSpacing: AppSpacing.sm,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/logo-icon.png', width: 30, height: 30),
+            const SizedBox(width: AppSpacing.xs),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('GameAll', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.1)),
+                Text(
+                  'Club Management',
+                  style: TextStyle(fontSize: 10, height: 1.2, color: context.tokens.textSecondary),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_month_outlined),

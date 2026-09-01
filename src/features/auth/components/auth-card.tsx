@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { APP_NAME } from "@/lib/constants";
 import { BrandMark } from "@/features/auth/components/brand-mark";
 
 /**
@@ -27,7 +28,7 @@ export function AuthCard({
       <Link
         href="/"
         className="mb-8 inline-flex rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mb-10"
-        aria-label="Turf Management home"
+        aria-label={`${APP_NAME} home`}
       >
         <BrandMark />
       </Link>

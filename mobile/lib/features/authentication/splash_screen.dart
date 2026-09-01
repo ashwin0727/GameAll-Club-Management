@@ -42,20 +42,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.sports_tennis, color: AppColors.onPrimary, size: 36),
-                ),
+                Image.asset('assets/images/logo-icon.png', width: 88, height: 88),
                 const SizedBox(height: 20),
                 const Text(
                   'GameAll',
                   style: TextStyle(color: AppColors.foreground, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Club Management',
+                  style: TextStyle(color: AppColors.muted, fontSize: 13),
                 ),
               ],
             ),
