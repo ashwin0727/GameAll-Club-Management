@@ -66,7 +66,13 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSpacing.huge),
+          // Minimum HEIGHT only. Size.fromHeight sets the minimum *width* to
+          // double.infinity, which is right for a full-width button but
+          // breaks every OutlinedButton sitting inline in a Row — the row
+          // then has a child demanding infinite width and its layout
+          // collapses, silently and without an exception. Widgets that want
+          // the full-width form ask for it themselves (see SecondaryButton).
+          minimumSize: const Size(0, AppSpacing.huge),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           side: BorderSide(color: tokens.borderColor),
           foregroundColor: tokens.textPrimary,

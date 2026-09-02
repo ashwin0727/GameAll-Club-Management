@@ -57,6 +57,9 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton(
       onPressed: onPressed,
+      // Full-width by design: the shared theme only guarantees a minimum
+      // height, so the stretch is requested here rather than inherited.
+      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppSpacing.huge)),
       child: Text(label, overflow: TextOverflow.ellipsis),
     );
   }
