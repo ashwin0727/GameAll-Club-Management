@@ -442,7 +442,7 @@ class _MembershipRowCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(radius: 18, child: Text(_initials, style: const TextStyle(fontSize: 13))),
+              CircleAvatar(radius: 18, child: Text(_initials, style: const TextStyle(fontSize: 11))),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -521,7 +521,7 @@ class _MembershipRowCard extends StatelessWidget {
               Text(
                 'Next payment ${Formatters.dateShort(row.endDate)}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: overdue ? tokens.destructive : tokens.textSecondary,
                 ),

@@ -322,7 +322,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                               spacing: AppSpacing.sm,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                Text(ev.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                Text(ev.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
                                 Text(ev.actor, style: AppTypography.caption(context)),
                                 Text(Formatters.dateTimeShort(ev.at), style: AppTypography.caption(context)),
                               ],
@@ -355,7 +355,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: AppTypography.caption(context)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       );
@@ -384,7 +384,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
+                  fontSize: 11,
                   color: danger ? context.tokens.destructive : context.tokens.textPrimary,
                 ),
               ),

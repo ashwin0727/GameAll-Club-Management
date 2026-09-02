@@ -33,6 +33,7 @@ import '../payments/payment_status_panel.dart';
 import 'booking_operations.dart';
 import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key});
@@ -660,7 +661,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                 Text('Quick Booking', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: AppSpacing.md),
                 if (!_isQuick) ...[
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _facilitySportId,
                     decoration: const InputDecoration(labelText: 'Sport'),
                     items: widget.facilitySports
@@ -678,7 +679,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                     }),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<PlayingArea>(
+                  AppDropdown<PlayingArea>(
                     initialValue: _area,
                     decoration: const InputDecoration(labelText: 'Court / Turf'),
                     items: _courtsForSport.map((a) => DropdownMenuItem(value: a, child: Text(a.name))).toList(),

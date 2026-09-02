@@ -22,6 +22,7 @@ import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 const _perPage = 10;
 
@@ -393,7 +394,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text(sub, style: TextStyle(fontSize: 11, color: AppColors.muted)),
+            Text(sub, style: TextStyle(fontSize: 10, color: AppColors.muted)),
           ],
         ),
       );
@@ -612,7 +613,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                   ),
                 ),
               if (mode == 'offline') ...[
-                DropdownButtonFormField<String>(
+                AppDropdown<String>(
                   initialValue: method.text,
                   decoration: const InputDecoration(labelText: 'Method'),
                   items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),

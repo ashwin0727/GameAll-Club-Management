@@ -51,11 +51,15 @@ void main() {
       expect(style.backgroundColor?.resolve({}), tokens.primary);
     });
 
-    test('cards, buttons, and inputs share one consistent radius scale', () {
+    test('cards use the lg radius; buttons are pills, per the button design', () {
       final cardShape = theme.cardTheme.shape as RoundedRectangleBorder;
-      final buttonShape = theme.elevatedButtonTheme.style!.shape!.resolve({}) as RoundedRectangleBorder;
       expect((cardShape.borderRadius as BorderRadius).topLeft.x, AppRadius.lg);
-      expect((buttonShape.borderRadius as BorderRadius).topLeft.x, AppRadius.md);
+
+      // Elevated, outlined and text buttons are all fully rounded so the
+      // three emphasis levels read as one family.
+      expect(theme.elevatedButtonTheme.style!.shape!.resolve({}), isA<StadiumBorder>());
+      expect(theme.outlinedButtonTheme.style!.shape!.resolve({}), isA<StadiumBorder>());
+      expect(theme.textButtonTheme.style!.shape!.resolve({}), isA<StadiumBorder>());
     });
 
     test('bottom sheets use the 24px+ top radius the spec requires', () {

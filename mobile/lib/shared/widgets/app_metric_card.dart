@@ -73,7 +73,7 @@ class AppMetricCard extends StatelessWidget {
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: tokens.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: tokens.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -112,7 +112,7 @@ class AppMetricCard extends StatelessWidget {
                 Text(
                   '${changePercent!.abs().round()}%',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: trendUp ? tokens.success : (trendDown ? tokens.destructive : tokens.textSecondary),
                   ),

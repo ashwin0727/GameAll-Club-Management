@@ -51,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                 const SizedBox(height: 4),
                 const Text(
                   'Club Management',
-                  style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  style: TextStyle(color: AppColors.muted, fontSize: 11),
                 ),
               ],
             ),

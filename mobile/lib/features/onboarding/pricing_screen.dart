@@ -391,7 +391,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                                             ],
                                           ),
                                           if (!o.active)
-                                            const Text('Uses default rate ✓', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                                            const Text('Uses default rate ✓', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                                           if (o.active)
                                             _PeriodsEditor(
                                               periods: o.periods,
@@ -477,7 +477,7 @@ class _PeriodsEditor extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Full day', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                        const Text('Full day', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                         Switch(
                           value: p.draft.coversFullDay,
                           onChanged: (v) {
@@ -535,7 +535,7 @@ class _PeriodsEditor extends StatelessWidget {
                 if (p.error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Text(p.error!, style: const TextStyle(color: AppColors.destructive, fontSize: 12)),
+                    child: Text(p.error!, style: const TextStyle(color: AppColors.destructive, fontSize: 11)),
                   ),
               ],
             ),
@@ -574,7 +574,7 @@ class _TimeChip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
             Text(time != null ? Formatters.time12h(time!) : '--:--'),
           ],
         ),

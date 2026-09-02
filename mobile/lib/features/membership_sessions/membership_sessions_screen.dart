@@ -523,7 +523,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
         children: [
           Icon(icon, size: 13, color: AppColors.muted),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
         ],
       ),
     );

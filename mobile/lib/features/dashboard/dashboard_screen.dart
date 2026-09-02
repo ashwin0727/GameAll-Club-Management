@@ -116,7 +116,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const Text('GameAll', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.1)),
                 Text(
                   'Club Management',
-                  style: TextStyle(fontSize: 10, height: 1.2, color: context.tokens.textSecondary),
+                  style: TextStyle(fontSize: 9, height: 1.2, color: context.tokens.textSecondary),
                 ),
               ],
             ),
@@ -417,7 +417,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
-                Text('Tap to view memberships', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+                Text('Tap to view memberships', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
               ],
             ),
           ),
@@ -516,13 +516,13 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
                         court.courtName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                       Text(
                         court.sportName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                        style: TextStyle(fontSize: 10, color: tokens.textSecondary),
                       ),
                     ],
                   ),
@@ -605,7 +605,7 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
                               slideX: 0,
                               child: Text(
                                 _hourTick(timeline.startHour + i),
-                                style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                                style: TextStyle(fontSize: 10, color: tokens.textSecondary),
                               ),
                             ),
                           ),
@@ -665,13 +665,13 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
             block.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
           ),
           Text(
             block.timeLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.85)),
+            style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.85)),
           ),
         ],
       ),
@@ -684,7 +684,7 @@ class _ScheduleTimelineState extends State<_ScheduleTimeline> {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12, color: context.tokens.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 11, color: context.tokens.textSecondary)),
       ],
     );
   }
@@ -809,7 +809,7 @@ class _SportFilterChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: selected ? tokens.onPrimary : tokens.textSecondary,
           ),
@@ -874,7 +874,7 @@ class _MembershipSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('$total', style: Theme.of(context).textTheme.headlineSmall),
-          Text('Total members', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+          Text('Total members', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
           const SizedBox(height: AppSpacing.md),
           if (total > 0)
             ClipRRect(
@@ -916,7 +916,7 @@ class _LegendDot extends StatelessWidget {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: context.tokens.textSecondary, fontSize: 12)),
+        Text(label, style: TextStyle(color: context.tokens.textSecondary, fontSize: 11)),
       ],
     );
   }
@@ -973,13 +973,13 @@ class _RevenueOverviewCard extends StatelessWidget {
           Row(
             children: [
               Text('Total Revenue · ${overview.monthLabel}',
-                  style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+                  style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
               if (change != null) ...[
                 const SizedBox(width: AppSpacing.sm),
                 Icon(up ? Icons.arrow_upward : (down ? Icons.arrow_downward : Icons.remove),
                     size: 12, color: changeColor),
                 Text('${change.abs().toStringAsFixed(1)}%',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: changeColor)),
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: changeColor)),
               ],
             ],
           ),
@@ -995,7 +995,7 @@ class _RevenueOverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     for (final t in yTicks)
-                      Text(_compactInr(t), style: TextStyle(fontSize: 9, color: tokens.textSecondary)),
+                      Text(_compactInr(t), style: TextStyle(fontSize: 8, color: tokens.textSecondary)),
                   ],
                 ),
               ),
@@ -1030,7 +1030,7 @@ class _RevenueOverviewCard extends StatelessWidget {
                     alignment: Alignment(n <= 1 ? 0 : (idx / (n - 1)) * 2 - 1, 0),
                     child: Text(
                       _dayLabel(overview.points[idx].date),
-                      style: TextStyle(fontSize: 9, color: tokens.textSecondary),
+                      style: TextStyle(fontSize: 8, color: tokens.textSecondary),
                     ),
                   ),
               ],
@@ -1204,13 +1204,13 @@ class _RevenueBreakdownChart extends StatelessWidget {
                           s.count != null ? '${s.label} · ${s.count}' : s.label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       const SizedBox(width: 4),
                       Text(
                         s.unavailable ? '—' : Formatters.currencyInr(s.amountInr),
-                        style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                        style: TextStyle(fontSize: 10, color: tokens.textSecondary),
                       ),
                       const SizedBox(width: 6),
                       SizedBox(
@@ -1218,7 +1218,7 @@ class _RevenueBreakdownChart extends StatelessWidget {
                         child: Text(
                           '${total > 0 ? ((s.amountInr / total) * 100).round() : 0}%',
                           textAlign: TextAlign.right,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -1415,7 +1415,7 @@ class _QuickAction extends StatelessWidget {
                   label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
             ],

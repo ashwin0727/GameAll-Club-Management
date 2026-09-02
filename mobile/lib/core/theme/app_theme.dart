@@ -59,8 +59,9 @@ class AppTheme {
           disabledForegroundColor: tokens.onPrimary.withValues(alpha: 0.6),
           minimumSize: const Size.fromHeight(AppSpacing.huge),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-          textStyle: textTheme.labelLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+          // Pill, per the button design.
+          shape: const StadiumBorder(),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
           elevation: 0,
         ),
       ),
@@ -77,12 +78,13 @@ class AppTheme {
           side: BorderSide(color: tokens.borderColor),
           foregroundColor: tokens.textPrimary,
           backgroundColor: tokens.surface2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: const StadiumBorder(),
           textStyle: textTheme.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          shape: const StadiumBorder(),
           minimumSize: const Size(0, AppSpacing.huge),
           foregroundColor: tokens.primary,
           textStyle: textTheme.labelLarge,

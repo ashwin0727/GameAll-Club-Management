@@ -112,11 +112,11 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
               children: [
                 Text(
                   widget.locked ? '🔒 ${widget.label}' : widget.label,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: foreground),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 10, color: widget.selected ? Colors.white70 : AppColors.muted),
+                  style: TextStyle(fontSize: 9, color: widget.selected ? Colors.white70 : AppColors.muted),
                 ),
               ],
             ),

@@ -15,6 +15,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
 import 'booking_slots.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 String _hm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime d) => Formatters.time12h(_hm(d));
@@ -226,7 +227,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              DropdownButtonFormField<String>(
+                              AppDropdown<String>(
                                 initialValue: _courtId,
                                 decoration: const InputDecoration(labelText: 'Court'),
                                 items: _courtsForSport.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),

@@ -11,6 +11,7 @@ import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import 'batch_members_sheet.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 const List<({int value, String label})> _days = [
   (value: 1, label: 'Mon'),
@@ -288,14 +289,14 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
                     decoration: const InputDecoration(labelText: 'Batch name', hintText: 'e.g. Evening Badminton'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _planId,
                     decoration: const InputDecoration(labelText: 'Plan'),
                     items: _plans.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
                     onChanged: (v) => setState(() => _planId = v),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _facilitySportId,
                     decoration: const InputDecoration(labelText: 'Sport'),
                     items: _facilitySports
@@ -307,7 +308,7 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
                     }),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _courtId,
                     decoration: const InputDecoration(labelText: 'Court'),
                     items: _courtsForSport.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),

@@ -100,7 +100,7 @@ class StatusBadge extends StatelessWidget {
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -140,7 +140,7 @@ class UnavailableCard extends StatelessWidget {
           const Icon(Icons.info_outline, size: 18, color: AppColors.muted),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(message, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+            child: Text(message, style: const TextStyle(color: AppColors.muted, fontSize: 11)),
           ),
         ],
       ),

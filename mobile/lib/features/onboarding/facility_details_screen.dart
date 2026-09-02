@@ -13,6 +13,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_progress_bar.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 class FacilityDetailsScreen extends ConsumerStatefulWidget {
   const FacilityDetailsScreen({super.key});
@@ -127,7 +128,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                   validator: (v) => Validators.name(v),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                DropdownButtonFormField<FacilityType>(
+                AppDropdown<FacilityType>(
                   initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Facility Type'),
                   items: FacilityType.values

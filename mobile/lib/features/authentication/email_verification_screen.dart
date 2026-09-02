@@ -29,12 +29,22 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
       await ref.read(sessionControllerProvider.notifier).refresh();
       final repo = ref.read(authRepositoryProvider);
       if (!repo.isEmailVerified) {
-        setState(() => _message = 'Not verified yet — check your inbox and tap the link.');
+        setState(() {
+          _message = 'Not verified yet — check your inbox and tap the link.';
+          _isChecking = false;
+        });
       } else if (mounted) {
+        // Verified: keep the spinner running into the navigation rather than
+        // flicking the button back to idle first.
         context.go(AppRoutes.onboardingFacility);
       }
-    } finally {
-      if (mounted) setState(() => _isChecking = false);
+    } catch (e, stack) {
+      debugPrint('Verification check failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _message = 'Could not check right now. Please try again.';
+        _isChecking = false;
+      });
     }
   }
 

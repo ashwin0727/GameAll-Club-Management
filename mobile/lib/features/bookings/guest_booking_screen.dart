@@ -21,6 +21,7 @@ import '../../shared/widgets/states.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 import 'booking_slots.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 const _steps = ['Select Court & Time', 'Guest Details', 'Review & Confirm', 'Payment'];
 
@@ -464,7 +465,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                       : AppColors.border,
               child: done
                   ? const Icon(Icons.check, size: 13, color: Colors.white)
-                  : Text('${i + 1}', style: TextStyle(fontSize: 11, color: active ? AppColors.onPrimary : AppColors.muted)),
+                  : Text('${i + 1}', style: TextStyle(fontSize: 10, color: active ? AppColors.onPrimary : AppColors.muted)),
             ),
             const SizedBox(width: 4),
             Text(_steps[i],
@@ -523,7 +524,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                           ),
                           child: active
                               ? const Icon(Icons.check_circle, color: Colors.white, size: 18)
-                              : const Text('COURT', style: TextStyle(fontSize: 9, color: Color(0xFFA7F3D0))),
+                              : const Text('COURT', style: TextStyle(fontSize: 8, color: Color(0xFFA7F3D0))),
                         ),
                         const SizedBox(height: 4),
                         Text(c.name, style: Theme.of(context).textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
@@ -576,7 +577,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                     ? 'Available'
                                     : 'Booked',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: active
                                   ? AppColors.primary
                                   : blocked
@@ -624,7 +625,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   Widget _dropdownRow() {
     return Column(
       children: [
-        DropdownButtonFormField<String>(
+        AppDropdown<String>(
           initialValue: _facilitySportId,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Sport'),
@@ -804,7 +805,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
               'Collect $amount now via Razorpay (UPI / card / net banking). Confirmed as Paid once it settles.'),
           if (_payMode == 'offline') ...[
             const SizedBox(height: AppSpacing.xs),
-            DropdownButtonFormField<String>(
+            AppDropdown<String>(
               initialValue: _paymentMethod,
               decoration: const InputDecoration(labelText: 'Payment method (for your records)'),
               items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
@@ -836,7 +837,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
               borderRadius: BorderRadius.circular(AppRadius.md),
               gradient: const LinearGradient(colors: [Color(0xFF064E3B), Color(0xFF047857)]),
             ),
-            child: Text(_court?.name ?? 'Select a court', style: const TextStyle(color: Color(0xFFA7F3D0), fontSize: 12)),
+            child: Text(_court?.name ?? 'Select a court', style: const TextStyle(color: Color(0xFFA7F3D0), fontSize: 11)),
           ),
           const SizedBox(height: AppSpacing.sm),
           _kv('Sport', _sportName.isEmpty ? '—' : _sportName),

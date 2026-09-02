@@ -320,7 +320,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                       const SizedBox(height: AppSpacing.xs),
                       const Text(
                         'By default, all courts and turfs use the facility hours above.',
-                        style: TextStyle(fontSize: 12, color: AppColors.muted),
+                        style: TextStyle(fontSize: 11, color: AppColors.muted),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       ..._facilitySports.map((fs) {
@@ -420,7 +420,7 @@ class _PlayingAreaOverrideCard extends StatelessWidget {
               ],
             ),
             if (!entry.active)
-              const Text('Uses facility hours ✓', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+              const Text('Uses facility hours ✓', style: TextStyle(fontSize: 11, color: AppColors.muted)),
             if (entry.active) ...[
               const SizedBox(height: AppSpacing.sm),
               ...displayOrder.map((dow) {
@@ -479,7 +479,7 @@ class _DayCard extends StatelessWidget {
                 tooltip: 'Copy hours to other days',
                 onPressed: onCopyRequest,
               ),
-            const Text('Open', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+            const Text('Open', style: TextStyle(fontSize: 11, color: AppColors.muted)),
             Switch(
               value: isOpen,
               onChanged: (value) => onChange(
@@ -494,7 +494,7 @@ class _DayCard extends StatelessWidget {
         if (isOpen) ...[
           Row(
             children: [
-              const Text('Open 24 hours', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+              const Text('Open 24 hours', style: TextStyle(fontSize: 11, color: AppColors.muted)),
               Switch(value: day.is24Hours, onChanged: (value) => onChange((d) => d.copyWith(is24Hours: value))),
             ],
           ),
@@ -530,7 +530,7 @@ class _DayCard extends StatelessWidget {
                       ),
                     ),
                     if (slot.crossesMidnight)
-                      const Text('(next day)', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                      const Text('(next day)', style: TextStyle(fontSize: 10, color: AppColors.muted)),
                     if (day.slots.length > 1)
                       IconButton(
                         icon: const Icon(Icons.close, size: 18),
@@ -564,7 +564,7 @@ class _DayCard extends StatelessWidget {
         ],
         if (error != null) ...[
           const SizedBox(height: AppSpacing.xs),
-          Text(error!, style: const TextStyle(color: AppColors.destructive, fontSize: 12)),
+          Text(error!, style: const TextStyle(color: AppColors.destructive, fontSize: 11)),
         ],
       ],
     );
@@ -654,7 +654,7 @@ class _TimeChip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.muted)),
             Text(Formatters.time12h(time)),
           ],
         ),

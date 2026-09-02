@@ -181,7 +181,7 @@ class _MembershipSlotCardState extends ConsumerState<MembershipSlotCard> {
                 ),
                 child: Text(
                   '$emoji $title',
-                  style: TextStyle(color: tone, fontWeight: FontWeight.w600, fontSize: 12),
+                  style: TextStyle(color: tone, fontWeight: FontWeight.w600, fontSize: 11),
                 ),
               ),
             ],

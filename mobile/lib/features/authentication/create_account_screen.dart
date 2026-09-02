@@ -52,14 +52,24 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
         password: _password.text,
       );
       if (!mounted) return;
+      // Stays in the submitting state on success — see sign_in_screen: the
+      // button must not return to idle while this screen is still on top.
       context.go(
         '${AppRoutes.emailVerification}?email=${Uri.encodeQueryComponent(_email.text.trim())}',
       );
     } on AppException catch (e) {
       if (!mounted) return;
-      setState(() => _errorMessage = e.message);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      setState(() {
+        _errorMessage = e.message;
+        _isSubmitting = false;
+      });
+    } catch (e, stack) {
+      debugPrint('Create account failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Something went wrong. Please try again.';
+        _isSubmitting = false;
+      });
     }
   }
 

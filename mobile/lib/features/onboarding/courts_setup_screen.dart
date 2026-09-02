@@ -357,7 +357,7 @@ class _PlayingAreaRowState extends State<_PlayingAreaRow> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Bookable', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                  const Text('Bookable', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                   Switch(value: widget.area.bookingEnabled, onChanged: widget.onBookingEnabledChanged),
                 ],
               ),
@@ -387,7 +387,7 @@ class _InlineDropdown extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+        Text('$label: ', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
         DropdownButton<String>(
           value: value,
           isDense: true,

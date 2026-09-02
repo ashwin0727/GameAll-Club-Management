@@ -17,6 +17,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_charges.dart';
 import 'membership_status.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// The full Create Membership page — mirrors
 /// src/features/memberships/components/create-membership-page.tsx: a
@@ -482,7 +483,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                 hint: _planId != null
                     ? 'Fee and duration are set by the plan'
                     : 'Or leave as Custom and enter the fee below',
-                child: DropdownButtonFormField<String>(
+                child: AppDropdown<String>(
                   initialValue: _planId ?? '',
                   isExpanded: true,
                   items: [
@@ -678,7 +679,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                       const SizedBox(width: AppSpacing.sm),
                       Text(m.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: Text(m.$3, style: TextStyle(color: tokens.textSecondary, fontSize: 12))),
+                      Expanded(child: Text(m.$3, style: TextStyle(color: tokens.textSecondary, fontSize: 11))),
                     ],
                   ),
                 ),
@@ -736,7 +737,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                               title: Text(r.fullName),
-                              trailing: Text(r.phone, style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+                              trailing: Text(r.phone, style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
                               onTap: () => setState(() {
                                 _referral = r;
                                 _referralQuery.clear();
@@ -774,7 +775,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         if (!_isEdit) ...[
           const SizedBox(height: AppSpacing.sm),
           Center(
-            child: Text('Secure registration · You can edit details later', style: TextStyle(color: tokens.textSecondary, fontSize: 12)),
+            child: Text('Secure registration · You can edit details later', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
           ),
         ],
         const SizedBox(height: AppSpacing.xl),
@@ -791,14 +792,14 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         children: [
           Text.rich(TextSpan(
             text: label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tokens.textSecondary),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: tokens.textSecondary),
             children: required ? const [TextSpan(text: ' *', style: TextStyle(color: AppColors.destructive))] : null,
           )),
           const SizedBox(height: AppSpacing.xs),
           child,
           if (hint != null) ...[
             const SizedBox(height: 2),
-            Text(hint, style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            Text(hint, style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
           ],
         ],
       ),
@@ -827,7 +828,7 @@ class _Section extends StatelessWidget {
                 CircleAvatar(
                   radius: 12,
                   backgroundColor: tokens.primary.withValues(alpha: 0.15),
-                  child: Text('$n', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: tokens.primary)),
+                  child: Text('$n', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tokens.primary)),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(title, style: Theme.of(context).textTheme.titleSmall),
@@ -875,7 +876,7 @@ class _Dropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
+    return AppDropdown<T>(
       initialValue: value,
       isExpanded: true,
       hint: Text(hint),
@@ -910,7 +911,7 @@ class _MandateSuccessPanel extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(8)),
-                child: SelectableText(shortUrl!, style: const TextStyle(fontSize: 12)),
+                child: SelectableText(shortUrl!, style: const TextStyle(fontSize: 11)),
               ),
               const SizedBox(height: AppSpacing.sm),
               SecondaryButton(

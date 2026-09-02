@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// Primary CTA — full-width by default (per the onboarding/auth flows),
@@ -13,54 +12,72 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.loadingLabel,
+    this.icon,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
   final String? loadingLabel;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: isLoading ? null : onPressed,
-      child: isLoading
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Text(
-                    loadingLabel ?? label,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            )
-          : Text(label, overflow: TextOverflow.ellipsis),
+    if (isLoading) {
+      return ElevatedButton(
+        onPressed: null,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Flexible(child: Text(loadingLabel ?? label, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+      );
+    }
+    if (icon == null) {
+      return ElevatedButton(
+        onPressed: onPressed,
+        child: Text(label, overflow: TextOverflow.ellipsis),
+      );
+    }
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label, overflow: TextOverflow.ellipsis),
     );
   }
 }
 
 class SecondaryButton extends StatelessWidget {
-  const SecondaryButton({super.key, required this.label, required this.onPressed});
+  const SecondaryButton({super.key, required this.label, required this.onPressed, this.icon});
 
   final String label;
   final VoidCallback? onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
+    // Full-width by design: the shared theme only guarantees a minimum
+    // height, so the stretch is requested here rather than inherited.
+    final style = OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppSpacing.huge));
+    if (icon == null) {
+      return OutlinedButton(
+        onPressed: onPressed,
+        style: style,
+        child: Text(label, overflow: TextOverflow.ellipsis),
+      );
+    }
+    return OutlinedButton.icon(
       onPressed: onPressed,
-      // Full-width by design: the shared theme only guarantees a minimum
-      // height, so the stretch is requested here rather than inherited.
-      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(AppSpacing.huge)),
-      child: Text(label, overflow: TextOverflow.ellipsis),
+      style: style,
+      icon: Icon(icon, size: 18),
+      label: Text(label, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -82,7 +99,7 @@ class GhostButton extends StatelessWidget {
       overlayColor: tokens.surface2,
       minimumSize: const Size(0, AppSpacing.huge),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+      shape: const StadiumBorder(),
     );
     if (icon == null) {
       return TextButton(onPressed: onPressed, style: style, child: Text(label, overflow: TextOverflow.ellipsis));
@@ -116,7 +133,7 @@ class DangerButton extends StatelessWidget {
         foregroundColor: Colors.white,
         disabledBackgroundColor: tokens.destructive.withValues(alpha: 0.35),
         minimumSize: const Size.fromHeight(AppSpacing.huge),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: const StadiumBorder(),
         elevation: 0,
       ),
       child: isLoading

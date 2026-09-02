@@ -47,11 +47,25 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         password: _password.text,
       );
       await ref.read(sessionControllerProvider.notifier).refresh();
+      // Deliberately stay in the submitting state on success. The redirect
+      // that replaces this screen is driven by the session change and lands
+      // a frame or more later; clearing the flag here put an idle-looking
+      // button back under the user's finger while they were still staring
+      // at the sign-in form, which reads as "nothing happened" and invites
+      // a second tap. The spinner now runs until the screen goes away.
     } on AppException catch (e) {
       if (!mounted) return;
-      setState(() => _errorMessage = e.message);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      setState(() {
+        _errorMessage = e.message;
+        _isSubmitting = false;
+      });
+    } catch (e, stack) {
+      debugPrint('Sign-in failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Something went wrong. Please try again.';
+        _isSubmitting = false;
+      });
     }
   }
 
