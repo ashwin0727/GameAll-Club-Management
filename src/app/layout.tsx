@@ -12,7 +12,7 @@ const figtree = Figtree({
 
 export const metadata: Metadata = {
   title: `${APP_NAME} — ${APP_SUBTITLE}`,
-  description: `Membership, booking, and inventory management for ${APP_NAME}.`,
+  description: "Manage courts, bookings, memberships, and players with ease.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
