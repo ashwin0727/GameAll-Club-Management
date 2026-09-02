@@ -93,6 +93,10 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _errorMessage = e.message);
+    } catch (e, stack) {
+      debugPrint('Onboarding facility save failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

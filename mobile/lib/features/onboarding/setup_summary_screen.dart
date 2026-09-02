@@ -61,9 +61,19 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
         unawaited(ref.read(onboardingRepositoryProvider).completeSetup(facility.id).catchError((_) => facility));
       }
     } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _loadError = e.message;
+      });
+    } catch (e, stack) {
+      // Anything that isn't an AppException used to escape this method
+      // and leave the screen dead: no spinner, no error, no retry.
+      debugPrint('Onboarding setup summary load failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'We couldn’t load this step. Please try again.';
       });
     }
   }
@@ -84,6 +94,10 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _completeError = e.message);
+    } catch (e, stack) {
+      debugPrint('Onboarding setup summary save failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _completeError = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isCompleting = false);
     }

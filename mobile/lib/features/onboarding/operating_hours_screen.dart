@@ -62,7 +62,15 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     try {
       final facility = await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
-        if (mounted) context.go(AppRoutes.onboardingFacility);
+        if (!mounted) return;
+        // Clear the flag before navigating: if the route doesn't change for
+        // any reason, the screen shows an actionable error rather than
+        // spinning forever.
+        setState(() {
+          _isLoading = false;
+          _loadError = 'Finish your facility details first.';
+        });
+        context.go(AppRoutes.onboardingFacility);
         return;
       }
       final hoursRepo = ref.read(operatingHoursRepositoryProvider);
@@ -113,9 +121,21 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
         _isLoading = false;
       });
     } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _loadError = e.message;
+      });
+    } catch (e, stack) {
+      // Anything that isn't an AppException — a cast failure, a dropped
+      // socket, a raw Postgrest error — used to escape this method and
+      // leave the screen dead: no spinner, no error, no retry. Surface it
+      // instead, and keep the stack in the log for diagnosis.
+      debugPrint('Operating hours load failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'We couldn’t load your operating hours. Please try again.';
       });
     }
   }
@@ -220,7 +240,8 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
       final hoursRepo = ref.read(operatingHoursRepositoryProvider);
       await hoursRepo.saveFacilitySchedule(_facilityId!, _days);
       for (final area in _areas) {
-        final entry = _overrides[area.id]!;
+        final entry = _overrides[area.id];
+        if (entry == null) continue;
         if (entry.active) {
           await hoursRepo.savePlayingAreaSchedule(area.id, _facilityId!, entry.days);
         } else if (entry.initiallyActive) {
@@ -236,6 +257,10 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _submitError = e.message);
+    } catch (e, stack) {
+      debugPrint('Operating hours save failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _submitError = 'We couldn’t save your hours. Please try again.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -273,7 +298,10 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                       const SizedBox(height: AppSpacing.md),
                     ],
                     ...displayOrder.map((dow) {
-                      final day = _days.firstWhere((d) => d.dayOfWeek == dow);
+                      // A schedule row missing a day used to throw a
+                      // StateError out of build and leave the body blank.
+                      final day = _days.where((d) => d.dayOfWeek == dow).firstOrNull ??
+                          OperatingDay.defaultOpen(dow);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: _DayCard(
@@ -297,7 +325,12 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                       const SizedBox(height: AppSpacing.md),
                       ..._facilitySports.map((fs) {
                         final sport = _sports.where((s) => s.id == fs.sportId).firstOrNull;
-                        final areasForSport = _areas.where((a) => a.facilitySportId == fs.id).toList();
+                        // Only courts we actually built an override entry for
+                        // — a missing entry used to blow up the `!` below and
+                        // take the whole page down with it.
+                        final areasForSport = _areas
+                            .where((a) => a.facilitySportId == fs.id && _overrides.containsKey(a.id))
+                            .toList();
                         if (areasForSport.isEmpty) return const SizedBox.shrink();
                         return Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.md),

@@ -69,9 +69,19 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
         _isLoading = false;
       });
     } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _loadError = e.message;
+      });
+    } catch (e, stack) {
+      // Anything that isn't an AppException used to escape this method
+      // and leave the screen dead: no spinner, no error, no retry.
+      debugPrint('Onboarding courts load failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'We couldn’t load this step. Please try again.';
       });
     }
   }
@@ -180,6 +190,10 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _continueError = e.message);
+    } catch (e, stack) {
+      debugPrint('Onboarding courts save failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _continueError = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isContinuing = false);
     }

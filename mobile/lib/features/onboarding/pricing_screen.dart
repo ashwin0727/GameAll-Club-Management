@@ -165,9 +165,19 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
         _isLoading = false;
       });
     } on AppException catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _loadError = e.message;
+      });
+    } catch (e, stack) {
+      // Anything that isn't an AppException used to escape this method
+      // and leave the screen dead: no spinner, no error, no retry.
+      debugPrint('Onboarding pricing load failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'We couldn’t load this step. Please try again.';
       });
     }
   }
@@ -281,6 +291,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _submitError = e.message);
+    } catch (e, stack) {
+      debugPrint('Onboarding pricing save failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() => _submitError = 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
