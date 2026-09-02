@@ -63,6 +63,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Native launcher icons, generated from the GameAll logo:
+#   dart run flutter_launcher_icons
+# The logo is a transparent PNG, so the adaptive icon gets an explicit white
+# background — the blue/purple dragon would lose contrast on a dark one.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  image_path: "assets/images/logo-icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo-icon.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -4,4 +4,5 @@
      exactly — no white flash between OS launch and the first Flutter frame. -->
 <resources>
     <color name="launch_background">#FF16A34A</color>
+	<color name="ic_launcher_background">#FFFFFF</color>
 </resources>
