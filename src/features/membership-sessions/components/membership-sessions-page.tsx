@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/shared/stat-card";
 import { getFacilityService } from "@/services/facility";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { getSportsService } from "@/services/sports";
@@ -47,20 +48,6 @@ const DAY_OPTIONS = [
   { value: "0", label: "Sun" },
 ];
 const selectCls = "h-9 rounded-md border border-input bg-secondary/60 px-2 text-sm";
-
-function Kpi({ icon: Icon, label, value, accent }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; accent: string }) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${accent}1f`, color: accent }}>
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
-    </Card>
-  );
-}
 
 function statusBadge(s: MembershipSessionStatus) {
   if (s === "active") return <Badge variant="success">Active</Badge>;
@@ -172,11 +159,11 @@ export function MembershipSessionsPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           {summary ? (
             <>
-              <Kpi icon={CalendarClock} label="Total Sessions" value={String(summary.totalSessions)} accent="#8B5CF6" />
-              <Kpi icon={CalendarCheck2} label="Active Sessions" value={String(summary.activeSessions)} accent="#00D084" />
-              <Kpi icon={CalendarDays} label="Today's Sessions" value={String(summary.todaysSessions)} accent="#5B6CFF" />
-              <Kpi icon={DoorOpen} label="Guest Slots Released" value={String(summary.guestSlotsReleased)} accent="#FFB020" />
-              <Kpi icon={Gauge} label="Utilization" value={`${summary.avgUtilizationPct}%`} accent="#FF4D67" />
+              <StatCard icon={CalendarClock} label="Total Sessions" value={String(summary.totalSessions)} countTo={summary.totalSessions} format={(v) => String(v)} accent="#8B5CF6" index={0} />
+              <StatCard icon={CalendarCheck2} label="Active Sessions" value={String(summary.activeSessions)} countTo={summary.activeSessions} format={(v) => String(v)} accent="#00D084" index={1} />
+              <StatCard icon={CalendarDays} label="Today's Sessions" value={String(summary.todaysSessions)} countTo={summary.todaysSessions} format={(v) => String(v)} accent="#5B6CFF" index={2} />
+              <StatCard icon={DoorOpen} label="Guest Slots Released" value={String(summary.guestSlotsReleased)} countTo={summary.guestSlotsReleased} format={(v) => String(v)} accent="#FFB020" index={3} />
+              <StatCard icon={Gauge} label="Utilization" value={`${summary.avgUtilizationPct}%`} countTo={summary.avgUtilizationPct} format={(v) => `${v}%`} accent="#FF4D67" index={4} />
             </>
           ) : (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
@@ -206,7 +193,7 @@ export function MembershipSessionsPage() {
         </div>
 
         {/* Table */}
-        <Card className="overflow-hidden p-0">
+        <Card className="stat-enter overflow-hidden p-0" style={{ "--stat-delay": "360ms" } as React.CSSProperties}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border text-left text-xs text-muted-foreground">
@@ -255,8 +242,8 @@ export function MembershipSessionsPage() {
                         <div className="flex items-center gap-2">
                           <div className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary">
                             <div
-                              className={cn("h-full rounded-full", r.utilizationPct >= 100 ? "bg-destructive" : r.utilizationPct >= 70 ? "bg-warning" : "bg-success")}
-                              style={{ width: `${Math.min(100, r.utilizationPct)}%` }}
+                              className={cn("bar-grow h-full rounded-full", r.utilizationPct >= 100 ? "bg-destructive" : r.utilizationPct >= 70 ? "bg-warning" : "bg-success")}
+                              style={{ width: `${Math.min(100, r.utilizationPct)}%`, "--bar-delay": "320ms" } as React.CSSProperties}
                             />
                           </div>
                           <span className="text-xs text-muted-foreground">{r.utilizationPct}%</span>
@@ -305,7 +292,7 @@ export function MembershipSessionsPage() {
         </Card>
 
         {/* Guest booking link */}
-        <Card className="p-4">
+        <Card className="stat-enter p-4" style={{ "--stat-delay": "420ms" } as React.CSSProperties}>
           <p className="flex items-center gap-2 text-sm font-semibold"><Link2 className="h-4 w-4" /> Guest Booking Link</p>
           <p className="text-xs text-muted-foreground">Share this link with players so they can book released slots.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">

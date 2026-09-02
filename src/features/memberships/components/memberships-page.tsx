@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useCountUp } from "@/features/dashboard/use-count-up";
+import { StatCard } from "@/components/shared/stat-card";
 import { ServiceError } from "@/services/shared/service-error";
 import { getFacilityService } from "@/services/facility";
 import { getMembershipService } from "@/services/memberships";
@@ -95,66 +95,6 @@ function isPastDate(iso: string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return d < today;
-}
-
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  hintClass,
-  accent,
-  countTo,
-  format,
-  index = 0,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  hint?: string;
-  hintClass?: string;
-  accent: string;
-  /** Numeric target for the count-up; requires `format`. Without both, `value` renders as-is. */
-  countTo?: number;
-  format?: (v: number) => string;
-  /** Position in the KPI row — staggers the entrance left-to-right. */
-  index?: number;
-}) {
-  const animated = useCountUp(countTo ?? 0);
-  const animating = countTo !== undefined && format !== undefined;
-
-  return (
-    <Card
-      className={cn(
-        "stat-enter p-4 transition-shadow",
-        "border-[var(--kpi-tint)] shadow-[0_6px_20px_-8px_var(--kpi-shadow)] hover:shadow-[0_10px_26px_-8px_var(--kpi-shadow-hover)]",
-      )}
-      style={
-        {
-          "--stat-delay": `${index * 70}ms`,
-          "--kpi-tint": `${accent}3d`,
-          "--kpi-shadow": `${accent}40`,
-          "--kpi-shadow-hover": `${accent}66`,
-        } as React.CSSProperties
-      }
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${accent}1f`, color: accent }}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      {/* The animated figure is decorative motion over the same number — the
-          accessible name always carries the settled value. */}
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground" aria-label={value}>
-        <span aria-hidden>{animating ? format(Math.round(animated)) : value}</span>
-      </p>
-      {hint && <p className={cn("mt-0.5 text-xs", hintClass ?? "text-muted-foreground")}>{hint}</p>}
-    </Card>
-  );
 }
 
 export function MembershipsPage() {
@@ -328,7 +268,7 @@ export function MembershipsPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summary ? (
           <>
-            <KpiCard
+            <StatCard
               icon={Users}
               label="Total Members"
               value={String(summary.totalMembers)}
@@ -347,7 +287,7 @@ export function MembershipsPage() {
               format={(v) => String(v)}
               index={0}
             />
-            <KpiCard
+            <StatCard
               icon={UserCheck}
               label="Active Members"
               value={String(summary.activeMembers)}
@@ -357,7 +297,7 @@ export function MembershipsPage() {
               format={(v) => String(v)}
               index={1}
             />
-            <KpiCard
+            <StatCard
               icon={UserMinus}
               label="Payment Incomplete"
               value={String(summary.paymentIncompleteMembers)}
@@ -368,7 +308,7 @@ export function MembershipsPage() {
               format={(v) => String(v)}
               index={2}
             />
-            <KpiCard
+            <StatCard
               icon={Wallet}
               label="Membership Revenue"
               value={inr(summary.revenueInr)}

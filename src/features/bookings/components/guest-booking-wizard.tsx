@@ -343,7 +343,7 @@ export function GuestBookingWizard() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main panel */}
-        <div className="rounded-xl border border-border p-5">
+        <div key={step} className="stat-enter rounded-xl border border-border p-5">
           {step === 0 && (
             <div className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-3">
@@ -398,7 +398,7 @@ export function GuestBookingWizard() {
                   <p className="text-sm text-muted-foreground">No bookable courts for this sport.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {courtsForSport.map((c) => {
+                    {courtsForSport.map((c, i) => {
                       const active = courtId === c.id;
                       return (
                         <button
@@ -409,9 +409,10 @@ export function GuestBookingWizard() {
                             setSlot(null);
                           }}
                           className={cn(
-                            "relative overflow-hidden rounded-lg border p-0 text-left transition",
+                            "stat-enter relative overflow-hidden rounded-lg border p-0 text-left transition hover:-translate-y-0.5",
                             active ? "border-primary ring-2 ring-primary/30" : "border-border hover:border-primary/50",
                           )}
+                          style={{ "--stat-delay": `${i * 55}ms` } as React.CSSProperties}
                         >
                           <div className="flex h-20 items-center justify-center bg-gradient-to-br from-emerald-900 to-emerald-700 text-[10px] text-emerald-200">
                             COURT
@@ -441,7 +442,7 @@ export function GuestBookingWizard() {
                     <p className="text-sm text-muted-foreground">No slots available on this date.</p>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {slots.map((s) => {
+                      {slots.map((s, i) => {
                         const active = slot?.startTime === s.startTime;
                         const blocked = isMembershipBlocked(s, membershipSlots);
                         const bookable = s.available && !blocked;
@@ -452,8 +453,9 @@ export function GuestBookingWizard() {
                             type="button"
                             disabled={!bookable}
                             onClick={() => setSlot(s)}
+                            style={{ "--stat-delay": `${120 + i * 22}ms` } as React.CSSProperties}
                             className={cn(
-                              "rounded-lg border px-3 py-2 text-center transition",
+                              "stat-enter rounded-lg border px-3 py-2 text-center transition",
                               active
                                 ? "border-primary bg-primary/10"
                                 : bookable
@@ -612,7 +614,7 @@ export function GuestBookingWizard() {
         </div>
 
         {/* Summary sidebar */}
-        <aside className="h-fit rounded-xl border border-border p-4">
+        <aside className="stat-enter h-fit rounded-xl border border-border p-4" style={{ "--stat-delay": "90ms" } as React.CSSProperties}>
           <p className="text-sm font-semibold">Booking Summary</p>
           <div className="mt-3 flex h-28 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-900 to-emerald-700 text-xs text-emerald-200">
             {court?.name ?? "Select a court"}

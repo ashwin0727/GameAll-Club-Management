@@ -415,10 +415,28 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           const SizedBox(height: AppSpacing.md),
           _stepIndicator(),
           const SizedBox(height: AppSpacing.lg),
-          if (_step == 0) _stepCourtTime(),
-          if (_step == 1) _stepGuest(),
-          if (_step == 2) _stepReview(),
-          if (_step == 3) _stepPayment(),
+          // Keyed on the step so each step's panel animates in as you move
+          // through the wizard, not just on first landing.
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween(begin: const Offset(0.04, 0), end: Offset.zero).animate(anim),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_step),
+              child: switch (_step) {
+                0 => _stepCourtTime(),
+                1 => _stepGuest(),
+                2 => _stepReview(),
+                _ => _stepPayment(),
+              },
+            ),
+          ),
           const SizedBox(height: AppSpacing.lg),
           _summaryCard(),
           const SizedBox(height: AppSpacing.lg),

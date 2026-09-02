@@ -15,6 +15,7 @@ import '../../data/models/refund.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../payments/payment_checkout_controller.dart';
@@ -219,38 +220,59 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   Widget _kpis() {
     final s = _summary;
     String rev(int m) => Formatters.currencyInr((m / 100).round());
-    final tiles = <Widget>[
-      AppMetricCard(
-        label: 'Total Bookings',
-        value: s == null ? '—' : '${s.total}',
-        changePercent: s?.totalChangePct?.toDouble(),
-        icon: Icons.event_note,
-      ),
-      AppMetricCard(label: 'Confirmed', value: s == null ? '—' : '${s.confirmed}', icon: Icons.check_circle_outline, accentColor: AppColors.success),
-      AppMetricCard(label: 'Completed', value: s == null ? '—' : '${s.completed}', icon: Icons.task_alt, accentColor: AppColors.electricBlue),
-      AppMetricCard(label: 'Cancelled', value: s == null ? '—' : '${s.cancelled}', icon: Icons.cancel_outlined, accentColor: AppColors.destructive),
-      AppMetricCard(label: 'Pending', value: s == null ? '—' : '${s.pending}', icon: Icons.schedule, accentColor: AppColors.warning),
-      AppMetricCard(
-        label: 'Total Revenue',
-        value: s == null ? '—' : rev(s.totalRevenueMinor),
-        changePercent: s?.revenueChangePct?.toDouble(),
-        icon: Icons.account_balance_wallet_outlined,
-        accentColor: AppColors.success,
-      ),
-    ];
-    return LayoutBuilder(
-      builder: (context, c) {
-        final cols = c.maxWidth > 720 ? 3 : 2;
-        return GridView.count(
-          crossAxisCount: cols,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.7,
-          children: tiles,
-        );
-      },
+    String n(num v) => v.round().toString();
+    return MetricCarousel(
+      cards: [
+        AppMetricCard(
+          label: 'Total Bookings',
+          value: s == null ? '—' : '${s.total}',
+          countTo: s?.total,
+          formatValue: n,
+          changePercent: s?.totalChangePct?.toDouble(),
+          icon: Icons.event_note,
+        ),
+        AppMetricCard(
+          label: 'Confirmed',
+          value: s == null ? '—' : '${s.confirmed}',
+          countTo: s?.confirmed,
+          formatValue: n,
+          icon: Icons.check_circle_outline,
+          accentColor: AppColors.success,
+        ),
+        AppMetricCard(
+          label: 'Completed',
+          value: s == null ? '—' : '${s.completed}',
+          countTo: s?.completed,
+          formatValue: n,
+          icon: Icons.task_alt,
+          accentColor: AppColors.electricBlue,
+        ),
+        AppMetricCard(
+          label: 'Cancelled',
+          value: s == null ? '—' : '${s.cancelled}',
+          countTo: s?.cancelled,
+          formatValue: n,
+          icon: Icons.cancel_outlined,
+          accentColor: AppColors.destructive,
+        ),
+        AppMetricCard(
+          label: 'Pending',
+          value: s == null ? '—' : '${s.pending}',
+          countTo: s?.pending,
+          formatValue: n,
+          icon: Icons.schedule,
+          accentColor: AppColors.warning,
+        ),
+        AppMetricCard(
+          label: 'Total Revenue',
+          value: s == null ? '—' : rev(s.totalRevenueMinor),
+          countTo: s?.totalRevenueMinor,
+          formatValue: (v) => rev(v.round()),
+          changePercent: s?.revenueChangePct?.toDouble(),
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: AppColors.success,
+        ),
+      ],
     );
   }
 

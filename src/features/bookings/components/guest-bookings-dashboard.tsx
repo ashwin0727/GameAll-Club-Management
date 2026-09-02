@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/shared/stat-card";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
 import { GuestBookingActions } from "@/features/bookings/components/guest-booking-actions";
 import { getFacilityService } from "@/services/facility";
@@ -66,33 +67,6 @@ function paymentBadge(s: PaymentStatus) {
   return <Badge variant="warning">Pending</Badge>;
 }
 
-function Kpi({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  sub?: React.ReactNode;
-  accent: string;
-}) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${accent}1f`, color: accent }}>
-          <Icon className="h-4 w-4" />
-        </span>
-      </div>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
-    </Card>
-  );
-}
-
 function StatusDonut({ summary }: { summary: GuestBookingsSummary }) {
   const size = 128;
   const stroke = 16;
@@ -113,9 +87,12 @@ function StatusDonut({ summary }: { summary: GuestBookingsSummary }) {
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border,#e5e7eb)" strokeWidth={stroke} />
           {segs.map((s, i) => {
             const len = (s.value / total) * circ;
+            // Shifting the dash offset by the arc's own length hides it
+            // entirely, so animating back to -offset sweeps it open.
             const el = (
               <circle
                 key={i}
+                className="donut-sweep"
                 cx={size / 2}
                 cy={size / 2}
                 r={r}
@@ -124,6 +101,13 @@ function StatusDonut({ summary }: { summary: GuestBookingsSummary }) {
                 strokeWidth={stroke}
                 strokeDasharray={`${len} ${circ - len}`}
                 strokeDashoffset={-offset}
+                style={
+                  {
+                    "--dash-from": -offset + len,
+                    "--dash-to": -offset,
+                    "--sweep-delay": `${520 + i * 110}ms`,
+                  } as React.CSSProperties
+                }
               />
             );
             offset += len;
@@ -159,7 +143,19 @@ function Sparkline({ points }: { points: number[] }) {
   const d = points.map((p, i) => `${i * step},${h - (p / max) * h}`).join(" ");
   return (
     <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="text-success">
-      <polyline points={d} fill="none" stroke="currentColor" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      {/* pathLength=1 normalises the dash maths, so the trend draws itself
+          left-to-right without measuring the real path. */}
+      <polyline
+        className="chart-line-draw"
+        points={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+        pathLength={1}
+        strokeDasharray={1}
+        style={{ "--draw-delay": "600ms" } as React.CSSProperties}
+      />
     </svg>
   );
 }
@@ -309,30 +305,34 @@ export function GuestBookingsDashboard() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {summary ? (
           <>
-            <Kpi
+            <StatCard
               icon={CalendarRange}
               label="Total Bookings"
               value={String(summary.total)}
+              countTo={summary.total}
+              format={(v) => String(v)}
               accent="#5B6CFF"
-              sub={
-                summary.totalChangePct == null ? undefined : (
-                  <span className={summary.totalChangePct >= 0 ? "text-success" : "text-destructive"}>
-                    {summary.totalChangePct >= 0 ? "+" : ""}
-                    {summary.totalChangePct}% vs last period
-                  </span>
-                )
+              index={0}
+              hint={
+                summary.totalChangePct == null
+                  ? undefined
+                  : `${summary.totalChangePct >= 0 ? "+" : ""}${summary.totalChangePct}% vs last period`
               }
+              hintClass={cn("font-medium", summary.totalChangePct != null && (summary.totalChangePct >= 0 ? "text-success" : "text-destructive"))}
             />
-            <Kpi icon={CheckCircle2} label="Confirmed" value={String(summary.confirmed)} accent="#00D084" sub={pct(summary.confirmed)} />
-            <Kpi icon={CheckCheck} label="Completed" value={String(summary.completed)} accent="#8B5CF6" sub={pct(summary.completed)} />
-            <Kpi icon={XCircle} label="Cancelled" value={String(summary.cancelled)} accent="#FF4D67" sub={pct(summary.cancelled)} />
-            <Kpi icon={Clock} label="Pending" value={String(summary.pending)} accent="#FFB020" sub={pct(summary.pending)} />
-            <Kpi
+            <StatCard icon={CheckCircle2} label="Confirmed" value={String(summary.confirmed)} countTo={summary.confirmed} format={(v) => String(v)} accent="#00D084" index={1} hint={pct(summary.confirmed)} />
+            <StatCard icon={CheckCheck} label="Completed" value={String(summary.completed)} countTo={summary.completed} format={(v) => String(v)} accent="#8B5CF6" index={2} hint={pct(summary.completed)} />
+            <StatCard icon={XCircle} label="Cancelled" value={String(summary.cancelled)} countTo={summary.cancelled} format={(v) => String(v)} accent="#FF4D67" index={3} hint={pct(summary.cancelled)} />
+            <StatCard icon={Clock} label="Pending" value={String(summary.pending)} countTo={summary.pending} format={(v) => String(v)} accent="#FFB020" index={4} hint={pct(summary.pending)} />
+            <StatCard
               icon={Wallet}
               label="Total Revenue"
               value={money(summary.totalRevenueMinor, currency)}
+              countTo={summary.totalRevenueMinor}
+              format={(v) => money(v, currency)}
               accent="#00D084"
-              sub="From guest bookings"
+              index={5}
+              hint="From guest bookings"
             />
           </>
         ) : (
@@ -381,7 +381,7 @@ export function GuestBookingsDashboard() {
           </div>
 
           {/* Table */}
-          <Card className="overflow-hidden p-0">
+          <Card className="stat-enter overflow-hidden p-0" style={{ "--stat-delay": "420ms" } as React.CSSProperties}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-left text-xs text-muted-foreground">
@@ -473,14 +473,14 @@ export function GuestBookingsDashboard() {
 
         {/* Overview — below the table, side by side */}
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="p-4">
+          <Card className="stat-enter p-4" style={{ "--stat-delay": "480ms" } as React.CSSProperties}>
             <p className="text-sm font-semibold">Booking Overview</p>
             <div className="mt-3">
               {summary ? <StatusDonut summary={summary} /> : <Skeleton className="h-32 w-full rounded-lg" />}
             </div>
           </Card>
 
-          <Card className="p-4">
+          <Card className="stat-enter p-4" style={{ "--stat-delay": "540ms" } as React.CSSProperties}>
             <p className="text-sm font-semibold">Revenue Overview</p>
             {summary ? (
               <>

@@ -15,6 +15,7 @@ import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_batches_sheet.dart';
@@ -249,36 +250,49 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
 
   Widget _kpiGrid() {
     final s = _summary;
-    final tiles = <Widget>[
-      AppMetricCard(label: 'Total Sessions', value: s == null ? '—' : '${s.totalSessions}', icon: Icons.event_repeat),
-      AppMetricCard(label: 'Active Sessions', value: s == null ? '—' : '${s.activeSessions}', icon: Icons.play_circle_outline),
-      AppMetricCard(label: "Today's Sessions", value: s == null ? '—' : '${s.todaysSessions}', icon: Icons.today),
-      AppMetricCard(
-        label: 'Guest Slots Released',
-        value: s == null ? '—' : '${s.guestSlotsReleased}',
-        icon: Icons.group_add_outlined,
-        accentColor: AppColors.warning,
-      ),
-      AppMetricCard(
-        label: 'Utilization',
-        value: s == null ? '—' : '${s.avgUtilizationPct}%',
-        icon: Icons.donut_small,
-        accentColor: AppColors.electricBlue,
-      ),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth > 720 ? 5 : (constraints.maxWidth > 420 ? 3 : 2);
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 1.55,
-          children: tiles,
-        );
-      },
+    String n(num v) => v.round().toString();
+    return MetricCarousel(
+      cards: [
+        AppMetricCard(
+          label: 'Total Sessions',
+          value: s == null ? '—' : '${s.totalSessions}',
+          countTo: s?.totalSessions,
+          formatValue: n,
+          icon: Icons.event_repeat,
+        ),
+        AppMetricCard(
+          label: 'Active Sessions',
+          value: s == null ? '—' : '${s.activeSessions}',
+          countTo: s?.activeSessions,
+          formatValue: n,
+          icon: Icons.play_circle_outline,
+          accentColor: AppColors.success,
+        ),
+        AppMetricCard(
+          label: "Today's Sessions",
+          value: s == null ? '—' : '${s.todaysSessions}',
+          countTo: s?.todaysSessions,
+          formatValue: n,
+          icon: Icons.today,
+          accentColor: AppColors.electricBlue,
+        ),
+        AppMetricCard(
+          label: 'Guest Slots Released',
+          value: s == null ? '—' : '${s.guestSlotsReleased}',
+          countTo: s?.guestSlotsReleased,
+          formatValue: n,
+          icon: Icons.group_add_outlined,
+          accentColor: AppColors.warning,
+        ),
+        AppMetricCard(
+          label: 'Utilization',
+          value: s == null ? '—' : '${s.avgUtilizationPct}%',
+          countTo: s?.avgUtilizationPct,
+          formatValue: (v) => '${v.round()}%',
+          icon: Icons.donut_small,
+          accentColor: AppColors.violet,
+        ),
+      ],
     );
   }
 
@@ -477,11 +491,17 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
           const SizedBox(height: AppSpacing.sm),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: utilization,
-              minHeight: 6,
-              backgroundColor: AppColors.border,
-              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            // Fills from empty, matching the web row's bar-grow.
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, _) => LinearProgressIndicator(
+                value: utilization * t,
+                minHeight: 6,
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              ),
             ),
           ),
           const SizedBox(height: 2),
