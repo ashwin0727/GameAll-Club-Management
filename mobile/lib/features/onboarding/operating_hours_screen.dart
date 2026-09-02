@@ -66,10 +66,17 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
         return;
       }
       final hoursRepo = ref.read(operatingHoursRepositoryProvider);
-      final schedule = await hoursRepo.getFacilitySchedule(facility.id);
-      final facilitySports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
-      final sports = await ref.read(sportsRepositoryProvider).getActiveSports();
-      final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      // Independent reads — fetch them together rather than one after another.
+      final results = await Future.wait([
+        hoursRepo.getFacilitySchedule(facility.id),
+        ref.read(sportsRepositoryProvider).getFacilitySports(facility.id),
+        ref.read(sportsRepositoryProvider).getActiveSports(),
+        ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id),
+      ]);
+      final schedule = results[0] as OperatingSchedule?;
+      final facilitySports = results[1] as List<FacilitySport>;
+      final sports = results[2] as List<Sport>;
+      final areas = results[3] as List<PlayingArea>;
 
       final days = schedule != null && schedule.days.isNotEmpty
           ? daysOfWeek
@@ -77,10 +84,16 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                 .toList()
           : OperatingDay.defaultWeek();
 
+      // One request per court, in parallel — a sequential await here meant a
+      // facility with several courts sat on the loading spinner for as many
+      // round-trips as it had courts.
+      final areaSchedules = await Future.wait(areas.map((a) => hoursRepo.getPlayingAreaSchedule(a.id)));
+
       _overrides.clear();
       _overrideErrors.clear();
-      for (final area in areas) {
-        final areaSchedule = await hoursRepo.getPlayingAreaSchedule(area.id);
+      for (var i = 0; i < areas.length; i++) {
+        final area = areas[i];
+        final areaSchedule = areaSchedules[i];
         final hasOverride = areaSchedule != null && areaSchedule.days.isNotEmpty;
         final overrideDays = hasOverride
             ? daysOfWeek

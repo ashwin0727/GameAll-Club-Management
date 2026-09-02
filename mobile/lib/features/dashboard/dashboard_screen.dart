@@ -14,6 +14,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/dashboard.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/metric_carousel.dart';
@@ -122,46 +123,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined),
-            tooltip: 'Bookings',
-            onPressed: () => context.push(AppRoutes.bookings),
-          ),
-          IconButton(
-            icon: const Icon(Icons.event_available_outlined),
-            tooltip: 'Guest Bookings',
-            onPressed: () => context.push(AppRoutes.guestBookings),
-          ),
-          IconButton(
-            icon: const Icon(Icons.groups_outlined),
-            tooltip: 'Guest Players',
-            onPressed: () => context.push(AppRoutes.guests),
-          ),
-          IconButton(
-            icon: const Icon(Icons.workspace_premium_outlined),
-            tooltip: 'Memberships',
-            onPressed: () => context.push(AppRoutes.memberships),
-          ),
-          IconButton(
-            icon: const Icon(Icons.event_repeat_outlined),
-            tooltip: 'Membership Sessions',
-            onPressed: () => context.push(AppRoutes.membershipSessions),
-          ),
-          IconButton(
-            icon: const Icon(Icons.currency_rupee),
-            tooltip: 'Refunds',
-            onPressed: () => context.push(AppRoutes.refunds),
-          ),
-          // Mirrors the web's NAV_ITEMS "Finance" entry (src/lib/constants.ts).
-          // This app has no drawer or bottom nav — every module is reached
-          // from these dashboard app-bar actions.
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            tooltip: 'Finance',
-            onPressed: () => context.push(AppRoutes.finance),
-          ),
-          // Sign out now lives on the Profile screen — this avatar is the
-          // one entry point to it (spec §"Profile").
           Padding(
             padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.sm),
             child: InkWell(
@@ -212,6 +173,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
       ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.home),
     );
   }
 

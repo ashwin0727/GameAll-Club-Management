@@ -19,6 +19,7 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/refund.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_dialog.dart';
@@ -269,6 +270,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Create Booking'),
             ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.bookings),
     );
   }
 

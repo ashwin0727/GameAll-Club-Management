@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_mode_controller.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
@@ -119,6 +120,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.profile),
     );
   }
 

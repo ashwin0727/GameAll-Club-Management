@@ -15,6 +15,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/metric_carousel.dart';
@@ -363,6 +364,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Create Membership'),
             ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.memberships),
     );
   }
 }
