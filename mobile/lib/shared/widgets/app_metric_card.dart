@@ -47,16 +47,38 @@ class AppMetricCard extends StatelessWidget {
     final trendDown = changePercent != null && changePercent! < 0;
     final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
+    final trendColor = trendUp ? tokens.success : (trendDown ? tokens.destructive : tokens.textSecondary);
+
+    final figure = countTo != null && formatValue != null && !reduced
+        ? TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: countTo!.toDouble()),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutQuart,
+            builder: (context, v, _) => Text(
+              formatValue!(v),
+              style: Theme.of(context).textTheme.titleLarge,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          )
+        : Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          );
+
     final card = Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: tokens.surface1,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        // A soft lift tinted with the tile's own accent, so each KPI reads
-        // as its own colour rather than four identical white boxes.
-        border: Border.all(color: accent.withValues(alpha: 0.22)),
+        // Neutral border and lift. The accent belongs to the icon chip alone
+        // — tinting the card's own edge made the colour visible down the left
+        // and right sides of every tile.
+        border: Border.all(color: tokens.borderColor),
         boxShadow: [
-          BoxShadow(color: accent.withValues(alpha: 0.20), blurRadius: 18, offset: const Offset(0, 6)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -64,62 +86,58 @@ class AppMetricCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: accent),
-                const SizedBox(width: AppSpacing.xs),
-              ],
               Expanded(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: tokens.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: tokens.textSecondary, fontSize: 10, fontWeight: FontWeight.w600),
                 ),
               ),
+              if (icon != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(icon, size: 14, color: accent),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          if (countTo != null && formatValue != null && !reduced)
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: countTo!.toDouble()),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutQuart,
-              builder: (context, v, _) => Text(
-                formatValue!(v),
-                style: Theme.of(context).textTheme.titleLarge,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            )
-          else
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          if (changePercent != null) ...[
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  trendUp ? Icons.arrow_upward : (trendDown ? Icons.arrow_downward : Icons.remove),
-                  size: 12,
-                  color: trendUp ? tokens.success : (trendDown ? tokens.destructive : tokens.textSecondary),
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  '${changePercent!.abs().round()}%',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: trendUp ? tokens.success : (trendDown ? tokens.destructive : tokens.textSecondary),
+          // Figure and delta share a line, as in the design.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Flexible(child: figure),
+              if (changePercent != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        trendUp ? Icons.arrow_upward : (trendDown ? Icons.arrow_downward : Icons.remove),
+                        size: 11,
+                        color: trendColor,
+                      ),
+                      const SizedBox(width: 1),
+                      Text(
+                        '${changePercent!.abs().round()}%',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: trendColor),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );

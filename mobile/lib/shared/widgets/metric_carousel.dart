@@ -13,7 +13,8 @@ class MetricCarousel extends StatefulWidget {
   const MetricCarousel({
     super.key,
     required this.cards,
-    this.height = 132,
+    // Tracks the compact metric card: label row, figure + delta, padding.
+    this.height = 104,
     this.interval = const Duration(seconds: 5),
   });
 
