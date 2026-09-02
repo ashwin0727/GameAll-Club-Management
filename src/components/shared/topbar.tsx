@@ -20,8 +20,10 @@ export function Topbar({ profile }: { profile: Profile }) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const logout = useLogout();
 
+  // h-16 matches the sidebar's brand header, so the two bottom borders read
+  // as one continuous line across the top of the app.
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-background px-4">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar}>
         <Menu className="h-5 w-5" />
       </Button>
