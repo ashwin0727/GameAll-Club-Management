@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
 import { APP_NAME } from "@/lib/constants";
 
@@ -9,14 +10,15 @@ export const metadata: Metadata = {
 
 export default function FinanceTransactionsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/finance" className="text-xs font-medium text-primary hover:underline">
-          ← Finance
+    <div className="space-y-4">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Link href="/finance" className="hover:text-foreground">
+          Finance
         </Link>
-        <h1 className="text-xl font-semibold">Transactions</h1>
-        <p className="text-sm text-muted-foreground">Every captured payment, searchable and filterable.</p>
-      </div>
+        <ChevronRight className="h-3 w-3" aria-hidden />
+        <span className="text-foreground">Transactions</span>
+      </nav>
+
       <TransactionsList />
     </div>
   );

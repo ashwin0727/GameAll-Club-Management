@@ -12,6 +12,10 @@ import type {
   RevenueTrendPoint,
   TransactionPage,
   PaymentMethodSlice,
+  LedgerEntry,
+  LedgerFilters,
+  LedgerPage,
+  ExpenseCategory,
 } from "@/features/finance/types";
 import type { FinanceService } from "@/services/finance/finance.service";
 import { ServiceError } from "@/services/shared/service-error";
@@ -84,6 +88,86 @@ export class SupabaseFinanceService implements FinanceService {
       amountMinor: row.amount_minor,
       paymentCount: row.payment_count,
     }));
+  }
+
+  async listLedger(input: {
+    facilityId: string;
+    dateRange: FinanceDateRange;
+    filters?: LedgerFilters;
+    limit?: number;
+    offset?: number;
+  }): Promise<LedgerPage> {
+    const f = input.filters ?? {};
+    const { data, error } = await this.supabase.rpc("list_finance_ledger", {
+      p_facility_id: input.facilityId,
+      ...dateRangeArgs(input.dateRange),
+      p_txn_type: f.txnType ?? null,
+      p_category: f.category ?? null,
+      p_payment_method: f.paymentMethod ?? null,
+      p_status: f.status ?? null,
+      p_search: f.search?.trim() || null,
+      p_limit: input.limit ?? 10,
+      p_offset: input.offset ?? 0,
+    });
+    if (error) throw this.mapError(error);
+    const entries: LedgerEntry[] = (data ?? []).map((row) => ({
+      id: row.id,
+      reference: row.reference,
+      occurredAt: row.occurred_at,
+      description: row.description,
+      category: row.category,
+      txnType: row.txn_type,
+      paymentMethod: row.payment_method,
+      amountMinor: row.amount_minor,
+      currency: row.currency,
+      status: row.status,
+      sourceType: row.source_type,
+      bookingId: row.booking_id,
+      membershipId: row.membership_id,
+      expenseId: row.expense_id,
+    }));
+    return { entries, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async listPaymentMethods(facilityId: string): Promise<string[]> {
+    const { data, error } = await this.supabase.rpc("list_finance_payment_methods", { p_facility_id: facilityId });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((row) => row.payment_method);
+  }
+
+  /** Shared defaults plus this facility's own — RLS decides which rows come back. */
+  async listExpenseCategories(facilityId: string): Promise<ExpenseCategory[]> {
+    const { data, error } = await this.supabase
+      .from("expense_categories")
+      .select("id, name")
+      .eq("is_active", true)
+      .or(`facility_id.is.null,facility_id.eq.${facilityId}`)
+      .order("sort_order");
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((row) => ({ id: row.id, name: row.name }));
+  }
+
+  async createExpense(input: {
+    facilityId: string;
+    categoryId: string;
+    amountMinor: number;
+    spentOn: string;
+    paymentMethod?: string | null;
+    vendor?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+  }): Promise<void> {
+    const { error } = await this.supabase.rpc("create_expense", {
+      p_facility_id: input.facilityId,
+      p_category_id: input.categoryId,
+      p_amount_minor: input.amountMinor,
+      p_spent_on: input.spentOn,
+      p_payment_method: input.paymentMethod ?? null,
+      p_vendor: input.vendor ?? null,
+      p_reference: input.reference ?? null,
+      p_notes: input.notes ?? null,
+    });
+    if (error) throw this.mapError(error);
   }
 
   async getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<RevenueBreakdown> {

@@ -105,3 +105,41 @@ export interface PaymentMethodSlice {
   amountMinor: number;
   paymentCount: number;
 }
+
+export type LedgerTxnType = "INCOME" | "EXPENSE" | "REFUND";
+
+/** One line of financial activity — a payment, a refund, or an expense. */
+export interface LedgerEntry {
+  id: string;
+  reference: string;
+  occurredAt: string;
+  description: string;
+  category: string;
+  txnType: LedgerTxnType;
+  paymentMethod: string | null;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  sourceType: string;
+  bookingId: string | null;
+  membershipId: string | null;
+  expenseId: string | null;
+}
+
+export interface LedgerFilters {
+  txnType?: LedgerTxnType | null;
+  category?: string | null;
+  paymentMethod?: string | null;
+  status?: string | null;
+  search?: string | null;
+}
+
+export interface LedgerPage {
+  entries: LedgerEntry[];
+  totalCount: number;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+}

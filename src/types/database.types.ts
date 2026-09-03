@@ -1336,6 +1336,61 @@ export interface Database {
           },
         ];
       };
+      expense_categories: {
+        Row: {
+          id: string;
+          facility_id: string | null;
+          name: string;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id?: string | null;
+          name: string;
+          is_active?: boolean;
+          sort_order?: number;
+        };
+        Update: Partial<Database['public']['Tables']['expense_categories']['Insert']>;
+        Relationships: [];
+      };
+      expenses: {
+        Row: {
+          id: string;
+          facility_id: string;
+          category_id: string;
+          amount_minor: number;
+          currency: string;
+          payment_method: string | null;
+          spent_on: string;
+          vendor: string | null;
+          reference: string | null;
+          notes: string | null;
+          status: string;
+          created_by: string | null;
+          created_at: string;
+          updated_by: string | null;
+          updated_at: string;
+          voided_by: string | null;
+          voided_at: string | null;
+          void_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          category_id: string;
+          amount_minor: number;
+          currency?: string;
+          payment_method?: string | null;
+          spent_on?: string;
+          vendor?: string | null;
+          reference?: string | null;
+          notes?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['expenses']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: {
       finance_transactions_view: {
@@ -2228,6 +2283,55 @@ export interface Database {
           pending_refund_count: number;
           settlement_exception_count: number;
         }[];
+      };
+      list_finance_ledger: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_txn_type?: string | null;
+          p_category?: string | null;
+          p_payment_method?: string | null;
+          p_status?: string | null;
+          p_search?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          reference: string;
+          occurred_at: string;
+          description: string;
+          category: string;
+          txn_type: "INCOME" | "EXPENSE" | "REFUND";
+          payment_method: string | null;
+          amount_minor: number;
+          currency: string;
+          status: string;
+          source_type: string;
+          booking_id: string | null;
+          membership_id: string | null;
+          expense_id: string | null;
+          total_count: number;
+        }[];
+      };
+      list_finance_payment_methods: {
+        Args: { p_facility_id: string };
+        Returns: { payment_method: string }[];
+      };
+      create_expense: {
+        Args: {
+          p_facility_id: string;
+          p_category_id: string;
+          p_amount_minor: number;
+          p_spent_on: string;
+          p_payment_method?: string | null;
+          p_vendor?: string | null;
+          p_reference?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["expenses"]["Row"];
       };
       get_payment_method_breakdown: {
         Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
