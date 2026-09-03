@@ -214,3 +214,41 @@ export interface ExpensePage {
   expenses: ExpenseRow[];
   totalCount: number;
 }
+
+export interface TransactionPaymentHistoryRow {
+  id: string;
+  paidAt: string;
+  amountMinor: number;
+  paymentMethod: string | null;
+  reference: string | null;
+  status: string;
+  /** The payment this page is about, among its siblings. */
+  isThisOne: boolean;
+}
+
+/** Everything the Transaction Details page and its receipt render. */
+export interface TransactionDetails {
+  id: string;
+  reference: string;
+  sourceType: string;
+  category: string;
+  type: "INCOME";
+  amountMinor: number;
+  currency: string;
+  status: string;
+  paymentMethod: string | null;
+  occurredAt: string;
+  createdAt: string;
+  recordedBy: string | null;
+  description: string;
+  sourceReference: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  facilityName: string | null;
+  facilityId: string;
+  bookingId: string | null;
+  membershipId: string | null;
+  refundedMinor: number;
+  netMinor: number;
+  history: TransactionPaymentHistoryRow[];
+}

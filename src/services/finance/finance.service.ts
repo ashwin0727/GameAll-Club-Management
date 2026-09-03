@@ -17,6 +17,7 @@ import type {
   PaymentObligation,
   PendingPaymentsPage,
   PendingPaymentsSummary,
+  TransactionDetails,
 } from "@/features/finance/types";
 
 export interface FinanceService {
@@ -71,4 +72,8 @@ export interface FinanceService {
   /** Server-side filtered, searched, and paginated (spec §"Transaction Pagination"). */
   listTransactions(input: ListTransactionsInput): Promise<TransactionPage>;
   getTransaction(transactionId: string): Promise<FinanceTransaction>;
+  /** The full detail view, including the other payments against the same source. */
+  getTransactionDetails(transactionId: string): Promise<TransactionDetails>;
+  /** Receipt PDF bytes, built server-side. */
+  downloadTransactionReceipt(transactionId: string): Promise<Blob>;
 }

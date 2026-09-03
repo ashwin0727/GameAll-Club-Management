@@ -16,7 +16,7 @@ import { getFinanceService } from "@/services/finance";
 import type { FinanceDateRange, LedgerEntry, LedgerTxnType } from "@/features/finance/types";
 import { AddExpenseDialog } from "@/features/finance/components/add-expense-dialog";
 import { DateRangePicker } from "@/features/finance/components/date-range-picker";
-import { TransactionDetailsDialog } from "@/features/finance/components/transaction-details-dialog";
+import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
 
 const PAGE_SIZE = 10;
@@ -85,7 +85,6 @@ export function TransactionsList() {
   const [entries, setEntries] = useState<LedgerEntry[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [listError, setListError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 300);
@@ -299,16 +298,26 @@ export function TransactionsList() {
                   {entries.map((entry) => (
                     <tr
                       key={entry.id}
-                      onClick={() => entry.txnType === "INCOME" && setSelectedId(entry.id)}
-                      className={cn(
-                        "border-b border-border last:border-0",
-                        entry.txnType === "INCOME" && "cursor-pointer hover:bg-accent/50",
-                      )}
+
+                      className="border-b border-border last:border-0 hover:bg-accent/30"
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {formatDate(entry.occurredAt)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium">{entry.reference}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">
+                        {/* Only payments have a detail page — an expense and
+                            a refund are the row you can already see. */}
+                        {entry.txnType === "INCOME" ? (
+                          <Link
+                            href={`/finance/transactions/${entry.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {entry.reference}
+                          </Link>
+                        ) : (
+                          entry.reference
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="block max-w-xs truncate">{entry.description}</span>
                       </td>
@@ -347,7 +356,17 @@ export function TransactionsList() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{entry.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {entry.reference} · {formatDate(entry.occurredAt)}
+                        {entry.txnType === "INCOME" ? (
+                          <Link
+                            href={`/finance/transactions/${entry.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {entry.reference}
+                          </Link>
+                        ) : (
+                          entry.reference
+                        )}{" · "}
+                        {formatDate(entry.occurredAt)}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-semibold tabular-nums">
@@ -419,10 +438,6 @@ export function TransactionsList() {
         )}
       </Card>
 
-      <TransactionDetailsDialog
-        transactionId={selectedId}
-        onOpenChange={(open) => !open && setSelectedId(null)}
-      />
     </div>
   );
 }

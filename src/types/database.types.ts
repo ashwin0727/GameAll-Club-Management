@@ -2316,6 +2316,10 @@ export interface Database {
         Args: { p_expense_id: string; p_reason?: string | null };
         Returns: Database['public']['Tables']['expenses']['Row'];
       };
+      get_transaction_details: {
+        Args: { p_transaction_id: string };
+        Returns: Record<string, unknown>;
+      };
       list_pending_payments: {
         Args: {
           p_facility_id: string;

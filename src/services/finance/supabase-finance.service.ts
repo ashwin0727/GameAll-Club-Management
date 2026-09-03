@@ -23,6 +23,7 @@ import type {
   PendingPaymentFilters,
   PendingPaymentsPage,
   PendingPaymentsSummary,
+  TransactionDetails,
 } from "@/features/finance/types";
 import type { FinanceService } from "@/services/finance/finance.service";
 import { ServiceError } from "@/services/shared/service-error";
@@ -134,6 +135,23 @@ export class SupabaseFinanceService implements FinanceService {
       expenseId: row.expense_id,
     }));
     return { entries, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async getTransactionDetails(transactionId: string): Promise<TransactionDetails> {
+    const { data, error } = await this.supabase.rpc("get_transaction_details", {
+      p_transaction_id: transactionId,
+    });
+    if (error || !data) throw this.mapError(error);
+    return data as unknown as TransactionDetails;
+  }
+
+  async downloadTransactionReceipt(transactionId: string): Promise<Blob> {
+    const { data, error } = await this.supabase.functions.invoke("download-transaction-receipt", {
+      body: { transactionId },
+    });
+    if (error) throw new ServiceError("DATABASE_ERROR", "Could not build the receipt. Please try again.");
+    if (!(data instanceof Blob)) throw new ServiceError("DATABASE_ERROR", "Could not build the receipt. Please try again.");
+    return data;
   }
 
   async listPendingPayments(input: {
