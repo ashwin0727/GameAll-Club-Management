@@ -40,6 +40,9 @@ export const NAV_ITEMS: {
   { label: "Guest Bookings", href: "/guest-bookings", roles: ["admin", "staff"] },
   { label: "Guest Players", href: "/guests", roles: ["admin", "staff"] },
   { label: "Finance", href: "/finance", roles: ["admin", "staff"] },
+  // Collecting what is owed is daily work, not something to reach through
+  // the Finance overview for.
+  { label: "Pending Payments", href: "/finance/pending-payments", roles: ["admin", "staff"] },
   { label: "Refunds", href: "/refunds", roles: ["admin", "staff"] },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
 ];

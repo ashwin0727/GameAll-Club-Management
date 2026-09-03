@@ -143,3 +143,51 @@ export interface ExpenseCategory {
   id: string;
   name: string;
 }
+
+export type ObligationSource = "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP";
+export type ObligationStatus = "PENDING" | "PARTIALLY_PAID" | "OVERDUE" | "PAID";
+
+/**
+ * Money still owed on one booking or membership. Derived in the database
+ * from what the thing costs and what has been collected against it — never
+ * stored, so it cannot drift from the payments it is computed from.
+ */
+export interface PaymentObligation {
+  sourceType: ObligationSource;
+  sourceId: string;
+  reference: string;
+  customerName: string;
+  customerPhone: string | null;
+  description: string;
+  totalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  status: ObligationStatus;
+  paymentMethod: string | null;
+  /** Booking date, or membership start date. One meaning per source. */
+  dueOn: string;
+}
+
+export interface PendingPaymentsPage {
+  obligations: PaymentObligation[];
+  totalCount: number;
+}
+
+export interface PendingPaymentsSummary {
+  outstandingMinor: number;
+  pendingMinor: number;
+  partiallyPaidMinor: number;
+  overdueMinor: number;
+  obligationCount: number;
+}
+
+export type ObligationSort = "DUE_DATE" | "AMOUNT" | "CUSTOMER" | "NEWEST";
+
+export interface PendingPaymentFilters {
+  search?: string | null;
+  sourceType?: ObligationSource | null;
+  status?: ObligationStatus | "ALL_OUTSTANDING" | null;
+  from?: string | null;
+  to?: string | null;
+  sort?: ObligationSort;
+}

@@ -2284,6 +2284,63 @@ export interface Database {
           settlement_exception_count: number;
         }[];
       };
+      list_pending_payments: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_source_type?: string | null;
+          p_status?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_sort?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          source_type: "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP";
+          source_id: string;
+          reference: string;
+          customer_name: string;
+          customer_phone: string | null;
+          description: string;
+          total_minor: number;
+          paid_minor: number;
+          outstanding_minor: number;
+          status: "PENDING" | "PARTIALLY_PAID" | "OVERDUE" | "PAID";
+          payment_method: string | null;
+          due_on: string;
+          total_count: number;
+        }[];
+      };
+      get_pending_payments_summary: {
+        Args: { p_facility_id: string; p_from?: string | null; p_to?: string | null };
+        Returns: {
+          outstanding_minor: number;
+          pending_minor: number;
+          partially_paid_minor: number;
+          overdue_minor: number;
+          obligation_count: number;
+        }[];
+      };
+      record_obligation_payment: {
+        Args: {
+          p_source_type: string;
+          p_source_id: string;
+          p_amount_minor: number;
+          p_method: string;
+          p_paid_on?: string | null;
+          p_reference?: string | null;
+          p_notes?: string | null;
+          p_idempotency_key?: string | null;
+        };
+        Returns: {
+          duplicate: boolean;
+          totalMinor?: number;
+          paidMinor?: number;
+          outstandingMinor?: number;
+          paymentId?: string;
+        };
+      };
       list_finance_ledger: {
         Args: {
           p_facility_id: string;

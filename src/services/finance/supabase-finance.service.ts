@@ -16,6 +16,11 @@ import type {
   LedgerFilters,
   LedgerPage,
   ExpenseCategory,
+  ObligationSource,
+  PaymentObligation,
+  PendingPaymentFilters,
+  PendingPaymentsPage,
+  PendingPaymentsSummary,
 } from "@/features/finance/types";
 import type { FinanceService } from "@/services/finance/finance.service";
 import { ServiceError } from "@/services/shared/service-error";
@@ -127,6 +132,87 @@ export class SupabaseFinanceService implements FinanceService {
       expenseId: row.expense_id,
     }));
     return { entries, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async listPendingPayments(input: {
+    facilityId: string;
+    filters?: PendingPaymentFilters;
+    limit?: number;
+    offset?: number;
+  }): Promise<PendingPaymentsPage> {
+    const f = input.filters ?? {};
+    const { data, error } = await this.supabase.rpc("list_pending_payments", {
+      p_facility_id: input.facilityId,
+      p_search: f.search?.trim() || null,
+      p_source_type: f.sourceType ?? null,
+      p_status: f.status ?? "ALL_OUTSTANDING",
+      p_from: f.from ?? null,
+      p_to: f.to ?? null,
+      p_sort: f.sort ?? "DUE_DATE",
+      p_limit: input.limit ?? 20,
+      p_offset: input.offset ?? 0,
+    });
+    if (error) throw this.mapError(error);
+    const obligations: PaymentObligation[] = (data ?? []).map((row) => ({
+      sourceType: row.source_type,
+      sourceId: row.source_id,
+      reference: row.reference,
+      customerName: row.customer_name,
+      customerPhone: row.customer_phone,
+      description: row.description,
+      totalMinor: row.total_minor,
+      paidMinor: row.paid_minor,
+      outstandingMinor: row.outstanding_minor,
+      status: row.status,
+      paymentMethod: row.payment_method,
+      dueOn: row.due_on,
+    }));
+    return { obligations, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async getPendingPaymentsSummary(
+    facilityId: string,
+    from?: string | null,
+    to?: string | null,
+  ): Promise<PendingPaymentsSummary> {
+    const { data, error } = await this.supabase.rpc("get_pending_payments_summary", {
+      p_facility_id: facilityId,
+      p_from: from ?? null,
+      p_to: to ?? null,
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const row = data[0];
+    return {
+      outstandingMinor: row.outstanding_minor,
+      pendingMinor: row.pending_minor,
+      partiallyPaidMinor: row.partially_paid_minor,
+      overdueMinor: row.overdue_minor,
+      obligationCount: row.obligation_count,
+    };
+  }
+
+  async recordObligationPayment(input: {
+    sourceType: ObligationSource;
+    sourceId: string;
+    amountMinor: number;
+    method: string;
+    paidOn?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    idempotencyKey: string;
+  }): Promise<{ duplicate: boolean; outstandingMinor?: number }> {
+    const { data, error } = await this.supabase.rpc("record_obligation_payment", {
+      p_source_type: input.sourceType,
+      p_source_id: input.sourceId,
+      p_amount_minor: input.amountMinor,
+      p_method: input.method,
+      p_paid_on: input.paidOn ?? null,
+      p_reference: input.reference ?? null,
+      p_notes: input.notes ?? null,
+      p_idempotency_key: input.idempotencyKey,
+    });
+    if (error) throw this.mapError(error);
+    return { duplicate: Boolean(data?.duplicate), outstandingMinor: data?.outstandingMinor };
   }
 
   async listPaymentMethods(facilityId: string): Promise<string[]> {

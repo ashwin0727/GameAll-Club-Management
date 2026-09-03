@@ -233,14 +233,17 @@ export function FinanceDashboard() {
               index={2}
               hint={<Delta pct={changePct(summary.netRevenueMinor, previous?.netRevenueMinor ?? 0)} />}
             />
-            <StatCard
-              icon={Clock3}
-              label="Pending Payments"
-              value={formatCurrency(summary.outstandingMinor, INR)}
-              accent="#FFB020"
-              index={3}
-              hint={<Delta pct={changePct(summary.outstandingMinor, previous?.outstandingMinor ?? 0)} invert />}
-            />
+            <Link href="/finance/pending-payments" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <StatCard
+                icon={Clock3}
+                label="Pending Payments"
+                value={formatCurrency(summary.outstandingMinor, INR)}
+                accent="#FFB020"
+                index={3}
+                hint={<Delta pct={changePct(summary.outstandingMinor, previous?.outstandingMinor ?? 0)} invert />}
+                className="h-full transition-colors hover:border-primary/40"
+              />
+            </Link>
           </>
         )}
       </div>

@@ -11,6 +11,10 @@ import type {
   LedgerFilters,
   LedgerPage,
   ExpenseCategory,
+  ObligationSource,
+  PendingPaymentFilters,
+  PendingPaymentsPage,
+  PendingPaymentsSummary,
 } from "@/features/finance/types";
 
 export interface FinanceService {
@@ -28,6 +32,25 @@ export interface FinanceService {
     offset?: number;
   }): Promise<LedgerPage>;
   listPaymentMethods(facilityId: string): Promise<string[]>;
+  /** Everything still owed, from every source, filtered and paged server-side. */
+  listPendingPayments(input: {
+    facilityId: string;
+    filters?: PendingPaymentFilters;
+    limit?: number;
+    offset?: number;
+  }): Promise<PendingPaymentsPage>;
+  getPendingPaymentsSummary(facilityId: string, from?: string | null, to?: string | null): Promise<PendingPaymentsSummary>;
+  /** Collect against any obligation. The server revalidates the balance. */
+  recordObligationPayment(input: {
+    sourceType: ObligationSource;
+    sourceId: string;
+    amountMinor: number;
+    method: string;
+    paidOn?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    idempotencyKey: string;
+  }): Promise<{ duplicate: boolean; outstandingMinor?: number }>;
   listExpenseCategories(facilityId: string): Promise<ExpenseCategory[]>;
   createExpense(input: {
     facilityId: string;
