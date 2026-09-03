@@ -38,8 +38,11 @@ import {
   formatBookingDate,
   formatMoney,
   formatSlotRange,
+  localPhonePart,
   toDateParam,
   validateGuest,
+  withDialCode,
+  DEFAULT_DIAL_CODE,
   type GuestFieldErrors,
 } from "../guest-form";
 import { PublicBookingHeader } from "./public-booking-header";
@@ -732,91 +735,187 @@ function DetailsStep({
 
   return (
     <div className="space-y-5">
-      <Field id="fullName" label="Full name" required error={errors.fullName} icon={UserRound}>
-        <Input
-          id="fullName"
-          value={guest.fullName}
-          onChange={(e) => set("fullName")(e.target.value)}
-          autoComplete="name"
-          aria-invalid={Boolean(errors.fullName)}
-          aria-describedby={errors.fullName ? "fullName-error" : undefined}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="fullName" label="Full Name" required error={errors.fullName}>
+          <IconInput
+            id="fullName"
+            icon={UserRound}
+            value={guest.fullName}
+            onChange={set("fullName")}
+            autoComplete="name"
+            placeholder="Enter your full name"
+            invalid={Boolean(errors.fullName)}
+          />
+        </Field>
 
-      <Field id="phone" label="Mobile number" required error={errors.phone} icon={Phone}>
-        <Input
-          id="phone"
-          type="tel"
-          inputMode="tel"
-          value={guest.phone}
-          onChange={(e) => set("phone")(e.target.value)}
-          autoComplete="tel"
-          placeholder="+91 98765 43210"
-          aria-invalid={Boolean(errors.phone)}
-          aria-describedby={errors.phone ? "phone-error" : undefined}
-        />
-      </Field>
+        <Field id="phone" label="Mobile Number" required error={errors.phone}>
+          <PhoneInput
+            id="phone"
+            value={guest.phone}
+            onChange={set("phone")}
+            autoComplete="tel"
+            placeholder="Enter 10-digit mobile number"
+            invalid={Boolean(errors.phone)}
+          />
+        </Field>
 
-      <Field id="email" label="Email address" error={errors.email} icon={Mail} hint="Optional">
-        <Input
-          id="email"
-          type="email"
-          value={guest.email}
-          onChange={(e) => set("email")(e.target.value)}
-          autoComplete="email"
-          aria-invalid={Boolean(errors.email)}
-          aria-describedby={errors.email ? "email-error" : undefined}
-        />
-      </Field>
+        <Field id="email" label="Email Address" hint="Optional" error={errors.email}>
+          <IconInput
+            id="email"
+            icon={Mail}
+            type="email"
+            value={guest.email}
+            onChange={set("email")}
+            autoComplete="email"
+            placeholder="Enter your email address"
+            invalid={Boolean(errors.email)}
+          />
+        </Field>
 
-      <Field id="altPhone" label="Alternate phone" error={errors.altPhone} hint="Optional">
-        <Input
-          id="altPhone"
-          type="tel"
-          inputMode="tel"
-          value={guest.altPhone}
-          onChange={(e) => set("altPhone")(e.target.value)}
-          aria-invalid={Boolean(errors.altPhone)}
-          aria-describedby={errors.altPhone ? "altPhone-error" : undefined}
-        />
-      </Field>
+        <Field id="altPhone" label="Alternate Phone" hint="Optional" error={errors.altPhone}>
+          <PhoneInput
+            id="altPhone"
+            value={guest.altPhone}
+            onChange={set("altPhone")}
+            placeholder="Enter alternate number"
+            invalid={Boolean(errors.altPhone)}
+          />
+        </Field>
 
-      <Field id="address" label="Address" hint="Optional">
-        <Input id="address" value={guest.address} onChange={(e) => set("address")(e.target.value)} />
-      </Field>
-
-      <fieldset>
-        <legend className="mb-2 text-sm font-medium">
-          Purpose of booking <span className="font-normal text-muted-foreground">(optional)</span>
-        </legend>
-        <div className="flex flex-wrap gap-2">
-          {BOOKING_PURPOSES.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => set("purpose")(guest.purpose === p ? "" : p)}
-              aria-pressed={guest.purpose === p}
-              className={cn(
-                "min-h-11 rounded-full border px-4 text-sm transition-colors",
-                guest.purpose === p
-                  ? "border-primary bg-primary/10 font-medium"
-                  : "border-border hover:border-primary/40",
-              )}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="sm:col-span-2">
+          <Field id="address" label="Address" hint="Optional">
+            <IconInput
+              id="address"
+              icon={MapPin}
+              value={guest.address}
+              onChange={set("address")}
+              autoComplete="street-address"
+              placeholder="Enter your address"
+            />
+          </Field>
         </div>
-      </fieldset>
+      </div>
 
-      <Field id="specialRequest" label="Special request" hint="Optional">
-        <Textarea
-          id="specialRequest"
-          rows={3}
-          value={guest.specialRequest}
-          onChange={(e) => set("specialRequest")(e.target.value)}
-        />
-      </Field>
+      <div className="border-t border-border pt-5">
+        <h2 className="text-sm font-semibold">
+          Additional Information <span className="font-normal text-muted-foreground">(Optional)</span>
+        </h2>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field id="purpose" label="Purpose of Booking">
+            <Select
+              value={guest.purpose || undefined}
+              onValueChange={(v) => set("purpose")(v)}
+            >
+              <SelectTrigger id="purpose" aria-label="Purpose of booking">
+                <SelectValue placeholder="Select purpose" />
+              </SelectTrigger>
+              <SelectContent>
+                {BOOKING_PURPOSES.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field id="specialRequest" label="Special Request">
+            <Textarea
+              id="specialRequest"
+              rows={3}
+              value={guest.specialRequest}
+              onChange={(e) => set("specialRequest")(e.target.value)}
+              placeholder="Anything we should know?&#10;e.g., Need shuttlecocks, equipment, etc."
+            />
+          </Field>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Text input with a leading icon sitting inside the field. */
+function IconInput({
+  id,
+  icon: Icon,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoComplete,
+  invalid,
+}: {
+  id: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoComplete?: string;
+  invalid?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-error` : undefined}
+        className={cn("h-11 pl-9", invalid && "border-destructive")}
+      />
+    </div>
+  );
+}
+
+/**
+ * Phone field with a fixed +91 alongside it, so the player types only the
+ * ten local digits. The stored value keeps the dial code, which is what the
+ * validator and the server both see.
+ */
+function PhoneInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  invalid,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  autoComplete?: string;
+  invalid?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex h-11 items-center overflow-hidden rounded-xl border border-input bg-transparent shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40",
+        invalid && "border-destructive",
+      )}
+    >
+      <span className="flex h-full shrink-0 items-center gap-1.5 border-r border-input px-3 text-sm text-muted-foreground">
+        <Phone className="h-4 w-4" aria-hidden />
+        {DEFAULT_DIAL_CODE}
+      </span>
+      <input
+        id={id}
+        type="tel"
+        inputMode="numeric"
+        value={localPhonePart(value)}
+        onChange={(e) => onChange(withDialCode(e.target.value))}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-error` : undefined}
+        className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground"
+      />
     </div>
   );
 }
@@ -952,7 +1051,19 @@ function BookingActionBar({
   if (step === "done") return null;
 
   const canContinue = step === "select" ? Boolean(selection) : true;
-  const label = step === "review" ? (submitting ? "Confirming booking…" : "Confirm Booking") : "Continue";
+  const label =
+    step === "review"
+      ? submitting
+        ? "Confirming booking…"
+        : "Confirm Booking"
+      : step === "details"
+        ? "Review & Confirm"
+        : "Continue";
+
+  // The total belongs beside the action while the player is choosing or
+  // confirming. On the details step the desktop summary panel already
+  // carries it, and the design keeps that footer to just the two buttons.
+  const showTotal = step !== "details";
 
   return (
     <div className="sticky bottom-0 z-10 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-8">
@@ -979,7 +1090,7 @@ function BookingActionBar({
           )}
         </div>
 
-        {selection && (
+        {selection && showTotal && (
           <div className="hidden text-right sm:block">
             <p className="text-[11px] text-muted-foreground">Total</p>
             <p className="text-lg font-semibold text-primary">
@@ -1100,7 +1211,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id} className="flex items-center gap-1.5">
+      <Label htmlFor={id} className="flex items-center gap-1 text-xs font-medium">
         {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
         {label}
         {required && (

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_GUEST, durationLabel, formatMoney, toDateParam, validateGuest } from "./guest-form";
+import {
+  EMPTY_GUEST,
+  durationLabel,
+  formatMoney,
+  localPhonePart,
+  toDateParam,
+  validateGuest,
+  withDialCode,
+} from "./guest-form";
 
 const guest = (over: Partial<typeof EMPTY_GUEST> = {}) => ({ ...EMPTY_GUEST, ...over });
 
@@ -45,6 +53,39 @@ describe("validateGuest", () => {
   it("validates the alternate phone only when supplied", () => {
     expect(validateGuest(guest({ fullName: "R", phone: "9876543210", altPhone: "" })).altPhone).toBeUndefined();
     expect(validateGuest(guest({ fullName: "R", phone: "9876543210", altPhone: "123" })).altPhone).toBeDefined();
+  });
+});
+
+describe("phone dial code", () => {
+  it("strips the dial code for display", () => {
+    expect(localPhonePart("+91 9876543210")).toBe("9876543210");
+    expect(localPhonePart("+919876543210")).toBe("9876543210");
+    expect(localPhonePart("91-9876543210")).toBe("9876543210");
+  });
+
+  it("leaves a bare local number alone", () => {
+    expect(localPhonePart("9876543210")).toBe("9876543210");
+  });
+
+  it("keeps the field to ten digits", () => {
+    expect(localPhonePart("98765432109999")).toBe("9876543210");
+  });
+
+  it("stores the number with its dial code", () => {
+    expect(withDialCode("9876543210")).toBe("+91 9876543210");
+  });
+
+  it("stores nothing for an empty field, so 'optional' stays optional", () => {
+    // An alternate phone left blank must not become a bare "+91".
+    expect(withDialCode("")).toBe("");
+  });
+
+  it("round-trips", () => {
+    expect(localPhonePart(withDialCode("9876543210"))).toBe("9876543210");
+  });
+
+  it("produces a number the validator accepts", () => {
+    expect(validateGuest(guest({ fullName: "R", phone: withDialCode("9876543210") })).phone).toBeUndefined();
   });
 });
 

@@ -45,6 +45,27 @@ export function validateGuest(guest: PublicGuestDetails): GuestFieldErrors {
   return errors;
 }
 
+/**
+ * The form shows a fixed +91 beside the phone fields, so the input itself
+ * holds only the local ten digits. These two keep the stored value (which
+ * carries the dial code) and the displayed value in step.
+ */
+export const DEFAULT_DIAL_CODE = "+91";
+
+/** The part the player types: local digits, without the dial code. */
+export function localPhonePart(value: string): string {
+  return value
+    .replace(/^\+?91[\s-]*/, "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+}
+
+/** What gets stored and validated: dial code plus local digits. */
+export function withDialCode(local: string): string {
+  const digits = local.replace(/\D/g, "").slice(0, 10);
+  return digits ? `${DEFAULT_DIAL_CODE} ${digits}` : "";
+}
+
 /** Money arrives in minor units everywhere in this app. */
 export function formatMoney(amountMinor: number, currency = "INR"): string {
   return new Intl.NumberFormat("en-IN", {
