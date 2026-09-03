@@ -29,6 +29,21 @@ describe("resolveFacilityHeroImage", () => {
     expect(resolveFacilityHeroImage(facility(), sport("pickleball", "Pickleball")).src).toBe("/sports/pickleball.jpg");
   });
 
+  it("matches on the sport's name when it carries no catalogue key", () => {
+    // A facility can define a custom sport: it has a name but no key, and a
+    // venue calling its sport "Football" should still get the pitch.
+    expect(resolveFacilityHeroImage(facility(), sport(null, "Football")).src).toBe("/sports/football.jpg");
+  });
+
+  it("matches a name regardless of case or spacing", () => {
+    expect(resolveFacilityHeroImage(facility(), sport(null, "  FOOTBALL ")).src).toBe("/sports/football.jpg");
+    expect(resolveFacilityHeroImage(facility(), sport(null, "Pickle Ball")).src).toBe("/sports/pickleball.jpg");
+  });
+
+  it("prefers the catalogue key over the name when both are present", () => {
+    expect(resolveFacilityHeroImage(facility(), sport("tennis", "Football")).src).toBe("/sports/tennis.jpg");
+  });
+
   it("returns no image for a sport we don't ship artwork for", () => {
     // Better a branded panel than the wrong sport's photograph.
     const result = resolveFacilityHeroImage(facility(), sport("kabaddi", "Kabaddi"));

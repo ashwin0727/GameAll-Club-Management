@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarCheck2, CircleAlert, Phone, ShieldCheck, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BrandMark } from "@/features/auth/components/brand-mark";
+import { BrandLogo } from "@/features/auth/components/brand-mark";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { getPublicBookingFacility } from "../public-booking";
@@ -87,8 +87,11 @@ export function PublicBookingLanding({ facilityId }: { facilityId: string }) {
 function PublicBookingHeader({ helpPhone }: { helpPhone: string | null }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-8">
+      {/* BrandLogo, not BrandMark: the mark already carries the name and
+          "Club Management" beneath it, which is the admin lockup. A player
+          booking a court gets the player-facing tagline instead. */}
       <div className="flex items-center gap-2.5">
-        <BrandMark className="h-8 w-8" />
+        <BrandLogo className="h-8 w-8" />
         <span className="flex flex-col leading-tight">
           <span className="text-sm font-semibold">{APP_NAME}</span>
           <span className="text-[11px] text-muted-foreground">Book. Play. Enjoy.</span>
@@ -184,7 +187,7 @@ function FacilityHeroImage({
 function FacilityImageFallback({ facility }: { facility: PublicBookingFacility }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-primary/15 via-muted to-background px-6 text-center">
-      <BrandMark className="h-10 w-10" />
+      <BrandLogo className="h-10 w-10" />
       <p className="text-base font-semibold sm:text-lg">{facility.facilityName}</p>
       <p className="text-xs text-muted-foreground">Your game starts here.</p>
     </div>

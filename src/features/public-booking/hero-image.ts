@@ -28,6 +28,22 @@ function isSportImageKey(key: string | null | undefined): key is SportImageKey {
 }
 
 /**
+ * The slug we have artwork for, from either the catalogue key or the sport's
+ * display name.
+ *
+ * The name is a genuine second chance, not belt-and-braces: a facility can
+ * define a custom sport, which carries a name but no catalogue key, and a
+ * venue calling its sport "Football" should still get the football pitch.
+ */
+function artworkKeyFor(sport?: Pick<PublicBookingSport, "name" | "sportKey"> | null): SportImageKey | null {
+  if (!sport) return null;
+  if (isSportImageKey(sport.sportKey)) return sport.sportKey;
+
+  const fromName = sport.name?.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return isSportImageKey(fromName) ? fromName : null;
+}
+
+/**
  * Chooses the hero image for a facility's landing page, in priority order:
  *
  *   1. the image the owner configured for this venue
@@ -51,10 +67,11 @@ export function resolveFacilityHeroImage(
     };
   }
 
-  if (isSportImageKey(sport?.sportKey)) {
+  const artwork = artworkKeyFor(sport);
+  if (artwork) {
     return {
-      src: `/sports/${sport.sportKey}.jpg`,
-      alt: `${sport.name} court at ${facility.facilityName}`,
+      src: `/sports/${artwork}.jpg`,
+      alt: `${sport!.name} court at ${facility.facilityName}`,
       source: "sport",
     };
   }
@@ -73,10 +90,11 @@ export function resolveFacilityHeroImage(
  * page whose whole job is to look trustworthy.
  */
 export function nextHeroImageFallback(current: HeroImage, sport?: Pick<PublicBookingSport, "name" | "sportKey"> | null): HeroImage {
-  if (current.source === "facility" && isSportImageKey(sport?.sportKey)) {
+  const artwork = artworkKeyFor(sport);
+  if (current.source === "facility" && artwork) {
     return {
-      src: `/sports/${sport.sportKey}.jpg`,
-      alt: `${sport.name} court`,
+      src: `/sports/${artwork}.jpg`,
+      alt: `${sport!.name} court`,
       source: "sport",
     };
   }
