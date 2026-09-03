@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (or subagent-driven-development) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
+> **Status: implemented (2026-09-03), pending user verification + commit.** Deviations:
+> - **`vitest.setup.ts` gained a `ResizeObserver` polyfill** — Recharts' `ResponsiveContainer` needs it in jsdom. Shared test infra; every charted report phase depends on it.
+> - **`FakeReportsService` methods take no parameters** (TypeScript permits an implementation with fewer params than its interface). The `_`-prefix convention does not silence `@typescript-eslint/no-unused-vars` under this repo's `next/typescript` config, and per-arg disables would be noise.
+> - **`DataTable` ships with the optional `href?: (row) => string` drill-down prop** (Task 5's "do it" decision) — the by-sport table links each sport to `/reports/bookings?…&sport=<id>`.
+> - **CSV download is inlined** in `booking-report.tsx` (Blob → `createObjectURL` → `<a download>` → `revokeObjectURL`), copied from `guest-bookings-dashboard.tsx` — no shared helper.
+> - **Per-task `git commit` steps skipped** at the user's instruction; one commit after full verification.
+
 **Goal:** The first report with real data. `/reports/bookings` shows a booking-status KPI row, a booking-volume trend chart, a bookings-by-sport bar + table, a status breakdown, and a Guest/Member source split — all server-aggregated, filter-driven, with CSV export.
 
 **Architecture:** One migration (`0058`) adds four `stable` plpgsql RPCs over the `bookings` table alone (no availability math), each `has_facility_role`-guarded and funnelled through `resolve_finance_date_range`. A new `src/services/reports/` layer (interface + Supabase impl + fake) mirrors `src/services/finance/`. `<BookingReport>` replaces the Phase 1 `ComingSoonReport` stub, keeping the exact `ReportShell` + filter-bar wiring, and adds a Recharts trend chart + a shared `<ReportBarList>` + `<DataTable>` pattern that Phases 3–7 reuse.

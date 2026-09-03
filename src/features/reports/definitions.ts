@@ -55,7 +55,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
   peakHours:
     "For each hour of day: booked minutes divided by the minutes the facility is open in that hour, over the range. Closed hours are excluded, not shown as zero demand.",
   averageBookingValue:
-    "Realised guest-booking revenue divided by the count of paid guest bookings in the range. Cancelled and unpaid bookings are not in the divisor.",
+    "Total captured value of paid, non-cancelled guest bookings in the range, divided by their count. Unpaid and cancelled bookings are excluded from both.",
   paymentCollectionRate:
     "Collected amount divided by (collected + outstanding) for the range. Pending payments are not counted as collected.",
   activeMembers: "Memberships with status ACTIVE as of now, for this facility.",

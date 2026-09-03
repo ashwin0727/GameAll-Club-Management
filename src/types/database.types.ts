@@ -2480,6 +2480,60 @@ export interface Database {
         Args: { p_transaction_id: string };
         Returns: Database["public"]["Views"]["finance_transactions_view"]["Row"];
       };
+      get_booking_analytics: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          total: number;
+          completed: number;
+          confirmed: number;
+          pending: number;
+          cancelled: number;
+          guest_count: number;
+          member_count: number;
+          avg_guest_booking_value_minor: number;
+        }[];
+      };
+      get_booking_trend: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+          p_granularity?: string;
+        };
+        Returns: { bucket_date: string; total: number; completed: number; cancelled: number }[];
+      };
+      get_bookings_by_sport: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { facility_sport_id: string; sport_name: string; booking_count: number }[];
+      };
+      get_booking_source_split: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { source: string; booking_count: number }[];
+      };
     };
     Enums: {
       role: Role;

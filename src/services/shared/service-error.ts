@@ -33,6 +33,8 @@ export type ServiceErrorCode =
   | "FINANCE_ACCESS_DENIED"
   | "INVALID_DATE_RANGE"
   | "FINANCE_DATA_ERROR"
+  | "REPORTS_ACCESS_DENIED"
+  | "REPORTS_DATA_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -70,6 +72,8 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   FINANCE_ACCESS_DENIED: "You don't have access to this facility's financial data.",
   INVALID_DATE_RANGE: "Please choose a valid date range.",
   FINANCE_DATA_ERROR: "Unable to load financial data. Please try again.",
+  REPORTS_ACCESS_DENIED: "You don't have access to this facility's reports.",
+  REPORTS_DATA_ERROR: "Unable to load this report. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

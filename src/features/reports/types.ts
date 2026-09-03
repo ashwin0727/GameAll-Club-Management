@@ -57,3 +57,35 @@ export const ANALYTICS_PRESETS: AnalyticsPreset[] = [
   "THIS_YEAR",
   "CUSTOM",
 ];
+
+// ─── Phase 2: Bookings ────────────────────────────────────────────────────
+
+export interface BookingAnalytics {
+  total: number;
+  completed: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+  guestCount: number;
+  memberCount: number;
+  /** Captured value of paid, non-cancelled guest bookings ÷ their count. */
+  avgGuestBookingValueMinor: number;
+}
+
+export interface BookingTrendPoint {
+  date: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface BookingsBySportRow {
+  facilitySportId: string;
+  sportName: string;
+  bookingCount: number;
+}
+
+export interface BookingSourceRow {
+  source: "GUEST" | "MEMBER";
+  bookingCount: number;
+}

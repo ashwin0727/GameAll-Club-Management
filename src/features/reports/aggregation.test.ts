@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { spanDays, pickGranularity, previousPeriod, toCsv } from "./aggregation";
+import {
+  spanDays,
+  pickGranularity,
+  pickGranularityForDays,
+  filterSpanDays,
+  previousPeriod,
+  toCsv,
+} from "./aggregation";
 import type { AnalyticsFilter } from "./types";
 
 const base: AnalyticsFilter = { facilityId: "f1", preset: "THIS_MONTH" };
@@ -23,6 +30,30 @@ describe("pickGranularity", () => {
   });
   it("is monthly beyond 183 days", () => {
     expect(pickGranularity("2026-01-01", "2026-07-03")).toBe("monthly"); // 184
+  });
+});
+
+describe("pickGranularityForDays", () => {
+  it("matches the day-count boundaries", () => {
+    expect(pickGranularityForDays(31)).toBe("daily");
+    expect(pickGranularityForDays(32)).toBe("weekly");
+    expect(pickGranularityForDays(183)).toBe("weekly");
+    expect(pickGranularityForDays(184)).toBe("monthly");
+  });
+});
+
+describe("filterSpanDays", () => {
+  it("returns the approximate preset span", () => {
+    expect(filterSpanDays({ facilityId: "f", preset: "THIS_QUARTER" })).toBe(92);
+    expect(filterSpanDays({ facilityId: "f", preset: "TODAY" })).toBe(1);
+  });
+  it("measures an explicit CUSTOM range", () => {
+    expect(
+      filterSpanDays({ facilityId: "f", preset: "CUSTOM", startDate: "2026-09-01", endDate: "2026-09-10" }),
+    ).toBe(10);
+  });
+  it("falls back to 31 for a CUSTOM range with no dates", () => {
+    expect(filterSpanDays({ facilityId: "f", preset: "CUSTOM" })).toBe(31);
   });
 });
 

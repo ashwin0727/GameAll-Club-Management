@@ -11,6 +11,15 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// Recharts' ResponsiveContainer needs ResizeObserver, which jsdom lacks.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 // Polyfills for URL APIs in jsdom
 if (!URL.createObjectURL) {
   URL.createObjectURL = () => "blob:mock-url";

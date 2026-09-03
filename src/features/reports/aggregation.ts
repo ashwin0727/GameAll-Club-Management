@@ -26,11 +26,34 @@ export function spanDays(startISO: string, endISO: string): number {
 }
 
 /** Readable chart buckets: daily <=31d, weekly <=183d, monthly beyond (spec §31). */
-export function pickGranularity(startISO: string, endISO: string): AnalyticsGranularity {
-  const days = spanDays(startISO, endISO);
+export function pickGranularityForDays(days: number): AnalyticsGranularity {
   if (days <= 31) return "daily";
   if (days <= 183) return "weekly";
   return "monthly";
+}
+
+export function pickGranularity(startISO: string, endISO: string): AnalyticsGranularity {
+  return pickGranularityForDays(spanDays(startISO, endISO));
+}
+
+const PRESET_SPAN_DAYS: Record<Exclude<AnalyticsPreset, "CUSTOM">, number> = {
+  TODAY: 1,
+  YESTERDAY: 1,
+  THIS_WEEK: 7,
+  LAST_WEEK: 7,
+  THIS_MONTH: 31,
+  LAST_MONTH: 31,
+  THIS_QUARTER: 92,
+  THIS_YEAR: 365,
+};
+
+/** Approximate span of a filter's range in days — enough to pick a chart
+ *  granularity without resolving the exact server dates. */
+export function filterSpanDays(f: AnalyticsFilter): number {
+  if (f.preset === "CUSTOM") {
+    return f.startDate && f.endDate ? spanDays(f.startDate, f.endDate) : 31;
+  }
+  return PRESET_SPAN_DAYS[f.preset];
 }
 
 const PRIOR_PRESET: Partial<Record<AnalyticsPreset, AnalyticsPreset>> = {
