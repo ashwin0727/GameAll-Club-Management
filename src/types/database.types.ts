@@ -1686,6 +1686,53 @@ export interface Database {
           spare: number;
         }[];
       };
+      get_public_booking_facility: {
+        Args: { p_facility_id: string };
+        Returns: {
+          facilityId: string;
+          facilityName: string;
+          city: string;
+          currency: string;
+          sports: { facilitySportId: string; name: string }[];
+        };
+      };
+      get_public_court_availability: {
+        Args: { p_facility_id: string; p_facility_sport_id: string; p_date: string };
+        Returns: {
+          courtId: string;
+          courtName: string;
+          slots: { startTime: string; endTime: string; available: boolean; priceMinor: number }[];
+        }[];
+      };
+      public_create_guest_booking: {
+        Args: {
+          p_facility_id: string;
+          p_court_id: string;
+          p_start_time: string;
+          p_end_time: string;
+          p_name: string;
+          p_phone: string;
+          p_email?: string | null;
+          p_purpose?: string | null;
+          p_notes?: string | null;
+          p_party_size?: number;
+        };
+        Returns: {
+          bookingId: string;
+          code: string;
+          facilityName: string;
+          sportName: string;
+          courtName: string;
+          startTime: string;
+          endTime: string;
+          guestName: string;
+          guestPhone: string;
+          amountMinor: number;
+          currency: string;
+          paymentStatus: string;
+          bookingStatus: string;
+        };
+      };
       get_membership_page_summary: {
         Args: { p_facility_id: string };
         Returns: {
