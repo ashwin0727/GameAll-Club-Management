@@ -79,3 +79,83 @@ describe("computeSlotDisplayState", () => {
     expect(computeSlotDisplayState(capacity)).toBe("GUEST_BOOKED");
   });
 });
+/**
+ * The end-to-end scenario from the Membership Sessions spec (§36), walked
+ * through as the counts change. The database is the authority for every one
+ * of these rules; this pins the arithmetic the owner screens display, so a
+ * change to the derivation can't silently disagree with the backend.
+ *
+ * Champz Turf · Badminton · Court 1 · Mon/Wed/Fri 6–7pm
+ * Capacity 5 · 3 members assigned · 2 released for guest play.
+ */
+describe("spec §36 — Evening Badminton, end to end", () => {
+  const session = (guestBookedCount: number, releasedCapacity = 2) =>
+    deriveMembershipCapacity({
+      capacity: 5,
+      releasedCapacity,
+      memberBookedCount: 3,
+      guestBookedCount,
+    });
+
+  it("starts with two guest slots open and none protected beyond them", () => {
+    const c = session(0);
+    expect(c.unusedCapacity).toBe(2);
+    expect(c.guestAvailableCapacity).toBe(2);
+    expect(computeSlotDisplayState(c)).toBe("RELEASED_FOR_GUEST");
+  });
+
+  it("has one guest slot left after the first guest books", () => {
+    const c = session(1);
+    expect(c.guestAvailableCapacity).toBe(1);
+    expect(computeSlotDisplayState(c)).toBe("RELEASED_FOR_GUEST");
+  });
+
+  it("closes to the public once both released slots are taken", () => {
+    const c = session(2);
+    expect(c.guestAvailableCapacity).toBe(0);
+    expect(computeSlotDisplayState(c)).toBe("GUEST_BOOKED");
+  });
+
+  it("reopens a slot when a guest booking is cancelled", () => {
+    // Cancelling returns capacity; it must not alter what the owner released.
+    const c = session(1);
+    expect(c.releasedCapacity).toBe(2);
+    expect(c.guestAvailableCapacity).toBe(1);
+  });
+
+  it("lets the owner take back only the slot no guest holds", () => {
+    expect(maxRestorable(session(1))).toBe(1);
+  });
+
+  it("refuses to take back slots two guests already hold", () => {
+    // The owner cannot drop release 2 -> 0 with two confirmed bookings;
+    // restore_membership_capacity raises, and the UI must not offer it.
+    expect(maxRestorable(session(2))).toBe(0);
+  });
+
+  it("never offers to release more than the members leave unused", () => {
+    // Capacity 5, three members: two spare, both already released.
+    expect(maxReleasable(session(0))).toBe(0);
+    // With only one released, one more may be.
+    expect(maxReleasable(session(0, 1))).toBe(1);
+  });
+
+  it("offers nothing to release once a fourth and fifth member join", () => {
+    const full = deriveMembershipCapacity({
+      capacity: 5,
+      releasedCapacity: 0,
+      memberBookedCount: 5,
+      guestBookedCount: 0,
+    });
+    expect(maxReleasable(full)).toBe(0);
+    expect(computeSlotDisplayState(full)).toBe("MEMBERSHIP_FULL");
+  });
+
+  it("does not free a member's slot for guests when they simply don't turn up", () => {
+    // Absence is not a release (spec §17): the counts are unchanged, so the
+    // guest side stays exactly where the owner set it.
+    const c = session(0);
+    expect(c.guestAvailableCapacity).toBe(2);
+    expect(c.unusedCapacity).toBe(2);
+  });
+});
