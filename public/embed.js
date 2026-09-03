@@ -36,7 +36,9 @@
   var sport = script.getAttribute("data-sport");
   var initialHeight = parseInt(script.getAttribute("data-height") || "", 10) || 820;
 
-  var src = origin + "/book/" + encodeURIComponent(facilityId) + "?embed=1";
+  // Straight to the flow: the host page is already the venue's front door,
+  // so the landing step would only repeat what surrounds the widget.
+  var src = origin + "/book/" + encodeURIComponent(facilityId) + "/booking?embed=1";
   if (sport) src += "&sport=" + encodeURIComponent(sport);
 
   var iframe = document.createElement("iframe");

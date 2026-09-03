@@ -59,7 +59,7 @@ export function ShareBookingLink({ facilityId }: { facilityId: string }) {
             <section className="space-y-2">
               <h3 className="text-sm font-medium">1. Share a link</h3>
               <p className="text-xs text-muted-foreground">
-                Put this anywhere — WhatsApp, Instagram bio, a QR code at the venue.
+                Opens your venue page, then the booking steps. Put it anywhere — WhatsApp, Instagram bio, a QR code at the venue.
               </p>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-lg bg-muted px-3 py-2 text-xs">{bookingUrl}</code>

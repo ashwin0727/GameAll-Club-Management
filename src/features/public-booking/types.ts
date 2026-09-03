@@ -11,6 +11,9 @@
 export interface PublicBookingSport {
   facilitySportId: string;
   name: string;
+  /** Stable slug from the sports catalogue ('badminton', 'football', …),
+   *  used to pick sport-appropriate artwork. Null for a custom sport. */
+  sportKey: string | null;
 }
 
 export interface PublicBookingFacility {
@@ -18,6 +21,10 @@ export interface PublicBookingFacility {
   facilityName: string;
   city: string;
   currency: string;
+  /** The venue's business line, for "Need Help?". */
+  helpPhone: string | null;
+  logoUrl: string | null;
+  heroImageUrl: string | null;
   sports: PublicBookingSport[];
 }
 

@@ -26,6 +26,9 @@ export async function getPublicBookingFacility(facilityId: string): Promise<Publ
     facilityName: data.facilityName,
     city: data.city ?? "",
     currency: data.currency ?? "INR",
+    helpPhone: data.helpPhone ?? null,
+    logoUrl: data.logoUrl ?? null,
+    heroImageUrl: data.heroImageUrl ?? null,
     sports: data.sports ?? [],
   };
 }

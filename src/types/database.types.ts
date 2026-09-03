@@ -1699,7 +1699,10 @@ export interface Database {
           facilityName: string;
           city: string;
           currency: string;
-          sports: { facilitySportId: string; name: string }[];
+          helpPhone: string | null;
+          logoUrl: string | null;
+          heroImageUrl: string | null;
+          sports: { facilitySportId: string; name: string; sportKey: string | null }[];
         };
       };
       get_public_court_availability: {
