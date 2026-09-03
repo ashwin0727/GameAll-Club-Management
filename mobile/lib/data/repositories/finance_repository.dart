@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/finance.dart';
@@ -412,6 +414,49 @@ class FinanceRepository {
         duplicate: map['duplicate'] == true,
         outstandingMinor: (map['outstandingMinor'] as num?)?.toInt(),
       );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 12 — Transaction Details, and a real PDF receipt.
+  // Backend: 0055_transaction_details.sql + the download-transaction-receipt
+  // edge function.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// One transaction in full — what it was for, what it relates to, and every
+  /// payment made against the same booking or membership. `get_transaction_
+  /// details` returns a single camelCase jsonb document (not a table row) and
+  /// does its own facility-role check, so a cross-facility lookup is denied
+  /// rather than returned empty.
+  Future<TransactionDetails> getTransactionDetails(String transactionId) async {
+    try {
+      final data = await _client.rpc(
+        'get_transaction_details',
+        params: {'p_transaction_id': transactionId},
+      );
+      if (data == null) throw AppException(AppErrorCode.financeDataError);
+      return TransactionDetails.fromJson((data as Map).cast<String, dynamic>());
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// The receipt bytes for one transaction. Built server-side by the
+  /// download-transaction-receipt edge function (which reuses the same
+  /// `get_transaction_details` read and its role check) — nothing about the
+  /// document is assembled on the device.
+  Future<Uint8List> downloadTransactionReceipt(String transactionId) async {
+    try {
+      final response = await _client.functions.invoke(
+        'download-transaction-receipt',
+        body: {'transactionId': transactionId},
+      );
+      final data = response.data;
+      if (data is Uint8List) return data;
+      if (data is List<int>) return Uint8List.fromList(data);
+      throw AppException(AppErrorCode.financeDataError);
     } catch (e) {
       throw _mapError(e);
     }

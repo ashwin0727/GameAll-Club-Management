@@ -37,6 +37,9 @@ class AppRoutes {
   /// the web reaches it at /finance/transactions.
   static const finance = '/finance';
   static const financeTransactions = '/finance/transactions';
+
+  /// The full Transaction Details page — `:transactionId` is a payment id.
+  static const financeTransactionDetails = '/finance/transactions/:transactionId';
   static const financeExpenses = '/finance/expenses';
   static const financePendingPayments = '/finance/pending-payments';
 

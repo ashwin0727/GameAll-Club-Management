@@ -1006,3 +1006,134 @@ class ListPendingPaymentsInput {
   final int? offset;
   final String? sourceId;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Finance rework — Phase 12: Transaction Details, and a real PDF receipt.
+//
+// Mirrors src/features/finance/types.ts (`TransactionDetails` /
+// `TransactionPaymentHistoryRow`). Backend: 0055_transaction_details.sql.
+// NOTE: `get_transaction_details` returns a camelCase jsonb document (the web
+// does `data as unknown as TransactionDetails`), so these `fromJson` readers
+// use camelCase keys — unlike every other model in this file.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// One payment against the same booking or membership as the transaction being
+/// viewed. [isThisOne] marks the payment this details page is actually about,
+/// among its siblings.
+class TransactionPaymentHistoryRow {
+  const TransactionPaymentHistoryRow({
+    required this.id,
+    required this.paidAt,
+    required this.amountMinor,
+    required this.paymentMethod,
+    required this.reference,
+    required this.status,
+    required this.isThisOne,
+  });
+
+  final String id;
+  final DateTime paidAt;
+  final int amountMinor;
+  final String? paymentMethod;
+  final String? reference;
+  final String status;
+  final bool isThisOne;
+
+  factory TransactionPaymentHistoryRow.fromJson(Map<String, dynamic> json) {
+    return TransactionPaymentHistoryRow(
+      id: json['id'] as String,
+      paidAt: DateTime.parse(json['paidAt'] as String),
+      amountMinor: (json['amountMinor'] as num).toInt(),
+      paymentMethod: json['paymentMethod'] as String?,
+      reference: json['reference'] as String?,
+      status: json['status'] as String,
+      isThisOne: json['isThisOne'] as bool? ?? false,
+    );
+  }
+}
+
+/// Everything the Transaction Details page and its receipt render — one
+/// `get_transaction_details` read. Every figure is server-computed.
+class TransactionDetails {
+  const TransactionDetails({
+    required this.id,
+    required this.reference,
+    required this.sourceType,
+    required this.category,
+    required this.type,
+    required this.amountMinor,
+    required this.currency,
+    required this.status,
+    required this.paymentMethod,
+    required this.occurredAt,
+    required this.createdAt,
+    required this.recordedBy,
+    required this.description,
+    required this.sourceReference,
+    required this.customerName,
+    required this.customerPhone,
+    required this.facilityName,
+    required this.facilityId,
+    required this.bookingId,
+    required this.membershipId,
+    required this.refundedMinor,
+    required this.netMinor,
+    required this.history,
+  });
+
+  final String id;
+  final String reference;
+  final String sourceType;
+  final String category;
+
+  /// Always `INCOME` — a receipt is only ever raised for money coming in.
+  final String type;
+  final int amountMinor;
+  final String currency;
+  final String status;
+  final String? paymentMethod;
+  final DateTime occurredAt;
+  final DateTime createdAt;
+  final String? recordedBy;
+  final String description;
+  final String? sourceReference;
+  final String? customerName;
+  final String? customerPhone;
+  final String? facilityName;
+  final String facilityId;
+  final String? bookingId;
+  final String? membershipId;
+  final int refundedMinor;
+  final int netMinor;
+  final List<TransactionPaymentHistoryRow> history;
+
+  factory TransactionDetails.fromJson(Map<String, dynamic> json) {
+    return TransactionDetails(
+      id: json['id'] as String,
+      reference: json['reference'] as String,
+      sourceType: json['sourceType'] as String,
+      category: json['category'] as String,
+      type: json['type'] as String? ?? 'INCOME',
+      amountMinor: (json['amountMinor'] as num).toInt(),
+      currency: json['currency'] as String,
+      status: json['status'] as String,
+      paymentMethod: json['paymentMethod'] as String?,
+      occurredAt: DateTime.parse(json['occurredAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      recordedBy: json['recordedBy'] as String?,
+      description: json['description'] as String,
+      sourceReference: json['sourceReference'] as String?,
+      customerName: json['customerName'] as String?,
+      customerPhone: json['customerPhone'] as String?,
+      facilityName: json['facilityName'] as String?,
+      facilityId: json['facilityId'] as String,
+      bookingId: json['bookingId'] as String?,
+      membershipId: json['membershipId'] as String?,
+      refundedMinor: (json['refundedMinor'] as num?)?.toInt() ?? 0,
+      netMinor: (json['netMinor'] as num?)?.toInt() ?? 0,
+      history: ((json['history'] as List<dynamic>?) ?? const [])
+          .map((row) => TransactionPaymentHistoryRow.fromJson((row as Map).cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+}

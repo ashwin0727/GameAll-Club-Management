@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -20,7 +22,6 @@ import '../authentication/session_controller.dart';
 import 'add_expense_sheet.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_presentation.dart';
-import 'transaction_details_sheet.dart';
 
 /// Finance → Transactions — mirrors
 /// src/features/finance/components/transactions-list.tsx.
@@ -332,7 +333,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.md),
         onTap: entry.isIncome
-            ? () => showTransactionDetailsSheet(context, transactionId: entry.id)
+            ? () => context.push('${AppRoutes.financeTransactions}/${entry.id}')
             : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

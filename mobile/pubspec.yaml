@@ -52,6 +52,12 @@ dependencies:
   # explicitly, to remember the user's Appearance (System/Light/Dark)
   # preference across restarts. Never used for business/domain data.
   shared_preferences: ^2.5.3
+  # Finance rework Phase 12 — the Transaction Details receipt. The PDF is
+  # built server-side by the download-transaction-receipt edge function;
+  # path_provider gives a temp file to write the bytes to and share_plus
+  # hands that file to the OS share sheet so the owner can save or send it.
+  share_plus: ^13.3.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

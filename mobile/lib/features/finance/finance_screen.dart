@@ -17,7 +17,6 @@ import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_presentation.dart';
 import 'revenue_trend_chart.dart';
-import 'transaction_details_sheet.dart';
 
 /// The Finance Dashboard — mirrors
 /// src/features/finance/components/finance-dashboard.tsx.
@@ -164,8 +163,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     _loadRange();
   }
 
-  Future<void> _openTransaction(String transactionId) {
-    return showTransactionDetailsSheet(context, transactionId: transactionId);
+  void _openTransaction(String transactionId) {
+    context.push('${AppRoutes.financeTransactions}/$transactionId');
   }
 
   @override
