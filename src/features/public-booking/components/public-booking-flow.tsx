@@ -253,7 +253,13 @@ export function PublicBookingFlow({
         {/* The embed sits inside the club's own site, which already carries
             their branding and contact details — repeating ours would be
             noise. On our hosted page the header belongs. */}
-        {!embedded && <PublicBookingHeader helpPhone={facility.helpPhone} />}
+        {!embedded && (
+          <PublicBookingHeader
+            helpPhone={facility.helpPhone}
+            facilityName={facility.facilityName}
+            city={facility.city}
+          />
+        )}
 
         <div className="px-4 py-5 sm:px-8 sm:py-6">
           <StepBar current={step} />
