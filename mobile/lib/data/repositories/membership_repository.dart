@@ -286,6 +286,11 @@ class MembershipRepository {
                   'p_discovery_source': input.discoverySource,
                   'p_notes': input.notes,
                   'p_monthly_price_inr': input.membershipFeeInr,
+                  // The reserved court slot: join an existing batch or create
+                  // one. The old cosmetic p_time_slot_start/end args were
+                  // dropped from the RPC in migration 0029.
+                  'p_batch_id': input.batchId,
+                  'p_new_batch': input.newBatch,
                 },
               )
               as Map<String, dynamic>;
@@ -319,6 +324,8 @@ class MembershipRepository {
     String? referralMemberId,
     String? discoverySource,
     String? notes,
+    String? batchId,
+    Map<String, dynamic>? newBatch,
   }) async {
     try {
       final row = await _client.rpc(
@@ -343,6 +350,8 @@ class MembershipRepository {
           'p_referral_member_id': referralMemberId,
           'p_discovery_source': discoverySource,
           'p_notes': notes,
+          'p_batch_id': batchId,
+          'p_new_batch': newBatch,
         },
       ) as Map<String, dynamic>;
       return Membership.fromJson(row, planName: row['name'] as String? ?? 'Membership');
@@ -412,6 +421,24 @@ class MembershipRepository {
       final rows = await _client.rpc('get_membership_page_summary', params: {'p_facility_id': facilityId});
       final list = (rows as List<dynamic>).cast<Map<String, dynamic>>();
       return MembershipPageSummary.fromJson(list.isEmpty ? const {} : list.first);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// The session batches a new member can be assigned to — shared defaults
+  /// plus this facility's own active batches, optionally filtered to a plan.
+  /// Mirrors `listAssignableBatches` on the web (`list_assignable_batches`,
+  /// migration 0027).
+  Future<List<AssignableBatch>> listAssignableBatches(String facilityId, {String? planId}) async {
+    try {
+      final rows = await _client.rpc('list_assignable_batches', params: {
+        'p_facility_id': facilityId,
+        'p_plan_id': planId,
+      });
+      return (rows as List<dynamic>)
+          .map((row) => AssignableBatch.fromJson((row as Map).cast<String, dynamic>()))
+          .toList();
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

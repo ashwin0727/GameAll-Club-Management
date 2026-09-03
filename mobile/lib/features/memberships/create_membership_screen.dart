@@ -15,7 +15,10 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
+import 'access_days.dart';
 import 'membership_charges.dart';
+import 'membership_slot.dart';
+import 'membership_slot_section.dart';
 import 'membership_status.dart';
 import '../../shared/widgets/app_dropdown.dart';
 
@@ -78,8 +81,12 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   DateTime _startDate = DateTime.now();
   int _durationDays = 0;
   int _maxFamily = 1;
-  TimeOfDay? _slotStart;
-  TimeOfDay? _slotEnd;
+
+  /// The reserved court time slot (parity gap G3). Seeded from the membership's
+  /// current batch in edit mode; day chips for a new slot seed from
+  /// [_accessDays].
+  MembershipSlotSelection _slot = const SlotNone();
+  List<int> _accessDays = allDays;
 
   // Charges
   final _fee = TextEditingController();
@@ -118,6 +125,13 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
     _load();
   }
 
+  String _slotKey() => switch (_slot) {
+        SlotNone() => 'none',
+        SlotExisting(:final batchId) => 'batch:$batchId',
+        SlotNew(:final draft) =>
+          'new:${draft.courtId}:${(draft.daysOfWeek.toList()..sort()).join(',')}:${draft.startTime}:${draft.endTime}:${draft.capacity}',
+      };
+
   String _snapshot() => [
         _fullName.text.trim(),
         _phone.text.trim(),
@@ -134,6 +148,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         num.tryParse(_fee.text.trim()) ?? 0,
         num.tryParse(_regFee.text.trim()) ?? 0,
         num.tryParse(_gst.text.trim()) ?? 0,
+        _slotKey(),
         _referral?.id ?? '',
         _discovery ?? '',
         _notes.text.trim(),
@@ -186,6 +201,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
       if (!mounted) return;
       setState(() {
         _facilityId = facility?.id;
+        _accessDays = facility?.membershipAccessDays ?? allDays;
         _loading = false;
         _loadError = facility == null ? 'Complete your facility setup before creating a membership.' : null;
       });
@@ -217,6 +233,10 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           }
           _discovery = _discoverySources.contains(d.discoverySource) ? d.discoverySource : null;
           _notes.text = d.notes ?? '';
+          // The reserved court slot, so an edit re-sends it rather than the
+          // RPC's "both null = clear the slot" branch stripping it.
+          final batchId = d.slot?.batchId;
+          _slot = batchId != null ? SlotExisting(batchId) : const SlotNone();
           // The membership is self-contained (no plan_id) — surface the plan
           // it was created from by matching on name, for display only.
           for (final p in _plans) {
@@ -264,8 +284,6 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
 
   DateTime? get _endDate => _durationDays > 0 ? computeMembershipEndDate(_startDate, _durationDays) : null;
 
-  String? _time24(TimeOfDay? t) =>
-      t == null ? null : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   Future<void> _submit() async {
     if (_facilityId == null) return;
@@ -281,6 +299,12 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
     if (!_isEdit && _mode != MembershipPaymentMode.free && _charges.subTotal <= 0) {
       return setState(() => _error = 'Enter a membership fee.');
     }
+
+    final slotError = validateSlotSelection(_slot);
+    if (slotError != null) return setState(() => _error = slotError);
+    final slotArgs = slotRpcArgs(_slot);
+    final batchId = slotArgs['p_batch_id'] as String?;
+    final newBatch = slotArgs['p_new_batch'] as Map<String, dynamic>?;
 
     if (_isEdit) {
       setState(() {
@@ -308,6 +332,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
               referralMemberId: _referral?.id,
               discoverySource: _discovery,
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+              batchId: batchId,
+              newBatch: newBatch,
             );
         if (mounted) Navigator.of(context).pop(true);
       } on AppException catch (e) {
@@ -316,12 +342,6 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         if (mounted) setState(() => _saving = false);
       }
       return;
-    }
-
-    final start = _time24(_slotStart);
-    final end = _time24(_slotEnd);
-    if (start != null && end != null && end.compareTo(start) <= 0) {
-      return setState(() => _error = 'Time slot end must be after the start.');
     }
 
     setState(() {
@@ -344,8 +364,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           maxFamilyMembers: _type == MembershipType.family ? _maxFamily : 1,
           startDate: _startDate,
           durationDays: _durationDays,
-          timeSlotStart: start,
-          timeSlotEnd: end,
+          batchId: batchId,
+          newBatch: newBatch,
           description: _description.text.trim().isEmpty ? null : _description.text.trim(),
           membershipFeeInr: _charges.subTotal,
           registrationFeeInr: _charges.registration,
@@ -560,38 +580,17 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                       onChanged: (d) => setState(() => _durationDays = d ?? 0),
                     ),
             ),
-            if (!_isEdit)
-            _labeled(
-              'Time Slot',
-              hint: 'The hour the member plays each visit',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _PickerField(
-                      text: _slotStart == null ? 'Start' : _slotStart!.format(context),
-                      placeholder: _slotStart == null,
-                      icon: Icons.schedule,
-                      onTap: () async {
-                        final picked = await showTimePicker(context: context, initialTime: _slotStart ?? const TimeOfDay(hour: 6, minute: 0));
-                        if (picked != null) setState(() => _slotStart = picked);
-                      },
-                    ),
-                  ),
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm), child: Text('to')),
-                  Expanded(
-                    child: _PickerField(
-                      text: _slotEnd == null ? 'End' : _slotEnd!.format(context),
-                      placeholder: _slotEnd == null,
-                      icon: Icons.schedule,
-                      onTap: () async {
-                        final picked = await showTimePicker(context: context, initialTime: _slotEnd ?? const TimeOfDay(hour: 7, minute: 0));
-                        if (picked != null) setState(() => _slotEnd = picked);
-                      },
-                    ),
-                  ),
-                ],
+            if (_facilityId != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              MembershipSlotSection(
+                facilityId: _facilityId!,
+                accessDays: _accessDays,
+                value: _slot,
+                planId: _planId,
+                currentBatchId: _slot is SlotExisting ? (_slot as SlotExisting).batchId : null,
+                onChanged: (s) => setState(() => _slot = s),
               ),
-            ),
+            ],
             if (_type == MembershipType.family)
               _labeled(
                 'Max. Members (Family)',

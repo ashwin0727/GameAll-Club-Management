@@ -378,8 +378,8 @@ class CreateMembershipFullInput {
     required this.maxFamilyMembers,
     required this.startDate,
     required this.durationDays,
-    this.timeSlotStart,
-    this.timeSlotEnd,
+    this.batchId,
+    this.newBatch,
     this.description,
     required this.membershipFeeInr,
     required this.registrationFeeInr,
@@ -405,8 +405,14 @@ class CreateMembershipFullInput {
   final int maxFamilyMembers;
   final DateTime startDate;
   final int durationDays;
-  final String? timeSlotStart;
-  final String? timeSlotEnd;
+
+  /// The reserved court slot: an existing `membership_batches` id to join, or
+  /// [newBatch] to create one. Mutually exclusive; both null = no slot.
+  final String? batchId;
+
+  /// `{courtId, facilitySportId, daysOfWeek, startTime, endTime, capacity}` —
+  /// exactly the keys `create_membership_full`'s `p_new_batch` destructures.
+  final Map<String, dynamic>? newBatch;
   final String? description;
   final int membershipFeeInr;
   final int registrationFeeInr;
@@ -486,6 +492,8 @@ String membershipListSortToDb(MembershipListSort sort) {
 }
 
 /// The batch/time-slot a membership is enrolled in, when there is one.
+/// [batchId] / [facilitySportId] are present on `get_membership_detail`'s slot
+/// object (migration 0038) — the Edit form needs them to pre-select the batch.
 class MembershipSlot {
   const MembershipSlot({
     required this.name,
@@ -493,6 +501,8 @@ class MembershipSlot {
     required this.startTime,
     required this.endTime,
     this.courtName,
+    this.batchId,
+    this.facilitySportId,
   });
 
   final String name;
@@ -500,6 +510,8 @@ class MembershipSlot {
   final String startTime;
   final String endTime;
   final String? courtName;
+  final String? batchId;
+  final String? facilitySportId;
 }
 
 class MembershipListRow {
@@ -864,10 +876,69 @@ class MembershipDetail {
               startTime: slotJson['startTime'] as String? ?? '',
               endTime: slotJson['endTime'] as String? ?? '',
               courtName: slotJson['courtName'] as String?,
+              batchId: slotJson['batchId'] as String?,
+              facilitySportId: slotJson['facilitySportId'] as String?,
             ),
       timeline: ((j['timeline'] as List<dynamic>?) ?? const [])
           .map((e) => MembershipTimelineEvent.fromJson(e as Map<String, dynamic>))
           .toList(),
+    );
+  }
+}
+
+/// One session batch a new member can be assigned to — a row of
+/// `list_assignable_batches` (migration 0027). [spare] is `capacity -
+/// enrolledCount` floored at 0; the picker disables a batch at 0 spare unless
+/// it is the member's current one (edit mode). Mirrors `AssignableBatch` in
+/// src/features/memberships/types.ts.
+class AssignableBatch {
+  const AssignableBatch({
+    required this.batchId,
+    required this.name,
+    required this.planId,
+    required this.courtId,
+    required this.courtName,
+    required this.facilitySportId,
+    required this.sportName,
+    required this.daysOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.capacity,
+    required this.enrolledCount,
+    required this.spare,
+  });
+
+  final String batchId;
+  final String name;
+  final String? planId;
+  final String courtId;
+  final String courtName;
+  final String facilitySportId;
+  final String sportName;
+  final List<int> daysOfWeek;
+  final String startTime;
+  final String endTime;
+  final int capacity;
+  final int enrolledCount;
+  final int spare;
+
+  factory AssignableBatch.fromJson(Map<String, dynamic> json) {
+    return AssignableBatch(
+      batchId: json['batch_id'] as String,
+      name: json['name'] as String? ?? 'Batch',
+      planId: json['plan_id'] as String?,
+      courtId: json['court_id'] as String,
+      courtName: json['court_name'] as String? ?? '',
+      facilitySportId: json['facility_sport_id'] as String,
+      sportName: json['sport_name'] as String? ?? '',
+      daysOfWeek: ((json['days_of_week'] as List<dynamic>?) ?? const [])
+          .map((d) => (d as num).toInt())
+          .toList(),
+      startTime: json['start_time'] as String? ?? '',
+      endTime: json['end_time'] as String? ?? '',
+      capacity: (json['capacity'] as num?)?.toInt() ?? 0,
+      enrolledCount: (json['enrolled_count'] as num?)?.toInt() ?? 0,
+      spare: (json['spare'] as num?)?.toInt() ?? 0,
     );
   }
 }
