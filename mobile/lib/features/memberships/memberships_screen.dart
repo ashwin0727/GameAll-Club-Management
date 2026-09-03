@@ -23,6 +23,7 @@ import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_detail_screen.dart';
+import 'membership_access_days_sheet.dart';
 import 'membership_list_presentation.dart';
 import 'membership_plans_sheet.dart';
 import 'slot_format.dart';
@@ -51,6 +52,11 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
   String? _facilityId;
   bool _loading = true;
   String? _loadError;
+
+  /// The facility's membership access days — seeded from the facility record,
+  /// updated in place when the owner edits them. Pre-fills a new membership's
+  /// time slot (parity gap G2).
+  List<int> _accessDays = const [0, 1, 2, 3, 4, 5, 6];
 
   final _searchController = TextEditingController();
   String _search = '';
@@ -93,6 +99,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       }
       setState(() {
         _facilityId = facility.id;
+        _accessDays = facility.membershipAccessDays;
         _loading = false;
       });
       await _refresh();
@@ -178,6 +185,17 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       isScrollControlled: true,
       builder: (context) => MembershipPlansSheet(facilityId: facilityId),
     );
+  }
+
+  Future<void> _editAccessDays() async {
+    final facilityId = _facilityId;
+    if (facilityId == null) return;
+    final saved = await showModalBottomSheet<List<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => MembershipAccessDaysSheet(facilityId: facilityId, currentDays: _accessDays),
+    );
+    if (saved != null && mounted) setState(() => _accessDays = saved);
   }
 
   Future<void> _openDetail(MembershipListRow row) async {
@@ -267,6 +285,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
         actions: [
           if (_facilityId != null) ...[
             IconButton(icon: const Icon(Icons.link), tooltip: 'Share sign-up link', onPressed: _shareLink),
+            IconButton(icon: const Icon(Icons.event_available_outlined), tooltip: 'Access Days', onPressed: _editAccessDays),
             IconButton(icon: const Icon(Icons.card_membership), tooltip: 'Manage Plans', onPressed: _openPlans),
           ],
         ],

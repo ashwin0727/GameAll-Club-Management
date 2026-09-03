@@ -417,6 +417,24 @@ class MembershipRepository {
     }
   }
 
+  /// Sets which weekdays memberships grant court access (0 = Sun .. 6 = Sat) —
+  /// `set_facility_membership_access_days` (0029). Returns the saved list, read
+  /// off the updated `facilities` row rather than echoed from the request.
+  /// Owner/manager only (enforced by the RPC). Mirrors
+  /// `setMembershipAccessDays` on the web.
+  Future<List<int>> setMembershipAccessDays(String facilityId, List<int> days) async {
+    try {
+      final row = await _client.rpc('set_facility_membership_access_days', params: {
+        'p_facility_id': facilityId,
+        'p_days': days,
+      });
+      final map = (row as Map).cast<String, dynamic>();
+      return (map['membership_access_days'] as List<dynamic>).map((d) => (d as num).toInt()).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.facilityNotFound, invalid: AppErrorCode.invalidMembership);
+    }
+  }
+
   /// The explicit "cash received" confirmation for a payment-incomplete
   /// membership — settles the current billing cycle and rolls the next
   /// payment date forward if it had lapsed. Mirrors `recordMembershipPayment`

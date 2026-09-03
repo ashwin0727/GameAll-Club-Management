@@ -143,6 +143,7 @@ class Facility {
     required this.status,
     required this.onboardingStep,
     this.onboardingCompletedAt,
+    this.membershipAccessDays = const [0, 1, 2, 3, 4, 5, 6],
   });
 
   final String id;
@@ -158,6 +159,11 @@ class Facility {
   final String status;
   final OnboardingStep onboardingStep;
   final DateTime? onboardingCompletedAt;
+
+  /// Which weekdays memberships grant court access (0 = Sun .. 6 = Sat) —
+  /// `facilities.membership_access_days` (migration 0029). Pre-fills every new
+  /// membership's time slot. Defaults to all seven days.
+  final List<int> membershipAccessDays;
 
   factory Facility.fromJson(Map<String, dynamic> json) {
     return Facility(
@@ -183,6 +189,10 @@ class Facility {
       onboardingCompletedAt: json['onboarding_completed_at'] != null
           ? DateTime.tryParse(json['onboarding_completed_at'] as String)
           : null,
+      membershipAccessDays: (json['membership_access_days'] as List<dynamic>?)
+              ?.map((d) => (d as num).toInt())
+              .toList() ??
+          const [0, 1, 2, 3, 4, 5, 6],
     );
   }
 }
