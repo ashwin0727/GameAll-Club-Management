@@ -1,30 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
-
-/** Reachable while signed out: the whole onboarding flow plus the email callback. */
-const PUBLIC_ROUTES = [
-  "/",
-  "/welcome",
-  "/signup",
-  "/verify-email",
-  "/login",
-  "/forgot-password",
-  "/auth/callback",
-];
-
-/**
- * Signed-in users are bounced off the signed-out screens — except these.
- * /reset-password *requires* the session the recovery link just created, and
- * / is the splash, which routes signed-in users onward itself.
- */
-const SESSION_TOLERANT_ROUTES = ["/reset-password", "/"];
-
-function isPublic(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(
-    (route) => pathname === route || (route !== "/" && pathname.startsWith(`${route}/`)),
-  );
-}
+import {
+  SESSION_TOLERANT_ROUTES,
+  isPublic,
+  isStandalonePublic,
+} from "@/lib/supabase/public-routes";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -63,7 +44,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // /reset-password is public in the sense that an unauthenticated visitor may
   // land there — the page itself explains an invalid link.
-  const publicRoute = isPublic(pathname) || pathname.startsWith("/reset-password");
+  const standalone = isStandalonePublic(pathname);
+  const publicRoute = isPublic(pathname) || standalone || pathname.startsWith("/reset-password");
 
   if (!user && !publicRoute) {
     const url = request.nextUrl.clone();
@@ -73,7 +55,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && publicRoute && !SESSION_TOLERANT_ROUTES.includes(pathname)) {
+  if (user && publicRoute && !standalone && !SESSION_TOLERANT_ROUTES.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
