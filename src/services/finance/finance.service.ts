@@ -11,6 +11,7 @@ import type {
   LedgerFilters,
   LedgerPage,
   ExpenseCategory,
+  ExpensePage,
   ObligationSource,
   PendingPaymentFilters,
   PendingPaymentsPage,
@@ -52,6 +53,8 @@ export interface FinanceService {
     idempotencyKey: string;
   }): Promise<{ duplicate: boolean; outstandingMinor?: number }>;
   listExpenseCategories(facilityId: string): Promise<ExpenseCategory[]>;
+  listExpenses(input: { facilityId: string; dateRange: FinanceDateRange; categoryId?: string | null; limit?: number; offset?: number }): Promise<ExpensePage>;
+  voidExpense(expenseId: string, reason?: string | null): Promise<void>;
   createExpense(input: {
     facilityId: string;
     categoryId: string;

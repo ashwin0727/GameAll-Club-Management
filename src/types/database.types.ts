@@ -2284,6 +2284,36 @@ export interface Database {
           settlement_exception_count: number;
         }[];
       };
+      list_expenses: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_category_id?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          category_id: string;
+          category_name: string;
+          amount_minor: number;
+          currency: string;
+          payment_method: string | null;
+          spent_on: string;
+          vendor: string | null;
+          reference: string | null;
+          notes: string | null;
+          status: string;
+          created_at: string;
+          total_count: number;
+        }[];
+      };
+      void_expense: {
+        Args: { p_expense_id: string; p_reason?: string | null };
+        Returns: Database['public']['Tables']['expenses']['Row'];
+      };
       list_pending_payments: {
         Args: {
           p_facility_id: string;

@@ -28,22 +28,36 @@ export const PAYMENT_STATUSES = ["created", "paid", "failed", "refunded"] as con
 export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"] as const;
 export const INVENTORY_TXN_TYPES = ["checkout", "return", "restock", "damage"] as const;
 
-export const NAV_ITEMS: {
+export interface NavItem {
   label: string;
   href: string;
   roles: Role[];
-}[] = [
+  /**
+   * Sub-pages shown when the section is expanded. A section still has its
+   * own href — the parent is a real destination, not just a toggle.
+   */
+  children?: { label: string; href: string }[];
+}
+
+export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Memberships", href: "/memberships", roles: ["admin", "staff"] },
   { label: "Membership Sessions", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
   { label: "Guest Bookings", href: "/guest-bookings", roles: ["admin", "staff"] },
   { label: "Guest Players", href: "/guests", roles: ["admin", "staff"] },
-  { label: "Finance", href: "/finance", roles: ["admin", "staff"] },
-  // Collecting what is owed is daily work, not something to reach through
-  // the Finance overview for.
-  { label: "Pending Payments", href: "/finance/pending-payments", roles: ["admin", "staff"] },
-  { label: "Refunds", href: "/refunds", roles: ["admin", "staff"] },
+  {
+    label: "Finance",
+    href: "/finance",
+    roles: ["admin", "staff"],
+    children: [
+      { label: "Overview", href: "/finance" },
+      { label: "Transactions", href: "/finance/transactions" },
+      { label: "Payments", href: "/finance/pending-payments" },
+      { label: "Expenses", href: "/finance/expenses" },
+      { label: "Refunds", href: "/refunds" },
+    ],
+  },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
 ];
 

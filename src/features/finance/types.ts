@@ -191,3 +191,22 @@ export interface PendingPaymentFilters {
   to?: string | null;
   sort?: ObligationSort;
 }
+
+export interface ExpenseRow {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  amountMinor: number;
+  currency: string;
+  paymentMethod: string | null;
+  spentOn: string;
+  vendor: string | null;
+  reference: string | null;
+  notes: string | null;
+  status: string;
+}
+
+export interface ExpensePage {
+  expenses: ExpenseRow[];
+  totalCount: number;
+}

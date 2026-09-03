@@ -16,6 +16,8 @@ import type {
   LedgerFilters,
   LedgerPage,
   ExpenseCategory,
+  ExpensePage,
+  ExpenseRow,
   ObligationSource,
   PaymentObligation,
   PendingPaymentFilters,
@@ -231,6 +233,46 @@ export class SupabaseFinanceService implements FinanceService {
       .order("sort_order");
     if (error) throw this.mapError(error);
     return (data ?? []).map((row) => ({ id: row.id, name: row.name }));
+  }
+
+  async listExpenses(input: {
+    facilityId: string;
+    dateRange: FinanceDateRange;
+    categoryId?: string | null;
+    limit?: number;
+    offset?: number;
+  }): Promise<ExpensePage> {
+    const { data, error } = await this.supabase.rpc('list_expenses', {
+      p_facility_id: input.facilityId,
+      ...dateRangeArgs(input.dateRange),
+      p_category_id: input.categoryId ?? null,
+      p_limit: input.limit ?? 20,
+      p_offset: input.offset ?? 0,
+    });
+    if (error) throw this.mapError(error);
+    const expenses: ExpenseRow[] = (data ?? []).map((row) => ({
+      id: row.id,
+      categoryId: row.category_id,
+      categoryName: row.category_name,
+      amountMinor: row.amount_minor,
+      currency: row.currency,
+      paymentMethod: row.payment_method,
+      spentOn: row.spent_on,
+      vendor: row.vendor,
+      reference: row.reference,
+      notes: row.notes,
+      status: row.status,
+    }));
+    return { expenses, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  /** Voided, never deleted — books that lose rows cannot be explained. */
+  async voidExpense(expenseId: string, reason?: string | null): Promise<void> {
+    const { error } = await this.supabase.rpc('void_expense', {
+      p_expense_id: expenseId,
+      p_reason: reason ?? null,
+    });
+    if (error) throw this.mapError(error);
   }
 
   async createExpense(input: {
