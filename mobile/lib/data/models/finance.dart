@@ -667,3 +667,342 @@ class ListLedgerInput {
   final int? limit;
   final int? offset;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Finance rework — Phase 10: Pending Payments.
+//
+// Mirrors src/features/finance/types.ts. Backend:
+// 0052_pending_payments.sql + 0053_pending_payment_lookup.sql. Money still
+// owed on one booking or membership, derived in the database from what the
+// thing costs and what has been collected against it — never stored, so it
+// cannot drift from the payments it is computed from.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// What an obligation is owed against. Distinct from [PaymentSourceType]
+/// (`MEMBERSHIP` / `MEMBER_BOOKING` / `GUEST_BOOKING`) — the ledger and
+/// obligations split bookings by customer, not by member-vs-guest pricing.
+enum ObligationSource {
+  guestBooking,
+  booking,
+  membership;
+
+  String toJson() {
+    switch (this) {
+      case ObligationSource.guestBooking:
+        return 'GUEST_BOOKING';
+      case ObligationSource.booking:
+        return 'BOOKING';
+      case ObligationSource.membership:
+        return 'MEMBERSHIP';
+    }
+  }
+
+  static ObligationSource fromJson(String value) {
+    switch (value) {
+      case 'GUEST_BOOKING':
+        return ObligationSource.guestBooking;
+      case 'BOOKING':
+        return ObligationSource.booking;
+      case 'MEMBERSHIP':
+        return ObligationSource.membership;
+      default:
+        throw ArgumentError('Unknown ObligationSource: $value');
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ObligationSource.guestBooking:
+        return 'Guest Booking';
+      case ObligationSource.booking:
+        return 'Court Booking';
+      case ObligationSource.membership:
+        return 'Membership';
+    }
+  }
+}
+
+/// How an obligation reads — server-derived. `OVERDUE` is a view of unpaid
+/// debt whose due date has passed, not a state stored anywhere.
+enum ObligationStatus {
+  pending,
+  partiallyPaid,
+  overdue,
+  paid;
+
+  String toJson() {
+    switch (this) {
+      case ObligationStatus.pending:
+        return 'PENDING';
+      case ObligationStatus.partiallyPaid:
+        return 'PARTIALLY_PAID';
+      case ObligationStatus.overdue:
+        return 'OVERDUE';
+      case ObligationStatus.paid:
+        return 'PAID';
+    }
+  }
+
+  static ObligationStatus fromJson(String value) {
+    switch (value) {
+      case 'PENDING':
+        return ObligationStatus.pending;
+      case 'PARTIALLY_PAID':
+        return ObligationStatus.partiallyPaid;
+      case 'OVERDUE':
+        return ObligationStatus.overdue;
+      case 'PAID':
+        return ObligationStatus.paid;
+      default:
+        throw ArgumentError('Unknown ObligationStatus: $value');
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ObligationStatus.pending:
+        return 'Pending';
+      case ObligationStatus.partiallyPaid:
+        return 'Partially Paid';
+      case ObligationStatus.overdue:
+        return 'Overdue';
+      case ObligationStatus.paid:
+        return 'Paid';
+    }
+  }
+}
+
+/// Sort order for the Pending Payments list — exactly the values
+/// `list_pending_payments`' `p_sort` understands.
+enum ObligationSort {
+  dueDate,
+  amount,
+  customer,
+  newest;
+
+  String toJson() {
+    switch (this) {
+      case ObligationSort.dueDate:
+        return 'DUE_DATE';
+      case ObligationSort.amount:
+        return 'AMOUNT';
+      case ObligationSort.customer:
+        return 'CUSTOMER';
+      case ObligationSort.newest:
+        return 'NEWEST';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case ObligationSort.dueDate:
+        return 'Oldest first';
+      case ObligationSort.amount:
+        return 'Largest';
+      case ObligationSort.customer:
+        return 'Customer';
+      case ObligationSort.newest:
+        return 'Newest';
+    }
+  }
+}
+
+/// The Pending Payments status filter. `ALL_OUTSTANDING` (the default) is
+/// everything not fully paid — a filter value, not one of the four states an
+/// individual obligation can be in.
+enum PendingPaymentStatusFilter {
+  allOutstanding,
+  pending,
+  partiallyPaid,
+  overdue,
+  paid;
+
+  String toJson() {
+    switch (this) {
+      case PendingPaymentStatusFilter.allOutstanding:
+        return 'ALL_OUTSTANDING';
+      case PendingPaymentStatusFilter.pending:
+        return 'PENDING';
+      case PendingPaymentStatusFilter.partiallyPaid:
+        return 'PARTIALLY_PAID';
+      case PendingPaymentStatusFilter.overdue:
+        return 'OVERDUE';
+      case PendingPaymentStatusFilter.paid:
+        return 'PAID';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case PendingPaymentStatusFilter.allOutstanding:
+        return 'All Outstanding';
+      case PendingPaymentStatusFilter.pending:
+        return 'Pending';
+      case PendingPaymentStatusFilter.partiallyPaid:
+        return 'Partially Paid';
+      case PendingPaymentStatusFilter.overdue:
+        return 'Overdue';
+      case PendingPaymentStatusFilter.paid:
+        return 'Paid';
+    }
+  }
+}
+
+/// One booking or membership with money still owed. Every figure is
+/// database-derived; this class only describes the shape.
+class PaymentObligation {
+  const PaymentObligation({
+    required this.sourceType,
+    required this.sourceId,
+    required this.reference,
+    required this.customerName,
+    required this.customerPhone,
+    required this.description,
+    required this.facilityName,
+    required this.courtName,
+    required this.startsAt,
+    required this.endsAt,
+    required this.totalMinor,
+    required this.paidMinor,
+    required this.outstandingMinor,
+    required this.status,
+    required this.paymentMethod,
+    required this.dueOn,
+  });
+
+  final ObligationSource sourceType;
+  final String sourceId;
+  final String reference;
+  final String customerName;
+  final String? customerPhone;
+  final String description;
+  final String? facilityName;
+  final String? courtName;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final int totalMinor;
+  final int paidMinor;
+  final int outstandingMinor;
+  final ObligationStatus status;
+  final String? paymentMethod;
+
+  /// Booking date, or membership start date — one meaning per source.
+  /// `yyyy-MM-dd` date string.
+  final String dueOn;
+
+  bool get isSettled => outstandingMinor <= 0;
+
+  factory PaymentObligation.fromJson(Map<String, dynamic> json) {
+    return PaymentObligation(
+      sourceType: ObligationSource.fromJson(json['source_type'] as String),
+      sourceId: json['source_id'] as String,
+      reference: json['reference'] as String,
+      customerName: json['customer_name'] as String,
+      customerPhone: json['customer_phone'] as String?,
+      description: json['description'] as String,
+      facilityName: json['facility_name'] as String?,
+      courtName: json['court_name'] as String?,
+      startsAt: json['starts_at'] == null ? null : DateTime.parse(json['starts_at'] as String),
+      endsAt: json['ends_at'] == null ? null : DateTime.parse(json['ends_at'] as String),
+      totalMinor: (json['total_minor'] as num).toInt(),
+      paidMinor: (json['paid_minor'] as num).toInt(),
+      outstandingMinor: (json['outstanding_minor'] as num).toInt(),
+      status: ObligationStatus.fromJson(json['status'] as String),
+      paymentMethod: json['payment_method'] as String?,
+      dueOn: json['due_on'] as String,
+    );
+  }
+}
+
+/// Filters for `list_pending_payments`. [status] and [sort] are nullable; the
+/// repository supplies the wire defaults (`ALL_OUTSTANDING` / `DUE_DATE`),
+/// exactly as the web service does.
+class PendingPaymentFilters {
+  const PendingPaymentFilters({
+    this.search,
+    this.sourceType,
+    this.status,
+    this.from,
+    this.to,
+    this.sort,
+  });
+
+  final String? search;
+  final ObligationSource? sourceType;
+  final PendingPaymentStatusFilter? status;
+  final String? from;
+  final String? to;
+  final ObligationSort? sort;
+}
+
+/// A page of obligations plus the server's own count for the same filters —
+/// `list_pending_payments`' in-row `total_count`, never `obligations.length`.
+class PendingPaymentsPage {
+  const PendingPaymentsPage({required this.obligations, required this.totalCount});
+
+  final List<PaymentObligation> obligations;
+  final int totalCount;
+
+  factory PendingPaymentsPage.fromRows(List<Map<String, dynamic>> rows) {
+    return PendingPaymentsPage(
+      obligations: rows.map(PaymentObligation.fromJson).toList(),
+      totalCount: rows.isEmpty ? 0 : (rows.first['total_count'] as num).toInt(),
+    );
+  }
+}
+
+/// The Pending Payments KPI row, straight off `get_pending_payments_summary`.
+class PendingPaymentsSummary {
+  const PendingPaymentsSummary({
+    required this.outstandingMinor,
+    required this.pendingMinor,
+    required this.partiallyPaidMinor,
+    required this.overdueMinor,
+    required this.obligationCount,
+  });
+
+  final int outstandingMinor;
+  final int pendingMinor;
+  final int partiallyPaidMinor;
+  final int overdueMinor;
+  final int obligationCount;
+
+  factory PendingPaymentsSummary.fromJson(Map<String, dynamic> json) {
+    return PendingPaymentsSummary(
+      outstandingMinor: (json['outstanding_minor'] as num).toInt(),
+      pendingMinor: (json['pending_minor'] as num).toInt(),
+      partiallyPaidMinor: (json['partially_paid_minor'] as num).toInt(),
+      overdueMinor: (json['overdue_minor'] as num).toInt(),
+      obligationCount: (json['obligation_count'] as num).toInt(),
+    );
+  }
+}
+
+/// What `record_obligation_payment` hands back. [duplicate] is true when an
+/// earlier request with the same idempotency key already recorded this
+/// payment — the money was taken once, not twice. [outstandingMinor] is what
+/// remains after this payment (absent on the duplicate path).
+class RecordObligationPaymentResult {
+  const RecordObligationPaymentResult({required this.duplicate, this.outstandingMinor});
+
+  final bool duplicate;
+  final int? outstandingMinor;
+}
+
+/// The arguments `list_pending_payments` takes. [sourceId] switches it to
+/// single-obligation mode — returns just that one, whatever its status.
+class ListPendingPaymentsInput {
+  const ListPendingPaymentsInput({
+    required this.facilityId,
+    this.filters = const PendingPaymentFilters(),
+    this.limit,
+    this.offset,
+    this.sourceId,
+  });
+
+  final String facilityId;
+  final PendingPaymentFilters filters;
+  final int? limit;
+  final int? offset;
+  final String? sourceId;
+}

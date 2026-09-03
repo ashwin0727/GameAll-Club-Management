@@ -13,6 +13,8 @@ import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/finance/expenses_screen.dart';
 import '../../features/finance/finance_screen.dart';
+import '../../features/finance/pending_payments_screen.dart';
+import '../../features/finance/record_payment_screen.dart';
 import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
 import '../../features/memberships/create_membership_screen.dart';
@@ -127,6 +129,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.financeExpenses,
         builder: (context, state) => const ExpensesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.financePendingPayments,
+        builder: (context, state) => const PendingPaymentsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.financeRecordPayment,
+        builder: (context, state) =>
+            RecordPaymentScreen(sourceId: state.pathParameters['sourceId']!),
       ),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
     ],

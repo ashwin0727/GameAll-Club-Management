@@ -38,6 +38,11 @@ class AppRoutes {
   static const finance = '/finance';
   static const financeTransactions = '/finance/transactions';
   static const financeExpenses = '/finance/expenses';
+  static const financePendingPayments = '/finance/pending-payments';
+
+  /// The standalone Record Payment page — `:sourceId` is a booking or
+  /// membership id. Reached from Pending Payments.
+  static const financeRecordPayment = '/finance/pending-payments/:sourceId/record';
 
   static const profile = '/profile';
 }

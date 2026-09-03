@@ -312,4 +312,108 @@ class FinanceRepository {
       throw _mapError(e);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 10 — Pending Payments.
+  // Backend: 0052_pending_payments.sql + 0053_pending_payment_lookup.sql.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Everything still owed, from every source, server-filtered/sorted/paged.
+  /// Nothing here computes what is owed — the database derives
+  /// `outstanding_minor` and `status` from cost and collections. An empty
+  /// page is a real zero, never "all caught up" papering over a failed query.
+  Future<PendingPaymentsPage> listPendingPayments(ListPendingPaymentsInput input) async {
+    final f = input.filters;
+    try {
+      final rows = await _client.rpc(
+        'list_pending_payments',
+        params: {
+          'p_facility_id': input.facilityId,
+          'p_search': (f.search != null && f.search!.trim().isNotEmpty) ? f.search!.trim() : null,
+          'p_source_type': f.sourceType?.toJson(),
+          'p_status': f.status?.toJson() ?? 'ALL_OUTSTANDING',
+          'p_from': f.from,
+          'p_to': f.to,
+          'p_sort': f.sort?.toJson() ?? 'DUE_DATE',
+          'p_limit': input.limit ?? 20,
+          'p_offset': input.offset ?? 0,
+          'p_source_id': input.sourceId,
+        },
+      );
+      return PendingPaymentsPage.fromRows(
+        (rows as List<dynamic>).map((row) => (row as Map).cast<String, dynamic>()).toList(),
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// The single obligation a Record Payment page is collecting against —
+  /// the same list, asked for one `sourceId`, so there is never a second
+  /// definition of "outstanding" waiting to disagree with the list.
+  Future<PaymentObligation?> getPaymentObligation(String facilityId, String sourceId) async {
+    final page = await listPendingPayments(
+      ListPendingPaymentsInput(facilityId: facilityId, sourceId: sourceId, limit: 1),
+    );
+    return page.obligations.isEmpty ? null : page.obligations.first;
+  }
+
+  /// The Pending Payments KPI row. Not date-filtered by default — it is a
+  /// current, actionable figure ("what is owed right now"), not a historical
+  /// one for a range.
+  Future<PendingPaymentsSummary> getPendingPaymentsSummary(
+    String facilityId, {
+    String? from,
+    String? to,
+  }) async {
+    try {
+      final data = await _client.rpc(
+        'get_pending_payments_summary',
+        params: {'p_facility_id': facilityId, 'p_from': from, 'p_to': to},
+      );
+      return PendingPaymentsSummary.fromJson(_firstRow(data));
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Records a payment against one obligation — the single write path that
+  /// works for a guest booking, a court booking or a membership alike.
+  /// [idempotencyKey] makes a double-submit safe: the server returns the
+  /// original payment rather than taking money twice. The amount is already
+  /// in minor units; the repository does no money arithmetic. Mirrors
+  /// `SupabaseFinanceService.recordObligationPayment`.
+  Future<RecordObligationPaymentResult> recordObligationPayment({
+    required ObligationSource sourceType,
+    required String sourceId,
+    required int amountMinor,
+    required String method,
+    required String idempotencyKey,
+    String? paidOn,
+    String? reference,
+    String? notes,
+  }) async {
+    try {
+      final data = await _client.rpc(
+        'record_obligation_payment',
+        params: {
+          'p_source_type': sourceType.toJson(),
+          'p_source_id': sourceId,
+          'p_amount_minor': amountMinor,
+          'p_method': method,
+          'p_paid_on': paidOn,
+          'p_reference': reference,
+          'p_notes': notes,
+          'p_idempotency_key': idempotencyKey,
+        },
+      );
+      final map = (data as Map).cast<String, dynamic>();
+      return RecordObligationPaymentResult(
+        duplicate: map['duplicate'] == true,
+        outstandingMinor: (map['outstandingMinor'] as num?)?.toInt(),
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
 }
