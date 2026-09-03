@@ -9,7 +9,6 @@ import type {
   GuestBookingListResult,
   GuestBookingsSummary,
   NewBookingInput,
-  PaymentStatus,
   RescheduleBookingInput,
 } from "@/features/bookings/types";
 import type { BookingService } from "@/services/bookings/booking.service";
@@ -259,8 +258,10 @@ export class SupabaseBookingService implements BookingService {
       endTime: r.end_time,
       partySize: r.party_size,
       amountMinor: r.amount_minor,
+      paidMinor: r.paid_minor ?? 0,
+      outstandingMinor: r.outstanding_minor ?? 0,
       currency: r.currency,
-      paymentStatus: r.payment_status as PaymentStatus,
+      paymentStatus: r.payment_status,
       paymentMethod: r.payment_method,
       status: r.status as BookingStatus,
       source: r.source ?? "COURT",

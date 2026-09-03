@@ -23,6 +23,7 @@ import type {
   GuestBookingRow,
   GuestBookingsSummary,
   PaymentStatus,
+  GuestPaymentStatus,
 } from "@/features/bookings/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
@@ -35,7 +36,7 @@ const STATUS_OPTIONS: { value: BookingStatus | ""; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
   { value: "pending", label: "Pending" },
 ];
-const PAYMENT_OPTIONS: { value: PaymentStatus | ""; label: string }[] = [
+const PAYMENT_OPTIONS: { value: GuestPaymentStatus | ""; label: string }[] = [
   { value: "", label: "All Payment Status" },
   { value: "PAID", label: "Paid" },
   { value: "PENDING", label: "Pending" },
@@ -62,9 +63,12 @@ function statusBadge(s: BookingStatus) {
   if (s === "cancelled") return <Badge variant="destructive">Cancelled</Badge>;
   return <Badge variant="warning">Pending</Badge>;
 }
-function paymentBadge(s: PaymentStatus) {
+function paymentBadge(s: GuestPaymentStatus) {
   if (s === "PAID") return <Badge variant="success">Paid</Badge>;
   if (s === "REFUNDED") return <Badge variant="destructive">Refunded</Badge>;
+  // Part-paid reads as its own thing: "Pending" hid the fact that money had
+  // already been taken.
+  if (s === "PARTIALLY_PAID") return <Badge variant="warning">Partly paid</Badge>;
   return <Badge variant="warning">Pending</Badge>;
 }
 

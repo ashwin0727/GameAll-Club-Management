@@ -2,6 +2,13 @@ export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
 export type CustomerType = "MEMBER" | "GUEST";
 export type PaymentStatus = "PENDING" | "PAID" | "REFUNDED";
 
+/**
+ * What a guest booking's payment actually looks like, derived from money
+ * collected against money owed. PARTIALLY_PAID has no home in the stored
+ * flag, which only knows PENDING / PAID / REFUNDED.
+ */
+export type GuestPaymentStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "REFUNDED";
+
 export interface Booking {
   id: string;
   facilityId: string;
@@ -72,8 +79,11 @@ export interface GuestBookingRow {
   endTime: string;
   partySize: number;
   amountMinor: number | null;
+  /** Collected so far — part payments included. */
+  paidMinor: number;
+  outstandingMinor: number;
   currency: string;
-  paymentStatus: PaymentStatus;
+  paymentStatus: GuestPaymentStatus;
   paymentMethod: string | null;
   status: BookingStatus;
   /** COURT = a bookings row. SESSION = a seat the owner released from a

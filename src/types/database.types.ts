@@ -1530,8 +1530,10 @@ export interface Database {
           end_time: string;
           party_size: number;
           amount_minor: number | null;
+          paid_minor: number;
+          outstanding_minor: number;
           currency: string;
-          payment_status: "PENDING" | "PAID" | "REFUNDED";
+          payment_status: "PENDING" | "PARTIALLY_PAID" | "PAID" | "REFUNDED";
           payment_method: string | null;
           status: string;
           /** COURT = a bookings row; SESSION = a released membership seat. */
