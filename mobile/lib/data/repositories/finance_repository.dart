@@ -2,16 +2,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/finance.dart';
 
-/// Finance & Revenue Management — Phase 7 port. Mirrors
-/// src/services/finance/supabase-finance.service.ts exactly.
+/// Finance & Revenue Management — Phase 7 port, extended by the Phase 8+
+/// finance rework. Mirrors src/services/finance/supabase-finance.service.ts.
 ///
-/// This repository is a pure read layer over the aggregation RPCs added in
-/// supabase/migrations/0024_finance.sql (`get_finance_summary`,
-/// `get_revenue_breakdown`, `get_revenue_trend`,
-/// `list_finance_transactions` / `count_finance_transactions`,
-/// `get_finance_transaction`). Finance is NOT a new ledger — `payments` and
-/// `refunds` remain the source of truth, and every total this class returns
-/// was computed by the server.
+/// This repository is a read layer over the finance aggregation RPCs (0024
+/// onward: `get_finance_summary`, `get_revenue_breakdown`,
+/// `get_revenue_trend`, `list_finance_transactions` /
+/// `count_finance_transactions`, `get_finance_transaction`), plus the small
+/// set of owner-entered writes finance genuinely needs — recording an expense
+/// (`create_expense`), voiding one (`void_expense`), and, from Phase 11,
+/// recording a payment against an obligation. Income is never written here: it
+/// always arrives as a payment against a booking or membership, which is what
+/// keeps the ledger traceable. Finance is NOT a new ledger — `payments`,
+/// `refunds` and now `expenses` remain the source of truth, and every total
+/// this class returns was computed by the server.
 ///
 /// The one rule this file exists to enforce on the client side: **it never
 /// does revenue math**. There is no method here that sums a transaction list
@@ -159,6 +163,100 @@ class FinanceRepository {
       );
       if (data == null) throw AppException(AppErrorCode.financeDataError);
       return FinanceTransaction.fromJson((data as Map).cast<String, dynamic>());
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 8 — Expenses (the outgoing side).
+  // Backend: supabase/migrations/0046_finance_expenses.sql.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// The categories an expense can be filed under: the shared defaults (null
+  /// `facility_id`) plus this facility's own. Read straight off the table —
+  /// RLS decides which rows come back, exactly like the web service. Mirrors
+  /// `SupabaseFinanceService.listExpenseCategories`.
+  Future<List<ExpenseCategory>> listExpenseCategories(String facilityId) async {
+    try {
+      final rows = await _client
+          .from('expense_categories')
+          .select('id, name')
+          .eq('is_active', true)
+          .or('facility_id.is.null,facility_id.eq.$facilityId')
+          .order('sort_order');
+      return (rows as List<dynamic>)
+          .map((row) => ExpenseCategory.fromJson((row as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Expenses for a range, newest first, server-paginated. The page total is
+  /// `list_expenses`' own `count(*) over ()` carried on every row — never the
+  /// length of the page just fetched.
+  Future<ExpensePage> listExpenses(ListExpensesInput input) async {
+    try {
+      final rows = await _client.rpc(
+        'list_expenses',
+        params: {
+          'p_facility_id': input.facilityId,
+          ..._dateRangeArgs(input.dateRange),
+          'p_category_id': input.categoryId,
+          'p_limit': input.limit ?? 25,
+          'p_offset': input.offset ?? 0,
+        },
+      );
+      return ExpensePage.fromRows(
+        (rows as List<dynamic>).map((row) => (row as Map).cast<String, dynamic>()).toList(),
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Records an expense. [amountMinor] is already in minor units — the caller
+  /// converts from rupees, the repository passes it straight through and does
+  /// no money arithmetic of its own. Requires an owner/manager role; the RPC
+  /// enforces that and the category's facility scope.
+  Future<void> createExpense({
+    required String facilityId,
+    required String categoryId,
+    required int amountMinor,
+    required String spentOn,
+    String? paymentMethod,
+    String? vendor,
+    String? reference,
+    String? notes,
+  }) async {
+    try {
+      await _client.rpc(
+        'create_expense',
+        params: {
+          'p_facility_id': facilityId,
+          'p_category_id': categoryId,
+          'p_amount_minor': amountMinor,
+          'p_spent_on': spentOn,
+          'p_payment_method': paymentMethod,
+          'p_vendor': vendor,
+          'p_reference': reference,
+          'p_notes': notes,
+        },
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Voids an expense — never a delete. The row stays, marked `VOID` with who
+  /// did it and an optional reason, so the books can still be explained.
+  Future<void> voidExpense(String expenseId, {String? reason}) async {
+    try {
+      await _client.rpc(
+        'void_expense',
+        params: {'p_expense_id': expenseId, 'p_reason': reason},
+      );
     } catch (e) {
       throw _mapError(e);
     }

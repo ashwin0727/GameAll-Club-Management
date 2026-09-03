@@ -11,6 +11,7 @@ import '../../features/authentication/splash_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
 import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/finance/expenses_screen.dart';
 import '../../features/finance/finance_screen.dart';
 import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
@@ -122,6 +123,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.financeTransactions,
         builder: (context, state) => const TransactionsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.financeExpenses,
+        builder: (context, state) => const ExpensesScreen(),
       ),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
     ],

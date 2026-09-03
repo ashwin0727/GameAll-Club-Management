@@ -395,3 +395,117 @@ class TransactionPage {
   final List<FinanceTransaction> transactions;
   final int totalCount;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Finance rework — Phase 8: the outgoing side (Expenses).
+//
+// Mirrors src/features/finance/types.ts (`ExpenseCategory` / `ExpenseRow` /
+// `ExpensePage`). Backend: supabase/migrations/0046_finance_expenses.sql.
+// Income is never typed in by hand — it always arrives as a payment against a
+// booking or membership. An expense is the one transaction an owner records
+// directly, which is why it has its own small write path.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// One row of `expense_categories` a facility may file an expense under —
+/// either a shared default (null `facility_id`) or the facility's own.
+class ExpenseCategory {
+  const ExpenseCategory({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  factory ExpenseCategory.fromJson(Map<String, dynamic> json) {
+    return ExpenseCategory(
+      id: json['id'] as String,
+      name: json['name'] as String,
+    );
+  }
+}
+
+/// One row of `list_expenses`. [amountMinor] is minor units, like every other
+/// amount in the ledger. [spentOn] is a `yyyy-MM-dd` date string (Postgres
+/// `date`), not a timestamp — an expense is filed against a day, not an
+/// instant. [status] is the backend's own vocabulary (`RECORDED` / `VOID`)
+/// verbatim; a voided expense is never removed, only marked.
+class ExpenseRow {
+  const ExpenseRow({
+    required this.id,
+    required this.categoryId,
+    required this.categoryName,
+    required this.amountMinor,
+    required this.currency,
+    required this.paymentMethod,
+    required this.spentOn,
+    required this.vendor,
+    required this.reference,
+    required this.notes,
+    required this.status,
+  });
+
+  final String id;
+  final String categoryId;
+  final String categoryName;
+  final int amountMinor;
+  final String currency;
+  final String? paymentMethod;
+  final String spentOn;
+  final String? vendor;
+  final String? reference;
+  final String? notes;
+  final String status;
+
+  bool get isVoid => status == 'VOID';
+
+  factory ExpenseRow.fromJson(Map<String, dynamic> json) {
+    return ExpenseRow(
+      id: json['id'] as String,
+      categoryId: json['category_id'] as String,
+      categoryName: json['category_name'] as String,
+      amountMinor: (json['amount_minor'] as num).toInt(),
+      currency: json['currency'] as String,
+      paymentMethod: json['payment_method'] as String?,
+      spentOn: json['spent_on'] as String,
+      vendor: json['vendor'] as String?,
+      reference: json['reference'] as String?,
+      notes: json['notes'] as String?,
+      status: json['status'] as String,
+    );
+  }
+}
+
+/// A page of expenses plus the server's own count for the same filters.
+/// [totalCount] is `list_expenses`' in-row `total_count` (a window count over
+/// the full match, `count(*) over ()`), never `expenses.length`.
+class ExpensePage {
+  const ExpensePage({required this.expenses, required this.totalCount});
+
+  final List<ExpenseRow> expenses;
+  final int totalCount;
+
+  /// `list_expenses` returns each row with a `total_count` column repeated on
+  /// every row; an empty result therefore has no count row and means zero.
+  factory ExpensePage.fromRows(List<Map<String, dynamic>> rows) {
+    return ExpensePage(
+      expenses: rows.map(ExpenseRow.fromJson).toList(),
+      totalCount: rows.isEmpty ? 0 : (rows.first['total_count'] as num).toInt(),
+    );
+  }
+}
+
+/// The arguments `list_expenses` takes, kept together so a page and its count
+/// can never be requested for different filters.
+class ListExpensesInput {
+  const ListExpensesInput({
+    required this.facilityId,
+    required this.dateRange,
+    this.categoryId,
+    this.limit,
+    this.offset,
+  });
+
+  final String facilityId;
+  final FinanceDateRange dateRange;
+  final String? categoryId;
+  final int? limit;
+  final int? offset;
+}

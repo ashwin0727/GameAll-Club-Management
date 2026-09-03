@@ -175,6 +175,11 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         title: const Text('Finance'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            tooltip: 'Expenses',
+            onPressed: () => context.push(AppRoutes.financeExpenses),
+          ),
+          IconButton(
             icon: const Icon(Icons.receipt_long),
             tooltip: 'Transactions',
             onPressed: () => context.push(AppRoutes.financeTransactions),
