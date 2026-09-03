@@ -46,6 +46,19 @@ class GuestBookingsSummary {
       );
 }
 
+/// Where a guest-bookings admin row comes from (migration 0043). A `SESSION`
+/// row is a guest sitting in capacity released from a membership session — it
+/// lives in `membership_session_bookings`, not `bookings`, so the court
+/// actions (edit / reschedule / cancel / duplicate / delete) don't apply to
+/// it. [bookingId] on such a row is the `membership_session_bookings` id.
+enum GuestBookingSource {
+  court,
+  session;
+
+  static GuestBookingSource fromJson(String? value) =>
+      value == 'SESSION' ? GuestBookingSource.session : GuestBookingSource.court;
+}
+
 class GuestBookingRow {
   const GuestBookingRow({
     required this.bookingId,
@@ -62,6 +75,7 @@ class GuestBookingRow {
     required this.paymentStatus,
     this.paymentMethod,
     required this.status,
+    this.source = GuestBookingSource.court,
   });
 
   final String bookingId;
@@ -78,6 +92,9 @@ class GuestBookingRow {
   final String paymentStatus; // PENDING | PAID | REFUNDED
   final String? paymentMethod;
   final String status; // pending | confirmed | cancelled | completed
+  final GuestBookingSource source;
+
+  bool get isSession => source == GuestBookingSource.session;
 
   factory GuestBookingRow.fromJson(Map<String, dynamic> j) => GuestBookingRow(
         bookingId: j['booking_id'] as String,
@@ -94,5 +111,6 @@ class GuestBookingRow {
         paymentStatus: j['payment_status'] as String? ?? 'PENDING',
         paymentMethod: j['payment_method'] as String?,
         status: j['status'] as String? ?? 'confirmed',
+        source: GuestBookingSource.fromJson(j['source'] as String?),
       );
 }

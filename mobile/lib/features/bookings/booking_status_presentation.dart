@@ -56,3 +56,48 @@ StatusTone paymentStatusTone(PaymentStatus status) {
 /// AVAILABLE/BOOKED for a single booking slot — the state the reusable
 /// BookingSlotChip renders (spec §17).
 enum SlotVisualState { available, selected, booked }
+
+/// The actions a guest-bookings admin row can offer. Mirrors the action set in
+/// src/features/bookings/components/guest-booking-actions.tsx.
+enum GuestBookingAction {
+  complete,
+  cancel,
+  sendReceipt,
+  duplicate,
+  invoice,
+  delete,
+
+  /// Offline payment for a released membership seat — `record_session_guest_
+  /// payment`, not the court-booking recorder.
+  recordSessionPayment,
+}
+
+/// Which actions apply to a guest-bookings row, given where it came from and
+/// its current state.
+///
+/// A `SESSION` row has no `bookings` record behind it, so only Record Payment
+/// and Invoice apply — exactly as the web hides the court action set for
+/// `isSession` rows. A court row keeps the full set, minus Complete once it is
+/// completed/cancelled and minus Cancel once cancelled.
+List<GuestBookingAction> guestBookingActions({
+  required bool isSession,
+  required String status,
+  required String paymentStatus,
+}) {
+  if (isSession) {
+    final canRecord = paymentStatus != 'PAID' && status != 'cancelled';
+    return [
+      if (canRecord) GuestBookingAction.recordSessionPayment,
+      GuestBookingAction.invoice,
+    ];
+  }
+
+  return [
+    if (status != 'completed' && status != 'cancelled') GuestBookingAction.complete,
+    if (status != 'cancelled') GuestBookingAction.cancel,
+    GuestBookingAction.sendReceipt,
+    GuestBookingAction.duplicate,
+    GuestBookingAction.invoice,
+    GuestBookingAction.delete,
+  ];
+}

@@ -218,6 +218,23 @@ class BookingRepository {
     }
   }
 
+  /// Cash taken at the venue for a seat released from a membership session.
+  /// Those rows live in `membership_session_bookings`, not `bookings`, so they
+  /// need their own recorder — it writes to the same `payments` table, and so
+  /// lands in Finance the same way a court booking's cash does. Mirrors
+  /// `SupabaseBookingService.recordSessionGuestPayment`.
+  Future<void> recordSessionGuestPayment(String sessionBookingId, String method, int amountMinor) async {
+    try {
+      await _client.rpc('record_session_guest_payment', params: {
+        'p_session_booking_id': sessionBookingId,
+        'p_method': method,
+        'p_amount_minor': amountMinor,
+      });
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, notFound: AppErrorCode.bookingNotFound, invalid: AppErrorCode.invalidBooking);
+    }
+  }
+
   Future<Booking> duplicateGuestBooking(String bookingId, DateTime newStart, DateTime newEnd) async {
     try {
       final row = await _client.rpc('duplicate_guest_booking', params: {

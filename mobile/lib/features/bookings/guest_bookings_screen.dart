@@ -20,6 +20,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
+import 'booking_status_presentation.dart';
 import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
 import '../../shared/widgets/app_dropdown.dart';
@@ -357,37 +358,58 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   }
 
   Widget _rowMenu(GuestBookingRow r) {
-    return PopupMenuButton<String>(
+    final actions = guestBookingActions(
+      isSession: r.isSession,
+      status: r.status,
+      paymentStatus: r.paymentStatus,
+    );
+    return PopupMenuButton<GuestBookingAction>(
       icon: const Icon(Icons.more_vert, size: 18),
-      onSelected: (v) {
-        switch (v) {
-          case 'complete':
+      onSelected: (a) {
+        switch (a) {
+          case GuestBookingAction.complete:
             _complete(r);
-          case 'cancel':
+          case GuestBookingAction.cancel:
             _cancel(r);
-          case 'receipt':
+          case GuestBookingAction.sendReceipt:
             _receipt(r);
-          case 'duplicate':
+          case GuestBookingAction.duplicate:
             _duplicate(r);
-          case 'invoice':
+          case GuestBookingAction.invoice:
             _invoice(r);
-          case 'delete':
+          case GuestBookingAction.delete:
             _delete(r);
+          case GuestBookingAction.recordSessionPayment:
+            _recordSessionPayment(r);
         }
       },
       itemBuilder: (_) => [
-        if (r.status != 'completed' && r.status != 'cancelled')
-          _mi('complete', 'Mark as Completed', 'Mark booking as completed'),
-        if (r.status != 'cancelled') _mi('cancel', 'Cancel Booking', 'Cancel this booking'),
-        _mi('receipt', 'Send Receipt', 'Send booking receipt to guest'),
-        _mi('duplicate', 'Duplicate Booking', 'Create a new booking'),
-        _mi('invoice', 'Download Invoice', 'Download invoice / bill'),
-        _mi('delete', 'Delete Booking', 'Permanently delete booking'),
+        for (final a in actions) _mi(a, _actionTitle(a), _actionSub(a)),
       ],
     );
   }
 
-  PopupMenuItem<String> _mi(String v, String title, String sub) => PopupMenuItem(
+  static String _actionTitle(GuestBookingAction a) => switch (a) {
+        GuestBookingAction.complete => 'Mark as Completed',
+        GuestBookingAction.cancel => 'Cancel Booking',
+        GuestBookingAction.sendReceipt => 'Send Receipt',
+        GuestBookingAction.duplicate => 'Duplicate Booking',
+        GuestBookingAction.invoice => 'Download Invoice',
+        GuestBookingAction.delete => 'Delete Booking',
+        GuestBookingAction.recordSessionPayment => 'Record Payment',
+      };
+
+  static String _actionSub(GuestBookingAction a) => switch (a) {
+        GuestBookingAction.complete => 'Mark booking as completed',
+        GuestBookingAction.cancel => 'Cancel this booking',
+        GuestBookingAction.sendReceipt => 'Send booking receipt to guest',
+        GuestBookingAction.duplicate => 'Create a new booking',
+        GuestBookingAction.invoice => 'Download invoice / bill',
+        GuestBookingAction.delete => 'Permanently delete booking',
+        GuestBookingAction.recordSessionPayment => 'Mark payment as received',
+      };
+
+  PopupMenuItem<GuestBookingAction> _mi(GuestBookingAction v, String title, String sub) => PopupMenuItem(
         value: v,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,6 +688,61 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
     }
   }
 
+  /// Offline payment for a released membership seat. Mirrors web's
+  /// RecordSessionPaymentDialog in guest-booking-actions.tsx.
+  Future<void> _recordSessionPayment(GuestBookingRow r) async {
+    final method = TextEditingController(text: 'Cash');
+    final amount = TextEditingController(
+      text: r.amountMinor != null ? '${(r.amountMinor! / 100)}' : '',
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Record payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${r.guestName} · ${r.amountMinor == null ? '—' : Formatters.currencyInr((r.amountMinor! / 100).round())}',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            DropdownButtonFormField<String>(
+              initialValue: method.text,
+              decoration: const InputDecoration(labelText: 'Payment method'),
+              items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
+              onChanged: (v) => method.text = v ?? 'Cash',
+            ),
+            TextField(
+              controller: amount,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount received (₹)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Record payment')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(bookingRepositoryProvider).recordSessionGuestPayment(
+            r.bookingId,
+            method.text.trim().isEmpty ? 'Cash' : method.text.trim(),
+            ((double.tryParse(amount.text.trim()) ?? 0) * 100).round(),
+          );
+      _toast('Payment recorded');
+      _reload();
+    } on AppException catch (e) {
+      _toast(e.message);
+    }
+  }
+
   Future<void> _invoice(GuestBookingRow r) async {
     final lines = <(String, String)>[
       ('Booking ID', r.code),
@@ -726,7 +803,10 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: AppCard(
-              onTap: () => _openEdit(r.bookingId),
+              // A released membership seat has no bookings row behind it, so
+              // the edit screen doesn't apply — it is managed under Membership
+              // Sessions.
+              onTap: r.isSession ? null : () => _openEdit(r.bookingId),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -738,7 +818,9 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                           children: [
                             Text('${r.code} · ${r.guestName}', style: Theme.of(context).textTheme.titleSmall),
                             Text(
-                              '${r.sportName ?? '—'} · ${r.courtName}',
+                              r.isSession
+                                  ? 'Session seat · ${r.courtName}'
+                                  : '${r.sportName ?? '—'} · ${r.courtName}',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
                             ),
                           ],
