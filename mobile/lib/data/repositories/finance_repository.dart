@@ -83,6 +83,27 @@ class FinanceRepository {
     }
   }
 
+  /// Captured revenue split by payment method — a backend aggregate
+  /// (`get_payment_method_breakdown`, 0047), never summed from a paginated
+  /// transaction list. Payments taken before a method was recorded come back
+  /// as "Unknown" so the parts still add to the whole.
+  Future<List<PaymentMethodSlice>> getPaymentMethodBreakdown(
+    String facilityId,
+    FinanceDateRange dateRange,
+  ) async {
+    try {
+      final rows = await _client.rpc(
+        'get_payment_method_breakdown',
+        params: {'p_facility_id': facilityId, ..._dateRangeArgs(dateRange)},
+      );
+      return (rows as List<dynamic>)
+          .map((row) => PaymentMethodSlice.fromJson((row as Map).cast<String, dynamic>()))
+          .toList();
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   Future<RevenueBreakdown> getRevenueBreakdown(String facilityId, FinanceDateRange dateRange) async {
     try {
       final data = await _client.rpc(

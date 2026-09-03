@@ -135,7 +135,9 @@ class FinanceSummary {
   const FinanceSummary({
     required this.grossRevenueMinor,
     required this.refundsMinor,
+    required this.expensesMinor,
     required this.netRevenueMinor,
+    required this.outstandingMinor,
     required this.transactionCount,
     required this.successfulPaymentCount,
     required this.failedPaymentCount,
@@ -146,7 +148,17 @@ class FinanceSummary {
 
   final int grossRevenueMinor;
   final int refundsMinor;
+
+  /// What the facility spent in the range — recorded expenses, voids excluded
+  /// (migration 0046). Absent on a pre-0046 row, in which case it reads 0.
+  final int expensesMinor;
+
+  /// Gross, less refunds, less expenses — the server's own figure.
   final int netRevenueMinor;
+
+  /// Money owed on bookings and memberships that have not been paid for.
+  /// Absent on a pre-0046 row, in which case it reads 0.
+  final int outstandingMinor;
   final int transactionCount;
   final int successfulPaymentCount;
   final int failedPaymentCount;
@@ -158,13 +170,38 @@ class FinanceSummary {
     return FinanceSummary(
       grossRevenueMinor: (json['gross_revenue_minor'] as num).toInt(),
       refundsMinor: (json['refunds_minor'] as num).toInt(),
+      expensesMinor: (json['expenses_minor'] as num?)?.toInt() ?? 0,
       netRevenueMinor: (json['net_revenue_minor'] as num).toInt(),
+      outstandingMinor: (json['outstanding_minor'] as num?)?.toInt() ?? 0,
       transactionCount: (json['transaction_count'] as num).toInt(),
       successfulPaymentCount: (json['successful_payment_count'] as num).toInt(),
       failedPaymentCount: (json['failed_payment_count'] as num).toInt(),
       pendingPaymentCount: (json['pending_payment_count'] as num).toInt(),
       pendingRefundCount: (json['pending_refund_count'] as num).toInt(),
       settlementExceptionCount: (json['settlement_exception_count'] as num).toInt(),
+    );
+  }
+}
+
+/// One payment method's share of captured revenue in the selected range —
+/// straight off `get_payment_method_breakdown` (0047), never summed from a
+/// transaction list.
+class PaymentMethodSlice {
+  const PaymentMethodSlice({
+    required this.paymentMethod,
+    required this.amountMinor,
+    required this.paymentCount,
+  });
+
+  final String paymentMethod;
+  final int amountMinor;
+  final int paymentCount;
+
+  factory PaymentMethodSlice.fromJson(Map<String, dynamic> json) {
+    return PaymentMethodSlice(
+      paymentMethod: json['payment_method'] as String,
+      amountMinor: (json['amount_minor'] as num).toInt(),
+      paymentCount: (json['payment_count'] as num).toInt(),
     );
   }
 }
