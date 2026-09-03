@@ -159,6 +159,10 @@ export interface PaymentObligation {
   customerName: string;
   customerPhone: string | null;
   description: string;
+  facilityName: string | null;
+  courtName: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
   totalMinor: number;
   paidMinor: number;
   outstandingMinor: number;

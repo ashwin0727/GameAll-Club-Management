@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
-import { RecordPaymentDialog } from "@/features/finance/components/record-payment-dialog";
+import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
 import type {
   ObligationSort,
@@ -67,7 +67,6 @@ export function PendingPaymentsPage() {
   const [obligations, setObligations] = useState<PaymentObligation[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [collecting, setCollecting] = useState<PaymentObligation | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 300);
@@ -126,7 +125,9 @@ export function PendingPaymentsPage() {
     setObligations(null);
     load().catch((err) => {
       if (cancelled) return;
-      setObligations([]);
+      // Deliberately NOT an empty list: an empty list renders "You're all
+      // caught up", and telling someone nothing is owed when the query
+      // failed is the worst way this page can be wrong.
       setError(err instanceof ServiceError ? err.message : "Unable to load pending payments.");
     });
     return () => {
@@ -263,9 +264,15 @@ export function PendingPaymentsPage() {
       </Card>
 
       <Card className="p-0">
-        {error && <p className="p-4 text-sm text-destructive">{error}</p>}
-
-        {obligations === null ? (
+        {error ? (
+          <div className="p-10 text-center">
+            <p className="text-sm font-semibold text-destructive">Unable to load pending payments</p>
+            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
+              Try again
+            </Button>
+          </div>
+        ) : obligations === null ? (
           <div className="space-y-2 p-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-14 w-full rounded-lg" />
@@ -329,8 +336,8 @@ export function PendingPaymentsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(o.dueOn)}</td>
                       <td className="px-4 py-3 text-right">
-                        <Button type="button" size="sm" onClick={() => setCollecting(o)}>
-                          Record
+                        <Button asChild size="sm">
+                          <Link href={`/finance/pending-payments/${o.sourceId}/record`}>Record</Link>
                         </Button>
                       </td>
                     </tr>
@@ -362,8 +369,10 @@ export function PendingPaymentsPage() {
                     </div>
                   </dl>
 
-                  <Button type="button" className="mt-3 min-h-11 w-full" onClick={() => setCollecting(o)}>
-                    Record {formatCurrency(o.outstandingMinor, "INR")}
+                  <Button asChild className="mt-3 min-h-11 w-full">
+                    <Link href={`/finance/pending-payments/${o.sourceId}/record`}>
+                      Record {formatCurrency(o.outstandingMinor, "INR")}
+                    </Link>
                   </Button>
                 </li>
               ))}
@@ -405,11 +414,6 @@ export function PendingPaymentsPage() {
         )}
       </Card>
 
-      <RecordPaymentDialog
-        obligation={collecting}
-        onClose={() => setCollecting(null)}
-        onRecorded={() => void load()}
-      />
     </div>
   );
 }

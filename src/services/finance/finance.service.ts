@@ -14,6 +14,7 @@ import type {
   ExpensePage,
   ObligationSource,
   PendingPaymentFilters,
+  PaymentObligation,
   PendingPaymentsPage,
   PendingPaymentsSummary,
 } from "@/features/finance/types";
@@ -39,7 +40,9 @@ export interface FinanceService {
     filters?: PendingPaymentFilters;
     limit?: number;
     offset?: number;
+    sourceId?: string | null;
   }): Promise<PendingPaymentsPage>;
+  getPaymentObligation(facilityId: string, sourceId: string): Promise<PaymentObligation | null>;
   getPendingPaymentsSummary(facilityId: string, from?: string | null, to?: string | null): Promise<PendingPaymentsSummary>;
   /** Collect against any obligation. The server revalidates the balance. */
   recordObligationPayment(input: {

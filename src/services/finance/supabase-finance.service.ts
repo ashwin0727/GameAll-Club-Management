@@ -141,6 +141,8 @@ export class SupabaseFinanceService implements FinanceService {
     filters?: PendingPaymentFilters;
     limit?: number;
     offset?: number;
+    /** One obligation by id, whatever its status — for the Record page. */
+    sourceId?: string | null;
   }): Promise<PendingPaymentsPage> {
     const f = input.filters ?? {};
     const { data, error } = await this.supabase.rpc("list_pending_payments", {
@@ -153,6 +155,7 @@ export class SupabaseFinanceService implements FinanceService {
       p_sort: f.sort ?? "DUE_DATE",
       p_limit: input.limit ?? 20,
       p_offset: input.offset ?? 0,
+      p_source_id: input.sourceId ?? null,
     });
     if (error) throw this.mapError(error);
     const obligations: PaymentObligation[] = (data ?? []).map((row) => ({
@@ -162,6 +165,10 @@ export class SupabaseFinanceService implements FinanceService {
       customerName: row.customer_name,
       customerPhone: row.customer_phone,
       description: row.description,
+      facilityName: row.facility_name,
+      courtName: row.court_name,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
       totalMinor: row.total_minor,
       paidMinor: row.paid_minor,
       outstandingMinor: row.outstanding_minor,
@@ -170,6 +177,12 @@ export class SupabaseFinanceService implements FinanceService {
       dueOn: row.due_on,
     }));
     return { obligations, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  /** The single obligation a Record Payment page is collecting against. */
+  async getPaymentObligation(facilityId: string, sourceId: string): Promise<PaymentObligation | null> {
+    const page = await this.listPendingPayments({ facilityId, sourceId, limit: 1 });
+    return page.obligations[0] ?? null;
   }
 
   async getPendingPaymentsSummary(

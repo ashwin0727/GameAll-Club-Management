@@ -2325,6 +2325,7 @@ export interface Database {
           p_sort?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_source_id?: string | null;
         };
         Returns: {
           source_type: "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP";
@@ -2333,6 +2334,10 @@ export interface Database {
           customer_name: string;
           customer_phone: string | null;
           description: string;
+          facility_name: string | null;
+          court_name: string | null;
+          starts_at: string | null;
+          ends_at: string | null;
           total_minor: number;
           paid_minor: number;
           outstanding_minor: number;
