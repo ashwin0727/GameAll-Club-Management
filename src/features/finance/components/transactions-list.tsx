@@ -21,6 +21,7 @@ import { ServiceError } from "@/services/shared/service-error";
 
 const PAGE_SIZE = 10;
 const ALL = "ALL";
+const DEFAULT_PRESET = "THIS_MONTH" as const;
 
 /** Every category the ledger can produce, for the filter. */
 const CATEGORIES = [
@@ -71,7 +72,7 @@ export function TransactionsList() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
 
-  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: "THIS_MONTH" });
+  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: DEFAULT_PRESET });
   const [txnType, setTxnType] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [paymentMethod, setPaymentMethod] = useState<string>(ALL);
@@ -152,6 +153,23 @@ export function TransactionsList() {
     };
   }, [load]);
 
+  // Reset only means something once something has been changed — an always-on
+  // Reset invites a click that does nothing.
+  const hasActiveFilters =
+    txnType !== ALL ||
+    category !== ALL ||
+    paymentMethod !== ALL ||
+    search.trim() !== '' ||
+    dateRange.preset !== DEFAULT_PRESET;
+
+  function resetFilters() {
+    setTxnType(ALL);
+    setCategory(ALL);
+    setPaymentMethod(ALL);
+    setSearch('');
+    setDateRange({ preset: DEFAULT_PRESET });
+  }
+
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const firstRow = totalCount === 0 ? 0 : page * PAGE_SIZE + 1;
   const lastRow = Math.min((page + 1) * PAGE_SIZE, totalCount);
@@ -169,14 +187,17 @@ export function TransactionsList() {
       </div>
 
       <Card className="p-4">
-        {/* Filters. Collapsed behind a button on phones, where four selects
-            in a row would push the table off screen. */}
-        <div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-5", !showFilters && "hidden lg:grid")}>
-          <Filter label="Date Range">
+        {/* Top-aligned, not a grid: choosing a custom range grows that one
+            field by two date inputs, and in a grid every cell in the row
+            grew with it, dragging Reset down the card. Collapsed behind a
+            button on phones, where four fields would push the table off
+            screen. */}
+        <div className={cn("flex flex-wrap items-start gap-3", !showFilters && "hidden lg:flex")}>
+          <Filter label="Date Range" className="min-w-[13rem]">
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </Filter>
 
-          <Filter label="Type">
+          <Filter label="Type" className="w-[8.5rem]">
             <FilterSelect
               value={txnType}
               onChange={setTxnType}
@@ -189,7 +210,7 @@ export function TransactionsList() {
             />
           </Filter>
 
-          <Filter label="Category">
+          <Filter label="Category" className="w-[12rem]">
             <FilterSelect
               value={category}
               onChange={setCategory}
@@ -197,7 +218,7 @@ export function TransactionsList() {
             />
           </Filter>
 
-          <Filter label="Payment Mode">
+          <Filter label="Payment Mode" className="w-[10rem]">
             <FilterSelect
               value={paymentMethod}
               onChange={setPaymentMethod}
@@ -205,19 +226,20 @@ export function TransactionsList() {
             />
           </Filter>
 
-          <div className="flex items-end">
+          {/* A spacer standing in for the label keeps Reset on the same line
+              as the inputs, whatever height the date field takes. */}
+          <div className="ml-auto space-y-1.5">
+            <span className="block select-none text-xs text-transparent" aria-hidden>
+              Reset
+            </span>
             <Button
               type="button"
               variant="outline"
-              className="min-h-11 w-full"
-              onClick={() => {
-                setTxnType(ALL);
-                setCategory(ALL);
-                setPaymentMethod(ALL);
-                setSearch("");
-              }}
+              size="sm"
+              disabled={!hasActiveFilters}
+              onClick={resetFilters}
             >
-              <SlidersHorizontal className="h-4 w-4" aria-hidden /> Reset
+              <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Reset
             </Button>
           </div>
         </div>
@@ -405,9 +427,17 @@ export function TransactionsList() {
   );
 }
 
-function Filter({ label, children }: { label: string; children: React.ReactNode }) {
+function Filter({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-1.5">
+    <div className={cn('space-y-1.5', className)}>
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {children}
     </div>
