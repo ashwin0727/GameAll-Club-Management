@@ -67,7 +67,38 @@ function upcomingDates(): Date[] {
   });
 }
 
-export function PublicBookingFlow({ facilityId }: { facilityId: string }) {
+/**
+ * Reports the document height to the parent frame so the embed script can
+ * size the iframe to its content — otherwise a fixed-height frame either
+ * clips the form or leaves dead space under it. Runs only when embedded.
+ */
+function useEmbedAutoHeight(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined" || window.parent === window) return;
+
+    const post = () => {
+      const height = document.documentElement.scrollHeight;
+      window.parent.postMessage({ type: "gameall:height", height }, "*");
+    };
+
+    post();
+    const observer = new ResizeObserver(post);
+    observer.observe(document.documentElement);
+    return () => observer.disconnect();
+  }, [enabled]);
+}
+
+export function PublicBookingFlow({
+  facilityId,
+  embedded = false,
+  initialSportId,
+}: {
+  facilityId: string;
+  /** Rendered inside a club's own site: no page chrome, height reported out. */
+  embedded?: boolean;
+  initialSportId?: string;
+}) {
+  useEmbedAutoHeight(embedded);
   const [facility, setFacility] = useState<PublicBookingFacility | null>(null);
   const [facilityLoading, setFacilityLoading] = useState(true);
 
@@ -94,13 +125,16 @@ export function PublicBookingFlow({ facilityId }: { facilityId: string }) {
       .then((f) => {
         if (!active) return;
         setFacility(f);
-        if (f?.sports.length) setSportId(f.sports[0]!.facilitySportId);
+        if (f?.sports.length) {
+          const preset = initialSportId && f.sports.some((s) => s.facilitySportId === initialSportId);
+          setSportId(preset ? initialSportId! : f.sports[0]!.facilitySportId);
+        }
       })
       .finally(() => active && setFacilityLoading(false));
     return () => {
       active = false;
     };
-  }, [facilityId]);
+  }, [facilityId, initialSportId]);
 
   const loadSlots = useCallback(async () => {
     if (!sportId) return;
@@ -194,7 +228,7 @@ export function PublicBookingFlow({ facilityId }: { facilityId: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-10">
+    <div className={cn("mx-auto w-full max-w-5xl px-4", embedded ? "py-4" : "py-6 sm:py-10")}>
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Book Your Court</h1>
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">

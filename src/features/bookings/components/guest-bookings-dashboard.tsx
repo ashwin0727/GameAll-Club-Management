@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
 import { GuestBookingActions } from "@/features/bookings/components/guest-booking-actions";
+import { ShareBookingLink } from "@/features/public-booking/components/share-booking-link";
 import { getFacilityService } from "@/services/facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
@@ -296,9 +297,12 @@ export function GuestBookingsDashboard() {
           <h1 className="text-xl font-semibold">Guest Bookings</h1>
           <p className="text-sm text-muted-foreground">Manage all guest court bookings and their status.</p>
         </div>
-        <Button type="button" size="sm" onClick={() => router.push("/bookings/new")}>
-          <Plus className="mr-1.5 h-4 w-4" /> New Guest Booking
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <ShareBookingLink facilityId={facilityId} />
+          <Button type="button" size="sm" onClick={() => router.push("/bookings/new")}>
+            <Plus className="mr-1.5 h-4 w-4" /> New Guest Booking
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
