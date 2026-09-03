@@ -11,7 +11,9 @@ import {
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  Clock3,
   LayoutGrid,
+  Lock,
   Mail,
   MapPin,
   Phone,
@@ -128,6 +130,7 @@ export function PublicBookingFlow({
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<PublicBookingConfirmation | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -321,6 +324,8 @@ export function PublicBookingFlow({
                   selection={selection}
                   guest={guest}
                   error={formError}
+                  agreed={agreed}
+                  onAgreedChange={setAgreed}
                 />
               )}
             </div>
@@ -346,6 +351,7 @@ export function PublicBookingFlow({
           sportName={sportName}
           selection={selection}
           submitting={submitting}
+          agreed={agreed}
           onBack={() => {
             setFormError(null);
             setStep(step === "review" ? "details" : "select");
@@ -926,46 +932,126 @@ function ReviewStep({
   selection,
   guest,
   error,
+  agreed,
+  onAgreedChange,
 }: {
   facility: PublicBookingFacility;
   sportName: string;
   selection: Selection;
   guest: PublicGuestDetails;
   error: string | null;
+  agreed: boolean;
+  onAgreedChange: (v: boolean) => void;
 }) {
+  const total = formatMoney(selection.priceMinor, facility.currency);
+  const duration = durationLabel(selection.startTime, selection.endTime);
+
   return (
     <div className="space-y-5">
       {error && <Notice tone="error" title="We couldn't confirm that" message={error} />}
 
-      <Panel title="Your details">
-        <Row label="Full name" value={guest.fullName} />
-        <Row label="Mobile" value={guest.phone} />
-        {guest.email.trim() && <Row label="Email" value={guest.email} />}
-      </Panel>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ReviewPanel title="Guest Information">
+          <StackedRow label="Full Name" value={guest.fullName} />
+          <StackedRow label="Mobile Number" value={guest.phone} />
+          {guest.email.trim() && <StackedRow label="Email Address" value={guest.email} />}
+          {guest.altPhone.trim() && <StackedRow label="Alternate Phone" value={guest.altPhone} />}
+          {guest.purpose && <StackedRow label="Purpose of Booking" value={guest.purpose} />}
+          {guest.specialRequest.trim() && (
+            <StackedRow label="Special Request" value={guest.specialRequest} />
+          )}
+        </ReviewPanel>
 
-      <Panel title="Booking details">
-        <Row label="Sport" value={sportName} />
-        <Row label="Venue" value={facility.facilityName} />
-        <Row label="Court" value={selection.courtName} />
-        <Row label="Date" value={formatBookingDate(selection.startTime)} />
-        <Row label="Time" value={formatSlotRange(selection.startTime, selection.endTime)} />
-        <Row label="Duration" value={durationLabel(selection.startTime, selection.endTime)} />
-      </Panel>
+        <ReviewPanel title="Booking Details">
+          <IconRow icon={LayoutGrid} label="Sport" value={sportName} />
+          <IconRow icon={MapPin} label="Facility" value={facility.facilityName} />
+          <IconRow icon={LayoutGrid} label="Court" value={selection.courtName} />
+          <IconRow icon={CalendarDays} label="Date" value={formatBookingDate(selection.startTime)} />
+          <IconRow icon={Clock3} label="Time" value={formatSlotRange(selection.startTime, selection.endTime)} />
+          <IconRow icon={Clock3} label="Duration" value={duration} />
+        </ReviewPanel>
 
-      <Panel title="Price">
-        <Row label="Court price" value={formatMoney(selection.priceMinor, facility.currency)} />
-        <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-sm font-semibold">
-          <span>Total</span>
-          <span>{formatMoney(selection.priceMinor, facility.currency)}</span>
-        </div>
-      </Panel>
+        <ReviewPanel title="Payment Details">
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <WalletCards className="h-4 w-4 text-primary" aria-hidden />
+              Payment at Venue
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Please pay directly at the venue.</p>
+          </div>
 
-      <div className="rounded-xl border border-border bg-muted/40 p-4">
-        <p className="flex items-center gap-2 text-sm font-medium">
-          <WalletCards className="h-4 w-4 text-primary" aria-hidden /> Payment at venue
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">Payment will be collected at the venue.</p>
+          <div className="pt-1">
+            <p className="text-xs font-semibold">Price Details</p>
+            <dl className="mt-2 space-y-2 text-sm">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-muted-foreground">Court Price ({duration})</dt>
+                <dd className="font-medium">{total}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                <dt className="font-semibold text-primary">Total Amount</dt>
+                <dd className="text-base font-semibold text-primary">{total}</dd>
+              </div>
+            </dl>
+          </div>
+        </ReviewPanel>
       </div>
+
+      {/* Consent is the last thing between the player and a real booking, so
+          it sits with the details it refers to rather than in the footer. */}
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border p-3 text-sm">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => onAgreedChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
+          aria-describedby="terms-help"
+        />
+        <span id="terms-help" className="text-muted-foreground">
+          I agree to the <span className="font-medium text-primary">terms and conditions</span> and confirm
+          that the above details are correct.
+        </span>
+      </label>
+    </div>
+  );
+}
+
+/** One of the three review columns. */
+function ReviewPanel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-border p-4">
+      <h2 className="mb-3 text-sm font-semibold">{title}</h2>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+/** Label above value — for free text that would crowd a single line. */
+function StackedRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium break-words">{value}</p>
+    </div>
+  );
+}
+
+/** Label left, value right with its icon — for short, scannable facts. */
+function IconRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="truncate">{value}</span>
+      </span>
     </div>
   );
 }
@@ -1037,6 +1123,7 @@ function BookingActionBar({
   sportName,
   selection,
   submitting,
+  agreed,
   onBack,
   onNext,
 }: {
@@ -1045,12 +1132,15 @@ function BookingActionBar({
   sportName: string;
   selection: Selection | null;
   submitting: boolean;
+  agreed: boolean;
   onBack: () => void;
   onNext: () => void;
 }) {
   if (step === "done") return null;
 
-  const canContinue = step === "select" ? Boolean(selection) : true;
+  // Step 1 needs a slot; the last step needs the player to have ticked the
+  // consent box beside the details it refers to.
+  const canContinue = step === "select" ? Boolean(selection) : step === "review" ? agreed : true;
   const label =
     step === "review"
       ? submitting
@@ -1063,7 +1153,7 @@ function BookingActionBar({
   // The total belongs beside the action while the player is choosing or
   // confirming. On the details step the desktop summary panel already
   // carries it, and the design keeps that footer to just the two buttons.
-  const showTotal = step !== "details";
+  const showTotal = step === "select";
 
   return (
     <div className="sticky bottom-0 z-10 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-8">
@@ -1112,8 +1202,9 @@ function BookingActionBar({
           disabled={!canContinue || submitting}
           className="min-h-11 shrink-0"
         >
+          {step === "review" && !submitting && <Lock className="h-4 w-4" aria-hidden />}
           {label}
-          {!submitting && <ArrowRight className="h-4 w-4" aria-hidden />}
+          {step !== "review" && !submitting && <ArrowRight className="h-4 w-4" aria-hidden />}
         </Button>
       </div>
 
@@ -1229,15 +1320,6 @@ function Field({
         </p>
       )}
     </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-xl border border-border p-4">
-      <h2 className="mb-2 text-sm font-medium">{title}</h2>
-      <dl className="space-y-1.5 text-sm">{children}</dl>
-    </section>
   );
 }
 
