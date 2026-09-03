@@ -315,18 +315,23 @@ src/services/reports/
 ## Phasing
 
 One phase per working session, each a vertical slice (migration → types → service+tests →
-page → feature tests) that builds and ships alone. `npm run build`, `npx vitest run`,
-`npx tsc --noEmit`, `npx eslint` green per phase.
+page → feature tests) that builds and ships alone. `npm run build`, `npm test`,
+`npm run typecheck`, `npm run lint` green per phase. Each phase is its own plan doc
+(`docs/superpowers/plans/2026-09-03-reports-analytics-phase-N-*.md`), written when the
+phase is reached so it builds on the concrete code the prior phase produced.
+
+**Ordered by dependency** — reports whose RPCs stand alone come first; Overview comes
+*after* its inputs exist so `get_analytics_overview` just composes them.
 
 | Phase | Scope |
 |---|---|
-| **1 — Foundation** | `0056` (date presets) + `0057` (availability aggregates) + `AnalyticsFilter` types, `definitions.ts`, `aggregation.ts` (+tests), `reports.service.ts` skeleton, nav entry + icon, route group with placeholder pages, `analytics-filter-bar` + `-sheet`, `report-shell`, `kpi-strip`. Wire the filter bar to real facility/sport/court lists (reuse `getFacilityService` / sports / playing-areas services). |
-| **2 — Overview** | `0062` `get_analytics_overview` + reuse `get_revenue_trend`. `<ReportsOverview>`: 6 KPI cards with comparison, revenue-trend chart, "top courts" mini-table, peak-hours preview. Drill-down links. |
-| **3 — Revenue** | `0061` (`revenue_by_sport` / `_by_court`) + reuse breakdown / method / trend. `<RevenueReport>`: trend, breakdown donut + table, payment-method donut + table, by-sport & by-court tables with drill-down. |
-| **4 — Bookings** | `0058`. `<BookingReport>`: status KPI row, booking-trend chart, by-sport bar + table, status breakdown, source split (Guest/Member/Other). |
-| **5 — Court Utilization** | `0059`. `<CourtUtilizationReport>`: overall gauge, by-court table (sortable ↑/↓) + bar, by-sport table + bar, peak-hours chart + table, demand heatmap (labels + tooltips). |
-| **6 — Memberships** | `0060`. `<MembershipReport>`: active/new/expiring KPIs, membership-revenue + payment-completion, by-type table, **Membership Session** panel (capacity/allocations/released/booked/unused), **Guest Release** panel. |
-| **7 — Guest Bookings** | reuse `0058` guest fields + `0051` classification + peak-hours(guest). `<GuestBookingReport>`: totals/completed/cancelled, guest revenue, avg booking value, collection rate, popular sports/courts, peak guest hours. |
+| **1 — Foundation** | `0056` (date presets). `AnalyticsFilter` + row types, `definitions.ts`, `aggregation.ts` (+tests), `reports.service.ts` + `supabase-reports.service.ts` skeleton (error mapping, `dateRangeArgs`/`scopeArgs`, no RPC methods yet) + fake, nav entry + `BarChart3` icon, `/reports/**` route group with all six pages rendering `<ReportShell>` + `<AnalyticsFilterBar>` + a "coming soon" body, URL-encoded filter state, `analytics-filter-sheet` (mobile), `kpi-strip`. Filter bar wired to real `getFacilities()` / sports / playing-areas. |
+| **2 — Bookings** | `0058_analytics_bookings`. `<BookingReport>`: status KPI row, booking-trend chart, by-sport bar + table, status breakdown, source split (Guest/Member). Establishes the full RPC → service method → page → chart → table → CSV pattern on the simplest data source (`bookings` only, no availability math). |
+| **3 — Court Utilization** | `0057_analytics_availability` (open-minutes aggregates) + `0059_analytics_utilization`. `<CourtUtilizationReport>`: overall gauge, by-court table (sortable ↑/↓) + bar, by-sport table + bar, peak-hours chart + table, demand heatmap (labels + tooltips + intensity). |
+| **4 — Revenue** | `0061_analytics_revenue_dimensions` (`revenue_by_sport` / `_by_court`) + reuse Finance breakdown / method / trend. `<RevenueReport>`: trend, breakdown donut + table, payment-method donut + table, by-sport & by-court tables with drill-down, membership row. |
+| **5 — Overview** | `0062_analytics_overview` `get_analytics_overview` (composes the Phase 2–4 functions + Finance RPCs) + reuse `get_revenue_trend`. `<ReportsOverview>`: 4–6 headline KPI cards with comparison period, revenue-trend chart, top-courts mini-table, peak-hours preview, drill-down links. |
+| **6 — Memberships** | `0060_analytics_memberships`. `<MembershipReport>`: active/new/expiring KPIs, membership-revenue + payment-completion, by-type table, **Membership Session** panel (capacity/allocations/released/booked/unused), **Guest Release** panel. |
+| **7 — Guest Bookings** | reuse `0058` guest fields + `0051` classification + `0059` peak-hours filtered to guest. `<GuestBookingReport>`: totals/completed/cancelled, guest revenue, avg booking value, collection rate, popular sports/courts, peak guest hours. |
 | **8 — Export + a11y polish** | per-report CSV finalised, keyboard-nav + contrast + large-text pass, empty/error copy pass, mobile filter-sheet polish, drill-down cross-links verified end-to-end. |
 | **9+ — Flutter** | Separate spec. `reports_repository.dart` + `features/reports/` over the same RPCs; hand-painted charts; existing mobile design system. |
 
@@ -343,25 +348,31 @@ page → feature tests) that builds and ships alone. `npm run build`, `npx vites
 
 ## Testing
 
-Per §49 — **no E2E**. Unit + integration + DB-shape + widget:
+Per §49 — **no E2E**. **This project has no SQL/pgTAP test harness** (confirmed:
+`supabase/finance_sample_data.sql` is a manual eyeball seed, not a test; migration
+behaviour is verified by a manual task in each plan, as in
+`2026-08-30-membership-time-slots.md`). So:
 
-- **`aggregation.test.ts`** — `pickGranularity` boundaries (31/32/183/184 days),
-  `previousPeriod` for every preset, `csv()` escaping.
-- **`definitions.test.ts`** — every KPI key has a non-empty definition string.
-- **`supabase-reports.service.test.ts`** — each method: exact RPC name, `p_*` args
-  (incl. resolved date-range + sport/court scope), snake→camel row mapping,
-  `Not authorized` → `REPORTS_ACCESS_DENIED`, invalid range → `INVALID_DATE_RANGE`,
-  throws `ServiceError`. Mirrors the finance service test.
-- **DB-shape tests** (`supabase/*` sample-data SQL + a lightweight harness, following
-  `supabase/finance_sample_data.sql`) — feed the §50/§52 fixtures, assert each RPC's
-  numbers. Revenue, expenses, net, booking counts (total/completed/cancelled/guest),
-  membership revenue, outstanding, collection rate, court & sport utilization, peak hour,
-  session utilization, guest-release utilization, guest-booking revenue.
-- **Filter tests** — date/facility/sport/court each change the result;
-  cross-facility call → denied (not zero).
-- **Widget/RTL tests** — `report-shell` renders loading/empty/error distinctly;
-  `analytics-filter-bar` is keyboard-operable; `kpi-strip` renders on a 360px viewport
-  with no overflow; a chart falls back to its data table.
+- **Automated (`npm test`, Vitest + jsdom):**
+  - **`aggregation.test.ts`** — `pickGranularity` boundaries (31/32/183/184 days),
+    `previousPeriod` for every preset (incl. `LAST_WEEK`, quarter, year, CUSTOM→null),
+    `csv()` escaping.
+  - **`definitions.test.ts`** — every KPI key has a non-empty definition string.
+  - **`supabase-reports.service.test.ts`** — each method: exact RPC name, `p_*` args
+    (incl. resolved date-range + sport/court scope via `vi.fn()` `rpc`), snake→camel row
+    mapping, `Not authorized` → `REPORTS_ACCESS_DENIED`, invalid range →
+    `INVALID_DATE_RANGE`, throws `ServiceError`. Mirrors `supabase-finance.service.test.ts`.
+  - **Component tests** (`@testing-library/react`) — `<ReportShell>` renders
+    loading / empty / error distinctly (never zeroes while loading);
+    `<AnalyticsFilterBar>` is keyboard-operable and writes filter state to the URL;
+    `<KpiStrip>` renders on a 360px viewport with no overflow; each report page renders
+    its data table when the chart is suppressed; drill-down links carry the active filter.
+- **Manual DB verification (one task per phase):** `supabase/analytics_sample_data.sql`
+  (revert-tagged, like `finance_sample_data.sql`) seeds the §50 + §52 fixtures against a
+  real facility; the task lists the exact expected number for every RPC the phase adds
+  (revenue, expenses, net, booking counts, membership revenue, outstanding, collection
+  rate, court/sport utilization, peak hour, session utilization, guest-release
+  utilization, guest-booking revenue) and the reviewer runs each RPC and checks.
 
 ## Out of scope
 
