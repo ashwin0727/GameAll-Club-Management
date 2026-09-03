@@ -241,6 +241,8 @@ export function PublicBookingFlow({
     );
   }
 
+  const showSummaryPanel = Boolean(selection) && step !== "select" && step !== "done";
+
   if (step === "done" && confirmation) {
     return <Confirmed confirmation={confirmation} />;
   }
@@ -267,7 +269,16 @@ export function PublicBookingFlow({
             </p>
           </div>
 
-          <div className="mt-5 gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          {/* Two columns only when the summary panel is actually there.
+              Declaring the second column unconditionally left an empty
+              18rem reserved beside step 1, which the slot rail stopped
+              short of — dead space to the right of the times. */}
+          <div
+            className={cn(
+              "mt-5 gap-6",
+              showSummaryPanel && "lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start",
+            )}
+          >
             <div className="min-w-0">
               {formError && step === "select" && (
                 <Notice tone="error" title="That slot just went" message={formError} className="mb-4" />
@@ -308,7 +319,7 @@ export function PublicBookingFlow({
             {/* The desktop summary panel is for the later steps: on step 1
                 the sticky bar below already shows the same figures, and two
                 copies of them side by side reads as a mistake. */}
-            {selection && step !== "select" && (
+            {showSummaryPanel && selection && (
               <SummaryPanel
                 open={summaryOpen}
                 onToggle={() => setSummaryOpen((v) => !v)}
