@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Lets `next build` write to a separate output dir (e.g.
+  // `NEXT_DIST_DIR=.next-prod next build`) so a production build never
+  // collides with a running `next dev` on the shared `.next/` — a real
+  // hazard when the repo lives in a OneDrive-synced folder, where a stale
+  // `.next` can't always be fully cleared. Unset → ".next", unchanged.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
     remotePatterns: [
       {
