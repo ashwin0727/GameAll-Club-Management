@@ -3,10 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarCheck2, CircleAlert, Phone, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowRight, CalendarCheck2, CircleAlert, ShieldCheck, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrandLogo } from "@/features/auth/components/brand-mark";
+import { PublicBookingHeader } from "./public-booking-header";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { getPublicBookingFacility } from "../public-booking";
@@ -81,36 +82,6 @@ export function PublicBookingLanding({ facilityId }: { facilityId: string }) {
         <PublicBookingFooter />
       </div>
     </div>
-  );
-}
-
-function PublicBookingHeader({ helpPhone }: { helpPhone: string | null }) {
-  return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-8">
-      {/* BrandLogo, not BrandMark: the mark already carries the name and
-          "Club Management" beneath it, which is the admin lockup. A player
-          booking a court gets the player-facing tagline instead. */}
-      <div className="flex items-center gap-2.5">
-        <BrandLogo className="h-8 w-8" />
-        <span className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold">{APP_NAME}</span>
-          <span className="text-[11px] text-muted-foreground">Book. Play. Enjoy.</span>
-        </span>
-      </div>
-
-      {helpPhone && (
-        <div className="text-right">
-          <p className="text-[11px] text-muted-foreground">Need Help?</p>
-          <a
-            href={`tel:${helpPhone.replace(/\s/g, "")}`}
-            className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-primary"
-          >
-            <Phone className="h-3.5 w-3.5 text-primary" aria-hidden />
-            {helpPhone}
-          </a>
-        </div>
-      )}
-    </header>
   );
 }
 
