@@ -250,7 +250,7 @@ begin
     join expense_categories c on c.id = e.category_id
     where e.facility_id = p_facility_id
       and range_ @> (e.spent_on::timestamp at time zone coalesce(
-        (select timezone from facilities where id = p_facility_id), 'Asia/Kolkata'))
+        (select f.timezone from facilities f where f.id = p_facility_id), 'Asia/Kolkata'))
       and (p_category_id is null or e.category_id = p_category_id)
   )
   select r.*, count(*) over () as total_count
@@ -312,7 +312,7 @@ begin
     raise exception 'Not authorized for this facility.' using errcode = '42501';
   end if;
   range_ := resolve_finance_date_range(p_facility_id, p_preset, p_start_date, p_end_date);
-  tz := coalesce((select timezone from facilities where id = p_facility_id), 'Asia/Kolkata');
+  tz := coalesce((select f.timezone from facilities f where f.id = p_facility_id), 'Asia/Kolkata');
 
   select (coalesce(sum(p.amount_inr), 0) * 100)::bigint, count(*)::bigint
     into gross, succ

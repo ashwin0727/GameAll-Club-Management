@@ -1,16 +1,74 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- One ledger for the Transactions page.
+-- Fix: 42702 "column reference "id" is ambiguous".
 --
--- list_finance_transactions returns setof finance_transactions_view, which is
--- payments only. Expenses and refunds are financial activity too, and the
--- Transactions page is meant to be the place all of it can be seen — so a
--- maintenance bill was invisible there while showing up in Net Revenue.
+-- Both functions below RETURN TABLE with a column named id, which plpgsql
+-- treats as an OUT variable inside the body. Each then looked up the
+-- facility timezone with a bare "where id = p_facility_id", and that id
+-- could mean either the OUT variable or facilities.id.
+-- PostgreSQL refuses to guess.
 --
--- This does not introduce a ledger table. payments, refunds and expenses stay
--- the authoritative records; this reads all three into one shape so the page
--- can filter and page across them server-side rather than stitching three
--- lists together in the browser.
+-- Aliasing the table settles it. Nothing else about either function changes.
+--
+-- Only these two were affected: the other functions doing the same lookup
+-- return jsonb, a scalar, or a row type, so they have no OUT variable named
+-- id to collide with.
 -- ═══════════════════════════════════════════════════════════════════════════
+
+create or replace function list_expenses(
+  p_facility_id uuid,
+  p_preset text default null,
+  p_start_date date default null,
+  p_end_date date default null,
+  p_category_id uuid default null,
+  p_limit integer default 25,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  category_id uuid,
+  category_name text,
+  amount_minor integer,
+  currency text,
+  payment_method text,
+  spent_on date,
+  vendor text,
+  reference text,
+  notes text,
+  status text,
+  created_at timestamptz,
+  total_count bigint
+)
+language plpgsql
+stable
+as $$
+declare
+  range_ tstzrange;
+begin
+  if not has_facility_role(p_facility_id, array['owner', 'manager', 'staff']::facility_role[]) then
+    raise exception 'Not authorized for this facility.' using errcode = '42501';
+  end if;
+  range_ := resolve_finance_date_range(p_facility_id, p_preset, p_start_date, p_end_date);
+
+  return query
+  with rows as (
+    select e.id, e.category_id, c.name as category_name, e.amount_minor, e.currency,
+           e.payment_method, e.spent_on, e.vendor, e.reference, e.notes, e.status, e.created_at
+    from expenses e
+    join expense_categories c on c.id = e.category_id
+    where e.facility_id = p_facility_id
+      and range_ @> (e.spent_on::timestamp at time zone coalesce(
+        (select f.timezone from facilities f where f.id = p_facility_id), 'Asia/Kolkata'))
+      and (p_category_id is null or e.category_id = p_category_id)
+  )
+  select r.*, count(*) over () as total_count
+  from rows r
+  order by r.spent_on desc, r.created_at desc
+  limit greatest(p_limit, 1) offset greatest(p_offset, 0);
+end;
+$$;
+
+grant execute on function list_expenses(uuid, text, date, date, uuid, integer, integer) to authenticated;
+
 
 create or replace function list_finance_ledger(
   p_facility_id uuid,
@@ -154,33 +212,3 @@ end;
 $$;
 
 grant execute on function list_finance_ledger(uuid, text, date, date, text, text, text, text, text, integer, integer) to authenticated;
-
-
--- ─────────────────────────────────────────────────────────────────────────
--- The distinct payment methods actually present, so the filter offers what
--- exists rather than a hardcoded list that may not match the data.
--- ─────────────────────────────────────────────────────────────────────────
-create or replace function list_finance_payment_methods(p_facility_id uuid)
-returns table (payment_method text)
-language plpgsql
-stable
-as $$
-begin
-  if not has_facility_role(p_facility_id, array['owner', 'manager', 'staff']::facility_role[]) then
-    raise exception 'Not authorized for this facility.' using errcode = '42501';
-  end if;
-
-  return query
-  select distinct m.payment_method from (
-    select p.payment_method from payments p
-     where p.facility_id = p_facility_id and p.payment_method is not null
-    union
-    select e.payment_method from expenses e
-     where e.facility_id = p_facility_id and e.payment_method is not null
-  ) m
-  where trim(m.payment_method) <> ''
-  order by 1;
-end;
-$$;
-
-grant execute on function list_finance_payment_methods(uuid) to authenticated;
