@@ -245,10 +245,12 @@ export function FinanceDashboard() {
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        <Card className="p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Revenue Trend</h2>
+      {/* The trend takes the full width: it is the shape of the month, and
+          it was previously squeezed beside two donuts. The donuts pair up
+          beneath it, where a side-by-side comparison is the point. */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Revenue Trend</h2>
             <Select value={granularity} onValueChange={(v) => setGranularity(v as RevenueTrendGranularity)}>
               <SelectTrigger className="h-9 w-32" aria-label="Trend granularity">
                 <SelectValue />
@@ -267,8 +269,9 @@ export function FinanceDashboard() {
           ) : (
             <RevenueTrendChart points={trend} />
           )}
-        </Card>
+      </Card>
 
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold">Revenue Breakdown</h2>
           {!breakdown ? (

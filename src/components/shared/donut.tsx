@@ -58,7 +58,7 @@ export function Donut({
             stroke="var(--border, #e5e7eb)"
             strokeWidth={stroke}
           />
-          {segments.map((segment) => {
+          {segments.map((segment, index) => {
             const length = (Math.max(segment.value, 0) / total) * circumference;
             const element = (
               <circle
@@ -72,7 +72,17 @@ export function Donut({
                 strokeWidth={stroke}
                 strokeDasharray={`${length} ${circumference - length}`}
                 strokeDashoffset={-offset}
-                style={{ ["--sweep-from" as string]: `${-offset + length}px` }}
+                style={
+                  {
+                    // The keyframe reads --dash-from/--dash-to. Naming these
+                    // anything else leaves every arc animating to offset 0,
+                    // so they stack at twelve o'clock instead of sitting end
+                    // to end — a ring with a hole in it.
+                    "--dash-from": `${-offset + length}px`,
+                    "--dash-to": `${-offset}px`,
+                    "--sweep-delay": `${index * 90}ms`,
+                  } as React.CSSProperties
+                }
               />
             );
             offset += length;
