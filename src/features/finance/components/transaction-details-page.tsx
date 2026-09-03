@@ -15,6 +15,8 @@ import type { TransactionDetails } from "@/features/finance/types";
 
 function when(iso: string | null): string {
   if (!iso) return "—";
+  // Pinned to IST so this always matches the PDF receipt, which renders
+  // server-side (in UTC) and can't infer the viewer's own timezone.
   return new Date(iso).toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -22,6 +24,7 @@ function when(iso: string | null): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 }
 

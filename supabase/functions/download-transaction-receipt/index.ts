@@ -27,13 +27,25 @@ function json(body: unknown, status: number): Response {
   });
 }
 
+// Mirrors formatCurrency()'s number formatting from src/features/pricing/money.ts,
+// but keeps the currency as ASCII text (e.g. "INR") rather than a symbol like
+// "₹" — pdf-lib's standard fonts use WinAnsi encoding, which can't render
+// that glyph and would throw when the PDF is built.
 function money(minor: number | null, currency = "INR"): string {
   if (minor == null) return "-";
-  return `${currency} ${(minor / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  const major = minor / 100;
+  const isWhole = Number.isInteger(major);
+  const formatted = major.toLocaleString("en-IN", {
+    minimumFractionDigits: isWhole ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  return `${currency} ${formatted}`;
 }
 
 function when(iso: string | null): string {
   if (!iso) return "-";
+  // Pinned to IST — the edge function runs in UTC, but the page it must
+  // match renders in the staff member's (India) local time.
   return new Date(iso).toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -41,6 +53,7 @@ function when(iso: string | null): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 }
 
@@ -131,22 +144,38 @@ Deno.serve(async (req) => {
     y -= 18;
   };
 
+  // Transaction Information — same field order as the page.
   row("Transaction ID", (t.reference as string) ?? "-");
-  row("Date", when(t.occurredAt as string));
-  row("Status", String(t.status ?? "").toUpperCase());
-  row("Payment mode", (t.paymentMethod as string) ?? "-");
+  row("Type", String(t.type ?? "INCOME"));
   row("Category", (t.category as string) ?? "-");
+  row("Payment mode", (t.paymentMethod as string) ?? "-");
+  row("Status", String(t.status ?? "").toUpperCase());
+  row("Transaction Date", when(t.occurredAt as string));
+  row("Reference", (t.sourceReference as string) ?? "-");
   row("Description", (t.description as string) ?? "-");
-  if (t.sourceReference) row("Reference", t.sourceReference as string);
-  if (t.customerName) row("Customer", t.customerName as string);
+  row("Recorded By", (t.recordedBy as string) ?? "-");
+  row("Created At", when(t.createdAt as string));
+  if ((t.refundedMinor as number) > 0) {
+    row("Refunded", money(t.refundedMinor as number, currency));
+    row("Net", money(t.netMinor as number, currency));
+  }
+
+  // Related Information
+  y -= 8;
+  text("Related Information", 48, 11, bold, ink);
+  y -= 20;
+  if (t.bookingId) row("Booking", (t.sourceReference as string) ?? "Booking");
+  if (t.membershipId) row("Membership", (t.sourceReference as string) ?? "Membership");
+  row("Customer", (t.customerName as string) ?? "-");
   if (t.customerPhone) row("Phone", t.customerPhone as string);
-  if (t.recordedBy) row("Recorded by", t.recordedBy as string);
+  row("Facility", (t.facilityName as string) ?? "-");
 
   // Payment history — a part-paid booking's receipt is misleading without
-  // the other instalments beside it.
-  if (history.length > 1) {
+  // the other instalments beside it. Shown whenever there's at least one
+  // entry, same as the page's table.
+  if (history.length > 0) {
     y -= 12;
-    text("Payment history", 48, 11, bold, ink);
+    text("Payment History", 48, 11, bold, ink);
     y -= 20;
     text("Date", 48, 9, body_, muted);
     text("Amount", 240, 9, body_, muted);
@@ -163,16 +192,13 @@ Deno.serve(async (req) => {
       y -= 15;
     }
 
-    const total = history.reduce((sum, h) => sum + h.amountMinor, 0);
-    y -= 6;
-    text("Total collected", 240, 10, bold);
-    text(money(total, currency), 420, 10, bold);
-    y -= 24;
-  }
-
-  if ((t.refundedMinor as number) > 0) {
-    row("Refunded", money(t.refundedMinor as number, currency));
-    row("Net", money(t.netMinor as number, currency));
+    if (history.length > 1) {
+      const total = history.reduce((sum, h) => sum + h.amountMinor, 0);
+      y -= 6;
+      text("Total collected", 240, 10, bold);
+      text(money(total, currency), 420, 10, bold);
+      y -= 24;
+    }
   }
 
   y = 60;
