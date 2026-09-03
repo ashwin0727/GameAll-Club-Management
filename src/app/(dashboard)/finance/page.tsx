@@ -10,8 +10,8 @@ export default function FinancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Finance</h1>
-        <p className="text-sm text-muted-foreground">Revenue, transactions, and refunds — backed by your real payment data.</p>
+        <h1 className="text-xl font-semibold">Finance Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Manage your revenue, payments and expenses.</p>
       </div>
       <FinanceDashboard />
     </div>

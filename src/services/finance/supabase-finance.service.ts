@@ -11,6 +11,7 @@ import type {
   RevenueTrendGranularity,
   RevenueTrendPoint,
   TransactionPage,
+  PaymentMethodSlice,
 } from "@/features/finance/types";
 import type { FinanceService } from "@/services/finance/finance.service";
 import { ServiceError } from "@/services/shared/service-error";
@@ -72,6 +73,17 @@ export class SupabaseFinanceService implements FinanceService {
       pendingRefundCount: row.pending_refund_count,
       settlementExceptionCount: row.settlement_exception_count,
     };
+  }
+
+  /** Backend-aggregated split by method — never summed from a paginated list. */
+  async getPaymentMethodBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<PaymentMethodSlice[]> {
+    const { data, error } = await this.supabase.rpc('get_payment_method_breakdown', { p_facility_id: facilityId, ...dateRangeArgs(dateRange) });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((row) => ({
+      paymentMethod: row.payment_method,
+      amountMinor: row.amount_minor,
+      paymentCount: row.payment_count,
+    }));
   }
 
   async getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<RevenueBreakdown> {

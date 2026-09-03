@@ -99,3 +99,9 @@ export interface TransactionPage {
   transactions: FinanceTransaction[];
   totalCount: number;
 }
+/** One payment method's share of captured revenue in the selected range. */
+export interface PaymentMethodSlice {
+  paymentMethod: string;
+  amountMinor: number;
+  paymentCount: number;
+}

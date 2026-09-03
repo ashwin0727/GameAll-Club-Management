@@ -2229,6 +2229,10 @@ export interface Database {
           settlement_exception_count: number;
         }[];
       };
+      get_payment_method_breakdown: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: { payment_method: string; amount_minor: number; payment_count: number }[];
+      };
       get_revenue_breakdown: {
         Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: {
