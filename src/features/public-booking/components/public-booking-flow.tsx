@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -9,6 +10,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Check,
   CircleAlert,
   CircleCheck,
   Clock3,
@@ -17,6 +19,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Share2,
   UserRound,
   WalletCards,
 } from "lucide-react";
@@ -27,7 +30,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { APP_NAME } from "@/lib/constants";
 import {
   SlotUnavailableError,
   createPublicGuestBooking,
@@ -253,7 +255,7 @@ export function PublicBookingFlow({
   const showSummaryPanel = Boolean(selection) && step === "details";
 
   if (step === "done" && confirmation) {
-    return <Confirmed confirmation={confirmation} />;
+    return <Confirmed confirmation={confirmation} facility={facility} embedded={embedded} />;
   }
 
   return (
@@ -1220,7 +1222,15 @@ function BookingActionBar({
   );
 }
 
-function Confirmed({ confirmation }: { confirmation: PublicBookingConfirmation }) {
+function Confirmed({
+  confirmation,
+  facility,
+  embedded,
+}: {
+  confirmation: PublicBookingConfirmation;
+  facility: PublicBookingFacility;
+  embedded: boolean;
+}) {
   const calendarHref = useMemo(() => {
     const stamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]|\.\d{3}/g, "");
     const params = new URLSearchParams({
@@ -1233,6 +1243,8 @@ function Confirmed({ confirmation }: { confirmation: PublicBookingConfirmation }
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }, [confirmation]);
 
+  const [shared, setShared] = useState(false);
+
   async function share() {
     const text = `Booking ${confirmation.code} — ${confirmation.sportName} at ${confirmation.facilityName}, ${confirmation.courtName}, ${formatBookingDate(confirmation.startTime)} ${formatSlotRange(confirmation.startTime, confirmation.endTime)}`;
     if (navigator.share) {
@@ -1240,48 +1252,148 @@ function Confirmed({ confirmation }: { confirmation: PublicBookingConfirmation }
         await navigator.share({ title: "Booking confirmed", text });
         return;
       } catch {
-        // Cancelled or unavailable — fall through to the clipboard.
+        // Cancelled, or the sheet is unavailable — fall through to copying.
       }
     }
-    await navigator.clipboard?.writeText(text);
+    try {
+      await navigator.clipboard?.writeText(text);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      // Nothing sensible left to try; the details are on screen to copy.
+    }
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-10">
-      <div className="rounded-2xl border border-border p-6 text-center">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/15">
-          <CircleCheck className="h-7 w-7 text-primary" aria-hidden />
-        </span>
-        <h1 className="mt-4 text-xl font-semibold">Booking confirmed</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your court has been successfully booked.</p>
+    <div className={cn("mx-auto w-full max-w-5xl px-4", embedded ? "py-4" : "py-6 sm:py-10")}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        {!embedded && (
+          <PublicBookingHeader
+            helpPhone={facility.helpPhone}
+            facilityName={facility.facilityName}
+            city={facility.city}
+          />
+        )}
 
-        <dl className="mt-6 space-y-2 text-left text-sm">
-          <Row label="Booking ID" value={confirmation.code} />
-          <Row label="Sport" value={confirmation.sportName} />
-          <Row label="Venue" value={confirmation.facilityName} />
-          <Row label="Court" value={confirmation.courtName} />
-          <Row label="Date" value={formatBookingDate(confirmation.startTime)} />
-          <Row label="Time" value={formatSlotRange(confirmation.startTime, confirmation.endTime)} />
-          <Row label="Amount" value={formatMoney(confirmation.amountMinor, confirmation.currency)} />
-          <Row label="Payment" value="Pay at venue" />
-        </dl>
+        <div className="px-4 py-8 sm:px-8 sm:py-10">
+          <div className="text-center">
+            <SuccessBadge />
+            <h1 className="mt-4 text-xl font-bold tracking-tight sm:text-2xl">Booking Confirmed!</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your court has been successfully booked.
+            </p>
+          </div>
 
-        <p className="mt-4 rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
-          Please complete payment at the venue.
-        </p>
+          <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl border border-border">
+            <dl className="grid gap-px bg-border sm:grid-cols-3">
+              <ConfirmedCell label="Booking ID">
+                <span className="text-base font-bold text-primary">{confirmation.code}</span>
+              </ConfirmedCell>
+              <ConfirmedCell label="Sport" icon={LayoutGrid}>
+                {confirmation.sportName}
+              </ConfirmedCell>
+              <ConfirmedCell label="Court" icon={UserRound}>
+                {confirmation.courtName}
+              </ConfirmedCell>
 
-        <div className="mt-6 grid gap-2 sm:grid-cols-2">
-          <Button asChild variant="outline" className="min-h-11">
-            <a href={calendarHref} target="_blank" rel="noopener noreferrer">
-              <CalendarDays className="h-4 w-4" aria-hidden /> Add to calendar
-            </a>
-          </Button>
-          <Button type="button" variant="outline" onClick={share} className="min-h-11">
-            Share booking
-          </Button>
+              <ConfirmedCell label="Date">{formatBookingDate(confirmation.startTime)}</ConfirmedCell>
+              <ConfirmedCell label="Time">
+                {formatSlotRange(confirmation.startTime, confirmation.endTime)}
+              </ConfirmedCell>
+              <ConfirmedCell label="Duration">
+                {durationLabel(confirmation.startTime, confirmation.endTime)}
+              </ConfirmedCell>
+
+              <ConfirmedCell label="Amount">
+                <span className="text-base font-bold text-primary">
+                  {formatMoney(confirmation.amountMinor, confirmation.currency)}
+                </span>
+              </ConfirmedCell>
+
+              <div className="bg-card p-4 sm:col-span-2">
+                <dt className="text-[11px] text-muted-foreground">Payment</dt>
+                <dd className="mt-1 flex items-start gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
+                    <WalletCards className="h-4 w-4" aria-hidden />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold">Pay at Venue</span>
+                    <span className="block text-xs text-muted-foreground">
+                      Please pay directly at the venue.
+                    </span>
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="mx-auto mt-6 grid max-w-3xl gap-2 sm:grid-cols-3">
+            <Button asChild variant="outline" className="min-h-11">
+              <a href={calendarHref} target="_blank" rel="noopener noreferrer">
+                Add to Calendar <CalendarDays className="h-4 w-4" aria-hidden />
+              </a>
+            </Button>
+            <Button type="button" variant="outline" onClick={share} className="min-h-11">
+              {shared ? "Copied" : "Share Booking"}
+              <Share2 className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button asChild className="min-h-11">
+              <Link href={`/book/${facility.facilityId}`}>Back to Home</Link>
+            </Button>
+          </div>
         </div>
       </div>
-      <p className="mt-4 text-center text-xs text-muted-foreground">Powered by {APP_NAME}</p>
+    </div>
+  );
+}
+
+/** The tick, with a scatter of confetti behind it. */
+function SuccessBadge() {
+  // Fixed positions rather than random, so the mark renders identically on
+  // the server and the client and never animates on a page people screenshot.
+  const confetti = [
+    { x: "12%", y: "18%", c: "bg-primary" },
+    { x: "26%", y: "6%", c: "bg-amber-400" },
+    { x: "44%", y: "0%", c: "bg-primary" },
+    { x: "68%", y: "8%", c: "bg-sky-400" },
+    { x: "84%", y: "22%", c: "bg-amber-400" },
+    { x: "6%", y: "52%", c: "bg-sky-400" },
+    { x: "92%", y: "56%", c: "bg-primary" },
+  ];
+
+  return (
+    <div className="relative mx-auto h-20 w-40">
+      {confetti.map((d) => (
+        <span
+          key={`${d.x}-${d.y}`}
+          className={cn("absolute h-1.5 w-1.5 rounded-full opacity-70", d.c)}
+          style={{ left: d.x, top: d.y }}
+          aria-hidden
+        />
+      ))}
+      <span className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Check className="h-7 w-7" aria-hidden strokeWidth={3} />
+      </span>
+    </div>
+  );
+}
+
+function ConfirmedCell({
+  label,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card p-4">
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+        <span className="truncate">{children}</span>
+      </dd>
     </div>
   );
 }
