@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status: implemented (2026-09-03), pending user verification + commit.** Deviations from the plan as written, all confirmed against the codebase during execution:
+> - **No tooltip primitive exists** in `src/components/ui/`. `KpiStrip` exposes each KPI definition via the native `title` attribute plus an `sr-only` span instead of a Radix tooltip — no library pulled in. A richer tooltip is possible later polish.
+> - **`FacilitySport` has no `name` field.** The filter bar resolves the sport label as `customSportName ?? activeSports.find(byId).name ?? "Sport"`, the same pattern the Bookings UI uses. It calls `getSportsService().getActiveSports()` in addition to `getFacilitySports()`.
+> - **Fake:** `fake-reports-filter-deps.ts` is a self-contained deterministic fake (stable ids `fs-1..3`, `court-1..4`) rather than a wrapper over `installFakeSportsService` — the shared fake generates random ids, which tests can't assert on.
+> - **`AnalyticsFilterBar` gained a `layout?: "row" | "stack"` prop**; the mobile sheet passes `layout="stack"` instead of CSS descendant overrides.
+> - **Per-task `git commit` steps were skipped** at the user's instruction ("test before commit"). Everything is staged in the working tree; one commit after full verification.
+> - **Pre-existing on `main` (not introduced here):** `tsc --noEmit` reports 2 errors in `src/services/payments/supabase-payment.service.test.ts`; `courts-setup-form.test.tsx` and `facility-details-form.test.tsx` have 2–4 flaky timer-based failures. All reproduce with this branch's changes stashed.
+
 **Goal:** Stand up the Reports & Analytics shell — nav section, six routed report pages, a shared URL-persisted filter bar (facility / date / sport / court), the KPI/loading/empty/error scaffolding, and the pure client helpers — plus the additive date-preset migration. No report data yet; every report page renders its filter bar over a "coming soon" body.
 
 **Architecture:** A new web feature module (`src/features/reports/`) mirroring `src/features/finance/`, with thin route wrappers under `src/app/(dashboard)/reports/`. The filter bar reads/writes `AnalyticsFilter` to the URL query string (so Phase 5+ drill-down links are just hrefs) and sources its dropdown options from the existing `FacilityService` / `SportsService` / `PlayingAreasService`. One additive migration extends the shared `resolve_finance_date_range` with `THIS_QUARTER` / `THIS_YEAR`. All aggregation is deferred to later phases.

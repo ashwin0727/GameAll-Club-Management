@@ -58,6 +58,19 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Refunds", href: "/refunds" },
     ],
   },
+  {
+    label: "Reports",
+    href: "/reports",
+    roles: ["admin", "staff"],
+    children: [
+      { label: "Overview", href: "/reports" },
+      { label: "Bookings", href: "/reports/bookings" },
+      { label: "Court Utilization", href: "/reports/court-utilization" },
+      { label: "Revenue", href: "/reports/revenue" },
+      { label: "Memberships", href: "/reports/memberships" },
+      { label: "Guest Bookings", href: "/reports/guest-bookings" },
+    ],
+  },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
 ];
 

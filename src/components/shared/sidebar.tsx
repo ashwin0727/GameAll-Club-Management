@@ -11,6 +11,7 @@ import {
   UserRound,
   CalendarCheck2,
   BadgeIndianRupee,
+  BarChart3,
   CalendarRange,
   ChevronDown,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/guest-bookings": CalendarRange,
   "/guests": UserRound,
   "/finance": BadgeIndianRupee,
+  "/reports": BarChart3,
   "/inventory": Boxes,
 };
 
