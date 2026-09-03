@@ -83,16 +83,20 @@ alter table expense_categories enable row level security;
 
 -- Finance is private. Only staff of the facility may read or write it, which
 -- is the same bar refunds already set. An anonymous booker has no path here.
+drop policy if exists "expenses_select_staff" on expenses;
 create policy "expenses_select_staff" on expenses for select
   using (has_facility_role(facility_id, array['owner', 'manager', 'staff']::facility_role[]));
+drop policy if exists "expenses_write_managers" on expenses;
 create policy "expenses_write_managers" on expenses for all
   using (has_facility_role(facility_id, array['owner', 'manager']::facility_role[]))
   with check (has_facility_role(facility_id, array['owner', 'manager']::facility_role[]));
 
 -- Shared defaults are readable by any signed-in facility user; a facility's
 -- own categories only by its staff.
+drop policy if exists "expense_categories_select" on expense_categories;
 create policy "expense_categories_select" on expense_categories for select
   using (facility_id is null or is_facility_member(facility_id));
+drop policy if exists "expense_categories_write_managers" on expense_categories;
 create policy "expense_categories_write_managers" on expense_categories for all
   using (facility_id is not null and has_facility_role(facility_id, array['owner', 'manager']::facility_role[]))
   with check (facility_id is not null and has_facility_role(facility_id, array['owner', 'manager']::facility_role[]));
@@ -265,8 +269,13 @@ grant execute on function list_expenses(uuid, text, date, date, uuid, integer, i
 -- net_revenue_minor previously meant gross minus refunds. It now also takes
 -- expenses off, which is what "net" means to the person reading it. The two
 -- components are returned separately so a caller can still show the split.
+--
+-- Dropped first, not replaced: CREATE OR REPLACE cannot change a function's
+-- OUT parameters, and this adds two.
 -- ─────────────────────────────────────────────────────────────────────────
-create or replace function get_finance_summary(
+drop function if exists get_finance_summary(uuid, text, date, date);
+
+create function get_finance_summary(
   p_facility_id uuid,
   p_preset text default null,
   p_start_date date default null,
@@ -305,19 +314,19 @@ begin
   range_ := resolve_finance_date_range(p_facility_id, p_preset, p_start_date, p_end_date);
   tz := coalesce((select timezone from facilities where id = p_facility_id), 'Asia/Kolkata');
 
-  select coalesce(sum(p.amount_inr), 0) * 100, count(*)
+  select (coalesce(sum(p.amount_inr), 0) * 100)::bigint, count(*)::bigint
     into gross, succ
     from payments p
     where p.facility_id = p_facility_id and p.status = 'paid' and range_ @> coalesce(p.paid_at, p.created_at);
 
-  select coalesce(sum(r.amount_minor), 0)
+  select coalesce(sum(r.amount_minor), 0)::bigint
     into refunded
     from refunds r
     where r.facility_id = p_facility_id and r.status = 'PROCESSED'
       and r.processed_at is not null and range_ @> r.processed_at;
 
   -- Voided expenses are excluded from the arithmetic but remain on the books.
-  select coalesce(sum(e.amount_minor), 0)
+  select coalesce(sum(e.amount_minor), 0)::bigint
     into spent
     from expenses e
     where e.facility_id = p_facility_id and e.status = 'RECORDED'
@@ -336,7 +345,7 @@ begin
   -- Money owed rather than money attempted: bookings that happened and have
   -- not been paid for. Pay-at-venue means this is the normal state until
   -- someone hands over cash, so it is a figure the owner chases.
-  select coalesce(sum(b.amount_minor), 0)
+  select coalesce(sum(b.amount_minor), 0)::bigint
     into outstanding
     from bookings b
     where b.facility_id = p_facility_id
@@ -345,15 +354,15 @@ begin
       and range_ @> b.start_time;
 
   return query select
-    gross,
-    refunded,
-    spent,
-    gross - refunded - spent,
-    outstanding,
-    succ + failed + pending,
-    succ,
-    failed,
-    pending,
+    gross::bigint,
+    refunded::bigint,
+    spent::bigint,
+    (gross - refunded - spent)::bigint,
+    outstanding::bigint,
+    (succ + failed + pending)::bigint,
+    succ::bigint,
+    failed::bigint,
+    pending::bigint,
     (select count(*) from refunds r2 where r2.facility_id = p_facility_id and r2.status in ('REQUESTED', 'PROCESSING', 'PENDING'))::bigint,
     (select count(*) from settlement_exceptions se where se.facility_id = p_facility_id and se.status = 'OPEN')::bigint;
 end;
