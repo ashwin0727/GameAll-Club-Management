@@ -159,26 +159,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Finance'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.pending_actions_outlined),
-            tooltip: 'Pending Payments',
-            onPressed: () => context.push(AppRoutes.financePendingPayments),
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            tooltip: 'Expenses',
-            onPressed: () => context.push(AppRoutes.financeExpenses),
-          ),
-          IconButton(
-            icon: const Icon(Icons.receipt_long),
-            tooltip: 'Transactions',
-            onPressed: () => context.push(AppRoutes.financeTransactions),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Finance')),
       body: SafeArea(
         child: _isLoading
             ? const LoadingView(message: 'Loading finance…')
@@ -204,6 +185,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                             ),
                             const SizedBox(height: AppSpacing.sm),
                           ],
+                          const _FinanceSectionsNav(),
+                          const SizedBox(height: AppSpacing.md),
                           FinanceDateRangePicker(value: _range, onChanged: _onRangeChanged),
                           const SizedBox(height: AppSpacing.lg),
                           if (_rangeError != null) ...[
@@ -422,6 +405,70 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Finance section switcher — the mobile stand-in for the web's expandable
+/// "Finance" nav group (Dashboard / Transactions / Expenses / Pending
+/// Payments). This screen is the Dashboard, so it links to the other three.
+class _FinanceSectionsNav extends StatelessWidget {
+  const _FinanceSectionsNav();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: const [
+        _SectionPill(
+          icon: Icons.receipt_long,
+          label: 'Transactions',
+          route: AppRoutes.financeTransactions,
+        ),
+        _SectionPill(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'Expenses',
+          route: AppRoutes.financeExpenses,
+        ),
+        _SectionPill(
+          icon: Icons.pending_actions_outlined,
+          label: 'Pending Payments',
+          route: AppRoutes.financePendingPayments,
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionPill extends StatelessWidget {
+  const _SectionPill({required this.icon, required this.label, required this.route});
+
+  final IconData icon;
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => context.push(route),
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: context.tokens.surface2,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: context.tokens.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
