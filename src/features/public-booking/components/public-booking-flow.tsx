@@ -247,7 +247,10 @@ export function PublicBookingFlow({
     );
   }
 
-  const showSummaryPanel = Boolean(selection) && step !== "select" && step !== "done";
+  // Only the details step: step 1 has the sticky bar beneath it, and the
+  // review page now carries its own Booking Details and Payment Details
+  // panels, which this would only repeat.
+  const showSummaryPanel = Boolean(selection) && step === "details";
 
   if (step === "done" && confirmation) {
     return <Confirmed confirmation={confirmation} />;
