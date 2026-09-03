@@ -10,7 +10,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
-import '../../data/models/payment.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
@@ -18,6 +17,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
+import 'add_expense_sheet.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_presentation.dart';
 import 'transaction_details_sheet.dart';
@@ -25,11 +25,11 @@ import 'transaction_details_sheet.dart';
 /// Finance → Transactions — mirrors
 /// src/features/finance/components/transactions-list.tsx.
 ///
-/// Filtering, searching, and paging all happen server-side
-/// (`list_finance_transactions` + `count_finance_transactions`,
-/// 0024_finance.sql). This screen never downloads a full transaction list and
-/// slices it locally, and it never sums the rows it holds — the only total it
-/// displays is the server's own `count(*)` (spec §"Transaction Pagination").
+/// One list over the whole ledger: payments, refunds and expenses. Filtering,
+/// searching and paging all happen server-side (`list_finance_ledger`,
+/// 0049_finance_ledger.sql). This screen never downloads more than the page it
+/// shows and never sums the rows it holds — the only total it displays is the
+/// server's own `total_count`.
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
@@ -38,8 +38,17 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
-  /// Matches the web's PAGE_SIZE — one page is one RPC call, both sides.
-  static const int _pageSize = 20;
+  /// Matches the web's PAGE_SIZE for the ledger.
+  static const int _pageSize = 10;
+
+  /// Every category the ledger can produce — mirrors web's `CATEGORIES`.
+  static const List<String> _categories = [
+    'Guest Booking Revenue',
+    'Membership Revenue',
+    'Court Booking Revenue',
+    'Other Revenue',
+    'Booking Refund',
+  ];
 
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
@@ -49,18 +58,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String? _loadError;
 
   FinanceDateRange _range = const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
-  PaymentSourceType? _sourceType;
-  TransactionStatus? _status;
+  LedgerTxnType? _txnType;
+  String? _category;
+  String? _paymentMethod;
   String _search = '';
   int _page = 0;
 
-  List<FinanceTransaction> _transactions = [];
+  List<String> _methods = [];
+  List<LedgerEntry> _entries = [];
   int _totalCount = 0;
   bool _listLoading = false;
   String? _listError;
 
-  /// Guards against an earlier, slower page's response overwriting a newer
-  /// one — the mobile equivalent of the web effect's `cancelled` flag.
+  /// Guards against an earlier, slower page's response overwriting a newer one.
   int _requestId = 0;
 
   @override
@@ -73,7 +83,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
     _facilityId = facility.id;
     _isReady = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
   @override
@@ -83,11 +93,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     super.dispose();
   }
 
+  Future<void> _init() async {
+    final facilityId = _facilityId;
+    if (facilityId == null) return;
+    try {
+      final methods = await ref.read(financeRepositoryProvider).listPaymentMethods(facilityId);
+      if (mounted) setState(() => _methods = methods);
+    } on AppException {
+      // A missing method list only narrows the filter; the list still loads.
+    }
+    if (!mounted) return;
+    await _load();
+  }
+
   Future<void> _load() async {
     final facilityId = _facilityId;
     if (facilityId == null) return;
-    // A half-picked CUSTOM range isn't askable yet — the server would reject
-    // it with "valid start and end date".
     if (!_range.isComplete) return;
 
     final requestId = ++_requestId;
@@ -96,20 +117,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _listError = null;
     });
     try {
-      final page = await ref.read(financeRepositoryProvider).listTransactions(
-            ListTransactionsInput(
+      final page = await ref.read(financeRepositoryProvider).listLedger(
+            ListLedgerInput(
               facilityId: facilityId,
               dateRange: _range,
-              sourceType: _sourceType,
-              status: _status,
-              search: _search.trim().isEmpty ? null : _search.trim(),
+              filters: LedgerFilters(
+                txnType: _txnType,
+                category: _category,
+                paymentMethod: _paymentMethod,
+                search: _search.trim().isEmpty ? null : _search.trim(),
+              ),
               limit: _pageSize,
               offset: _page * _pageSize,
             ),
           );
       if (!mounted || requestId != _requestId) return;
       setState(() {
-        _transactions = page.transactions;
+        _entries = page.entries;
         _totalCount = page.totalCount;
         _listLoading = false;
       });
@@ -122,8 +146,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
   }
 
-  /// Any filter change resets to page 1 — otherwise page 3 of the old filter
-  /// would be requested against the new one and look empty.
+  /// Any filter change resets to page 1 — page 3 of the old filter would look
+  /// empty against the new one.
   void _applyFilterChange(VoidCallback mutate) {
     setState(() {
       mutate();
@@ -140,49 +164,87 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     });
   }
 
-  Future<void> _pickSourceType() async {
-    final picked = await showPickerSheet<String>(
-      context: context,
-      selected: _sourceType?.toJson() ?? 'ALL',
-      options: [
-        (value: 'ALL', label: 'All Sources'),
-        ...PaymentSourceType.values.map((s) => (value: s.toJson(), label: sourceTypeMenuLabel(s))),
-      ],
-    );
-    if (picked == null) return;
-    _applyFilterChange(() => _sourceType = picked == 'ALL' ? null : PaymentSourceType.fromJson(picked));
-  }
-
-  Future<void> _pickStatus() async {
-    final picked = await showPickerSheet<String>(
-      context: context,
-      selected: _status?.toJson() ?? 'ALL',
-      options: const [
-        (value: 'ALL', label: 'All Status'),
-        (value: 'paid', label: 'Paid'),
-        // The DB value is `created`; the web labels it "Pending" for owners.
-        (value: 'created', label: 'Pending'),
-        (value: 'failed', label: 'Failed'),
-        (value: 'refunded', label: 'Refunded'),
-      ],
-    );
-    if (picked == null) return;
-    _applyFilterChange(() => _status = picked == 'ALL' ? null : TransactionStatus.fromJson(picked));
-  }
-
   void _goToPage(int page) {
     setState(() => _page = page);
     _load();
   }
 
+  Future<void> _pickType() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _txnType?.toJson() ?? 'ALL',
+      options: const [
+        (value: 'ALL', label: 'All Types'),
+        (value: 'INCOME', label: 'Income'),
+        (value: 'EXPENSE', label: 'Expense'),
+        (value: 'REFUND', label: 'Refund'),
+      ],
+    );
+    if (picked == null) return;
+    _applyFilterChange(() => _txnType = picked == 'ALL' ? null : LedgerTxnType.fromJson(picked));
+  }
+
+  Future<void> _pickCategory() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _category ?? 'ALL',
+      options: [
+        (value: 'ALL', label: 'All Categories'),
+        ..._categories.map((c) => (value: c, label: c)),
+      ],
+    );
+    if (picked == null) return;
+    _applyFilterChange(() => _category = picked == 'ALL' ? null : picked);
+  }
+
+  Future<void> _pickMethod() async {
+    if (_methods.isEmpty) return;
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _paymentMethod ?? 'ALL',
+      options: [
+        (value: 'ALL', label: 'All Payment Modes'),
+        ..._methods.map((m) => (value: m, label: m)),
+      ],
+    );
+    if (picked == null) return;
+    _applyFilterChange(() => _paymentMethod = picked == 'ALL' ? null : picked);
+  }
+
+  Future<void> _addExpense() async {
+    final facilityId = _facilityId;
+    if (facilityId == null) return;
+    try {
+      final categories = await ref.read(financeRepositoryProvider).listExpenseCategories(facilityId);
+      if (!mounted || categories.isEmpty) return;
+      final saved = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => AddExpenseSheet(facilityId: facilityId, categories: categories),
+      );
+      if (saved == true) _applyFilterChange(() => _page = 0);
+    } on AppException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Ceiling division on the server's own count — page arithmetic, not
-    // revenue arithmetic.
     final totalPages = _totalCount == 0 ? 1 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Transactions')),
+      appBar: AppBar(
+        title: const Text('Transactions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Add expense',
+            onPressed: _isReady ? _addExpense : null,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: !_isReady
             ? ErrorView(message: _loadError ?? 'Unable to load transactions right now.')
@@ -198,7 +260,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.search),
                           labelText: 'Search',
-                          hintText: 'ID, name, booking, or Razorpay ID',
+                          hintText: 'Transaction ID, description…',
                         ),
                         onChanged: _onSearchChanged,
                         onSubmitted: (value) => _applyFilterChange(() => _search = value),
@@ -209,12 +271,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         runSpacing: AppSpacing.sm,
                         children: [
                           PickerChip(
-                            label: _sourceType == null ? 'All Sources' : sourceTypeMenuLabel(_sourceType!),
-                            onSelect: _pickSourceType,
+                            label: _txnType == null ? 'All Types' : _txnType!.label,
+                            onSelect: _pickType,
                           ),
                           PickerChip(
-                            label: _status == null ? 'All Status' : transactionStatusLabel(_status!),
-                            onSelect: _pickStatus,
+                            label: _category ?? 'All Categories',
+                            onSelect: _pickCategory,
+                          ),
+                          PickerChip(
+                            label: _paymentMethod ?? 'All Payment Modes',
+                            onSelect: _methods.isEmpty ? () {} : _pickMethod,
                           ),
                         ],
                       ),
@@ -229,13 +295,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         const SizedBox(height: AppSpacing.sm),
                       ],
                       if (_range.preset == FinanceDateRangePreset.custom && !_range.isComplete)
-                        Text('Choose a start and end date to see transactions.', style: AppTypography.secondary(context))
+                        Text('Choose a start and end date to see transactions.',
+                            style: AppTypography.secondary(context))
                       else if (_listLoading)
                         const LoadingView(message: 'Loading transactions…')
-                      else if (_transactions.isEmpty)
-                        Text('No transactions found for this period.', style: AppTypography.secondary(context))
+                      else if (_entries.isEmpty)
+                        Text('No transactions match these filters.',
+                            style: AppTypography.secondary(context))
                       else
-                        ..._transactions.map(_buildTransactionCard),
+                        ..._entries.map(_buildEntryCard),
                       if (_totalCount > 0 && !_listLoading) ...[
                         const SizedBox(height: AppSpacing.md),
                         _Pagination(
@@ -255,43 +323,48 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  Widget _buildTransactionCard(FinanceTransaction txn) {
+  Widget _buildEntryCard(LedgerEntry entry) {
+    // The sign follows what kind of money it is, from the server's txn_type —
+    // never derived from the amount, which is always a positive magnitude.
+    final signed = '${entry.isIncome ? '' : '−'}${financeAmount(entry.amountMinor)}';
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.md),
-        onTap: () => showTransactionDetailsSheet(context, transactionId: txn.id),
-        child: Row(
+        onTap: entry.isIncome
+            ? () => showTransactionDetailsSheet(context, transactionId: entry.id)
+            : null,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(txn.reference, style: AppTypography.rowTitle(context)),
-                  Text(
-                    '${Formatters.dateShort(txn.effectiveAt.toLocal())} · '
-                    '${sourceTypeLabel(txn.sourceType)} · ${txn.customerName ?? '—'}',
-                    style: AppTypography.caption(context),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(financeAmount(txn.amountMinor), style: const TextStyle(fontWeight: FontWeight.w600)),
-                // Only shown when money actually went back — and it is the
-                // view's own net_minor, never amount minus refunded computed
-                // on this device.
-                if (txn.refundedMinor > 0)
-                  Text('Net ${financeAmount(txn.netMinor)}', style: AppTypography.caption(context)),
-                const SizedBox(height: AppSpacing.xs),
-                StatusBadge(
-                  label: transactionStatusLabel(txn.status),
-                  tone: transactionStatusTone(txn.status),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.description, style: AppTypography.rowTitle(context)),
+                      Text(
+                        '${entry.reference} · ${Formatters.dateShort(entry.occurredAt.toLocal())}',
+                        style: AppTypography.caption(context),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(signed, style: const TextStyle(fontWeight: FontWeight.w700)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _Tag(entry.category),
+                if (entry.paymentMethod != null) _Tag(entry.paymentMethod!),
+                StatusBadge(label: _statusLabel(entry.status), tone: _statusTone(entry.status)),
               ],
             ),
           ],
@@ -301,9 +374,42 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 }
 
+String _statusLabel(String status) => status.isEmpty ? status : status[0].toUpperCase() + status.substring(1);
+
+StatusTone _statusTone(String status) {
+  switch (status) {
+    case 'paid':
+    case 'processed':
+      return StatusTone.success;
+    case 'failed':
+      return StatusTone.danger;
+    case 'refunded':
+      return StatusTone.neutral;
+    default:
+      return StatusTone.warning;
+  }
+}
+
+/// A small neutral pill for a ledger row's category / payment mode.
+class _Tag extends StatelessWidget {
+  const _Tag(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
+      decoration: BoxDecoration(
+        color: context.tokens.surface2,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
 /// Previous/Next over server-side pages, with the server's own total count.
-/// Wrapped so the label and the buttons stack rather than overflow at 320dp
-/// or at large system font sizes.
 class _Pagination extends StatelessWidget {
   const _Pagination({
     required this.page,

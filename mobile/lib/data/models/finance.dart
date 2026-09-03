@@ -509,3 +509,161 @@ class ListExpensesInput {
   final int? limit;
   final int? offset;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Finance rework — Phase 9: one ledger for the Transactions page.
+//
+// Mirrors src/features/finance/types.ts (`LedgerEntry` / `LedgerTxnType` /
+// `LedgerFilters` / `LedgerPage`). Backend: 0049_finance_ledger.sql reads
+// payments, refunds and expenses into one shape — this is NOT a ledger table,
+// the three underlying records stay authoritative.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Which side of the books a ledger line is. Uppercase on the wire — these are
+/// exactly the values `list_finance_ledger` emits and filters on.
+enum LedgerTxnType {
+  income,
+  expense,
+  refund;
+
+  String toJson() {
+    switch (this) {
+      case LedgerTxnType.income:
+        return 'INCOME';
+      case LedgerTxnType.expense:
+        return 'EXPENSE';
+      case LedgerTxnType.refund:
+        return 'REFUND';
+    }
+  }
+
+  static LedgerTxnType fromJson(String value) {
+    switch (value) {
+      case 'INCOME':
+        return LedgerTxnType.income;
+      case 'EXPENSE':
+        return LedgerTxnType.expense;
+      case 'REFUND':
+        return LedgerTxnType.refund;
+      default:
+        throw ArgumentError('Unknown LedgerTxnType: $value');
+    }
+  }
+
+  /// Title-cased for a filter menu ("Income").
+  String get label => toJson()[0] + toJson().substring(1).toLowerCase();
+}
+
+/// One line of financial activity — a payment, a refund, or an expense —
+/// already shaped and described by `list_finance_ledger`. [amountMinor] is the
+/// magnitude only; whether it adds to or subtracts from the books is
+/// [txnType], never inferred from a sign here. [description] and [category]
+/// are the server's words, rendered as-is.
+class LedgerEntry {
+  const LedgerEntry({
+    required this.id,
+    required this.reference,
+    required this.occurredAt,
+    required this.description,
+    required this.category,
+    required this.txnType,
+    required this.paymentMethod,
+    required this.amountMinor,
+    required this.currency,
+    required this.status,
+    required this.sourceType,
+    required this.bookingId,
+    required this.membershipId,
+    required this.expenseId,
+  });
+
+  final String id;
+  final String reference;
+  final DateTime occurredAt;
+  final String description;
+  final String category;
+  final LedgerTxnType txnType;
+  final String? paymentMethod;
+  final int amountMinor;
+  final String currency;
+  final String status;
+  final String sourceType;
+  final String? bookingId;
+  final String? membershipId;
+  final String? expenseId;
+
+  /// Only a payment has a Transaction Details page — an expense and a refund
+  /// are the row already in view.
+  bool get isIncome => txnType == LedgerTxnType.income;
+
+  factory LedgerEntry.fromJson(Map<String, dynamic> json) {
+    return LedgerEntry(
+      id: json['id'] as String,
+      reference: json['reference'] as String,
+      occurredAt: DateTime.parse(json['occurred_at'] as String),
+      description: json['description'] as String,
+      category: json['category'] as String,
+      txnType: LedgerTxnType.fromJson(json['txn_type'] as String),
+      paymentMethod: json['payment_method'] as String?,
+      amountMinor: (json['amount_minor'] as num).toInt(),
+      currency: json['currency'] as String,
+      status: json['status'] as String,
+      sourceType: json['source_type'] as String,
+      bookingId: json['booking_id'] as String?,
+      membershipId: json['membership_id'] as String?,
+      expenseId: json['expense_id'] as String?,
+    );
+  }
+}
+
+/// Server-side ledger filters — every one is applied inside
+/// `list_finance_ledger`, never by filtering an already-fetched list.
+class LedgerFilters {
+  const LedgerFilters({
+    this.txnType,
+    this.category,
+    this.paymentMethod,
+    this.status,
+    this.search,
+  });
+
+  final LedgerTxnType? txnType;
+  final String? category;
+  final String? paymentMethod;
+  final String? status;
+  final String? search;
+}
+
+/// A page of ledger entries plus the server's own count for the same filters —
+/// `list_finance_ledger`'s in-row `total_count` (`count(*) over ()`), never
+/// `entries.length`.
+class LedgerPage {
+  const LedgerPage({required this.entries, required this.totalCount});
+
+  final List<LedgerEntry> entries;
+  final int totalCount;
+
+  factory LedgerPage.fromRows(List<Map<String, dynamic>> rows) {
+    return LedgerPage(
+      entries: rows.map(LedgerEntry.fromJson).toList(),
+      totalCount: rows.isEmpty ? 0 : (rows.first['total_count'] as num).toInt(),
+    );
+  }
+}
+
+/// The arguments `list_finance_ledger` takes, kept together.
+class ListLedgerInput {
+  const ListLedgerInput({
+    required this.facilityId,
+    required this.dateRange,
+    this.filters = const LedgerFilters(),
+    this.limit,
+    this.offset,
+  });
+
+  final String facilityId;
+  final FinanceDateRange dateRange;
+  final LedgerFilters filters;
+  final int? limit;
+  final int? offset;
+}

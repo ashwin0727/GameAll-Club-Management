@@ -261,4 +261,55 @@ class FinanceRepository {
       throw _mapError(e);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Phase 9 — one ledger for the Transactions page.
+  // Backend: supabase/migrations/0049_finance_ledger.sql.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Payments, refunds and expenses in one server-paged list. `list_finance_
+  /// ledger` unions all three and filters/pages across them — the client never
+  /// stitches three lists together. The page total is the RPC's own
+  /// `count(*) over ()`, carried on every row.
+  Future<LedgerPage> listLedger(ListLedgerInput input) async {
+    final f = input.filters;
+    try {
+      final rows = await _client.rpc(
+        'list_finance_ledger',
+        params: {
+          'p_facility_id': input.facilityId,
+          ..._dateRangeArgs(input.dateRange),
+          'p_txn_type': f.txnType?.toJson(),
+          'p_category': f.category,
+          'p_payment_method': f.paymentMethod,
+          'p_status': f.status,
+          'p_search': (f.search != null && f.search!.trim().isNotEmpty) ? f.search!.trim() : null,
+          'p_limit': input.limit ?? 10,
+          'p_offset': input.offset ?? 0,
+        },
+      );
+      return LedgerPage.fromRows(
+        (rows as List<dynamic>).map((row) => (row as Map).cast<String, dynamic>()).toList(),
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// The distinct payment methods actually present in this facility's payments
+  /// and expenses — so the Transactions filter offers what exists, not a
+  /// hardcoded list. Mirrors `SupabaseFinanceService.listPaymentMethods`.
+  Future<List<String>> listPaymentMethods(String facilityId) async {
+    try {
+      final rows = await _client.rpc(
+        'list_finance_payment_methods',
+        params: {'p_facility_id': facilityId},
+      );
+      return (rows as List<dynamic>)
+          .map((row) => (row as Map)['payment_method'] as String)
+          .toList();
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
 }
