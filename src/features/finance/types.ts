@@ -22,7 +22,12 @@ export interface FinanceDateRange {
 export interface FinanceSummary {
   grossRevenueMinor: number;
   refundsMinor: number;
+  /** What the facility spent in the range — recorded expenses, voids excluded. */
+  expensesMinor: number;
+  /** Gross, less refunds, less expenses. */
   netRevenueMinor: number;
+  /** Money owed on bookings that have happened and not been paid for. */
+  outstandingMinor: number;
   transactionCount: number;
   successfulPaymentCount: number;
   failedPaymentCount: number;

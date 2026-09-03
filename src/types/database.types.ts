@@ -2218,7 +2218,9 @@ export interface Database {
         Returns: {
           gross_revenue_minor: number;
           refunds_minor: number;
+          expenses_minor: number;
           net_revenue_minor: number;
+          outstanding_minor: number;
           transaction_count: number;
           successful_payment_count: number;
           failed_payment_count: number;

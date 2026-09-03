@@ -62,7 +62,9 @@ export class SupabaseFinanceService implements FinanceService {
     return {
       grossRevenueMinor: row.gross_revenue_minor,
       refundsMinor: row.refunds_minor,
+      expensesMinor: row.expenses_minor ?? 0,
       netRevenueMinor: row.net_revenue_minor,
+      outstandingMinor: row.outstanding_minor ?? 0,
       transactionCount: row.transaction_count,
       successfulPaymentCount: row.successful_payment_count,
       failedPaymentCount: row.failed_payment_count,

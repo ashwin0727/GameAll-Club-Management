@@ -5,7 +5,9 @@ import { ServiceError } from "@/services/shared/service-error";
 const SUMMARY_ROW = {
   gross_revenue_minor: 350000,
   refunds_minor: 80000,
-  net_revenue_minor: 270000,
+  expenses_minor: 45000,
+  net_revenue_minor: 225000,
+  outstanding_minor: 12000,
   transaction_count: 4,
   successful_payment_count: 4,
   failed_payment_count: 0,
@@ -25,7 +27,9 @@ describe("SupabaseFinanceService.getSummary", () => {
     expect(result).toEqual({
       grossRevenueMinor: 350000,
       refundsMinor: 80000,
-      netRevenueMinor: 270000,
+      expensesMinor: 45000,
+      netRevenueMinor: 225000,
+      outstandingMinor: 12000,
       transactionCount: 4,
       successfulPaymentCount: 4,
       failedPaymentCount: 0,
