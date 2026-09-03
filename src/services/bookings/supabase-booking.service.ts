@@ -146,6 +146,19 @@ export class SupabaseBookingService implements BookingService {
     return toBooking(data);
   }
 
+  /** Cash taken at the venue for a seat released from a membership session.
+   * Those live in membership_session_bookings, not bookings, so they need
+   * their own recorder — it writes to the same payments table, and so to the
+   * same Finance reader. */
+  async recordSessionGuestPayment(sessionBookingId: string, method: string, amountMinor: number): Promise<void> {
+    const { error } = await this.supabase.rpc('record_session_guest_payment', {
+      p_session_booking_id: sessionBookingId,
+      p_method: method,
+      p_amount_minor: amountMinor,
+    });
+    if (error) throw mapSupabaseError(error, { notFound: 'BOOKING_NOT_FOUND', invalid: 'INVALID_BOOKING' });
+  }
+
   async duplicateGuestBooking(bookingId: string, newStart: string, newEnd: string): Promise<Booking> {
     const { data, error } = await this.supabase.rpc("duplicate_guest_booking", {
       p_booking_id: bookingId,
@@ -250,6 +263,7 @@ export class SupabaseBookingService implements BookingService {
       paymentStatus: r.payment_status as PaymentStatus,
       paymentMethod: r.payment_method,
       status: r.status as BookingStatus,
+      source: r.source ?? "COURT",
     }));
     return { rows, totalCount: data?.[0]?.total_count ?? 0 };
   }

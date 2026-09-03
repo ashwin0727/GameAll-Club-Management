@@ -1479,6 +1479,8 @@ export interface Database {
           payment_status: "PENDING" | "PAID" | "REFUNDED";
           payment_method: string | null;
           status: string;
+          /** COURT = a bookings row; SESSION = a released membership seat. */
+          source: "COURT" | "SESSION";
           total_count: number;
         }[];
       };
@@ -1685,6 +1687,10 @@ export interface Database {
           capacity: number;
           spare: number;
         }[];
+      };
+      record_session_guest_payment: {
+        Args: { p_session_booking_id: string; p_method: string; p_amount_minor: number };
+        Returns: Database['public']['Tables']['membership_session_bookings']['Row'];
       };
       get_public_booking_facility: {
         Args: { p_facility_id: string };

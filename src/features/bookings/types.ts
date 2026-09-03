@@ -76,7 +76,12 @@ export interface GuestBookingRow {
   paymentStatus: PaymentStatus;
   paymentMethod: string | null;
   status: BookingStatus;
+  /** COURT = a bookings row. SESSION = a seat the owner released from a
+   *  membership session, which has no court booking behind it. */
+  source: GuestBookingSource;
 }
+
+export type GuestBookingSource = 'COURT' | 'SESSION';
 
 export interface GuestBookingListParams {
   search?: string;

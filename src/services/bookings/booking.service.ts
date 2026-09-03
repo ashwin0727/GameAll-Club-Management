@@ -44,6 +44,7 @@ export interface BookingService {
   completeGuestBooking(bookingId: string): Promise<Booking>;
   /** Record an offline-collected payment and flip the booking to PAID. */
   recordGuestBookingPayment(bookingId: string, method: string, amountMinor: number): Promise<Booking>;
+  recordSessionGuestPayment(sessionBookingId: string, method: string, amountMinor: number): Promise<void>;
   /** Clone a guest booking into a new PENDING booking at newStart/newEnd (ISO). */
   duplicateGuestBooking(bookingId: string, newStart: string, newEnd: string): Promise<Booking>;
   /** Permanently delete a guest booking (blocked when it has a settled/refunded payment). */

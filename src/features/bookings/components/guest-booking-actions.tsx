@@ -24,7 +24,7 @@ import type { GuestBookingRow } from "@/features/bookings/types";
 
 const METHODS = ["Cash", "UPI", "Card", "Bank Transfer", "Other"];
 
-type Action = "complete" | "cancel" | "receipt" | "duplicate" | "delete" | null;
+type Action = "complete" | "cancel" | "receipt" | "duplicate" | "delete" | "record-payment" | null;
 
 function money(minor: number | null, currency: string) {
   return minor == null ? "—" : formatCurrency(minor, currency);
@@ -48,6 +48,7 @@ export function GuestBookingActions({
 }) {
   const router = useRouter();
   const [action, setAction] = useState<Action>(null);
+  const isSession = row.source === "SESSION";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +61,15 @@ export function GuestBookingActions({
 
   return (
     <div className="flex items-center justify-end gap-1">
-      <Button type="button" variant="ghost" size="icon" aria-label="Edit booking" onClick={openEdit}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={isSession ? "Session seats are managed under Membership Sessions" : "Edit booking"}
+        title={isSession ? "Managed under Membership Sessions" : undefined}
+        disabled={isSession}
+        onClick={openEdit}
+      >
         <Eye className="h-4 w-4" />
       </Button>
       <DropdownMenu>
@@ -70,14 +79,32 @@ export function GuestBookingActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <ActionItem icon={CheckCircle2} title="Mark as Completed" sub="Mark booking as completed" onClick={() => setAction("complete")} disabled={row.status === "cancelled" || row.status === "completed"} />
-          <ActionItem icon={XCircle} title="Cancel Booking" sub="Cancel this booking" onClick={() => setAction("cancel")} disabled={row.status === "cancelled"} danger />
-          <DropdownMenuSeparator />
-          <ActionItem icon={Mail} title="Send Receipt" sub="Send booking receipt to guest" onClick={() => setAction("receipt")} />
-          <ActionItem icon={Copy} title="Duplicate Booking" sub="Create a new booking" onClick={() => setAction("duplicate")} />
-          <ActionItem icon={FileDown} title="Download Invoice" sub="Download invoice / bill" onClick={() => openPrintable(buildBookingDocument("invoice", row, facilityName))} />
-          <DropdownMenuSeparator />
-          <ActionItem icon={Trash2} title="Delete Booking" sub="Permanently delete booking" onClick={() => setAction("delete")} danger />
+          {isSession ? (
+            // A released membership seat has no court booking behind it, so
+            // the actions that operate on one don't apply. Taking the money
+            // and printing a bill still do.
+            <>
+              <ActionItem
+                icon={CheckCircle2}
+                title="Record Payment"
+                sub="Mark payment as received"
+                onClick={() => setAction("record-payment")}
+                disabled={row.paymentStatus === "PAID" || row.status === "cancelled"}
+              />
+              <ActionItem icon={FileDown} title="Download Invoice" sub="Download invoice / bill" onClick={() => openPrintable(buildBookingDocument("invoice", row, facilityName))} />
+            </>
+          ) : (
+            <>
+              <ActionItem icon={CheckCircle2} title="Mark as Completed" sub="Mark booking as completed" onClick={() => setAction("complete")} disabled={row.status === "cancelled" || row.status === "completed"} />
+              <ActionItem icon={XCircle} title="Cancel Booking" sub="Cancel this booking" onClick={() => setAction("cancel")} disabled={row.status === "cancelled"} danger />
+              <DropdownMenuSeparator />
+              <ActionItem icon={Mail} title="Send Receipt" sub="Send booking receipt to guest" onClick={() => setAction("receipt")} />
+              <ActionItem icon={Copy} title="Duplicate Booking" sub="Create a new booking" onClick={() => setAction("duplicate")} />
+              <ActionItem icon={FileDown} title="Download Invoice" sub="Download invoice / bill" onClick={() => openPrintable(buildBookingDocument("invoice", row, facilityName))} />
+              <DropdownMenuSeparator />
+              <ActionItem icon={Trash2} title="Delete Booking" sub="Permanently delete booking" onClick={() => setAction("delete")} danger />
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -92,6 +119,17 @@ export function GuestBookingActions({
       )}
       {action === "duplicate" && (
         <DuplicateDialog row={row} facilityId={facilityId} busy={busy} error={error} setBusy={setBusy} setError={setError} onClose={close} onDone={() => { close(); onChanged(); }} />
+      )}
+      {action === "record-payment" && (
+        <RecordSessionPaymentDialog
+          row={row}
+          busy={busy}
+          error={error}
+          setBusy={setBusy}
+          setError={setError}
+          onClose={close}
+          onDone={() => { close(); onChanged(); }}
+        />
       )}
       {action === "delete" && (
         <ConfirmDialog
@@ -183,6 +221,109 @@ function ConfirmDialog({
           </Button>
           <Button type="button" variant={danger ? "destructive" : "default"} disabled={busy} onClick={onConfirm}>
             {busy ? "Working…" : confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── Record Payment (released membership seat) ──────────────────────────── */
+/**
+ * Offline payment for a seat released from a membership session. Those rows
+ * live in membership_session_bookings rather than bookings, so they take the
+ * sibling recorder — which writes to the same payments table, and therefore
+ * lands in Finance the same way a court booking's cash does.
+ */
+function RecordSessionPaymentDialog({
+  row,
+  busy,
+  error,
+  setBusy,
+  setError,
+  onClose,
+  onDone,
+}: {
+  row: GuestBookingRow;
+  busy: boolean;
+  error: string | null;
+  setBusy: (v: boolean) => void;
+  setError: (v: string | null) => void;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [method, setMethod] = useState("Cash");
+  const [amount, setAmount] = useState(row.amountMinor != null ? String(row.amountMinor / 100) : "");
+
+  async function run() {
+    setBusy(true);
+    setError(null);
+    try {
+      await getBookingService().recordSessionGuestPayment(
+        row.bookingId,
+        method,
+        Math.round((Number(amount) || 0) * 100),
+      );
+      onDone();
+    } catch (e) {
+      setError(e instanceof ServiceError ? e.message : "Unable to record this payment.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Record payment</DialogTitle>
+          <DialogDescription>
+            {row.guestName} · {money(row.amountMinor, row.currency)}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label htmlFor="session-pay-method" className="text-sm font-medium">
+              Payment method
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {METHODS.map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  variant={m === method ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setMethod(m)}
+                >
+                  {m}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="session-pay-amount" className="text-sm font-medium">
+              Amount received
+            </label>
+            <Input
+              id="session-pay-amount"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={run} disabled={busy}>
+            {busy ? "Recording…" : "Record payment"}
           </Button>
         </DialogFooter>
       </DialogContent>
