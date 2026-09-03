@@ -25,6 +25,7 @@ import '../../shared/widgets/states.dart';
 import 'membership_detail_screen.dart';
 import 'membership_access_days_sheet.dart';
 import 'membership_list_presentation.dart';
+import 'membership_revenue_trend.dart';
 import 'membership_plans_sheet.dart';
 import 'slot_format.dart';
 
@@ -302,6 +303,10 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (_summary != null) _SummaryGrid(summary: _summary!),
+                          if (_facilityId != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            MembershipRevenueTrend(facilityId: _facilityId!),
+                          ],
                           const SizedBox(height: AppSpacing.lg),
                           AppSearchField(
                             controller: _searchController,

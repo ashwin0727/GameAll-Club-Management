@@ -426,6 +426,28 @@ class MembershipRepository {
     }
   }
 
+  /// Membership revenue received per bucket — `get_membership_revenue_
+  /// timeseries` (0026). `amount_inr` is whole rupees. Mirrors
+  /// `getMembershipRevenueTimeseries` on the web.
+  Future<List<MembershipRevenuePoint>> getMembershipRevenueTimeseries(
+    String facilityId, {
+    MembershipRevenueGranularity granularity = MembershipRevenueGranularity.month,
+  }) async {
+    try {
+      final rows = await _client.rpc('get_membership_revenue_timeseries', params: {
+        'p_facility_id': facilityId,
+        'p_granularity': granularity.toJson(),
+        'p_from': null,
+        'p_to': null,
+      });
+      return (rows as List<dynamic>)
+          .map((row) => MembershipRevenuePoint.fromJson((row as Map).cast<String, dynamic>()))
+          .toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   /// The session batches a new member can be assigned to — shared defaults
   /// plus this facility's own active batches, optionally filtered to a plan.
   /// Mirrors `listAssignableBatches` on the web (`list_assignable_batches`,

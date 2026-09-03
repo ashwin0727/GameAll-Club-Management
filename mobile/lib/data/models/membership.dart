@@ -942,3 +942,36 @@ class AssignableBatch {
     );
   }
 }
+
+/// Bucket granularity for `get_membership_revenue_timeseries` (migration 0026).
+enum MembershipRevenueGranularity {
+  day,
+  month,
+  year;
+
+  String toJson() => name;
+}
+
+/// One bucket of membership revenue received. [amountInr] is whole rupees (the
+/// RPC sums `payments.amount_inr` directly), not minor units. Mirrors
+/// `MembershipRevenuePoint` in src/features/memberships/types.ts.
+class MembershipRevenuePoint {
+  const MembershipRevenuePoint({
+    required this.bucket,
+    required this.amountInr,
+    required this.paymentCount,
+  });
+
+  /// `yyyy-MM-dd` bucket start (Postgres `date`).
+  final String bucket;
+  final int amountInr;
+  final int paymentCount;
+
+  factory MembershipRevenuePoint.fromJson(Map<String, dynamic> json) {
+    return MembershipRevenuePoint(
+      bucket: json['bucket'] as String,
+      amountInr: (json['amount_inr'] as num).toInt(),
+      paymentCount: (json['payment_count'] as num).toInt(),
+    );
+  }
+}
