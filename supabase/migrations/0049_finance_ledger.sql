@@ -49,12 +49,15 @@ as $$
 declare
   range_ tstzrange;
   tz text;
+  cur text;
 begin
   if not has_facility_role(p_facility_id, array['owner', 'manager', 'staff']::facility_role[]) then
     raise exception 'Not authorized for this facility.' using errcode = '42501';
   end if;
   range_ := resolve_finance_date_range(p_facility_id, p_preset, p_start_date, p_end_date);
-  tz := coalesce((select f.timezone from facilities f where f.id = p_facility_id), 'Asia/Kolkata');
+  select coalesce(f.timezone, 'Asia/Kolkata'), coalesce(f.currency, 'INR')
+    into tz, cur
+    from facilities f where f.id = p_facility_id;
 
   return query
   with ledger as (
@@ -98,8 +101,8 @@ begin
       'REFUND'::text,
       null::text,
       r.amount_minor::bigint,
-      'INR'::text,
-      lower(r.status),
+      cur,
+      lower(r.status::text),
       'REFUND'::text,
       null::uuid,
       null::uuid,
