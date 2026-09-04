@@ -187,6 +187,35 @@ class ReportBarList extends StatelessWidget {
   }
 }
 
+/// A list of "label ............ value" rows — the mobile equivalent of the
+/// web's small breakdown / method / capacity tables, following the Finance
+/// dashboard's `_buildBreakdown` style.
+class ReportAmountRows extends StatelessWidget {
+  const ReportAmountRows({super.key, required this.rows});
+
+  final List<({String label, String value})> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final row in rows)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Row(
+              children: [
+                Expanded(child: Text(row.label, style: AppTypography.secondary(context))),
+                const SizedBox(width: AppSpacing.sm),
+                Text(row.value, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class ReportColumn {
   const ReportColumn({required this.label, this.numeric = false});
 

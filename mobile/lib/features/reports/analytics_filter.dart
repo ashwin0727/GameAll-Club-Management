@@ -7,8 +7,15 @@
 /// comparison window.
 library;
 
+import 'package:intl/intl.dart';
+
 import '../../core/utils/formatters.dart';
 import '../../data/models/analytics.dart';
+
+final _shortDate = DateFormat('d MMM');
+
+/// "2026-09-01" -> "1 Sep". For trend/table date cells.
+String reportDateShort(String iso) => _shortDate.format(DateTime.parse(iso));
 
 /// Decode the query params a drill-down `context.push` carried (same keys as
 /// the web: preset / from / to / sport / court). Unknown or half-formed

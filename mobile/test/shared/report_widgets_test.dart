@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gameall_club_mobile/core/theme/app_theme.dart';
+import 'package:gameall_club_mobile/data/models/analytics.dart';
+import 'package:gameall_club_mobile/features/reports/count_trend_chart.dart';
+import 'package:gameall_club_mobile/features/reports/heatmap.dart';
 import 'package:gameall_club_mobile/features/reports/report_widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -65,6 +68,57 @@ void main() {
       // delta shows a % figure as text, not colour alone
       expect(find.textContaining('12'), findsWidgets);
       expect(find.text('vs last period'), findsOneWidget); // the KPI with no pct
+    });
+  });
+
+  group('CountTrendChart', () {
+    testWidgets('renders the empty message with no points', (tester) async {
+      await tester.pumpWidget(wrap(const CountTrendChart(points: [], emptyMessage: 'No bookings in this period.')));
+      expect(tester.takeException(), isNull);
+      expect(find.text('No bookings in this period.'), findsOneWidget);
+    });
+
+    testWidgets('paints a chart + axis labels for real points, no overflow', (tester) async {
+      await tester.pumpWidget(wrap(const CountTrendChart(points: [
+        CountTrendPoint(date: '2026-09-01', value: 8),
+        CountTrendPoint(date: '2026-09-02', value: 5),
+        CountTrendPoint(date: '2026-09-03', value: 12),
+      ])));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(CustomPaint), findsWidgets);
+      expect(find.text('1 Sep'), findsOneWidget);
+      expect(find.text('12'), findsOneWidget); // peak label
+    });
+  });
+
+  group('ReportAmountRows', () {
+    testWidgets('renders each label + value pair', (tester) async {
+      await tester.pumpWidget(wrap(const ReportAmountRows(rows: [
+        (label: 'Guest Bookings', value: '₹45,000'),
+        (label: 'Memberships', value: '₹60,000'),
+      ])));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Guest Bookings'), findsOneWidget);
+      expect(find.text('₹60,000'), findsOneWidget);
+    });
+  });
+
+  group('Heatmap', () {
+    testWidgets('shows the empty message with no cells', (tester) async {
+      await tester.pumpWidget(wrap(const Heatmap(cells: [])));
+      expect(tester.takeException(), isNull);
+      expect(find.text('No demand data for this period.'), findsOneWidget);
+    });
+
+    testWidgets('prints the demand percentage as a number, not colour alone', (tester) async {
+      await tester.pumpWidget(wrap(const Heatmap(cells: [
+        HeatmapCell(dow: 1, hour: 18, openMinutes: 60, bookedMinutes: 54, demandPct: 90),
+        HeatmapCell(dow: 2, hour: 18, openMinutes: 60, bookedMinutes: 30, demandPct: 50),
+      ])));
+      expect(tester.takeException(), isNull);
+      expect(find.text('90'), findsOneWidget);
+      expect(find.text('Mon'), findsOneWidget);
+      expect(find.text('6p'), findsOneWidget); // hour column header
     });
   });
 
