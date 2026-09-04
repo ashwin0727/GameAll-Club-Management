@@ -12,6 +12,11 @@ import type {
   BookingTrendPoint,
   BookingsBySportRow,
   BookingSourceRow,
+  OverallUtilization,
+  CourtUtilizationRow,
+  SportUtilizationRow,
+  PeakHourRow,
+  HeatmapCell,
 } from "@/features/reports/types";
 
 export interface ReportsService {
@@ -23,4 +28,15 @@ export interface ReportsService {
   getBookingsBySport(filter: AnalyticsFilter): Promise<BookingsBySportRow[]>;
   /** Exactly two rows — GUEST and MEMBER. */
   getBookingSourceSplit(filter: AnalyticsFilter): Promise<BookingSourceRow[]>;
+
+  /** Facility-wide booked ÷ open (bookable) minutes for the range. */
+  getOverallUtilization(filter: AnalyticsFilter): Promise<OverallUtilization>;
+  /** One row per non-archived court in scope; caller sorts. */
+  getCourtUtilization(filter: AnalyticsFilter): Promise<CourtUtilizationRow[]>;
+  /** One row per active facility sport in scope. */
+  getSportUtilization(filter: AnalyticsFilter): Promise<SportUtilizationRow[]>;
+  /** Demand % per hour of day; closed hours omitted. */
+  getPeakHours(filter: AnalyticsFilter): Promise<PeakHourRow[]>;
+  /** Demand % per (day-of-week, hour) cell; closed cells omitted. */
+  getDemandHeatmap(filter: AnalyticsFilter): Promise<HeatmapCell[]>;
 }

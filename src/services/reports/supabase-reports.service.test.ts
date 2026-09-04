@@ -110,3 +110,91 @@ describe("SupabaseReportsService.getBookingsBySport / getBookingSourceSplit", ()
     ]);
   });
 });
+
+describe("SupabaseReportsService utilization", () => {
+  it("getOverallUtilization reads the single row", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ open_minutes: 1000, booked_minutes: 680, utilization_pct: 68 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getOverallUtilization({ ...filter, facilitySportId: "fs-1" })).toEqual({
+      openMinutes: 1000,
+      bookedMinutes: 680,
+      utilizationPct: 68,
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      "get_overall_utilization",
+      expect.objectContaining({ p_facility_id: "fac-1", p_facility_sport_id: "fs-1", p_court_id: null }),
+    );
+  });
+
+  it("getOverallUtilization maps a denial to REPORTS_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    await expect(service.getOverallUtilization(filter)).rejects.toMatchObject({ code: "REPORTS_ACCESS_DENIED" });
+  });
+
+  it("getCourtUtilization maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          court_id: "c1",
+          court_name: "Court 1",
+          facility_sport_id: "fs1",
+          sport_name: "Badminton",
+          open_minutes: 600,
+          booked_minutes: 420,
+          utilization_pct: 70,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getCourtUtilization(filter)).toEqual([
+      {
+        courtId: "c1",
+        courtName: "Court 1",
+        facilitySportId: "fs1",
+        sportName: "Badminton",
+        openMinutes: 600,
+        bookedMinutes: 420,
+        utilizationPct: 70,
+      },
+    ]);
+    expect(rpc).toHaveBeenCalledWith("get_court_utilization", expect.objectContaining({ p_facility_id: "fac-1" }));
+  });
+
+  it("getSportUtilization maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ facility_sport_id: "fs1", sport_name: "Badminton", open_minutes: 6000, booked_minutes: 4080, utilization_pct: 68 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getSportUtilization(filter)).toEqual([
+      { facilitySportId: "fs1", sportName: "Badminton", openMinutes: 6000, bookedMinutes: 4080, utilizationPct: 68 },
+    ]);
+  });
+
+  it("getPeakHours maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ hour: 18, open_minutes: 300, booked_minutes: 270, demand_pct: 90 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getPeakHours(filter)).toEqual([
+      { hour: 18, openMinutes: 300, bookedMinutes: 270, demandPct: 90 },
+    ]);
+  });
+
+  it("getDemandHeatmap maps cells", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ dow: 1, hour: 18, open_minutes: 60, booked_minutes: 54, demand_pct: 90 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getDemandHeatmap(filter)).toEqual([
+      { dow: 1, hour: 18, openMinutes: 60, bookedMinutes: 54, demandPct: 90 },
+    ]);
+  });
+});

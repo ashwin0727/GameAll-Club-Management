@@ -13,6 +13,11 @@ import type {
   BookingTrendPoint,
   BookingsBySportRow,
   BookingSourceRow,
+  OverallUtilization,
+  CourtUtilizationRow,
+  SportUtilizationRow,
+  PeakHourRow,
+  HeatmapCell,
 } from "@/features/reports/types";
 
 export class SupabaseReportsService implements ReportsService {
@@ -75,6 +80,66 @@ export class SupabaseReportsService implements ReportsService {
     return (data ?? []).map((r) => ({
       source: r.source as "GUEST" | "MEMBER",
       bookingCount: r.booking_count,
+    }));
+  }
+
+  async getOverallUtilization(filter: AnalyticsFilter): Promise<OverallUtilization> {
+    const { data, error } = await this.supabase.rpc("get_overall_utilization", this.baseArgs(filter));
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      openMinutes: r.open_minutes,
+      bookedMinutes: r.booked_minutes,
+      utilizationPct: r.utilization_pct,
+    };
+  }
+
+  async getCourtUtilization(filter: AnalyticsFilter): Promise<CourtUtilizationRow[]> {
+    const { data, error } = await this.supabase.rpc("get_court_utilization", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      courtId: r.court_id,
+      courtName: r.court_name,
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      openMinutes: r.open_minutes,
+      bookedMinutes: r.booked_minutes,
+      utilizationPct: r.utilization_pct,
+    }));
+  }
+
+  async getSportUtilization(filter: AnalyticsFilter): Promise<SportUtilizationRow[]> {
+    const { data, error } = await this.supabase.rpc("get_sport_utilization", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      openMinutes: r.open_minutes,
+      bookedMinutes: r.booked_minutes,
+      utilizationPct: r.utilization_pct,
+    }));
+  }
+
+  async getPeakHours(filter: AnalyticsFilter): Promise<PeakHourRow[]> {
+    const { data, error } = await this.supabase.rpc("get_peak_hours", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      hour: r.hour,
+      openMinutes: r.open_minutes,
+      bookedMinutes: r.booked_minutes,
+      demandPct: r.demand_pct,
+    }));
+  }
+
+  async getDemandHeatmap(filter: AnalyticsFilter): Promise<HeatmapCell[]> {
+    const { data, error } = await this.supabase.rpc("get_demand_heatmap", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      dow: r.dow,
+      hour: r.hour,
+      openMinutes: r.open_minutes,
+      bookedMinutes: r.booked_minutes,
+      demandPct: r.demand_pct,
     }));
   }
 

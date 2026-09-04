@@ -2,6 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
+> **Status: implemented (2026-09-04), pending user verification + commit.** Notes:
+> - `<Heatmap>` takes `HeatmapCell` imported from `../types` (no local `HeatCell`), per the self-review.
+> - The overall-utilization figure is rendered as one template-string node (`` `${pct}%` ``) — `{pct}%` splits into two text nodes and breaks `findByText`. The test scopes its query with `{ selector: "p" }` because the by-sport table row can also read the same %.
+> - **`next build` was NOT run** (new standing rule: no `next build` while `next dev` is up — see [[feedback-test-before-commit-and-no-next-build-in-dev-loop]]). Verified via `tsc --noEmit` (whole project) + `next lint` + `vitest` (75 reports tests render the full report incl. charts/heatmap) + dev-server has no compile errors.
+> - Full suite this run: **604/604** (the pre-existing `courts-setup`/`onboarding` flakes happened to pass).
+
 **Goal:** `/reports/court-utilization` — overall utilization, per-court and per-sport utilization (sortable, with supporting tables), a peak-hours chart, and a day×hour demand heatmap. All from the facility's real operating-hours model.
 
 **Architecture:** `0057` adds the availability primitives — one window→(dow,hour,minutes) expander and two per-court "minutes by cell" functions (open hours, booked time) that read the *same* `operating_schedules`/`operating_days`/`operating_time_slots` tables with the *same* per-court-override→facility precedence as `booking_window_fits_operating_hours`. `0059` builds five report RPCs on top. `<CourtUtilizationReport>` follows the Phase 2 assembly pattern; a new shared `<Heatmap>` (labels + tooltip + intensity, never colour alone) lands for reuse.

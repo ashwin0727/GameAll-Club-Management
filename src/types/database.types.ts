@@ -2534,6 +2534,81 @@ export interface Database {
         };
         Returns: { source: string; booking_count: number }[];
       };
+      get_overall_utilization: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { open_minutes: number; booked_minutes: number; utilization_pct: number }[];
+      };
+      get_court_utilization: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          open_minutes: number;
+          booked_minutes: number;
+          utilization_pct: number;
+        }[];
+      };
+      get_sport_utilization: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          facility_sport_id: string;
+          sport_name: string;
+          open_minutes: number;
+          booked_minutes: number;
+          utilization_pct: number;
+        }[];
+      };
+      get_peak_hours: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { hour: number; open_minutes: number; booked_minutes: number; demand_pct: number }[];
+      };
+      get_demand_heatmap: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          dow: number;
+          hour: number;
+          open_minutes: number;
+          booked_minutes: number;
+          demand_pct: number;
+        }[];
+      };
     };
     Enums: {
       role: Role;

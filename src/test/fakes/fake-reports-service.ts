@@ -5,6 +5,11 @@ import type {
   BookingTrendPoint,
   BookingsBySportRow,
   BookingSourceRow,
+  OverallUtilization,
+  CourtUtilizationRow,
+  SportUtilizationRow,
+  PeakHourRow,
+  HeatmapCell,
 } from "@/features/reports/types";
 
 const EMPTY_ANALYTICS: BookingAnalytics = {
@@ -24,6 +29,11 @@ export class FakeReportsService implements ReportsService {
   bookingTrend: BookingTrendPoint[] = [];
   bookingsBySport: BookingsBySportRow[] = [];
   bookingSourceSplit: BookingSourceRow[] = [];
+  overallUtilization: OverallUtilization = { openMinutes: 0, bookedMinutes: 0, utilizationPct: 0 };
+  courtUtilization: CourtUtilizationRow[] = [];
+  sportUtilization: SportUtilizationRow[] = [];
+  peakHours: PeakHourRow[] = [];
+  demandHeatmap: HeatmapCell[] = [];
   error: Error | null = null;
 
   async getBookingAnalytics(): Promise<BookingAnalytics> {
@@ -41,6 +51,26 @@ export class FakeReportsService implements ReportsService {
   async getBookingSourceSplit(): Promise<BookingSourceRow[]> {
     if (this.error) throw this.error;
     return this.bookingSourceSplit;
+  }
+  async getOverallUtilization(): Promise<OverallUtilization> {
+    if (this.error) throw this.error;
+    return this.overallUtilization;
+  }
+  async getCourtUtilization(): Promise<CourtUtilizationRow[]> {
+    if (this.error) throw this.error;
+    return this.courtUtilization;
+  }
+  async getSportUtilization(): Promise<SportUtilizationRow[]> {
+    if (this.error) throw this.error;
+    return this.sportUtilization;
+  }
+  async getPeakHours(): Promise<PeakHourRow[]> {
+    if (this.error) throw this.error;
+    return this.peakHours;
+  }
+  async getDemandHeatmap(): Promise<HeatmapCell[]> {
+    if (this.error) throw this.error;
+    return this.demandHeatmap;
   }
 }
 

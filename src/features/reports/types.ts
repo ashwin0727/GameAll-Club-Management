@@ -89,3 +89,44 @@ export interface BookingSourceRow {
   source: "GUEST" | "MEMBER";
   bookingCount: number;
 }
+
+// ─── Phase 3: Court Utilization ──────────────────────────────────────────
+
+export interface OverallUtilization {
+  openMinutes: number;
+  bookedMinutes: number;
+  utilizationPct: number;
+}
+
+export interface CourtUtilizationRow {
+  courtId: string;
+  courtName: string;
+  facilitySportId: string;
+  sportName: string;
+  openMinutes: number;
+  bookedMinutes: number;
+  utilizationPct: number;
+}
+
+export interface SportUtilizationRow {
+  facilitySportId: string;
+  sportName: string;
+  openMinutes: number;
+  bookedMinutes: number;
+  utilizationPct: number;
+}
+
+export interface PeakHourRow {
+  hour: number;
+  openMinutes: number;
+  bookedMinutes: number;
+  demandPct: number;
+}
+
+export interface HeatmapCell {
+  dow: number;
+  hour: number;
+  openMinutes: number;
+  bookedMinutes: number;
+  demandPct: number;
+}
