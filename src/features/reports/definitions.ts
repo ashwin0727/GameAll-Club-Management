@@ -26,6 +26,7 @@ export type KpiKey =
   | "activeMembers"
   | "newMemberships"
   | "expiringMemberships"
+  | "membershipOutstanding"
   | "membershipSessionUtilization"
   | "guestReleased"
   | "guestBooked"
@@ -63,6 +64,8 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
   activeMembers: "Memberships with status ACTIVE as of now, for this facility.",
   newMemberships: "Memberships created within the selected range.",
   expiringMemberships: "Active memberships whose end date is within the next 30 days.",
+  membershipOutstanding:
+    "Membership fees still owed on memberships created in the range — total price minus payments collected.",
   membershipSessionUtilization:
     "Confirmed member + guest slots divided by total session capacity, over sessions dated in the range.",
   guestReleased:

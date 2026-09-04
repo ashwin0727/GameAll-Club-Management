@@ -25,6 +25,10 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  MembershipAnalytics,
+  MembershipTypeRow,
+  MembershipSessionAnalytics,
+  GuestReleaseAnalytics,
 } from "@/features/reports/types";
 
 export class SupabaseReportsService implements ReportsService {
@@ -254,6 +258,71 @@ export class SupabaseReportsService implements ReportsService {
       completedBookings: r.completed_bookings,
       cancelledBookings: r.cancelled_bookings,
       overallUtilizationPct: r.overall_utilization_pct,
+    };
+  }
+
+  // ─── Phase 6: Memberships ──────────────────────────────────────────────
+
+  async getMembershipAnalytics(filter: AnalyticsFilter): Promise<MembershipAnalytics> {
+    const { data, error } = await this.supabase.rpc("get_membership_analytics", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      activeMembers: r.active_members,
+      newMemberships: r.new_memberships,
+      expiringSoon: r.expiring_soon,
+      membershipRevenueMinor: r.membership_revenue_minor,
+      paidCount: r.paid_count,
+      partiallyPaidCount: r.partially_paid_count,
+      pendingCount: r.pending_count,
+      outstandingMinor: r.outstanding_minor,
+    };
+  }
+
+  async getMembershipsByType(filter: AnalyticsFilter): Promise<MembershipTypeRow[]> {
+    const { data, error } = await this.supabase.rpc("get_memberships_by_type", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      membershipType: r.membership_type,
+      planName: r.plan_name,
+      count: r.count,
+      revenueMinor: r.revenue_minor,
+    }));
+  }
+
+  async getMembershipSessionAnalytics(filter: AnalyticsFilter): Promise<MembershipSessionAnalytics> {
+    const { data, error } = await this.supabase.rpc(
+      "get_membership_session_analytics",
+      this.baseArgs(filter),
+    );
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      sessionCount: r.session_count,
+      totalCapacity: r.total_capacity,
+      memberAllocations: r.member_allocations,
+      guestReleased: r.guest_released,
+      guestBooked: r.guest_booked,
+      remainingReleased: r.remaining_released,
+      unusedCapacity: r.unused_capacity,
+    };
+  }
+
+  async getGuestReleaseAnalytics(filter: AnalyticsFilter): Promise<GuestReleaseAnalytics> {
+    const { data, error } = await this.supabase.rpc("get_guest_release_analytics", this.baseArgs(filter));
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      released: r.released,
+      booked: r.booked,
+      remaining: r.remaining,
+      revenueMinor: r.revenue_minor,
     };
   }
 

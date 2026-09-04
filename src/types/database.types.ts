@@ -2659,6 +2659,53 @@ export interface Database {
           overall_utilization_pct: number;
         }[];
       };
+      get_membership_analytics: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: {
+          active_members: number;
+          new_memberships: number;
+          expiring_soon: number;
+          membership_revenue_minor: number;
+          paid_count: number;
+          partially_paid_count: number;
+          pending_count: number;
+          outstanding_minor: number;
+        }[];
+      };
+      get_memberships_by_type: {
+        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: { membership_type: string; plan_name: string; count: number; revenue_minor: number }[];
+      };
+      get_membership_session_analytics: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          session_count: number;
+          total_capacity: number;
+          member_allocations: number;
+          guest_released: number;
+          guest_booked: number;
+          remaining_released: number;
+          unused_capacity: number;
+        }[];
+      };
+      get_guest_release_analytics: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { released: number; booked: number; remaining: number; revenue_minor: number }[];
+      };
     };
     Enums: {
       role: Role;

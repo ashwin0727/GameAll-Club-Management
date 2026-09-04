@@ -183,3 +183,40 @@ export interface AnalyticsOverview {
   cancelledBookings: number;
   overallUtilizationPct: number;
 }
+
+// ─── Phase 6: Memberships ────────────────────────────────────────────────
+
+export interface MembershipAnalytics {
+  activeMembers: number;
+  newMemberships: number;
+  expiringSoon: number;
+  membershipRevenueMinor: number;
+  paidCount: number;
+  partiallyPaidCount: number;
+  pendingCount: number;
+  outstandingMinor: number;
+}
+
+export interface MembershipTypeRow {
+  membershipType: string;
+  planName: string;
+  count: number;
+  revenueMinor: number;
+}
+
+export interface MembershipSessionAnalytics {
+  sessionCount: number;
+  totalCapacity: number;
+  memberAllocations: number;
+  guestReleased: number;
+  guestBooked: number;
+  remainingReleased: number;
+  unusedCapacity: number;
+}
+
+export interface GuestReleaseAnalytics {
+  released: number;
+  booked: number;
+  remaining: number;
+  revenueMinor: number;
+}

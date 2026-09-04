@@ -334,6 +334,90 @@ describe("SupabaseReportsService revenue", () => {
   });
 });
 
+describe("SupabaseReportsService memberships", () => {
+  it("getMembershipAnalytics calls the RPC with facility+date only and maps the row", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          active_members: 84,
+          new_memberships: 12,
+          expiring_soon: 5,
+          membership_revenue_minor: 6000000,
+          paid_count: 9,
+          partially_paid_count: 2,
+          pending_count: 1,
+          outstanding_minor: 1000000,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const r = await service.getMembershipAnalytics({ ...filter, facilitySportId: "fs-1" });
+    expect(rpc).toHaveBeenCalledWith("get_membership_analytics", {
+      p_facility_id: "fac-1",
+      p_preset: "THIS_MONTH",
+      p_start_date: null,
+      p_end_date: null,
+    });
+    expect(r).toMatchObject({ activeMembers: 84, newMemberships: 12, outstandingMinor: 1000000 });
+  });
+
+  it("getMembershipAnalytics maps a denial to REPORTS_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    await expect(service.getMembershipAnalytics(filter)).rejects.toMatchObject({ code: "REPORTS_ACCESS_DENIED" });
+  });
+
+  it("getMembershipsByType maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ membership_type: "INDIVIDUAL", plan_name: "Monthly", count: 8, revenue_minor: 4000000 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getMembershipsByType(filter)).toEqual([
+      { membershipType: "INDIVIDUAL", planName: "Monthly", count: 8, revenueMinor: 4000000 },
+    ]);
+  });
+
+  it("getMembershipSessionAnalytics maps the row incl. unusedCapacity", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          session_count: 40,
+          total_capacity: 500,
+          member_allocations: 360,
+          guest_released: 100,
+          guest_booked: 75,
+          remaining_released: 25,
+          unused_capacity: 65,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const r = await service.getMembershipSessionAnalytics({ ...filter, courtId: "c1" });
+    expect(rpc).toHaveBeenCalledWith(
+      "get_membership_session_analytics",
+      expect.objectContaining({ p_facility_id: "fac-1", p_court_id: "c1" }),
+    );
+    expect(r).toMatchObject({ totalCapacity: 500, memberAllocations: 360, unusedCapacity: 65 });
+  });
+
+  it("getGuestReleaseAnalytics maps the row", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ released: 100, booked: 75, remaining: 25, revenue_minor: 3800000 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getGuestReleaseAnalytics(filter)).toEqual({
+      released: 100,
+      booked: 75,
+      remaining: 25,
+      revenueMinor: 3800000,
+    });
+  });
+});
+
 describe("SupabaseReportsService.getAnalyticsOverview", () => {
   it("calls get_analytics_overview with the scoped args and maps the row", async () => {
     const rpc = vi.fn(async () => ({

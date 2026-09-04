@@ -24,6 +24,10 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  MembershipAnalytics,
+  MembershipTypeRow,
+  MembershipSessionAnalytics,
+  GuestReleaseAnalytics,
 } from "@/features/reports/types";
 
 export interface ReportsService {
@@ -62,4 +66,13 @@ export interface ReportsService {
 
   /** One-row business snapshot for the Overview page; composes the other RPCs. */
   getAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsOverview>;
+
+  /** Active / new / expiring members + membership revenue & payment completion. */
+  getMembershipAnalytics(filter: AnalyticsFilter): Promise<MembershipAnalytics>;
+  /** New memberships in the range, grouped by type + plan. */
+  getMembershipsByType(filter: AnalyticsFilter): Promise<MembershipTypeRow[]>;
+  /** Session capacity / allocations / released / booked / unused, over sessions in the range. */
+  getMembershipSessionAnalytics(filter: AnalyticsFilter): Promise<MembershipSessionAnalytics>;
+  /** Guest-release capacity released / booked / remaining + realised revenue. */
+  getGuestReleaseAnalytics(filter: AnalyticsFilter): Promise<GuestReleaseAnalytics>;
 }

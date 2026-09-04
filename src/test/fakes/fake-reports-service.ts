@@ -17,6 +17,10 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  MembershipAnalytics,
+  MembershipTypeRow,
+  MembershipSessionAnalytics,
+  GuestReleaseAnalytics,
 } from "@/features/reports/types";
 
 const EMPTY_ANALYTICS: BookingAnalytics = {
@@ -71,6 +75,27 @@ export class FakeReportsService implements ReportsService {
     cancelledBookings: 0,
     overallUtilizationPct: 0,
   };
+  membershipAnalytics: MembershipAnalytics = {
+    activeMembers: 0,
+    newMemberships: 0,
+    expiringSoon: 0,
+    membershipRevenueMinor: 0,
+    paidCount: 0,
+    partiallyPaidCount: 0,
+    pendingCount: 0,
+    outstandingMinor: 0,
+  };
+  membershipsByType: MembershipTypeRow[] = [];
+  membershipSessionAnalytics: MembershipSessionAnalytics = {
+    sessionCount: 0,
+    totalCapacity: 0,
+    memberAllocations: 0,
+    guestReleased: 0,
+    guestBooked: 0,
+    remainingReleased: 0,
+    unusedCapacity: 0,
+  };
+  guestReleaseAnalytics: GuestReleaseAnalytics = { released: 0, booked: 0, remaining: 0, revenueMinor: 0 };
   error: Error | null = null;
 
   async getBookingAnalytics(): Promise<BookingAnalytics> {
@@ -136,6 +161,22 @@ export class FakeReportsService implements ReportsService {
   async getAnalyticsOverview(): Promise<AnalyticsOverview> {
     if (this.error) throw this.error;
     return this.analyticsOverview;
+  }
+  async getMembershipAnalytics(): Promise<MembershipAnalytics> {
+    if (this.error) throw this.error;
+    return this.membershipAnalytics;
+  }
+  async getMembershipsByType(): Promise<MembershipTypeRow[]> {
+    if (this.error) throw this.error;
+    return this.membershipsByType;
+  }
+  async getMembershipSessionAnalytics(): Promise<MembershipSessionAnalytics> {
+    if (this.error) throw this.error;
+    return this.membershipSessionAnalytics;
+  }
+  async getGuestReleaseAnalytics(): Promise<GuestReleaseAnalytics> {
+    if (this.error) throw this.error;
+    return this.guestReleaseAnalytics;
   }
 }
 
