@@ -32,7 +32,8 @@ export type KpiKey =
   | "guestBooked"
   | "guestRemaining"
   | "guestReleaseRevenue"
-  | "guestBookingRevenue";
+  | "guestBookingRevenue"
+  | "guestBookingCollectionRate";
 
 export const KPI_DEFINITIONS: Record<KpiKey, string> = {
   totalBookings:
@@ -76,6 +77,8 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
     "Realised payments for released-seat guest bookings, classified as guest-booking revenue by Finance.",
   guestBookingRevenue:
     "Realised payments for guest bookings (both ad-hoc and released-seat) in the range.",
+  guestBookingCollectionRate:
+    "Collected guest-booking payments divided by (collected + outstanding), over non-cancelled guest bookings in the range.",
 };
 
 export const FRESHNESS_NOTE =

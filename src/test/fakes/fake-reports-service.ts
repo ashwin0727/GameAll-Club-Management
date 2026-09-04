@@ -21,6 +21,10 @@ import type {
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
+  GuestBookingAnalytics,
+  GuestBookingsBySportRow,
+  GuestBookingsByCourtRow,
+  GuestPeakHourRow,
 } from "@/features/reports/types";
 
 const EMPTY_ANALYTICS: BookingAnalytics = {
@@ -96,6 +100,21 @@ export class FakeReportsService implements ReportsService {
     unusedCapacity: 0,
   };
   guestReleaseAnalytics: GuestReleaseAnalytics = { released: 0, booked: 0, remaining: 0, revenueMinor: 0 };
+  guestBookingAnalytics: GuestBookingAnalytics = {
+    total: 0,
+    completed: 0,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+    revenueMinor: 0,
+    avgBookingValueMinor: 0,
+    collectedMinor: 0,
+    outstandingMinor: 0,
+    collectionRatePct: 0,
+  };
+  guestBookingsBySport: GuestBookingsBySportRow[] = [];
+  guestBookingsByCourt: GuestBookingsByCourtRow[] = [];
+  guestPeakHours: GuestPeakHourRow[] = [];
   error: Error | null = null;
 
   async getBookingAnalytics(): Promise<BookingAnalytics> {
@@ -177,6 +196,22 @@ export class FakeReportsService implements ReportsService {
   async getGuestReleaseAnalytics(): Promise<GuestReleaseAnalytics> {
     if (this.error) throw this.error;
     return this.guestReleaseAnalytics;
+  }
+  async getGuestBookingAnalytics(): Promise<GuestBookingAnalytics> {
+    if (this.error) throw this.error;
+    return this.guestBookingAnalytics;
+  }
+  async getGuestBookingsBySport(): Promise<GuestBookingsBySportRow[]> {
+    if (this.error) throw this.error;
+    return this.guestBookingsBySport;
+  }
+  async getGuestBookingsByCourt(): Promise<GuestBookingsByCourtRow[]> {
+    if (this.error) throw this.error;
+    return this.guestBookingsByCourt;
+  }
+  async getGuestPeakHours(): Promise<GuestPeakHourRow[]> {
+    if (this.error) throw this.error;
+    return this.guestPeakHours;
   }
 }
 

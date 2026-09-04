@@ -220,3 +220,38 @@ export interface GuestReleaseAnalytics {
   remaining: number;
   revenueMinor: number;
 }
+
+// ─── Phase 7: Guest Bookings ─────────────────────────────────────────────
+
+export interface GuestBookingAnalytics {
+  total: number;
+  completed: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+  revenueMinor: number;
+  avgBookingValueMinor: number;
+  collectedMinor: number;
+  outstandingMinor: number;
+  collectionRatePct: number;
+}
+
+export interface GuestBookingsBySportRow {
+  facilitySportId: string;
+  sportName: string;
+  bookingCount: number;
+  revenueMinor: number;
+}
+
+export interface GuestBookingsByCourtRow {
+  courtId: string;
+  courtName: string;
+  sportName: string;
+  bookingCount: number;
+  revenueMinor: number;
+}
+
+export interface GuestPeakHourRow {
+  hour: number;
+  bookingCount: number;
+}

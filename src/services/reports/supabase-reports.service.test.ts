@@ -334,6 +334,64 @@ describe("SupabaseReportsService revenue", () => {
   });
 });
 
+describe("SupabaseReportsService guest bookings", () => {
+  it("getGuestBookingAnalytics calls the RPC with baseArgs and maps the row", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          total: 120,
+          completed: 90,
+          confirmed: 20,
+          pending: 3,
+          cancelled: 7,
+          revenue_minor: 4500000,
+          avg_booking_value_minor: 50000,
+          collected_minor: 4500000,
+          outstanding_minor: 500000,
+          collection_rate_pct: 90,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const r = await service.getGuestBookingAnalytics({ ...filter, facilitySportId: "fs-1" });
+    expect(rpc).toHaveBeenCalledWith(
+      "get_guest_booking_analytics",
+      expect.objectContaining({ p_facility_id: "fac-1", p_facility_sport_id: "fs-1" }),
+    );
+    expect(r).toMatchObject({ total: 120, revenueMinor: 4500000, collectionRatePct: 90, avgBookingValueMinor: 50000 });
+  });
+
+  it("getGuestBookingAnalytics maps a denial to REPORTS_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    await expect(service.getGuestBookingAnalytics(filter)).rejects.toMatchObject({ code: "REPORTS_ACCESS_DENIED" });
+  });
+
+  it("getGuestBookingsBySport / _byCourt / getGuestPeakHours map rows", async () => {
+    const bySport = vi.fn(async () => ({
+      data: [{ facility_sport_id: "fs1", sport_name: "Badminton", booking_count: 80, revenue_minor: 3000000 }],
+      error: null,
+    }));
+    expect(await new SupabaseReportsService({ rpc: bySport } as never).getGuestBookingsBySport(filter)).toEqual([
+      { facilitySportId: "fs1", sportName: "Badminton", bookingCount: 80, revenueMinor: 3000000 },
+    ]);
+
+    const byCourt = vi.fn(async () => ({
+      data: [{ court_id: "c1", court_name: "Court 1", sport_name: "Badminton", booking_count: 50, revenue_minor: 2000000 }],
+      error: null,
+    }));
+    expect(await new SupabaseReportsService({ rpc: byCourt } as never).getGuestBookingsByCourt(filter)).toEqual([
+      { courtId: "c1", courtName: "Court 1", sportName: "Badminton", bookingCount: 50, revenueMinor: 2000000 },
+    ]);
+
+    const peak = vi.fn(async () => ({ data: [{ hour: 18, booking_count: 30 }], error: null }));
+    expect(await new SupabaseReportsService({ rpc: peak } as never).getGuestPeakHours(filter)).toEqual([
+      { hour: 18, bookingCount: 30 },
+    ]);
+  });
+});
+
 describe("SupabaseReportsService memberships", () => {
   it("getMembershipAnalytics calls the RPC with facility+date only and maps the row", async () => {
     const rpc = vi.fn(async () => ({

@@ -29,6 +29,10 @@ import type {
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
+  GuestBookingAnalytics,
+  GuestBookingsBySportRow,
+  GuestBookingsByCourtRow,
+  GuestPeakHourRow,
 } from "@/features/reports/types";
 
 export class SupabaseReportsService implements ReportsService {
@@ -324,6 +328,55 @@ export class SupabaseReportsService implements ReportsService {
       remaining: r.remaining,
       revenueMinor: r.revenue_minor,
     };
+  }
+
+  // ─── Phase 7: Guest Bookings ───────────────────────────────────────────
+
+  async getGuestBookingAnalytics(filter: AnalyticsFilter): Promise<GuestBookingAnalytics> {
+    const { data, error } = await this.supabase.rpc("get_guest_booking_analytics", this.baseArgs(filter));
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      total: r.total,
+      completed: r.completed,
+      confirmed: r.confirmed,
+      pending: r.pending,
+      cancelled: r.cancelled,
+      revenueMinor: r.revenue_minor,
+      avgBookingValueMinor: r.avg_booking_value_minor,
+      collectedMinor: r.collected_minor,
+      outstandingMinor: r.outstanding_minor,
+      collectionRatePct: r.collection_rate_pct,
+    };
+  }
+
+  async getGuestBookingsBySport(filter: AnalyticsFilter): Promise<GuestBookingsBySportRow[]> {
+    const { data, error } = await this.supabase.rpc("get_guest_bookings_by_sport", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      bookingCount: r.booking_count,
+      revenueMinor: r.revenue_minor,
+    }));
+  }
+
+  async getGuestBookingsByCourt(filter: AnalyticsFilter): Promise<GuestBookingsByCourtRow[]> {
+    const { data, error } = await this.supabase.rpc("get_guest_bookings_by_court", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      courtId: r.court_id,
+      courtName: r.court_name,
+      sportName: r.sport_name,
+      bookingCount: r.booking_count,
+      revenueMinor: r.revenue_minor,
+    }));
+  }
+
+  async getGuestPeakHours(filter: AnalyticsFilter): Promise<GuestPeakHourRow[]> {
+    const { data, error } = await this.supabase.rpc("get_guest_peak_hours", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({ hour: r.hour, bookingCount: r.booking_count }));
   }
 
   private mapError(error: unknown): ServiceError {

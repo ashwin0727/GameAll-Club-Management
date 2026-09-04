@@ -28,6 +28,10 @@ import type {
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
+  GuestBookingAnalytics,
+  GuestBookingsBySportRow,
+  GuestBookingsByCourtRow,
+  GuestPeakHourRow,
 } from "@/features/reports/types";
 
 export interface ReportsService {
@@ -75,4 +79,13 @@ export interface ReportsService {
   getMembershipSessionAnalytics(filter: AnalyticsFilter): Promise<MembershipSessionAnalytics>;
   /** Guest-release capacity released / booked / remaining + realised revenue. */
   getGuestReleaseAnalytics(filter: AnalyticsFilter): Promise<GuestReleaseAnalytics>;
+
+  /** Ad-hoc guest bookings — status counts, revenue, avg value, collection rate. */
+  getGuestBookingAnalytics(filter: AnalyticsFilter): Promise<GuestBookingAnalytics>;
+  /** Guest booking volume + revenue by sport, busiest first. */
+  getGuestBookingsBySport(filter: AnalyticsFilter): Promise<GuestBookingsBySportRow[]>;
+  /** Guest booking volume + revenue by court, busiest first. */
+  getGuestBookingsByCourt(filter: AnalyticsFilter): Promise<GuestBookingsByCourtRow[]>;
+  /** Guest booking volume by local hour of day. */
+  getGuestPeakHours(filter: AnalyticsFilter): Promise<GuestPeakHourRow[]>;
 }

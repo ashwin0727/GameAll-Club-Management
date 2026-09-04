@@ -2706,6 +2706,67 @@ export interface Database {
         };
         Returns: { released: number; booked: number; remaining: number; revenue_minor: number }[];
       };
+      get_guest_booking_analytics: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          total: number;
+          completed: number;
+          confirmed: number;
+          pending: number;
+          cancelled: number;
+          revenue_minor: number;
+          avg_booking_value_minor: number;
+          collected_minor: number;
+          outstanding_minor: number;
+          collection_rate_pct: number;
+        }[];
+      };
+      get_guest_bookings_by_sport: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { facility_sport_id: string; sport_name: string; booking_count: number; revenue_minor: number }[];
+      };
+      get_guest_bookings_by_court: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          court_id: string;
+          court_name: string;
+          sport_name: string;
+          booking_count: number;
+          revenue_minor: number;
+        }[];
+      };
+      get_guest_peak_hours: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { hour: number; booking_count: number }[];
+      };
     };
     Enums: {
       role: Role;
