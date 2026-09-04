@@ -1,0 +1,86 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gameall_club_mobile/core/theme/app_theme.dart';
+import 'package:gameall_club_mobile/features/reports/report_widgets.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// Reports & Analytics — Phase 9.1/9.2 shared widgets. Same bar as the rest
+/// of the design system: clean at 320dp and at 200% font scaling, and — for
+/// the KPI delta — colour is never the only signal (spec §54).
+void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
+  Widget wrap(Widget child, {double textScale = 1.0, double width = 320}) {
+    return MaterialApp(
+      theme: AppTheme.dark(),
+      home: MediaQuery(
+        data: MediaQueryData(size: Size(width, 900), textScaler: TextScaler.linear(textScale)),
+        child: Scaffold(body: SingleChildScrollView(child: SizedBox(width: width, child: child))),
+      ),
+    );
+  }
+
+  group('ReportBarList', () {
+    testWidgets('renders a labelled row per item, no overflow at 320dp', (tester) async {
+      await tester.pumpWidget(wrap(const ReportBarList(items: [
+        ReportBar(label: 'Badminton', value: 120),
+        ReportBar(label: 'Football', value: 60, caption: '60 · ₹30,000'),
+      ])));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Badminton'), findsOneWidget);
+      expect(find.text('60 · ₹30,000'), findsOneWidget);
+    });
+
+    testWidgets('sizes bars relative to the largest value', (tester) async {
+      await tester.pumpWidget(wrap(const ReportBarList(items: [
+        ReportBar(label: 'A', value: 100),
+        ReportBar(label: 'B', value: 25),
+      ])));
+      final bars = tester.widgetList<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).toList();
+      expect(bars[0].value, 1.0);
+      expect(bars[1].value, 0.25);
+    });
+
+    testWidgets('survives 200% font scaling', (tester) async {
+      await tester.pumpWidget(wrap(
+        const ReportBarList(items: [ReportBar(label: 'Membership · Corporate Annual', value: 8)]),
+        textScale: 2.0,
+      ));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('ReportKpiGrid', () {
+    testWidgets('renders each KPI with its value and a delta', (tester) async {
+      await tester.pumpWidget(wrap(const ReportKpiGrid(items: [
+        ReportKpi(label: 'Total Revenue', value: '₹1,20,000', pct: 12.4),
+        ReportKpi(label: 'Expenses', value: '₹35,000', pct: 8.0, invert: true),
+        ReportKpi(label: 'Bookings', value: '205'),
+      ])));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Total Revenue'), findsOneWidget);
+      expect(find.text('205'), findsOneWidget);
+      // delta shows a % figure as text, not colour alone
+      expect(find.textContaining('12'), findsWidgets);
+      expect(find.text('vs last period'), findsOneWidget); // the KPI with no pct
+    });
+  });
+
+  group('ReportDataTable', () {
+    testWidgets('renders headers + rows and scrolls horizontally', (tester) async {
+      await tester.pumpWidget(wrap(const ReportDataTable(
+        caption: 'Bookings by sport',
+        columns: [ReportColumn(label: 'Sport'), ReportColumn(label: 'Bookings', numeric: true)],
+        rows: [
+          ['Badminton', '120'],
+          ['Football', '60'],
+        ],
+      )));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Sport'), findsOneWidget);
+      expect(find.text('120'), findsOneWidget);
+    });
+  });
+}

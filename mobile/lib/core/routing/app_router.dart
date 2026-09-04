@@ -29,6 +29,13 @@ import '../../features/onboarding/setup_summary_screen.dart';
 import '../../features/onboarding/sports_setup_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/refunds/refunds_screen.dart';
+import '../../features/reports/booking_report_screen.dart';
+import '../../features/reports/court_utilization_report_screen.dart';
+import '../../features/reports/guest_booking_report_screen.dart';
+import '../../features/reports/membership_report_screen.dart';
+import '../../features/reports/reports_hub_screen.dart';
+import '../../features/reports/reports_overview_screen.dart';
+import '../../features/reports/revenue_report_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 
@@ -144,6 +151,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.financeRecordPayment,
         builder: (context, state) =>
             RecordPaymentScreen(sourceId: state.pathParameters['sourceId']!),
+      ),
+      GoRoute(path: AppRoutes.reports, builder: (context, state) => const ReportsHubScreen()),
+      GoRoute(
+        path: AppRoutes.reportsOverview,
+        builder: (context, state) => ReportsOverviewScreen(initialQuery: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: AppRoutes.reportsBookings,
+        builder: (context, state) => BookingReportScreen(initialQuery: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: AppRoutes.reportsCourtUtilization,
+        builder: (context, state) => CourtUtilizationReportScreen(initialQuery: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: AppRoutes.reportsRevenue,
+        builder: (context, state) => RevenueReportScreen(initialQuery: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: AppRoutes.reportsMemberships,
+        builder: (context, state) => MembershipReportScreen(initialQuery: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: AppRoutes.reportsGuestBookings,
+        builder: (context, state) => GuestBookingReportScreen(initialQuery: state.uri.queryParameters),
       ),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
     ],

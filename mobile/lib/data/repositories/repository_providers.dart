@@ -15,6 +15,7 @@ import 'membership_session_repository.dart';
 import 'payment_repository.dart';
 import 'refund_repository.dart';
 import 'finance_repository.dart';
+import 'reports_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
@@ -87,4 +88,8 @@ final refundRepositoryProvider = Provider<RefundRepository>((ref) {
 
 final financeRepositoryProvider = Provider<FinanceRepository>((ref) {
   return FinanceRepository(ref.watch(supabaseClientProvider));
+});
+
+final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
+  return ReportsRepository(ref.watch(supabaseClientProvider));
 });
