@@ -2,6 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans. Steps use `- [ ]`.
 
+> **Status: implemented (2026-09-04), pending user verification + commit.** Notes:
+> - `<RevenueReport>` reuses `<RevenueTrendChart>` and `<Donut>` verbatim; `segmentsFrom` copied from `finance-dashboard.tsx`. `getRevenueTrend`/`Summary`/`Breakdown`/`PaymentMethodBreakdown` in `SupabaseReportsService` call the **Finance RPCs directly** with `dateRangeArgs(filter)` — no `FinanceDateRange` type coupling, and `THIS_QUARTER`/`THIS_YEAR` resolve fine at runtime via 0056.
+> - `refunds` added to `KpiKey` + `KPI_DEFINITIONS`.
+> - **`next build` not run** (standing rule). Verified: `tsc --noEmit` (whole project) + `next lint` + `vitest` (85 reports tests) + dev server compiles cleanly. Full suite **614/614** this run.
+
 **Goal:** `/reports/revenue` — revenue trend, breakdown by source, payment-method split, and revenue by sport / by court (with drill-down). Numbers reconcile exactly with Finance.
 
 **Architecture:** The trend, breakdown, method-split and headline totals are the **existing Finance RPCs** (`get_finance_summary`, `get_revenue_trend`, `get_revenue_breakdown`, `get_payment_method_breakdown`) — called straight from `SupabaseReportsService` via `this.supabase.rpc(...)` with `AnalyticsFilter`-derived args, so Reports revenue == Finance revenue by construction. Only two genuinely new cuts need a migration: `get_revenue_by_sport` / `get_revenue_by_court` (`0060`), court-attributable paid revenue. Reuses the existing `<RevenueTrendChart>` and `<Donut>` components.

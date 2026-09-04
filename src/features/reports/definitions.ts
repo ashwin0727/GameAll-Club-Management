@@ -16,6 +16,7 @@ export type KpiKey =
   | "totalRevenue"
   | "totalExpenses"
   | "netRevenue"
+  | "refunds"
   | "outstandingPayments"
   | "courtUtilization"
   | "sportUtilization"
@@ -47,6 +48,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
     "Sum of successfully collected payments in the range (Finance gross revenue). Cash basis — a pending amount is not revenue.",
   totalExpenses: "Recorded facility expenses in the range (Finance). Voided expenses excluded.",
   netRevenue: "Gross revenue minus refunds minus expenses (Finance).",
+  refunds: "Money returned to customers in the range (Finance). Reduces net revenue.",
   outstandingPayments:
     "Money still owed on bookings and memberships that have happened and not been fully paid (Pending Payments).",
   courtUtilization:

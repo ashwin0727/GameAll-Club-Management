@@ -130,3 +130,41 @@ export interface HeatmapCell {
   bookedMinutes: number;
   demandPct: number;
 }
+
+// ─── Phase 4: Revenue ────────────────────────────────────────────────────
+
+export interface RevenueSummary {
+  grossMinor: number;
+  refundsMinor: number;
+  expensesMinor: number;
+  netMinor: number;
+  outstandingMinor: number;
+}
+
+export interface RevenueBreakdown {
+  membershipMinor: number;
+  memberBookingMinor: number;
+  guestBookingMinor: number;
+  refundsMinor: number;
+  netMinor: number;
+}
+
+export interface PaymentMethodSlice {
+  method: string;
+  amountMinor: number;
+  count: number;
+}
+
+export interface RevenueBySportRow {
+  facilitySportId: string;
+  sportName: string;
+  revenueMinor: number;
+}
+
+export interface RevenueByCourtRow {
+  courtId: string;
+  courtName: string;
+  facilitySportId: string;
+  sportName: string;
+  revenueMinor: number;
+}

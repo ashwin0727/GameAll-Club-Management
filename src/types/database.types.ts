@@ -2609,6 +2609,34 @@ export interface Database {
           demand_pct: number;
         }[];
       };
+      get_revenue_by_sport: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: { facility_sport_id: string; sport_name: string; revenue_minor: number }[];
+      };
+      get_revenue_by_court: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          revenue_minor: number;
+        }[];
+      };
     };
     Enums: {
       role: Role;

@@ -198,3 +198,138 @@ describe("SupabaseReportsService utilization", () => {
     ]);
   });
 });
+
+describe("SupabaseReportsService revenue", () => {
+  it("getRevenueSummary calls get_finance_summary with facility+date only and maps totals", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          gross_revenue_minor: 11000000,
+          refunds_minor: 0,
+          expenses_minor: 3500000,
+          net_revenue_minor: 7500000,
+          outstanding_minor: 80000,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const result = await service.getRevenueSummary({ ...filter, facilitySportId: "fs-1" });
+    expect(rpc).toHaveBeenCalledWith("get_finance_summary", {
+      p_facility_id: "fac-1",
+      p_preset: "THIS_MONTH",
+      p_start_date: null,
+      p_end_date: null,
+    });
+    expect(result).toEqual({
+      grossMinor: 11000000,
+      refundsMinor: 0,
+      expensesMinor: 3500000,
+      netMinor: 7500000,
+      outstandingMinor: 80000,
+    });
+  });
+
+  it("getRevenueSummary defaults missing expenses/outstanding to 0", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ gross_revenue_minor: 100, refunds_minor: 0, net_revenue_minor: 100 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const result = await service.getRevenueSummary(filter);
+    expect(result.expensesMinor).toBe(0);
+    expect(result.outstandingMinor).toBe(0);
+  });
+
+  it("getRevenueSummary maps a denial to REPORTS_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    await expect(service.getRevenueSummary(filter)).rejects.toMatchObject({ code: "REPORTS_ACCESS_DENIED" });
+  });
+
+  it("getRevenueTrend passes the granularity and maps points", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ bucket_date: "2026-09-01", gross_minor: 800000, refund_minor: 0, net_minor: 800000 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getRevenueTrend(filter, "weekly")).toEqual([
+      { date: "2026-09-01", grossMinor: 800000, refundMinor: 0, netMinor: 800000 },
+    ]);
+    expect(rpc).toHaveBeenCalledWith("get_revenue_trend", expect.objectContaining({ p_granularity: "weekly" }));
+  });
+
+  it("getRevenueBreakdown maps the five fields", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          membership_revenue_minor: 6000000,
+          member_booking_revenue_minor: 500000,
+          guest_booking_revenue_minor: 4500000,
+          refunds_minor: 0,
+          net_revenue_minor: 11000000,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getRevenueBreakdown(filter)).toEqual({
+      membershipMinor: 6000000,
+      memberBookingMinor: 500000,
+      guestBookingMinor: 4500000,
+      refundsMinor: 0,
+      netMinor: 11000000,
+    });
+  });
+
+  it("getPaymentMethodBreakdown maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ payment_method: "UPI", amount_minor: 5000000, payment_count: 20 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getPaymentMethodBreakdown(filter)).toEqual([
+      { method: "UPI", amountMinor: 5000000, count: 20 },
+    ]);
+  });
+
+  it("getRevenueBySport calls get_revenue_by_sport with the full scoped args", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{ facility_sport_id: "fs1", sport_name: "Badminton", revenue_minor: 4500000 }],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getRevenueBySport({ ...filter, facilitySportId: "fs1" })).toEqual([
+      { facilitySportId: "fs1", sportName: "Badminton", revenueMinor: 4500000 },
+    ]);
+    expect(rpc).toHaveBeenCalledWith(
+      "get_revenue_by_sport",
+      expect.objectContaining({ p_facility_id: "fac-1", p_facility_sport_id: "fs1" }),
+    );
+  });
+
+  it("getRevenueByCourt maps rows", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          court_id: "c1",
+          court_name: "Court 1",
+          facility_sport_id: "fs1",
+          sport_name: "Badminton",
+          revenue_minor: 3000000,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    expect(await service.getRevenueByCourt(filter)).toEqual([
+      {
+        courtId: "c1",
+        courtName: "Court 1",
+        facilitySportId: "fs1",
+        sportName: "Badminton",
+        revenueMinor: 3000000,
+      },
+    ]);
+  });
+});

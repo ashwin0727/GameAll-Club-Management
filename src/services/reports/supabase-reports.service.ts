@@ -6,6 +6,7 @@ import type { Database } from "@/types/database.types";
 import type { ReportsService } from "@/services/reports/reports.service";
 import { ServiceError } from "@/services/shared/service-error";
 import { dateRangeArgs, scopeArgs } from "@/features/reports/report-filter";
+import type { RevenueTrendPoint } from "@/features/finance/types";
 import type {
   AnalyticsFilter,
   AnalyticsGranularity,
@@ -18,6 +19,11 @@ import type {
   SportUtilizationRow,
   PeakHourRow,
   HeatmapCell,
+  RevenueSummary,
+  RevenueBreakdown,
+  PaymentMethodSlice,
+  RevenueBySportRow,
+  RevenueByCourtRow,
 } from "@/features/reports/types";
 
 export class SupabaseReportsService implements ReportsService {
@@ -140,6 +146,95 @@ export class SupabaseReportsService implements ReportsService {
       openMinutes: r.open_minutes,
       bookedMinutes: r.booked_minutes,
       demandPct: r.demand_pct,
+    }));
+  }
+
+  // ─── Phase 4: Revenue — trend / breakdown / method / totals are the
+  //     existing Finance RPCs, called with AnalyticsFilter-derived args so
+  //     the numbers match Finance exactly (spec §34). Facility + date only.
+
+  async getRevenueSummary(filter: AnalyticsFilter): Promise<RevenueSummary> {
+    const { data, error } = await this.supabase.rpc("get_finance_summary", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      grossMinor: r.gross_revenue_minor,
+      refundsMinor: r.refunds_minor,
+      expensesMinor: r.expenses_minor ?? 0,
+      netMinor: r.net_revenue_minor,
+      outstandingMinor: r.outstanding_minor ?? 0,
+    };
+  }
+
+  async getRevenueTrend(
+    filter: AnalyticsFilter,
+    granularity: AnalyticsGranularity,
+  ): Promise<RevenueTrendPoint[]> {
+    const { data, error } = await this.supabase.rpc("get_revenue_trend", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+      p_granularity: granularity,
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      date: r.bucket_date,
+      grossMinor: r.gross_minor,
+      refundMinor: r.refund_minor,
+      netMinor: r.net_minor,
+    }));
+  }
+
+  async getRevenueBreakdown(filter: AnalyticsFilter): Promise<RevenueBreakdown> {
+    const { data, error } = await this.supabase.rpc("get_revenue_breakdown", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      membershipMinor: r.membership_revenue_minor,
+      memberBookingMinor: r.member_booking_revenue_minor,
+      guestBookingMinor: r.guest_booking_revenue_minor,
+      refundsMinor: r.refunds_minor,
+      netMinor: r.net_revenue_minor,
+    };
+  }
+
+  async getPaymentMethodBreakdown(filter: AnalyticsFilter): Promise<PaymentMethodSlice[]> {
+    const { data, error } = await this.supabase.rpc("get_payment_method_breakdown", {
+      p_facility_id: filter.facilityId,
+      ...dateRangeArgs(filter),
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      method: r.payment_method,
+      amountMinor: r.amount_minor,
+      count: r.payment_count,
+    }));
+  }
+
+  async getRevenueBySport(filter: AnalyticsFilter): Promise<RevenueBySportRow[]> {
+    const { data, error } = await this.supabase.rpc("get_revenue_by_sport", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      revenueMinor: r.revenue_minor,
+    }));
+  }
+
+  async getRevenueByCourt(filter: AnalyticsFilter): Promise<RevenueByCourtRow[]> {
+    const { data, error } = await this.supabase.rpc("get_revenue_by_court", this.baseArgs(filter));
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      courtId: r.court_id,
+      courtName: r.court_name,
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      revenueMinor: r.revenue_minor,
     }));
   }
 

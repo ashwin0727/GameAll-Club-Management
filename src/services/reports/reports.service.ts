@@ -5,6 +5,7 @@
 // averages a record itself (spec §32 "Data Architecture").
 // ═══════════════════════════════════════════════════════════════════════════
 
+import type { RevenueTrendPoint } from "@/features/finance/types";
 import type {
   AnalyticsFilter,
   AnalyticsGranularity,
@@ -17,6 +18,11 @@ import type {
   SportUtilizationRow,
   PeakHourRow,
   HeatmapCell,
+  RevenueSummary,
+  RevenueBreakdown,
+  PaymentMethodSlice,
+  RevenueBySportRow,
+  RevenueByCourtRow,
 } from "@/features/reports/types";
 
 export interface ReportsService {
@@ -39,4 +45,17 @@ export interface ReportsService {
   getPeakHours(filter: AnalyticsFilter): Promise<PeakHourRow[]>;
   /** Demand % per (day-of-week, hour) cell; closed cells omitted. */
   getDemandHeatmap(filter: AnalyticsFilter): Promise<HeatmapCell[]>;
+
+  /** Headline revenue totals — the Finance summary RPC, facility + date only. */
+  getRevenueSummary(filter: AnalyticsFilter): Promise<RevenueSummary>;
+  /** Revenue over time — the Finance trend RPC, facility + date only. */
+  getRevenueTrend(filter: AnalyticsFilter, granularity: AnalyticsGranularity): Promise<RevenueTrendPoint[]>;
+  /** Revenue by source (membership / member booking / guest booking) — Finance. */
+  getRevenueBreakdown(filter: AnalyticsFilter): Promise<RevenueBreakdown>;
+  /** Collected amount per payment method — Finance. */
+  getPaymentMethodBreakdown(filter: AnalyticsFilter): Promise<PaymentMethodSlice[]>;
+  /** Court-attributable paid revenue by sport; sport/court filter narrows. */
+  getRevenueBySport(filter: AnalyticsFilter): Promise<RevenueBySportRow[]>;
+  /** Court-attributable paid revenue by court. */
+  getRevenueByCourt(filter: AnalyticsFilter): Promise<RevenueByCourtRow[]>;
 }

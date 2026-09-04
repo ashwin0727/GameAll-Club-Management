@@ -1,5 +1,6 @@
 import type { ReportsService } from "@/services/reports/reports.service";
 import { setReportsService } from "@/services/reports";
+import type { RevenueTrendPoint } from "@/features/finance/types";
 import type {
   BookingAnalytics,
   BookingTrendPoint,
@@ -10,6 +11,11 @@ import type {
   SportUtilizationRow,
   PeakHourRow,
   HeatmapCell,
+  RevenueSummary,
+  RevenueBreakdown,
+  PaymentMethodSlice,
+  RevenueBySportRow,
+  RevenueByCourtRow,
 } from "@/features/reports/types";
 
 const EMPTY_ANALYTICS: BookingAnalytics = {
@@ -34,6 +40,24 @@ export class FakeReportsService implements ReportsService {
   sportUtilization: SportUtilizationRow[] = [];
   peakHours: PeakHourRow[] = [];
   demandHeatmap: HeatmapCell[] = [];
+  revenueSummary: RevenueSummary = {
+    grossMinor: 0,
+    refundsMinor: 0,
+    expensesMinor: 0,
+    netMinor: 0,
+    outstandingMinor: 0,
+  };
+  revenueTrend: RevenueTrendPoint[] = [];
+  revenueBreakdown: RevenueBreakdown = {
+    membershipMinor: 0,
+    memberBookingMinor: 0,
+    guestBookingMinor: 0,
+    refundsMinor: 0,
+    netMinor: 0,
+  };
+  paymentMethods: PaymentMethodSlice[] = [];
+  revenueBySport: RevenueBySportRow[] = [];
+  revenueByCourt: RevenueByCourtRow[] = [];
   error: Error | null = null;
 
   async getBookingAnalytics(): Promise<BookingAnalytics> {
@@ -71,6 +95,30 @@ export class FakeReportsService implements ReportsService {
   async getDemandHeatmap(): Promise<HeatmapCell[]> {
     if (this.error) throw this.error;
     return this.demandHeatmap;
+  }
+  async getRevenueSummary(): Promise<RevenueSummary> {
+    if (this.error) throw this.error;
+    return this.revenueSummary;
+  }
+  async getRevenueTrend(): Promise<RevenueTrendPoint[]> {
+    if (this.error) throw this.error;
+    return this.revenueTrend;
+  }
+  async getRevenueBreakdown(): Promise<RevenueBreakdown> {
+    if (this.error) throw this.error;
+    return this.revenueBreakdown;
+  }
+  async getPaymentMethodBreakdown(): Promise<PaymentMethodSlice[]> {
+    if (this.error) throw this.error;
+    return this.paymentMethods;
+  }
+  async getRevenueBySport(): Promise<RevenueBySportRow[]> {
+    if (this.error) throw this.error;
+    return this.revenueBySport;
+  }
+  async getRevenueByCourt(): Promise<RevenueByCourtRow[]> {
+    if (this.error) throw this.error;
+    return this.revenueByCourt;
   }
 }
 
