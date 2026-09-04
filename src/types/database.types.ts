@@ -2637,6 +2637,28 @@ export interface Database {
           revenue_minor: number;
         }[];
       };
+      get_analytics_overview: {
+        Args: {
+          p_facility_id: string;
+          p_preset?: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_facility_sport_id?: string | null;
+          p_court_id?: string | null;
+        };
+        Returns: {
+          gross_revenue_minor: number;
+          booking_revenue_minor: number;
+          membership_revenue_minor: number;
+          expenses_minor: number;
+          net_revenue_minor: number;
+          outstanding_minor: number;
+          total_bookings: number;
+          completed_bookings: number;
+          cancelled_bookings: number;
+          overall_utilization_pct: number;
+        }[];
+      };
     };
     Enums: {
       role: Role;

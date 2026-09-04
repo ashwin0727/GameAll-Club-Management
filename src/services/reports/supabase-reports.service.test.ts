@@ -333,3 +333,38 @@ describe("SupabaseReportsService revenue", () => {
     ]);
   });
 });
+
+describe("SupabaseReportsService.getAnalyticsOverview", () => {
+  it("calls get_analytics_overview with the scoped args and maps the row", async () => {
+    const rpc = vi.fn(async () => ({
+      data: [
+        {
+          gross_revenue_minor: 12000000,
+          booking_revenue_minor: 7000000,
+          membership_revenue_minor: 5000000,
+          expenses_minor: 3500000,
+          net_revenue_minor: 8500000,
+          outstanding_minor: 1850000,
+          total_bookings: 205,
+          completed_bookings: 120,
+          cancelled_bookings: 20,
+          overall_utilization_pct: 68,
+        },
+      ],
+      error: null,
+    }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    const r = await service.getAnalyticsOverview({ ...filter, courtId: "c1" });
+    expect(rpc).toHaveBeenCalledWith(
+      "get_analytics_overview",
+      expect.objectContaining({ p_facility_id: "fac-1", p_court_id: "c1" }),
+    );
+    expect(r).toMatchObject({ grossRevenueMinor: 12000000, totalBookings: 205, overallUtilizationPct: 68 });
+  });
+
+  it("maps a denial to REPORTS_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseReportsService({ rpc } as never);
+    await expect(service.getAnalyticsOverview(filter)).rejects.toMatchObject({ code: "REPORTS_ACCESS_DENIED" });
+  });
+});

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/features/pricing/money";
 import { getReportsService } from "@/services/reports";
@@ -10,6 +9,7 @@ import { AnalyticsFilterBar } from "./analytics-filter-bar";
 import { AnalyticsFilterSheet } from "./analytics-filter-sheet";
 import { ReportShell, type ReportStatus } from "./report-shell";
 import { KpiStrip, type KpiStripItem } from "./kpi-strip";
+import { KpiDelta, changePct } from "./kpi-delta";
 import { ReportBarList } from "./report-bar-list";
 import { DataTable } from "./data-table";
 import { BookingTrendChart } from "./booking-trend-chart";
@@ -27,25 +27,6 @@ const SOURCE_COLOUR: Record<BookingSourceRow["source"], string> = {
   GUEST: "#FFB020",
   MEMBER: "#8B5CF6",
 };
-
-/** Percent change vs the preceding window of equal length, or null. */
-function changePct(current: number, previous: number | null): number | null {
-  if (previous === null || previous === 0) return null;
-  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
-}
-
-function Delta({ pct, invert }: { pct: number | null; invert?: boolean }) {
-  if (pct === null) return <span className="text-muted-foreground">vs last period</span>;
-  const good = invert ? pct <= 0 : pct >= 0;
-  const Icon = pct >= 0 ? TrendingUp : TrendingDown;
-  return (
-    <span className={`inline-flex items-center gap-0.5 font-medium ${good ? "text-success" : "text-destructive"}`}>
-      <Icon className="h-3 w-3" aria-hidden />
-      {pct > 0 ? "+" : ""}
-      {pct}%
-    </span>
-  );
-}
 
 export function BookingReport() {
   const { filter, setFilter, ready } = useAnalyticsFilter();
@@ -113,14 +94,14 @@ export function BookingReport() {
           label: "Total Bookings",
           value: analytics.total.toLocaleString("en-IN"),
           accent: "#00F08A",
-          hint: <Delta pct={changePct(analytics.total, previous?.total ?? null)} />,
+          hint: <KpiDelta pct={changePct(analytics.total, previous?.total ?? null)} />,
         },
         {
           key: "completedBookings",
           label: "Completed",
           value: analytics.completed.toLocaleString("en-IN"),
           accent: "#00D084",
-          hint: <Delta pct={changePct(analytics.completed, previous?.completed ?? null)} />,
+          hint: <KpiDelta pct={changePct(analytics.completed, previous?.completed ?? null)} />,
         },
         {
           key: "confirmedBookings",
@@ -139,7 +120,7 @@ export function BookingReport() {
           label: "Cancelled",
           value: analytics.cancelled.toLocaleString("en-IN"),
           accent: "#FF4D67",
-          hint: <Delta pct={changePct(analytics.cancelled, previous?.cancelled ?? null)} invert />,
+          hint: <KpiDelta pct={changePct(analytics.cancelled, previous?.cancelled ?? null)} invert />,
         },
         {
           key: "averageBookingValue",

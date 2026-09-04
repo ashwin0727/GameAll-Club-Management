@@ -24,6 +24,7 @@ import type {
   PaymentMethodSlice,
   RevenueBySportRow,
   RevenueByCourtRow,
+  AnalyticsOverview,
 } from "@/features/reports/types";
 
 export class SupabaseReportsService implements ReportsService {
@@ -236,6 +237,24 @@ export class SupabaseReportsService implements ReportsService {
       sportName: r.sport_name,
       revenueMinor: r.revenue_minor,
     }));
+  }
+
+  async getAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsOverview> {
+    const { data, error } = await this.supabase.rpc("get_analytics_overview", this.baseArgs(filter));
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return {
+      grossRevenueMinor: r.gross_revenue_minor,
+      bookingRevenueMinor: r.booking_revenue_minor,
+      membershipRevenueMinor: r.membership_revenue_minor,
+      expensesMinor: r.expenses_minor,
+      netRevenueMinor: r.net_revenue_minor,
+      outstandingMinor: r.outstanding_minor,
+      totalBookings: r.total_bookings,
+      completedBookings: r.completed_bookings,
+      cancelledBookings: r.cancelled_bookings,
+      overallUtilizationPct: r.overall_utilization_pct,
+    };
   }
 
   private mapError(error: unknown): ServiceError {

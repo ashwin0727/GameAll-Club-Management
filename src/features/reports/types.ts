@@ -168,3 +168,18 @@ export interface RevenueByCourtRow {
   sportName: string;
   revenueMinor: number;
 }
+
+// ─── Phase 5: Overview ───────────────────────────────────────────────────
+
+export interface AnalyticsOverview {
+  grossRevenueMinor: number;
+  bookingRevenueMinor: number;
+  membershipRevenueMinor: number;
+  expensesMinor: number;
+  netRevenueMinor: number;
+  outstandingMinor: number;
+  totalBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  overallUtilizationPct: number;
+}

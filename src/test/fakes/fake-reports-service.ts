@@ -16,6 +16,7 @@ import type {
   PaymentMethodSlice,
   RevenueBySportRow,
   RevenueByCourtRow,
+  AnalyticsOverview,
 } from "@/features/reports/types";
 
 const EMPTY_ANALYTICS: BookingAnalytics = {
@@ -58,6 +59,18 @@ export class FakeReportsService implements ReportsService {
   paymentMethods: PaymentMethodSlice[] = [];
   revenueBySport: RevenueBySportRow[] = [];
   revenueByCourt: RevenueByCourtRow[] = [];
+  analyticsOverview: AnalyticsOverview = {
+    grossRevenueMinor: 0,
+    bookingRevenueMinor: 0,
+    membershipRevenueMinor: 0,
+    expensesMinor: 0,
+    netRevenueMinor: 0,
+    outstandingMinor: 0,
+    totalBookings: 0,
+    completedBookings: 0,
+    cancelledBookings: 0,
+    overallUtilizationPct: 0,
+  };
   error: Error | null = null;
 
   async getBookingAnalytics(): Promise<BookingAnalytics> {
@@ -119,6 +132,10 @@ export class FakeReportsService implements ReportsService {
   async getRevenueByCourt(): Promise<RevenueByCourtRow[]> {
     if (this.error) throw this.error;
     return this.revenueByCourt;
+  }
+  async getAnalyticsOverview(): Promise<AnalyticsOverview> {
+    if (this.error) throw this.error;
+    return this.analyticsOverview;
   }
 }
 

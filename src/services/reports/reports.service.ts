@@ -23,6 +23,7 @@ import type {
   PaymentMethodSlice,
   RevenueBySportRow,
   RevenueByCourtRow,
+  AnalyticsOverview,
 } from "@/features/reports/types";
 
 export interface ReportsService {
@@ -58,4 +59,7 @@ export interface ReportsService {
   getRevenueBySport(filter: AnalyticsFilter): Promise<RevenueBySportRow[]>;
   /** Court-attributable paid revenue by court. */
   getRevenueByCourt(filter: AnalyticsFilter): Promise<RevenueByCourtRow[]>;
+
+  /** One-row business snapshot for the Overview page; composes the other RPCs. */
+  getAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsOverview>;
 }
