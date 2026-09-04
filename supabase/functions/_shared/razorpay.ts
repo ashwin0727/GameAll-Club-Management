@@ -143,6 +143,42 @@ export async function fetchRazorpayPayment(paymentId: string, keyId: string, key
   return response.json();
 }
 
+/**
+ * Captures an authorized-but-not-yet-captured payment, so an order never
+ * strands the customer's money in the AUTHORIZED state when the Razorpay
+ * account is not set to auto-capture. `amountMinor`/`currency` MUST be the
+ * payment's own authorized amount (from fetchRazorpayPayment), not GameAll's
+ * order amount — Razorpay rejects a capture whose amount differs from what
+ * was authorized. A payment Razorpay already captured (its 400
+ * "payment already captured") is treated as success by re-fetching.
+ */
+export async function captureRazorpayPayment(
+  paymentId: string,
+  amountMinor: number,
+  currency: string,
+  keyId: string,
+  keySecret: string,
+): Promise<RazorpayPayment> {
+  const response = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/capture`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ amount: amountMinor, currency }),
+  });
+  if (response.ok) {
+    return response.json();
+  }
+  // Already captured (a webhook or a racing verify call beat us to it), or a
+  // transient gateway issue — re-fetch and let the status speak for itself.
+  const payment = await fetchRazorpayPayment(paymentId, keyId, keySecret);
+  if (payment.status === "captured") {
+    return payment;
+  }
+  throw new Error(`Razorpay capture failed with status ${response.status}`);
+}
+
 /** Fetches every payment attempt Razorpay has recorded for an order — used by reconcile-razorpay-payment when no specific payment id is known yet. */
 export async function fetchRazorpayOrderPayments(razorpayOrderId: string, keyId: string, keySecret: string): Promise<RazorpayPayment[]> {
   const response = await fetch(`https://api.razorpay.com/v1/orders/${razorpayOrderId}/payments`, {

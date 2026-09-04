@@ -1,0 +1,42 @@
+name: DB integration tests
+
+on:
+  push:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/_shared/**"
+      - "supabase/tests/**"
+      - ".github/workflows/db-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/_shared/**"
+      - "supabase/tests/**"
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase stack
+        run: supabase start
+
+      - name: Apply migrations
+        run: supabase db reset --no-seed
+
+      - name: Shared edge-function unit tests
+        working-directory: supabase/functions
+        run: deno test _shared/
+
+      - name: DB integration tests
+        working-directory: supabase/tests
+        run: deno task test
