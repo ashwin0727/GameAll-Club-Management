@@ -47,5 +47,28 @@ class AppRoutes {
   /// membership id. Reached from Pending Payments.
   static const financeRecordPayment = '/finance/pending-payments/:sourceId/record';
 
+  /// Reports & Analytics. Web's NAV_ITEMS "Reports" section is a sidebar
+  /// group; mobile has no sidebar, so `/reports` is a hub of six cards and
+  /// each report is its own screen. Paths otherwise mirror the web.
+  static const reports = '/reports';
+  static const reportsOverview = '/reports/overview';
+  static const reportsBookings = '/reports/bookings';
+  static const reportsCourtUtilization = '/reports/court-utilization';
+  static const reportsRevenue = '/reports/revenue';
+  static const reportsMemberships = '/reports/memberships';
+  static const reportsGuestBookings = '/reports/guest-bookings';
+
+  /// Maintenance & Court Operations. Web's NAV_ITEMS "Maintenance" sidebar
+  /// group; mobile has no sidebar, so `/maintenance` is the Overview and
+  /// each section is its own screen, same pattern as Finance/Reports.
+  static const maintenance = '/maintenance';
+  static const maintenanceTickets = '/maintenance/tickets';
+  static const maintenanceTicketNew = '/maintenance/tickets/new';
+
+  /// `:ticketId` is a maintenance_tickets id.
+  static const maintenanceTicketDetail = '/maintenance/tickets/:ticketId';
+  static const maintenanceCourtSchedule = '/maintenance/court-schedule';
+  static const maintenanceIssueCategories = '/maintenance/issue-categories';
+
   static const profile = '/profile';
 }

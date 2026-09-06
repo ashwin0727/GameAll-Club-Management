@@ -163,6 +163,10 @@ Deno.serve(async (req) => {
         amount: order.amount_minor,
         currency: order.currency,
         receipt: order.receipt,
+        // Auto-capture on success so a payment never strands in AUTHORIZED
+        // when the Razorpay account default is manual capture. verify- and
+        // reconcile-razorpay-payment also capture explicitly as a backstop.
+        payment_capture: 1,
         notes: {
           gameall_payment_order_id: order.id,
           facility_id: order.facility_id,

@@ -39,6 +39,15 @@ enum AppErrorCode {
   financeAccessDenied,
   invalidDateRange,
   financeDataError,
+  // Reports & Analytics — Phase 9. Same reasoning as financeAccessDenied: a
+  // facility-isolation rejection on a report read must show DENIED, never a
+  // silent zero.
+  reportsAccessDenied,
+  reportsDataError,
+  maintenanceAccessDenied,
+  maintenanceNotFound,
+  maintenanceRuleError,
+  maintenanceDataError,
   network,
   databaseError,
 }
@@ -76,6 +85,12 @@ const Map<AppErrorCode, String> _friendlyMessage = {
   AppErrorCode.financeAccessDenied: "You don't have access to this facility's financial data.",
   AppErrorCode.invalidDateRange: 'Please choose a valid date range.',
   AppErrorCode.financeDataError: 'Unable to load financial data. Please try again.',
+  AppErrorCode.reportsAccessDenied: "You don't have access to this facility's reports.",
+  AppErrorCode.reportsDataError: 'Unable to load this report. Please try again.',
+  AppErrorCode.maintenanceAccessDenied: "You don't have access to this facility's maintenance data.",
+  AppErrorCode.maintenanceNotFound: 'That maintenance ticket could not be found.',
+  AppErrorCode.maintenanceRuleError: 'Unable to complete this action.',
+  AppErrorCode.maintenanceDataError: 'Unable to load maintenance data. Please try again.',
   AppErrorCode.network: 'Network error. Check your connection and try again.',
   AppErrorCode.databaseError: 'Something went wrong. Please try again.',
 };

@@ -7,10 +7,12 @@ import type {
 } from "./types";
 
 /**
- * Data access for the public booking flow. Every call goes through an
- * anon-callable SECURITY DEFINER RPC (migration 0042) — the browser never
- * selects from a table directly, so RLS stays closed and the guest sees only
- * what those functions choose to return.
+ * Data access for the public booking flow. Reads go through anon-callable
+ * SECURITY DEFINER RPCs (migration 0042) — the browser never selects from a
+ * table directly, so RLS stays closed and the guest sees only what those
+ * functions choose to return. The write goes through the public-guest-booking
+ * Edge Function (0065), which rate-limits by IP + phone and optionally
+ * verifies a CAPTCHA before calling the same booking RPC.
  *
  * Server errors are never surfaced verbatim; each function maps failures to
  * a message a player can act on.
@@ -89,32 +91,53 @@ export async function createPublicGuestBooking(input: {
     .filter(Boolean)
     .join(" | ");
 
-  const { data, error } = await supabase.rpc("public_create_guest_booking", {
-    p_facility_id: input.facilityId,
-    p_court_id: input.courtId,
-    p_start_time: input.startTime,
-    p_end_time: input.endTime,
-    p_name: guest.fullName.trim(),
-    p_phone: guest.phone.trim(),
-    p_email: guest.email.trim() || null,
-    p_purpose: guest.purpose || null,
-    p_notes: notes || null,
-    p_party_size: input.partySize ?? 1,
-  });
+  const { data, error } = await supabase.functions.invoke<PublicBookingConfirmation & { error?: string; code?: string }>(
+    "public-guest-booking",
+    {
+      body: {
+        facilityId: input.facilityId,
+        courtId: input.courtId,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        name: guest.fullName.trim(),
+        phone: guest.phone.trim(),
+        email: guest.email.trim() || null,
+        purpose: guest.purpose || null,
+        notes: notes || null,
+        partySize: input.partySize ?? 1,
+      },
+    },
+  );
 
   if (error) {
-    // The database speaks in friendly sentences for the cases a player can
-    // act on (see 0042); anything else is an internal fault and must not
-    // reach the screen.
-    if (error.message?.toLowerCase().includes("no longer available")) {
+    // A non-2xx from the function — read the JSON body it returned. The
+    // function speaks in the same friendly sentences the RPC did (0042/0065);
+    // anything else is an internal fault and must not reach the screen.
+    let payload: { error?: string; code?: string } = {};
+    try {
+      payload = await (error as { context?: Response }).context?.json?.() ?? {};
+    } catch {
+      // keep payload empty
+    }
+    const message = payload.error ?? "";
+    if (payload.code === "SLOT_UNAVAILABLE" || message.toLowerCase().includes("no longer available")) {
       throw new SlotUnavailableError();
     }
-    if (error.message?.startsWith("Please ") || error.message?.startsWith("We could not")) {
-      throw new Error(error.message);
+    if (
+      message.startsWith("Please ") ||
+      message.startsWith("We could not") ||
+      message.startsWith("You have unpaid") ||
+      message.startsWith("That time has") ||
+      message.startsWith("Too many booking")
+    ) {
+      throw new Error(message);
     }
     throw new Error("Something went wrong. Please try again.");
   }
 
+  if (data && "error" in data && data.error) {
+    throw new Error("Something went wrong. Please try again.");
+  }
   if (!data?.bookingId) throw new Error("Something went wrong. Please try again.");
   return data as PublicBookingConfirmation;
 }

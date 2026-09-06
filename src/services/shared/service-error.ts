@@ -33,6 +33,12 @@ export type ServiceErrorCode =
   | "FINANCE_ACCESS_DENIED"
   | "INVALID_DATE_RANGE"
   | "FINANCE_DATA_ERROR"
+  | "REPORTS_ACCESS_DENIED"
+  | "REPORTS_DATA_ERROR"
+  | "MAINTENANCE_ACCESS_DENIED"
+  | "MAINTENANCE_NOT_FOUND"
+  | "MAINTENANCE_RULE_ERROR"
+  | "MAINTENANCE_DATA_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -70,6 +76,13 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   FINANCE_ACCESS_DENIED: "You don't have access to this facility's financial data.",
   INVALID_DATE_RANGE: "Please choose a valid date range.",
   FINANCE_DATA_ERROR: "Unable to load financial data. Please try again.",
+  REPORTS_ACCESS_DENIED: "You don't have access to this facility's reports.",
+  REPORTS_DATA_ERROR: "Unable to load this report. Please try again.",
+  MAINTENANCE_ACCESS_DENIED: "You don't have access to this facility's maintenance data.",
+  MAINTENANCE_NOT_FOUND: "That maintenance ticket could not be found.",
+  // Overridden per-call with the specific rule the RPC rejected the request for.
+  MAINTENANCE_RULE_ERROR: "Unable to complete this action.",
+  MAINTENANCE_DATA_ERROR: "Unable to load maintenance data. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

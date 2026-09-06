@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { fetchRazorpayOrderPayments, mapRazorpayPaymentStatus, pickMostDecisivePayment } from "../_shared/razorpay.ts";
+import { captureRazorpayPayment, fetchRazorpayOrderPayments, mapRazorpayPaymentStatus, pickMostDecisivePayment } from "../_shared/razorpay.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -96,11 +96,22 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Unable to reach the payment gateway. Please try again shortly." }, 502);
   }
 
-  const decisive = pickMostDecisivePayment(payments);
+  let decisive = pickMostDecisivePayment(payments);
   if (!decisive) {
     // Razorpay itself has no payment attempt for this order yet — still
     // genuinely pending, not an error.
     return jsonResponse({ paymentOrderId: order.id, status: order.status }, 200);
+  }
+
+  // Same backstop as verify-razorpay-payment: never leave a paid customer's
+  // money stranded in AUTHORIZED — capture it before reconciling.
+  if (decisive.status === "authorized") {
+    try {
+      decisive = await captureRazorpayPayment(decisive.id, decisive.amount, decisive.currency, razorpayKeyId, razorpayKeySecret);
+    } catch (err) {
+      console.error("[reconcile-razorpay-payment] capture failed", { paymentOrderId: order.id, error: String(err) });
+      return jsonResponse({ error: "Unable to reach the payment gateway. Please try again shortly." }, 502);
+    }
   }
 
   const targetStatus = mapRazorpayPaymentStatus(decisive.status);
