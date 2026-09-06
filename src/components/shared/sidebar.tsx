@@ -14,6 +14,7 @@ import {
   BarChart3,
   CalendarRange,
   ChevronDown,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_ITEMS, type NavItem } from "@/lib/constants";
@@ -29,6 +30,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/guests": UserRound,
   "/finance": BadgeIndianRupee,
   "/reports": BarChart3,
+  "/maintenance": Wrench,
   "/inventory": Boxes,
 };
 

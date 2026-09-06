@@ -36,6 +36,12 @@ import '../../features/reports/membership_report_screen.dart';
 import '../../features/reports/reports_hub_screen.dart';
 import '../../features/reports/reports_overview_screen.dart';
 import '../../features/reports/revenue_report_screen.dart';
+import '../../features/maintenance/maintenance_overview_screen.dart';
+import '../../features/maintenance/maintenance_tickets_screen.dart';
+import '../../features/maintenance/create_maintenance_ticket_screen.dart';
+import '../../features/maintenance/maintenance_ticket_detail_screen.dart';
+import '../../features/maintenance/maintenance_court_schedule_screen.dart';
+import '../../features/maintenance/maintenance_issue_categories_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 
@@ -177,6 +183,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.reportsGuestBookings,
         builder: (context, state) => GuestBookingReportScreen(initialQuery: state.uri.queryParameters),
       ),
+      GoRoute(path: AppRoutes.maintenance, builder: (context, state) => const MaintenanceOverviewScreen()),
+      GoRoute(path: AppRoutes.maintenanceTickets, builder: (context, state) => const MaintenanceTicketsScreen()),
+      GoRoute(path: AppRoutes.maintenanceTicketNew, builder: (context, state) => const CreateMaintenanceTicketScreen()),
+      GoRoute(
+        path: AppRoutes.maintenanceTicketDetail,
+        builder: (context, state) => MaintenanceTicketDetailScreen(ticketId: state.pathParameters['ticketId']!),
+      ),
+      GoRoute(path: AppRoutes.maintenanceCourtSchedule, builder: (context, state) => const MaintenanceCourtScheduleScreen()),
+      GoRoute(path: AppRoutes.maintenanceIssueCategories, builder: (context, state) => const MaintenanceIssueCategoriesScreen()),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
     ],
   );

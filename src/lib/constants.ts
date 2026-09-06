@@ -71,6 +71,17 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Guest Bookings", href: "/reports/guest-bookings" },
     ],
   },
+  {
+    label: "Maintenance",
+    href: "/maintenance",
+    roles: ["admin", "staff"],
+    children: [
+      { label: "Overview", href: "/maintenance" },
+      { label: "Maintenance Tickets", href: "/maintenance/tickets" },
+      { label: "Court Schedule", href: "/maintenance/court-schedule" },
+      { label: "Issue Categories", href: "/maintenance/issue-categories" },
+    ],
+  },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
 ];
 

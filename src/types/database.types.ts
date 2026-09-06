@@ -1391,6 +1391,140 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['expenses']['Insert']>;
         Relationships: [];
       };
+      maintenance_issue_categories: {
+        Row: {
+          id: string;
+          facility_id: string | null;
+          name: string;
+          icon: string;
+          description: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id?: string | null;
+          name: string;
+          icon?: string;
+          description?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+        };
+        Update: Partial<Database['public']['Tables']['maintenance_issue_categories']['Insert']>;
+        Relationships: [];
+      };
+      maintenance_tickets: {
+        Row: {
+          id: string;
+          facility_id: string;
+          court_id: string;
+          facility_sport_id: string | null;
+          issue_category_id: string;
+          title: string;
+          description: string;
+          priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+          status: "REPORTED" | "ASSIGNED" | "SCHEDULED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+          reported_by: string;
+          reported_at: string;
+          assigned_to: string | null;
+          scheduled_start: string | null;
+          scheduled_end: string | null;
+          actual_start: string | null;
+          actual_end: string | null;
+          estimated_cost_minor: number | null;
+          actual_cost_minor: number | null;
+          expense_id: string | null;
+          notes: string | null;
+          resolved_at: string | null;
+          closed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          court_id: string;
+          issue_category_id: string;
+          title: string;
+          description: string;
+          priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+          reported_by: string;
+        };
+        Update: Partial<Database['public']['Tables']['maintenance_tickets']['Insert']>;
+        Relationships: [];
+      };
+      maintenance_blocks: {
+        Row: {
+          id: string;
+          facility_id: string;
+          court_id: string;
+          ticket_id: string;
+          start_time: string;
+          end_time: string;
+          status: "ACTIVE" | "ENDED" | "CANCELLED";
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          court_id: string;
+          ticket_id: string;
+          start_time: string;
+          end_time: string;
+          created_by: string;
+        };
+        Update: Partial<Database['public']['Tables']['maintenance_blocks']['Insert']>;
+        Relationships: [];
+      };
+      maintenance_ticket_activity: {
+        Row: {
+          id: string;
+          ticket_id: string;
+          facility_id: string;
+          event_type: string;
+          actor_id: string | null;
+          note: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id: string;
+          facility_id: string;
+          event_type: string;
+          note?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['maintenance_ticket_activity']['Insert']>;
+        Relationships: [];
+      };
+      maintenance_ticket_attachments: {
+        Row: {
+          id: string;
+          ticket_id: string;
+          facility_id: string;
+          storage_path: string;
+          file_name: string;
+          content_type: string | null;
+          size_bytes: number | null;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id: string;
+          facility_id: string;
+          storage_path: string;
+          file_name: string;
+          content_type?: string | null;
+          size_bytes?: number | null;
+        };
+        Update: Partial<Database['public']['Tables']['maintenance_ticket_attachments']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: {
       finance_transactions_view: {
@@ -2766,6 +2900,185 @@ export interface Database {
           p_court_id?: string | null;
         };
         Returns: { hour: number; booking_count: number }[];
+      };
+      list_maintenance_issue_categories: {
+        Args: { p_facility_id: string; p_include_inactive?: boolean };
+        Returns: {
+          id: string;
+          facility_id: string | null;
+          name: string;
+          icon: string;
+          description: string | null;
+          is_active: boolean;
+          sort_order: number;
+          issue_count: number;
+          is_shared: boolean;
+        }[];
+      };
+      create_maintenance_issue_category: {
+        Args: { p_facility_id: string; p_name: string; p_icon: string; p_description?: string | null; p_sort_order?: number };
+        Returns: Database['public']['Tables']['maintenance_issue_categories']['Row'];
+      };
+      update_maintenance_issue_category: {
+        Args: {
+          p_category_id: string;
+          p_name: string;
+          p_icon: string;
+          p_description?: string | null;
+          p_sort_order?: number;
+          p_is_active?: boolean;
+        };
+        Returns: Database['public']['Tables']['maintenance_issue_categories']['Row'];
+      };
+      create_maintenance_ticket: {
+        Args: {
+          p_facility_id: string;
+          p_court_id: string;
+          p_issue_category_id: string;
+          p_priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+          p_title: string;
+          p_description: string;
+          p_scheduled_start?: string | null;
+          p_scheduled_end?: string | null;
+          p_assigned_to?: string | null;
+          p_estimated_cost_minor?: number | null;
+          p_notes?: string | null;
+        };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      update_maintenance_ticket: {
+        Args: {
+          p_ticket_id: string;
+          p_title: string;
+          p_description: string;
+          p_issue_category_id: string;
+          p_priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+          p_notes?: string | null;
+        };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      assign_maintenance_ticket: {
+        Args: { p_ticket_id: string; p_assigned_to: string };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      schedule_maintenance: {
+        Args: { p_ticket_id: string; p_start: string; p_end: string };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      start_maintenance_ticket: {
+        Args: { p_ticket_id: string };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      add_maintenance_note: {
+        Args: { p_ticket_id: string; p_note: string };
+        Returns: Database['public']['Tables']['maintenance_ticket_activity']['Row'];
+      };
+      update_maintenance_cost: {
+        Args: {
+          p_ticket_id: string;
+          p_estimated_cost_minor?: number | null;
+          p_actual_cost_minor?: number | null;
+          p_post_to_expenses?: boolean;
+          p_expense_category_id?: string | null;
+          p_payment_method?: string | null;
+          p_vendor?: string | null;
+        };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      resolve_maintenance_ticket: {
+        Args: { p_ticket_id: string; p_actual_end?: string | null };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      reopen_maintenance_ticket: {
+        Args: { p_ticket_id: string };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      close_maintenance_ticket: {
+        Args: { p_ticket_id: string; p_reason?: string | null };
+        Returns: Database['public']['Tables']['maintenance_tickets']['Row'];
+      };
+      list_maintenance_tickets: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_status?: string | null;
+          p_priority?: string | null;
+          p_court_id?: string | null;
+          p_facility_sport_id?: string | null;
+          p_issue_category_id?: string | null;
+          p_assigned_to?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_sort?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          ticket_id: string;
+          code: string;
+          court_id: string;
+          court_name: string;
+          sport_name: string | null;
+          issue_category_id: string;
+          category_name: string;
+          title: string;
+          priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+          status: "REPORTED" | "ASSIGNED" | "SCHEDULED" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+          reported_by_name: string;
+          assigned_to_name: string | null;
+          scheduled_start: string | null;
+          reported_at: string;
+          actual_cost_minor: number | null;
+          estimated_cost_minor: number | null;
+          total_count: number;
+        }[];
+      };
+      get_maintenance_ticket_detail: {
+        Args: { p_ticket_id: string };
+        Returns: unknown;
+      };
+      get_maintenance_court_status: {
+        Args: { p_facility_id: string };
+        Returns: { court_id: string; court_name: string; sport_name: string | null; status: "AVAILABLE" | "IN_USE" | "UNDER_MAINTENANCE" | "BLOCKED" }[];
+      };
+      get_maintenance_overview: {
+        Args: { p_facility_id: string };
+        Returns: unknown;
+      };
+      detect_maintenance_affected_bookings: {
+        Args: { p_court_id: string; p_start: string; p_end: string; p_exclude_ticket_id?: string | null };
+        Returns: {
+          booking_id: string;
+          customer_type: "MEMBER" | "GUEST";
+          guest_name: string | null;
+          guest_phone: string | null;
+          member_id: string | null;
+          start_time: string;
+          end_time: string;
+          status: string;
+          payment_status: string;
+          amount_minor: number | null;
+        }[];
+      };
+      detect_maintenance_affected_membership_sessions: {
+        Args: { p_court_id: string; p_start: string; p_end: string; p_timezone?: string };
+        Returns: {
+          batch_id: string;
+          batch_name: string;
+          session_date: string;
+          start_time: string;
+          end_time: string;
+          member_booked_count: number;
+          guest_booked_count: number;
+        }[];
+      };
+      add_maintenance_attachment: {
+        Args: { p_ticket_id: string; p_storage_path: string; p_file_name: string; p_content_type?: string | null; p_size_bytes?: number | null };
+        Returns: Database['public']['Tables']['maintenance_ticket_attachments']['Row'];
+      };
+      list_facility_staff: {
+        Args: { p_facility_id: string };
+        Returns: { user_id: string; full_name: string; role: FacilityRole }[];
       };
     };
     Enums: {

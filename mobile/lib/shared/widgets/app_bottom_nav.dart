@@ -38,6 +38,7 @@ const _moreDestinations = <({IconData icon, String label, String route})>[
   (icon: Icons.event_repeat_outlined, label: 'Membership Sessions', route: AppRoutes.membershipSessions),
   (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance),
   (icon: Icons.insights_outlined, label: 'Reports & Analytics', route: AppRoutes.reports),
+  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds),
 ];
 

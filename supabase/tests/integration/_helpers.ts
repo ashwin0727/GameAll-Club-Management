@@ -38,6 +38,8 @@ export async function authed(userId: string): Promise<Client> {
 export async function resetCore(su: Client): Promise<void> {
   await su.queryArray(`
     truncate table
+      maintenance_ticket_activity, maintenance_ticket_attachments,
+      maintenance_blocks, maintenance_tickets,
       refunds, settlement_exceptions, payments, payment_orders,
       razorpay_webhook_events, public_booking_attempts,
       membership_session_bookings, membership_sessions,

@@ -58,5 +58,17 @@ class AppRoutes {
   static const reportsMemberships = '/reports/memberships';
   static const reportsGuestBookings = '/reports/guest-bookings';
 
+  /// Maintenance & Court Operations. Web's NAV_ITEMS "Maintenance" sidebar
+  /// group; mobile has no sidebar, so `/maintenance` is the Overview and
+  /// each section is its own screen, same pattern as Finance/Reports.
+  static const maintenance = '/maintenance';
+  static const maintenanceTickets = '/maintenance/tickets';
+  static const maintenanceTicketNew = '/maintenance/tickets/new';
+
+  /// `:ticketId` is a maintenance_tickets id.
+  static const maintenanceTicketDetail = '/maintenance/tickets/:ticketId';
+  static const maintenanceCourtSchedule = '/maintenance/court-schedule';
+  static const maintenanceIssueCategories = '/maintenance/issue-categories';
+
   static const profile = '/profile';
 }
