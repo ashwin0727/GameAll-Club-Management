@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/routing/page_transitions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -72,7 +73,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
     final d = _detail;
     if (d == null) return;
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => CreateMembershipScreen(membershipId: d.membershipId)),
+      AppPageRoute(builder: (_) => CreateMembershipScreen(membershipId: d.membershipId)),
     );
     if (saved == true) _load();
   }

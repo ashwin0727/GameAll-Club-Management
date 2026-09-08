@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/facility.dart';
@@ -18,6 +20,7 @@ class FacilityRepository {
     required String businessPhone,
     required FacilityAddress address,
     String? logoUrl,
+    String? locationUrl,
     String? description,
   }) async {
     try {
@@ -43,7 +46,83 @@ class FacilityRepository {
           'p_description': description,
         },
       );
-      return Facility.fromJson(row as Map<String, dynamic>);
+      final facility = Facility.fromJson(row as Map<String, dynamic>);
+
+      // `create_facility_with_owner` predates the pasted-location-link field,
+      // so set it in a follow-up update rather than widening the RPC.
+      final link = locationUrl?.trim();
+      if (link != null && link.isNotEmpty) {
+        await _client
+            .from('facilities')
+            .update({'location_url': link})
+            .eq('id', facility.id);
+      }
+      return facility;
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// Uploads a facility logo to the public `facility-logos` bucket, keyed
+  /// under the owner's user id, and returns its public URL. Called before
+  /// the facility row exists, so the user id is the only stable namespace.
+  Future<String> uploadFacilityLogo(Uint8List bytes, String filename) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw AppException(AppErrorCode.unauthenticated);
+
+    final dot = filename.lastIndexOf('.');
+    final ext = dot >= 0 ? filename.substring(dot + 1).toLowerCase() : 'jpg';
+    final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    try {
+      await _client.storage.from('facility-logos').uploadBinary(
+        path,
+        bytes,
+        fileOptions: FileOptions(
+          upsert: true,
+          contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
+        ),
+      );
+      return _client.storage.from('facility-logos').getPublicUrl(path);
+    } on StorageException catch (e) {
+      throw AppException(AppErrorCode.databaseError, e.message);
+    }
+  }
+
+  /// Updates an existing facility row — used when the owner steps back into
+  /// the Facility Details screen during onboarding, so we don't create a
+  /// second facility. `id`/`owner_id` are never in the payload.
+  Future<Facility> updateFacility({
+    required String id,
+    required String name,
+    required FacilityType type,
+    String? customType,
+    required String businessPhone,
+    required FacilityAddress address,
+    String? logoUrl,
+    String? locationUrl,
+    String? description,
+  }) async {
+    try {
+      final row = await _client
+          .from('facilities')
+          .update({
+            'name': name,
+            'facility_type': type.toDb(),
+            'custom_facility_type': type == FacilityType.other ? customType : null,
+            'business_phone': businessPhone,
+            'address_line_1': address.line1,
+            'area': address.area,
+            'city': address.city,
+            'state': address.state,
+            'postal_code': address.pinCode,
+            'logo_url': logoUrl,
+            'location_url': locationUrl,
+            'description': description,
+          })
+          .eq('id', id)
+          .select()
+          .single();
+      return Facility.fromJson(row);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }
@@ -62,6 +141,20 @@ class FacilityRepository {
           .limit(1)
           .maybeSingle();
       return row == null ? null : Facility.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// Marks whether the owner linked a payments account on the Connect
+  /// Payments step. Full Razorpay Route onboarding is a later project; this
+  /// is just the remembered flag.
+  Future<void> setPaymentsConnected(String facilityId, bool connected) async {
+    try {
+      await _client
+          .from('facilities')
+          .update({'payments_connected': connected})
+          .eq('id', facilityId);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

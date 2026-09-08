@@ -30,28 +30,49 @@ void main() {
       expect(OnboardingRouteResolver.routeFor(null), AppRoutes.onboardingFacility);
     });
 
-    test('resumes each incomplete step at its own screen, never further along', () {
+    test('resumes each incomplete step at its own screen', () {
       expect(
-        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.sports)),
-        AppRoutes.onboardingSports,
+        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.sportsCourts)),
+        AppRoutes.onboardingSportsCourts,
       );
       expect(
-        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.courts)),
-        AppRoutes.onboardingCourts,
+        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.pricing)),
+        AppRoutes.onboardingPricing,
       );
       expect(
         OnboardingRouteResolver.routeFor(_facility(OnboardingStep.operatingHours)),
         AppRoutes.onboardingOperatingHours,
       );
       expect(
-        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.pricing)),
-        AppRoutes.onboardingPricing,
+        OnboardingRouteResolver.routeFor(_facility(OnboardingStep.payments)),
+        AppRoutes.onboardingPayments,
       );
     });
 
     test('a completed facility goes straight to the dashboard, not back to onboarding', () {
       expect(
         OnboardingRouteResolver.routeFor(_facility(OnboardingStep.completed)),
+        AppRoutes.dashboard,
+      );
+    });
+  });
+
+  group('OnboardingRouteResolver.entryRouteFor', () {
+    test('lands on the welcome screen while onboarding is unfinished', () {
+      expect(OnboardingRouteResolver.entryRouteFor(null), AppRoutes.onboardingWelcome);
+      expect(
+        OnboardingRouteResolver.entryRouteFor(_facility(OnboardingStep.sportsCourts)),
+        AppRoutes.onboardingWelcome,
+      );
+      expect(
+        OnboardingRouteResolver.entryRouteFor(_facility(OnboardingStep.pricing)),
+        AppRoutes.onboardingWelcome,
+      );
+    });
+
+    test('a completed facility goes straight to the dashboard', () {
+      expect(
+        OnboardingRouteResolver.entryRouteFor(_facility(OnboardingStep.completed)),
         AppRoutes.dashboard,
       );
     });

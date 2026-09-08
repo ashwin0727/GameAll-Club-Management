@@ -18,12 +18,18 @@ class BookingSlotChip extends StatefulWidget {
     required this.selected,
     this.onTap,
     this.locked = false,
+    this.bookedByLabel,
   });
 
   final String label;
   final bool available;
   final bool selected;
   final VoidCallback? onTap;
+
+  /// Who holds a booked slot (guest name, or "Member") — shown as a third
+  /// line under "Booked" so a booked cell reads at a glance instead of
+  /// requiring a tap to find out who's in it.
+  final String? bookedByLabel;
 
   /// True when this cell falls inside a membership batch's protected
   /// window (see findMembershipSlot in features/bookings/booking_slots.dart).
@@ -63,9 +69,9 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
       border = AppColors.info.withValues(alpha: 0.4);
       foreground = AppColors.info;
     } else if (!widget.available) {
-      background = AppColors.mutedBackground;
-      border = AppColors.border;
-      foreground = AppColors.muted;
+      background = AppColors.destructive.withValues(alpha: 0.14);
+      border = AppColors.destructive.withValues(alpha: 0.5);
+      foreground = AppColors.destructive;
     } else {
       background = AppColors.success.withValues(alpha: 0.1);
       border = AppColors.success.withValues(alpha: 0.4);
@@ -99,7 +105,7 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
           child: AnimatedContainer(
             duration: AppMotion.normal,
             curve: AppMotion.standard,
-            constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget, minWidth: 72),
+            constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget, minWidth: 84),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -116,8 +122,19 @@ class _BookingSlotChipState extends State<BookingSlotChip> {
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 9, color: widget.selected ? Colors.white70 : AppColors.muted),
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: !widget.available && !widget.locked ? FontWeight.w600 : FontWeight.normal,
+                    color: widget.selected ? Colors.white70 : foreground,
+                  ),
                 ),
+                if (!widget.available && !widget.locked && widget.bookedByLabel != null)
+                  Text(
+                    widget.bookedByLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 9, color: foreground.withValues(alpha: 0.85)),
+                  ),
               ],
             ),
           ),

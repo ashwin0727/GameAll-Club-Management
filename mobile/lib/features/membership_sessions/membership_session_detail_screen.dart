@@ -5,18 +5,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
-import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership_session_dashboard.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import 'batch_members_sheet.dart';
-import 'membership_sessions_screen.dart' show hhmm, daysLabel;
+import 'membership_sessions_screen.dart' show daysLabel;
 
 String _iso(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -212,9 +211,11 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
   @override
   Widget build(BuildContext context) {
     final d = _detail;
+    final tokens = context.tokens;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Membership Session Details'),
+        title: const Text('Session details',
+            style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           if (d != null)
             PopupMenuButton<String>(
@@ -233,11 +234,18 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Edit Session')),
-                const PopupMenuItem(value: 'release', child: Text('Release Guest Slots')),
-                const PopupMenuItem(value: 'block', child: Text("Block today's occurrence")),
-                const PopupMenuItem(value: 'duplicate', child: Text('Duplicate session')),
-                PopupMenuItem(value: 'toggle', child: Text(d.isActive ? 'Pause session' : 'Activate session')),
+                const PopupMenuItem(value: 'edit', child: Text('Edit session')),
+                const PopupMenuItem(
+                    value: 'release', child: Text('Release guest slots')),
+                const PopupMenuItem(
+                    value: 'block', child: Text("Block today's occurrence")),
+                const PopupMenuItem(
+                    value: 'duplicate', child: Text('Duplicate session')),
+                PopupMenuItem(
+                    value: 'toggle',
+                    child: Text(d.isActive
+                        ? 'Pause session'
+                        : 'Activate session')),
               ],
             ),
         ],
@@ -249,53 +257,76 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
                     onRefresh: _load,
-                    child: ResponsivePage(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _hero(d!),
-                          const SizedBox(height: AppSpacing.sm),
-                          _scheduleCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _capacityCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _membersCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _guestSlotsCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _notesCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _linkCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _sessionDetailsCard(d),
-                          const SizedBox(height: AppSpacing.sm),
-                          _activityCard(),
-                          const SizedBox(height: AppSpacing.lg),
-                        ],
-                      ),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                          AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+                      children: [
+                        _hero(d!),
+                        const SizedBox(height: AppSpacing.md),
+                        _capacityCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _scheduleCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _membersCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _guestSlotsCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _notesCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _linkCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _sessionInfoCard(d),
+                        const SizedBox(height: AppSpacing.md),
+                        _activityCard(),
+                      ],
                     ),
                   ),
       ),
       bottomNavigationBar: d == null
           ? null
           : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface0,
+                  border:
+                      Border(top: BorderSide(color: tokens.borderColor)),
+                ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _openEdit,
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text('Edit Session'),
+                      child: Material(
+                        color: tokens.surface2,
+                        shape: StadiumBorder(
+                            side: BorderSide(color: tokens.borderColor)),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: _openEdit,
+                          child: Container(
+                            height: 56,
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit_outlined,
+                                    size: 16, color: tokens.textPrimary),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text('Edit',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: tokens.textPrimary)),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: FilledButton.icon(
+                      child: AuthGradientButton(
+                        label: 'Release slots',
                         onPressed: _openReleaseGuestSlots,
-                        icon: const Icon(Icons.group_add, size: 16),
-                        label: const Text('Release Slots'),
                       ),
                     ),
                   ],
@@ -305,399 +336,615 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
     );
   }
 
+  // ── shared bits ─────────────────────────────────────────────────────────
+
+  Widget _card({required Widget child}) => Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: context.tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: context.tokens.borderColor),
+        ),
+        child: child,
+      );
+
+  Widget _sectionTitle(String text) => Text(
+        text,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+          color: context.tokens.textPrimary,
+        ),
+      );
+
+  Widget _kv(String label, String value) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 116,
+            child: Text(label,
+                style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String label) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tokens.surface0.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tokens.violet.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: tokens.textPrimary),
+          const SizedBox(width: 5),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ── hero ────────────────────────────────────────────────────────────────
+
   Widget _hero(MembershipSessionDetail d) {
-    return AppCard(
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.violet.withValues(alpha: 0.35)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            tokens.violet.withValues(alpha: 0.28),
+            tokens.violet.withValues(alpha: 0.06),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: tokens.violet.withValues(alpha: 0.20),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: const Icon(Icons.event_repeat, color: AppColors.primary),
+                child: Icon(Icons.event_repeat_rounded,
+                    color: tokens.violet, size: 22),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(d.name, style: Theme.of(context).textTheme.titleMedium),
-                    if (d.notes != null && d.notes!.isNotEmpty)
-                      Text(d.notes!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+                    Text(d.name,
+                        style: const TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text('${d.sportName} · ${d.courtName}',
+                        style: TextStyle(
+                            fontSize: 13, color: tokens.textSecondary)),
                   ],
                 ),
               ),
-              StatusBadge(
-                label: d.isActive ? 'Active' : 'Paused',
-                tone: d.isActive ? StatusTone.success : StatusTone.neutral,
-              ),
+              _statusPill(d.isActive),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _meta('Session ID', 'SES${d.batchId.substring(0, 3).toUpperCase()}'),
-              _meta('Sport', d.sportName),
-              _meta('Court', d.courtName),
-              _meta('Capacity', '${d.capacity} Players'),
-              _meta('Session Type', 'Membership Protected'),
-              _meta('Guest Release', 'Allowed'),
-              if (d.createdByName != null) _meta('Created By', d.createdByName!),
-              _meta('Last Updated', Formatters.dateShort(d.updatedAt)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _meta(String label, String value) {
-    return SizedBox(
-      width: 150,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-
-  Widget _scheduleCard(MembershipSessionDetail d) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Schedule Information', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Days', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(daysLabel(d.daysOfWeek), style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _meta('Time', '${hhmm(d.startTime)} – ${hhmm(d.endTime)}'),
-              _meta('Start Date', Formatters.dateShort(d.createdAt)),
-              _meta('End Date', 'No Expiry'),
-              _meta('Duration', _durationLabel(d.startTime, d.endTime)),
-              _meta('Recurrence', 'Every Week'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _capacityCard(MembershipSessionDetail d) {
-    final utilization = d.capacity > 0 ? ((d.rosterCount / d.capacity) * 100).round() : 0;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Capacity & Utilization (Today)', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.md),
-          Center(
-            child: _CapacityDonut(
-              capacity: d.capacity,
-              members: d.rosterCount,
-              guestsBooked: d.guestsBookedToday,
-              availableToRelease: d.availableToRelease,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _legend(AppColors.success, 'Members Assigned', d.rosterCount),
-          _legend(AppColors.electricBlue, 'Guests Booked', d.guestsBookedToday),
-          _legend(AppColors.muted, 'Available to Release', d.availableToRelease),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Text('Utilization', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
-              const Spacer(),
-              Text('$utilization%', style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: (utilization.clamp(0, 100)) / 100,
-              minHeight: 6,
-              backgroundColor: AppColors.border,
-              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legend(Color color, String label, int value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
-          Text('$value', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  Widget _membersCard(MembershipSessionDetail d) {
-    final members = _members ?? const <MembershipSessionMemberRow>[];
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Members Assigned (${members.length} / ${d.capacity})',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: members.length >= d.capacity ? null : _openAddMember,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add Member'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          if (members.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Text(
-                'No members assigned yet.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-              ),
-            )
-          else
-            ...members.map((m) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(m.fullName, style: Theme.of(context).textTheme.bodyMedium),
-                            Text(
-                              '${m.phone} · added ${Formatters.dateShort(m.addedOn)}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      StatusBadge(
-                        label: m.status == 'ACTIVE' ? 'Active' : 'Inactive',
-                        tone: m.status == 'ACTIVE' ? StatusTone.success : StatusTone.neutral,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        tooltip: 'Remove from session',
-                        onPressed: () => _removeMember(m.memberId),
-                      ),
-                    ],
-                  ),
-                )),
-        ],
-      ),
-    );
-  }
-
-  Widget _guestSlotsCard(MembershipSessionDetail d) {
-    final availableToBook = math.max(0, d.releasedToday - d.guestsBookedToday);
-    final tiles = <({String label, int value, bool highlight})>[
-      (label: 'Total Capacity', value: d.capacity, highlight: false),
-      (label: 'Members Assigned', value: d.rosterCount, highlight: false),
-      (label: 'Guest Released', value: d.releasedToday, highlight: false),
-      (label: 'Guests Booked', value: d.guestsBookedToday, highlight: false),
-      (label: 'Available to Book', value: availableToBook, highlight: true),
-    ];
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Guest Slots (Today)', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.lg),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
-            children: tiles
-                .map((t) => Container(
-                      width: 96,
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: t.highlight ? AppColors.primary : AppColors.border),
-                        color: t.highlight ? AppColors.primary.withValues(alpha: 0.06) : null,
-                      ),
-                      child: Column(
-                        children: [
-                          Text('${t.value}', style: Theme.of(context).textTheme.titleMedium),
-                          Text(
-                            t.label,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-                          ),
-                        ],
-                      ),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Guest slots are released by the owner and available for booking on a first come first serve basis.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _notesCard(MembershipSessionDetail d) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
             children: [
-              Expanded(child: Text('Session Notes', style: Theme.of(context).textTheme.titleSmall)),
-              TextButton.icon(onPressed: _editNotes, icon: const Icon(Icons.edit, size: 14), label: const Text('Edit')),
+              _chip(Icons.schedule,
+                  '${_t12(d.startTime)} – ${_t12(d.endTime)}'),
+              _chip(Icons.calendar_today_rounded, daysLabel(d.daysOfWeek)),
+              _chip(Icons.groups_outlined, '${d.capacity} seats'),
+              if ((d.planName ?? '').isNotEmpty)
+                _chip(Icons.card_membership, d.planName!),
             ],
           ),
-          Text(
-            (d.notes == null || d.notes!.isEmpty) ? 'No notes for this session yet.' : d.notes!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusPill(bool active) {
+    final tokens = context.tokens;
+    final c = active ? tokens.primary : tokens.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(active ? Icons.check_circle : Icons.pause_circle_filled,
+              size: 13, color: c),
+          const SizedBox(width: 4),
+          Text(active ? 'Active' : 'Paused',
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: c)),
+        ],
+      ),
+    );
+  }
+
+  static String _t12(String hhmmStr) {
+    final p = hhmmStr.split(':');
+    if (p.length < 2) return hhmmStr;
+    final h = int.tryParse(p[0]) ?? 0;
+    final m = int.tryParse(p[1]) ?? 0;
+    final period = h < 12 ? 'AM' : 'PM';
+    final h12 = h % 12 == 0 ? 12 : h % 12;
+    return m == 0 ? '$h12 $period' : '$h12:${m.toString().padLeft(2, '0')} $period';
+  }
+
+  // ── capacity ────────────────────────────────────────────────────────────
+
+  Widget _capacityCard(MembershipSessionDetail d) {
+    final tokens = context.tokens;
+    final utilization =
+        d.capacity > 0 ? ((d.rosterCount / d.capacity) * 100).round() : 0;
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Capacity today'),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              _CapacityDonut(
+                capacity: d.capacity,
+                members: d.rosterCount,
+                guestsBooked: d.guestsBookedToday,
+                availableToRelease: d.availableToRelease,
+              ),
+              const SizedBox(width: AppSpacing.xl),
+              Expanded(
+                child: Column(
+                  children: [
+                    _statDot(tokens.primary, 'Members', d.rosterCount),
+                    const SizedBox(height: AppSpacing.md),
+                    _statDot(tokens.violet, 'Guests booked',
+                        d.guestsBookedToday),
+                    const SizedBox(height: AppSpacing.md),
+                    _statDot(tokens.textSecondary.withValues(alpha: 0.5),
+                        'Free to release', d.availableToRelease),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Text('Utilization',
+                  style:
+                      TextStyle(fontSize: 13, color: tokens.textSecondary)),
+              const Spacer(),
+              Text('$utilization%',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: utilization.clamp(0, 100) / 100,
+              minHeight: 7,
+              backgroundColor: tokens.surface2,
+              valueColor: AlwaysStoppedAnimation(tokens.violet),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _linkCard(MembershipSessionDetail d) {
-    final link = 'https://gameall.club/join/${d.facilityId}?session=${d.batchId}';
-    return AppCard(
+  Widget _statDot(Color color, String label, int value) {
+    final tokens = context.tokens;
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(3)),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(label,
+              style: TextStyle(fontSize: 13, color: tokens.textPrimary)),
+        ),
+        Text('$value',
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+
+  // ── schedule ────────────────────────────────────────────────────────────
+
+  Widget _scheduleCard(MembershipSessionDetail d) {
+    final next = d.nextOccurrenceDate != null
+        ? Formatters.dateShort(d.nextOccurrenceDate!)
+        : (d.runsToday ? 'Today' : '—');
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Session Link', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Share this link to allow members to register for this session.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-          ),
+          _sectionTitle('Schedule'),
           const SizedBox(height: AppSpacing.sm),
+          _kv('Days', daysLabel(d.daysOfWeek)),
+          _dividerRow(),
+          _kv('Time', '${_t12(d.startTime)} – ${_t12(d.endTime)}'),
+          _dividerRow(),
+          _kv('Duration', _durationLabel(d.startTime, d.endTime)),
+          _dividerRow(),
+          _kv('Recurrence', 'Every week'),
+          _dividerRow(),
+          _kv('Started', Formatters.dateShort(d.createdAt)),
+          _dividerRow(),
+          _kv('Ends', 'No expiry'),
+          _dividerRow(),
+          _kv('Next session', next),
+        ],
+      ),
+    );
+  }
+
+  Widget _dividerRow() =>
+      Divider(height: 1, color: context.tokens.borderColor.withValues(alpha: 0.6));
+
+  // ── members ─────────────────────────────────────────────────────────────
+
+  Widget _membersCard(MembershipSessionDetail d) {
+    final tokens = context.tokens;
+    final members = _members ?? const <MembershipSessionMemberRow>[];
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
               Expanded(
-                child: Text(link, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
-              ),
-              IconButton(
-                icon: const Icon(Icons.copy, size: 18),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  _toast('Link copied');
-                },
+                  child: _sectionTitle(
+                      'Members  ${members.length}/${d.capacity}')),
+              TextButton.icon(
+                onPressed:
+                    members.length >= d.capacity ? null : _openAddMember,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add'),
+                style: TextButton.styleFrom(foregroundColor: tokens.violet),
               ),
             ],
           ),
+          if (members.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Text('No members assigned yet.',
+                  style: TextStyle(color: tokens.textSecondary)),
+            )
+          else
+            for (var i = 0; i < members.length; i++) ...[
+              if (i > 0) _dividerRow(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    AppAvatar(
+                        name: members[i].fullName,
+                        size: AppAvatarSize.small),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(members[i].fullName,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 1),
+                          Text(
+                            '${members[i].phone} · added ${Formatters.dateShort(members[i].addedOn)}',
+                            style: TextStyle(
+                                fontSize: 12, color: tokens.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(Icons.close,
+                          size: 16, color: tokens.textSecondary),
+                      tooltip: 'Remove from session',
+                      onPressed: () => _removeMember(members[i].memberId),
+                    ),
+                  ],
+                ),
+              ),
+            ],
         ],
       ),
     );
   }
 
-  Widget _sessionDetailsCard(MembershipSessionDetail d) {
-    return AppCard(
+  // ── guest slots ─────────────────────────────────────────────────────────
+
+  Widget _guestSlotsCard(MembershipSessionDetail d) {
+    final tokens = context.tokens;
+    final availableToBook =
+        math.max(0, d.releasedToday - d.guestsBookedToday);
+    final tiles = <({String label, int value, bool highlight})>[
+      (label: 'Capacity', value: d.capacity, highlight: false),
+      (label: 'Released', value: d.releasedToday, highlight: false),
+      (label: 'Booked', value: d.guestsBookedToday, highlight: false),
+      (label: 'Open', value: availableToBook, highlight: true),
+    ];
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Session Details', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          _row('Facility', d.facilityName ?? '—'),
-          _row('Address', d.facilityAddress ?? '—'),
-          _row('Session Type', 'Membership Protected'),
-          _row('Guest Release', 'Allowed'),
-          _row('Payment Type', 'Included in Membership'),
-          _row('Created By', d.createdByName ?? '—'),
-          _row('Created On', Formatters.dateTimeShort(d.createdAt)),
-          _row('Last Updated', Formatters.dateTimeShort(d.updatedAt)),
+          _sectionTitle('Guest slots today'),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      color: tiles[i].highlight
+                          ? tokens.primary.withValues(alpha: 0.10)
+                          : tokens.surface2,
+                      border: Border.all(
+                        color: tiles[i].highlight
+                            ? tokens.primary.withValues(alpha: 0.5)
+                            : tokens.borderColor,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text('${tiles[i].value}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: tiles[i].highlight
+                                  ? tokens.primary
+                                  : tokens.textPrimary,
+                            )),
+                        const SizedBox(height: 1),
+                        Text(tiles[i].label,
+                            style: TextStyle(
+                                fontSize: 11, color: tokens.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Released slots open for guest booking on a first-come basis.',
+            style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+          ),
         ],
       ),
     );
   }
 
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
+  // ── notes ───────────────────────────────────────────────────────────────
+
+  Widget _notesCard(MembershipSessionDetail d) {
+    final tokens = context.tokens;
+    return _card(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+          Row(
+            children: [
+              Expanded(child: _sectionTitle('Notes')),
+              TextButton.icon(
+                onPressed: _editNotes,
+                icon: const Icon(Icons.edit, size: 14),
+                label: const Text('Edit'),
+                style: TextButton.styleFrom(foregroundColor: tokens.violet),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(value, textAlign: TextAlign.right, style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            (d.notes == null || d.notes!.isEmpty)
+                ? 'No notes for this session yet.'
+                : d.notes!,
+            style: TextStyle(
+                fontSize: 13, height: 1.4, color: tokens.textSecondary),
           ),
         ],
       ),
     );
   }
+
+  // ── link ────────────────────────────────────────────────────────────────
+
+  Widget _linkCard(MembershipSessionDetail d) {
+    final tokens = context.tokens;
+    final link =
+        'https://gameall.club/join/${d.facilityId}?session=${d.batchId}';
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Registration link'),
+          const SizedBox(height: 4),
+          Text('Share so members can register for this session.',
+              style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 4, 4, 4),
+            decoration: BoxDecoration(
+              color: tokens.surface2,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: tokens.borderColor),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(link,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12, color: tokens.textSecondary)),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.copy_rounded,
+                      size: 18, color: tokens.violet),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: link));
+                    _toast('Link copied');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── session info ────────────────────────────────────────────────────────
+
+  Widget _sessionInfoCard(MembershipSessionDetail d) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Session info'),
+          const SizedBox(height: AppSpacing.sm),
+          _kv('Session ID', 'SES${d.batchId.substring(0, 3).toUpperCase()}'),
+          _dividerRow(),
+          _kv('Facility', d.facilityName ?? '—'),
+          _dividerRow(),
+          _kv('Address', d.facilityAddress ?? '—'),
+          _dividerRow(),
+          _kv('Type', 'Membership protected'),
+          _dividerRow(),
+          _kv('Guest release', 'Allowed'),
+          _dividerRow(),
+          _kv('Payment', 'Included in membership'),
+          _dividerRow(),
+          _kv('Created by', d.createdByName ?? '—'),
+          _dividerRow(),
+          _kv('Created', Formatters.dateTimeShort(d.createdAt)),
+          _dividerRow(),
+          _kv('Updated', Formatters.dateTimeShort(d.updatedAt)),
+        ],
+      ),
+    );
+  }
+
+  // ── activity ────────────────────────────────────────────────────────────
 
   Widget _activityCard() {
+    final tokens = context.tokens;
     final rows = _activity;
-    return AppCard(
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Activity Timeline', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
+          _sectionTitle('Activity'),
+          const SizedBox(height: AppSpacing.md),
           if (rows == null)
-            const Center(child: Padding(padding: EdgeInsets.all(AppSpacing.md), child: CircularProgressIndicator()))
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.md),
+                    child: CircularProgressIndicator()))
           else if (rows.isEmpty)
-            Text('No activity yet.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted))
+            Text('No activity yet.',
+                style: TextStyle(color: tokens.textSecondary))
           else
-            ...rows.map((a) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 5, right: AppSpacing.sm),
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                      ),
-                      Expanded(
+            for (var i = 0; i < rows.length; i++)
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                              color: tokens.violet, shape: BoxShape.circle),
+                        ),
+                        if (i != rows.length - 1)
+                          Expanded(
+                            child: Container(
+                              width: 2,
+                              color: tokens.borderColor,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(a.detail, style: Theme.of(context).textTheme.bodyMedium),
+                            Text(rows[i].detail,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
                             Text(
-                              '${a.actor != null ? '${a.actor} · ' : ''}${Formatters.dateTimeShort(a.at)}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+                              '${rows[i].actor != null ? '${rows[i].actor} · ' : ''}${Formatters.dateTimeShort(rows[i].at)}',
+                              style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: tokens.textSecondary),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
         ],
       ),
     );
@@ -723,23 +970,30 @@ class _CapacityDonut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return SizedBox(
-      width: 140,
-      height: 140,
+      width: 118,
+      height: 118,
       child: CustomPaint(
         painter: _DonutPainter(
+          track: tokens.surface2,
           segments: [
-            (members.toDouble(), AppColors.success),
-            (guestsBooked.toDouble(), AppColors.electricBlue),
-            (availableToRelease.toDouble(), AppColors.muted),
+            (members.toDouble(), tokens.primary),
+            (guestsBooked.toDouble(), tokens.violet),
+            (availableToRelease.toDouble(),
+                tokens.textSecondary.withValues(alpha: 0.4)),
           ],
         ),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$capacity', style: Theme.of(context).textTheme.titleLarge),
-              Text('Capacity', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+              Text('$capacity',
+                  style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w800)),
+              Text('seats',
+                  style: TextStyle(
+                      fontSize: 11, color: tokens.textSecondary)),
             ],
           ),
         ),
@@ -749,32 +1003,35 @@ class _CapacityDonut extends StatelessWidget {
 }
 
 class _DonutPainter extends CustomPainter {
-  _DonutPainter({required this.segments});
+  _DonutPainter({required this.segments, required this.track});
 
   final List<(double, Color)> segments;
+  final Color track;
 
   @override
   void paint(Canvas canvas, Size size) {
     final total = segments.fold<double>(0, (sum, s) => sum + s.$1);
     final rect = Offset.zero & size;
-    const stroke = 16.0;
+    const stroke = 12.0;
     final arcRect = rect.deflate(stroke / 2);
     final bg = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
-      ..color = AppColors.border;
+      ..strokeCap = StrokeCap.round
+      ..color = track;
     canvas.drawArc(arcRect, 0, 2 * math.pi, false, bg);
     if (total <= 0) return;
     var start = -math.pi / 2;
+    const gap = 0.04;
     for (final seg in segments) {
       if (seg.$1 <= 0) continue;
       final sweep = (seg.$1 / total) * 2 * math.pi;
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.butt
+        ..strokeCap = StrokeCap.round
         ..color = seg.$2;
-      canvas.drawArc(arcRect, start, sweep, false, paint);
+      canvas.drawArc(arcRect, start + gap, sweep - gap * 2, false, paint);
       start += sweep;
     }
   }

@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:linked_scroll_controller/linked_scroll_controller.dart';
 import '../../core/errors/app_exception.dart';
-import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
@@ -16,24 +17,25 @@ import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
 import '../../data/models/payment.dart';
 import '../../data/models/playing_area.dart';
+import '../../data/models/pricing.dart';
 import '../../data/models/refund.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/booking_slot_chip.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../membership_sessions/membership_slot_card.dart';
-import 'guest_booking_screen.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
-import 'booking_operations.dart';
 import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
 import '../../shared/widgets/app_dropdown.dart';
+
+enum _CourtAvailability { pickTime, available, conflict, outsideHours, checking }
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key});
@@ -50,11 +52,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   List<FacilitySport> _facilitySports = [];
   List<Sport> _sports = [];
   List<PlayingArea> _areas = [];
+  PricingPlan? _pricingPlan;
 
   String? _sportFilter; // null = All Sports
   DateTime _selectedDate = DateTime.now();
+  DateTime _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  final ScrollController _dayStripController = ScrollController();
 
   bool _gridLoading = false;
+  bool _hasLoadedGridOnce = false;
   String? _gridError;
   List<Booking> _bookings = [];
   List<MembershipSessionSlot> _membershipSlots = [];
@@ -64,6 +70,20 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _dayStripController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelectedDay() {
+    if (!_dayStripController.hasClients) return;
+    const boxWidth = 68.0;
+    final index = _selectedDate.day - 1;
+    final offset = (index * boxWidth - 100).clamp(0.0, _dayStripController.position.maxScrollExtent);
+    _dayStripController.animateTo(offset, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
   Future<void> _load() async {
@@ -83,14 +103,22 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final facilitySports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
       final sports = await ref.read(sportsRepositoryProvider).getActiveSports();
       final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      PricingPlan? pricingPlan;
+      try {
+        pricingPlan = await ref.read(pricingRepositoryProvider).getPricingPlan(facility.id);
+      } catch (_) {
+        // Pricing is a nice-to-have label here — never block the screen on it.
+      }
 
       setState(() {
         _facilityId = facility.id;
         _facilitySports = facilitySports.where((fs) => fs.enabled).toList();
         _sports = sports;
         _areas = areas.where((a) => !a.archived && a.status == 'ACTIVE' && a.bookingEnabled).toList();
+        _pricingPlan = pricingPlan;
         _isLoading = false;
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDay());
       await _reloadGrid();
     } on AppException catch (e) {
       setState(() {
@@ -132,11 +160,13 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         _bookings = bookings;
         _membershipSlots = membershipSlots;
         _gridLoading = false;
+        _hasLoadedGridOnce = true;
       });
     } on AppException catch (e) {
       setState(() {
         _gridError = e.message;
         _gridLoading = false;
+        _hasLoadedGridOnce = true;
       });
     }
   }
@@ -157,39 +187,103 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     return computeAvailableSlots(_selectedDate, day, existing);
   }
 
-  Booking? _findBookingAt(String courtId, DateTime startTime) {
-    return (_bookingsByCourt[courtId] ?? []).where((b) => b.startTime == startTime).firstOrNull;
-  }
-
-  /// A membership batch's protected window never renders as a plain
-  /// available/booked cell — the owner always sees the membership slot
-  /// panel instead, whether or not any of it has been released yet.
-  MembershipSessionSlot? _findMembershipSlot(String courtId, BookingTimeSlot slot) {
-    return findMembershipSlot(courtId, slot, _membershipSlots);
-  }
-
   bool get _isToday {
     final now = DateTime.now();
     return _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
   }
 
-  void _changeDate(int deltaDays) {
-    setState(() => _selectedDate = _selectedDate.add(Duration(days: deltaDays)));
+  void _selectDay(DateTime day) {
+    setState(() => _selectedDate = day);
     _reloadGrid();
   }
 
-  void _onSlotTap(PlayingArea area, BookingTimeSlot slot) {
-    final membershipSlot = _findMembershipSlot(area.id, slot);
-    if (membershipSlot != null) {
-      _openMembershipSlot(membershipSlot);
-      return;
-    }
-    if (slot.available) {
-      _openQuickBooking(area, slot);
-    } else {
-      final booking = _findBookingAt(area.id, slot.startTime);
-      if (booking != null) _openBookingDetails(booking, area);
-    }
+  /// Every day in [_visibleMonth] — never spills into the previous/next
+  /// month, so every cell in the strip is a real bookable day.
+  List<DateTime> get _monthDays {
+    final daysInMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1, 0).day;
+    return List.generate(daysInMonth, (i) => DateTime(_visibleMonth.year, _visibleMonth.month, i + 1));
+  }
+
+  static const _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June', //
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  Future<void> _pickMonth() async {
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _MonthPickerSheet(initial: _visibleMonth),
+    );
+    if (picked == null) return;
+    setState(() {
+      _visibleMonth = picked;
+      // Jump into the picked month on its 1st, or keep today's day-of-month
+      // if we're picking the month we're already in.
+      final today = DateTime.now();
+      _selectedDate = (picked.year == today.year && picked.month == today.month)
+          ? today
+          : DateTime(picked.year, picked.month, 1);
+    });
+    _reloadGrid();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_dayStripController.hasClients) _dayStripController.jumpTo(0);
+      _scrollToSelectedDay();
+    });
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+  void _jumpToToday() {
+    final now = DateTime.now();
+    setState(() {
+      _selectedDate = now;
+      _visibleMonth = DateTime(now.year, now.month);
+    });
+    _reloadGrid();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDay());
+  }
+
+  Future<void> _openFilterSheet() async {
+    final picked = await showModalBottomSheet<String?>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final tokens = sheetContext.tokens;
+        Widget tile(String label, String? value) {
+          final selected = value == _sportFilter;
+          return ListTile(
+            dense: true,
+            title: Text(label),
+            trailing: selected ? Icon(Icons.check, color: tokens.primary) : null,
+            onTap: () => Navigator.pop(sheetContext, value ?? '__all__'),
+          );
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xs),
+                child: Text('Filter by sport',
+                    style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+              tile('All sports', null),
+              for (final fs in _facilitySports)
+                tile(
+                  fs.customSportName ?? _sports.where((s) => s.id == fs.sportId).firstOrNull?.name ?? 'Sport',
+                  fs.id,
+                ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        );
+      },
+    );
+    if (picked == null) return; // dismissed
+    setState(() => _sportFilter = picked == '__all__' ? null : picked);
   }
 
   Future<void> _openMembershipSlot(MembershipSessionSlot slot) async {
@@ -234,206 +328,988 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Bookings')),
+    return TabPopScope(
+      tab: AppTab.courts,
+      child: Scaffold(
+      appBar: AppBar(
+        titleSpacing: AppSpacing.lg,
+        title: const Text('Courts',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+        actions: [
+          if (!_isToday)
+            TextButton(
+              onPressed: _jumpToToday,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              ),
+              child: const Text('Today'),
+            ),
+          IconButton(
+            icon: Badge(
+              isLabelVisible: _sportFilter != null,
+              smallSize: 7,
+              child: const Icon(Icons.tune_rounded),
+            ),
+            tooltip: 'Filter',
+            onPressed: _openFilterSheet,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+      ),
       body: SafeArea(
         child: _isLoading
             ? const LoadingView(message: 'Loading bookings…')
             : _loadError != null
-            ? ErrorView(message: _loadError!, onRetry: _load)
-            : RefreshIndicator(
-                onRefresh: _reloadGrid,
-                child: ResponsivePage(
-                  child: Column(
+                ? ErrorView(message: _loadError!, onRetry: _load)
+                : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildDateNav(),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, 0),
+                        child: _buildWeekStrip(),
+                      ),
                       const SizedBox(height: AppSpacing.md),
-                      if (_isToday) _buildTodaysOperations(),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildSportFilter(),
-                      const SizedBox(height: AppSpacing.lg),
-                      _buildAvailability(),
+                      Expanded(child: _buildSchedule()),
                     ],
                   ),
-                ),
-              ),
       ),
-      floatingActionButton: _facilityId == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () async {
-                final booked = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(builder: (_) => const GuestBookingScreen()),
-                );
-                if (booked == true) _reloadGrid();
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create Booking'),
-            ),
-      bottomNavigationBar: const AppBottomNav(current: AppTab.bookings),
-    );
-  }
-
-  Widget _buildDateNav() {
-    return Row(
-      children: [
-        IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeDate(-1)),
-        Expanded(
-          child: Center(
-            child: Text(
-              _isToday ? 'Today · ${Formatters.dateShort(_selectedDate)}' : Formatters.dateShort(_selectedDate),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          ),
-        ),
-        IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeDate(1)),
-        if (!_isToday)
-          TextButton(
-            onPressed: () {
-              setState(() => _selectedDate = DateTime.now());
-              _reloadGrid();
-            },
-            child: const Text('Today'),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildTodaysOperations() {
-    final ops = computeTodaysOperations(_bookings, DateTime.now());
-    return Row(
-      children: [
-        Expanded(child: _OpsStat(label: "Today's Bookings", value: ops.totalBookings)),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _OpsStat(label: 'Upcoming', value: ops.upcoming)),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _OpsStat(label: 'Occupied', value: ops.currentlyOccupied)),
-      ],
-    );
-  }
-
-  Widget _buildSportFilter() {
-    return SizedBox(
-      height: AppSpacing.minTouchTarget,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: ChoiceChip(
-              label: const Text('All Sports'),
-              selected: _sportFilter == null,
-              onSelected: (_) => setState(() => _sportFilter = null),
-            ),
-          ),
-          ..._facilitySports.map((fs) {
-            final sport = _sports.where((s) => s.id == fs.sportId).firstOrNull;
-            return Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: ChoiceChip(
-                label: Text(fs.customSportName ?? sport?.name ?? 'Sport'),
-                selected: _sportFilter == fs.id,
-                onSelected: (_) => setState(() => _sportFilter = fs.id),
-              ),
-            );
-          }),
-        ],
+      bottomNavigationBar: const AppBottomNav(current: AppTab.courts),
       ),
     );
   }
 
-  Widget _buildAvailability() {
-    if (_gridLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (_gridError != null) {
-      return Text(_gridError!, style: const TextStyle(color: AppColors.destructive));
-    }
-    if (_visibleAreas.isEmpty) {
-      return const Text('No courts configured for this sport.');
-    }
+  static const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    final grouped = _facilitySports
-        .where((fs) => _sportFilter == null || fs.id == _sportFilter)
-        .map((fs) => (facilitySport: fs, courts: _areas.where((a) => a.facilitySportId == fs.id).toList()))
-        .where((g) => g.courts.isNotEmpty)
-        .toList();
-
+  Widget _buildWeekStrip() {
+    final days = _monthDays;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: grouped.map((group) {
-        final sport = _sports.where((s) => s.id == group.facilitySport.sportId).firstOrNull;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                group.facilitySport.customSportName ?? sport?.name ?? 'Sport',
-                style: Theme.of(context).textTheme.titleMedium,
+      children: [
+        Row(
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              onTap: _pickMonth,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${_monthNames[_visibleMonth.month - 1]} ${_visibleMonth.year}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 18, color: AppColors.muted),
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              ...group.courts.map((area) {
-                final slots = _slotsFor(area);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AppCard(
+            ),
+            const Spacer(),
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: _ScheduleLegend(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ScrollConfiguration(
+          behavior:
+              ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SizedBox(
+            height: 68,
+            child: ListView.separated(
+              controller: _dayStripController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: days.length,
+              separatorBuilder: (_, index) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (context, i) {
+                final day = days[i];
+                final selected = _isSameDay(day, _selectedDate);
+                final isToday = _isSameDay(day, DateTime.now());
+                final isWeekend = day.weekday == DateTime.saturday ||
+                    day.weekday == DateTime.sunday;
+                final weekdayColor = selected
+                    ? AppColors.onPrimary
+                    : (isWeekend ? AppColors.warning : AppColors.muted);
+                final numberColor = selected
+                    ? AppColors.onPrimary
+                    : (isWeekend ? AppColors.warning : AppColors.foreground);
+                return GestureDetector(
+                  onTap: () => _selectDay(day),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOut,
+                    width: 54,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary : AppColors.card,
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.primary
+                            : (isToday
+                                ? AppColors.primary.withValues(alpha: 0.5)
+                                : (isWeekend
+                                    ? AppColors.warning.withValues(alpha: 0.4)
+                                    : AppColors.border)),
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.4),
+                                blurRadius: 16,
+                                spreadRadius: -2,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
+                          : null,
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(area.name, style: Theme.of(context).textTheme.titleSmall),
-                        const SizedBox(height: AppSpacing.sm),
-                        if (slots.isEmpty)
-                          Text('Closed on this date.', style: AppTypography.secondary(context))
-                        else
-                          Wrap(
-                            spacing: AppSpacing.sm,
-                            runSpacing: AppSpacing.sm,
-                            children: slots.map((slot) {
-                              final membershipSlot = _findMembershipSlot(area.id, slot);
-                              return BookingSlotChip(
-                                label: TimeOfDay.fromDateTime(slot.startTime).format(context),
-                                available: slot.available,
-                                selected: false,
-                                locked: membershipSlot != null,
-                                onTap: () => _onSlotTap(area, slot),
-                              );
-                            }).toList(),
+                        Text(
+                          _weekdayLabels[day.weekday - 1],
+                          style: TextStyle(fontSize: 11, color: weekdayColor),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          day.day.toString(),
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            color: numberColor,
                           ),
+                        ),
                       ],
                     ),
                   ),
                 );
-              }),
-            ],
+              },
+            ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// A base "₹X/hr" label for a court, from the pricing plan — a
+  /// court-specific rule wins over a sport-wide one.
+  String? _priceLabel(PlayingArea area) {
+    final plan = _pricingPlan;
+    if (plan == null) return null;
+    PricingRule? pick(bool Function(PricingRule) test) {
+      final matches = plan.rules.where(test).toList();
+      if (matches.isEmpty) return null;
+      matches.sort((a, b) =>
+          (a.coversFullDay ? 0 : 1).compareTo(b.coversFullDay ? 0 : 1));
+      return matches.first;
+    }
+
+    final rule = pick((r) => r.playingAreaId == area.id) ??
+        pick((r) =>
+            r.playingAreaId == null &&
+            r.facilitySportId == area.facilitySportId);
+    if (rule == null) return null;
+    return '₹${rule.amountRupees}/hr';
+  }
+
+  Widget _buildSchedule() {
+    if (_gridLoading && !_hasLoadedGridOnce) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_gridError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Text(_gridError!,
+            style: const TextStyle(color: AppColors.destructive)),
+      );
+    }
+    final areas = _visibleAreas;
+    if (areas.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.lg),
+        child: Text('No courts configured for this sport.'),
+      );
+    }
+
+    // Group courts by sport, in the facility's own sport order, then by
+    // court name within each sport.
+    final sportOrder = {
+      for (var i = 0; i < _facilitySports.length; i++) _facilitySports[i].id: i,
+    };
+    final ordered = [...areas]..sort((a, b) {
+        final sa = sportOrder[a.facilitySportId] ?? 999;
+        final sb = sportOrder[b.facilitySportId] ?? 999;
+        if (sa != sb) return sa.compareTo(sb);
+        return a.name.compareTo(b.name);
+      });
+
+    final rows = ordered.map((area) {
+      final fs =
+          _facilitySports.where((f) => f.id == area.facilitySportId).firstOrNull;
+      final sport = _sports.where((s) => s.id == fs?.sportId).firstOrNull;
+      return CourtScheduleRow(
+        area: area,
+        sportName: fs?.customSportName ?? sport?.name ?? 'Sport',
+        priceLabel: _priceLabel(area),
+        day: _dayByCourt[area.id],
+        bookings: (_bookingsByCourt[area.id] ?? const <Booking>[])
+            .where((b) =>
+                b.status == BookingStatus.pending ||
+                b.status == BookingStatus.confirmed)
+            .toList(),
+        membershipSlots:
+            _membershipSlots.where((m) => m.courtId == area.id).toList(),
+        availableSlots: _slotsFor(area),
+      );
+    }).toList();
+
+    return RefreshIndicator(
+      onRefresh: _reloadGrid,
+      child: CourtsScheduleView(
+        date: _selectedDate,
+        isToday: _isToday,
+        rows: rows,
+        loading: _gridLoading,
+        onEmptyTap: (area, slot) => _openQuickBooking(area, slot),
+        onBookingTap: (booking, area) => _openBookingDetails(booking, area),
+        onMembershipTap: _openMembershipSlot,
+      ),
     );
   }
 }
 
-class _OpsStat extends StatelessWidget {
-  const _OpsStat({required this.label, required this.value});
+/// One court's data for [CourtsScheduleView].
+class CourtScheduleRow {
+  CourtScheduleRow({
+    required this.area,
+    required this.sportName,
+    required this.priceLabel,
+    required this.day,
+    required this.bookings,
+    required this.membershipSlots,
+    required this.availableSlots,
+  });
 
-  final String label;
-  final int value;
+  final PlayingArea area;
+  final String sportName;
+  final String? priceLabel;
+  final OperatingDay? day;
+  final List<Booking> bookings;
+  final List<MembershipSessionSlot> membershipSlots;
+  final List<BookingTimeSlot> availableSlots;
+}
+
+const double _pxPerMin = 2.0;
+
+/// 12-hour clock label — "11 AM", "12 PM", "1:30 PM" — since not everyone
+/// reads 24-hour time comfortably.
+String _time12(DateTime t, {bool alwaysMinutes = false}) {
+  final period = t.hour < 12 ? 'AM' : 'PM';
+  final h12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  if (t.minute == 0 && !alwaysMinutes) return '$h12 $period';
+  return '$h12:${t.minute.toString().padLeft(2, '0')} $period';
+}
+
+/// The redesigned Courts schedule: one shared, horizontally-scrolling time
+/// ruler with every court's lane locked to it, so dragging any lane scrolls
+/// them all together. Bookings render as gradient blocks sized to their real
+/// duration, with a live "now" line and a "+" in each free gap.
+class CourtsScheduleView extends StatefulWidget {
+  const CourtsScheduleView({
+    super.key,
+    required this.date,
+    required this.isToday,
+    required this.rows,
+    required this.loading,
+    required this.onEmptyTap,
+    required this.onBookingTap,
+    required this.onMembershipTap,
+  });
+
+  final DateTime date;
+  final bool isToday;
+  final List<CourtScheduleRow> rows;
+  final bool loading;
+  final void Function(PlayingArea area, BookingTimeSlot slot) onEmptyTap;
+  final void Function(Booking booking, PlayingArea area) onBookingTap;
+  final ValueChanged<MembershipSessionSlot> onMembershipTap;
+
+  @override
+  State<CourtsScheduleView> createState() => _CourtsScheduleViewState();
+}
+
+class _CourtsScheduleViewState extends State<CourtsScheduleView> {
+  late final LinkedScrollControllerGroup _group;
+  late final ScrollController _ruler;
+  final Map<String, ScrollController> _lanes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _group = LinkedScrollControllerGroup();
+    _ruler = _group.addAndGet();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToRelevant());
+  }
+
+  @override
+  void didUpdateWidget(covariant CourtsScheduleView old) {
+    super.didUpdateWidget(old);
+    // Drop controllers for courts that are no longer shown (e.g. after a
+    // sport filter change) — a linked controller cannot be re-bound to a
+    // different scroll view, so a stale one left in the map crashes on the
+    // next rebuild.
+    final liveIds = widget.rows.map((r) => r.area.id).toSet();
+    _lanes.removeWhere((id, ctrl) {
+      if (liveIds.contains(id)) return false;
+      ctrl.dispose();
+      return true;
+    });
+    if (!old.date.isAtSameMomentAs(widget.date)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToRelevant());
+    }
+  }
+
+  @override
+  void dispose() {
+    _ruler.dispose();
+    for (final c in _lanes.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  ScrollController _laneFor(String id) =>
+      _lanes.putIfAbsent(id, () => _group.addAndGet());
+
+  DateTime get _dayStart =>
+      DateTime(widget.date.year, widget.date.month, widget.date.day);
+
+  DateTime _hm(String hhmm) {
+    final p = hhmm.split(':');
+    return DateTime(widget.date.year, widget.date.month, widget.date.day,
+        int.parse(p[0]), int.parse(p[1]));
+  }
+
+  (DateTime, DateTime) get _window {
+    DateTime? start;
+    DateTime? end;
+    for (final r in widget.rows) {
+      final d = r.day;
+      if (d == null || d.isClosed || d.slots.isEmpty) continue;
+      final s = _hm(d.slots.first.startTime);
+      final e = _hm(d.slots.last.endTime);
+      if (start == null || s.isBefore(start)) start = s;
+      if (end == null || e.isAfter(end)) end = e;
+    }
+    var s = start ?? _dayStart.add(const Duration(hours: 6));
+    var e = end ?? _dayStart.add(const Duration(hours: 23));
+    s = s.subtract(const Duration(minutes: 30));
+    e = e.add(const Duration(minutes: 30));
+    if (s.isBefore(_dayStart)) s = _dayStart;
+    if (!e.isAfter(s.add(const Duration(hours: 2)))) {
+      e = s.add(const Duration(hours: 6));
+    }
+    return (s, e);
+  }
+
+  double _x(DateTime from, DateTime t) =>
+      t.difference(from).inMinutes * _pxPerMin;
+
+  void _scrollToRelevant() {
+    if (!_ruler.hasClients) return;
+    final (winStart, winEnd) = _window;
+    final now = DateTime.now();
+    final target = widget.isToday && now.isAfter(winStart) && now.isBefore(winEnd)
+        ? now
+        : winStart;
+    final offset = (_x(winStart, target) - 60)
+        .clamp(0.0, _ruler.position.maxScrollExtent);
+    _ruler.animateTo(offset,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+
+  static const _periodBands =
+      <({String label, int startHour, int endHour, Color color})>[
+    (label: 'TWILIGHT', startHour: 0, endHour: 6, color: AppColors.violet),
+    (label: 'MORNING', startHour: 6, endHour: 12, color: AppColors.warning),
+    (label: 'NOON', startHour: 12, endHour: 16, color: AppColors.primary),
+    (label: 'EVENING', startHour: 16, endHour: 24, color: AppColors.electricBlue),
+  ];
+
+  (double, double) _bandRect(
+    ({String label, int startHour, int endHour, Color color}) p,
+    DateTime winStart,
+    DateTime winEnd,
+  ) {
+    final bandStart = _dayStart.add(Duration(hours: p.startHour));
+    final bandEnd = _dayStart.add(Duration(hours: p.endHour));
+    final s = bandStart.isBefore(winStart) ? winStart : bandStart;
+    final e = bandEnd.isAfter(winEnd) ? winEnd : bandEnd;
+    if (!e.isAfter(s)) return (0, 0);
+    return (_x(winStart, s), _x(winStart, e) - _x(winStart, s));
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    final tokens = context.tokens;
+    final (winStart, winEnd) = _window;
+    final totalWidth = _x(winStart, winEnd);
+    final now = DateTime.now();
+    final showNow =
+        widget.isToday && now.isAfter(winStart) && now.isBefore(winEnd);
+    final nowX = showNow ? _x(winStart, now) : 0.0;
+
+    final ticks = <DateTime>[];
+    var t = DateTime(
+        winStart.year, winStart.month, winStart.day, winStart.hour);
+    if (t.isBefore(winStart)) t = t.add(const Duration(hours: 1));
+    while (t.isBefore(winEnd)) {
+      ticks.add(t);
+      t = t.add(const Duration(hours: 1));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.loading)
+          const LinearProgressIndicator(
+              minHeight: 2,
+              color: AppColors.primary,
+              backgroundColor: Colors.transparent),
+        SizedBox(
+          height: 42,
+          child: SingleChildScrollView(
+            controller: _ruler,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: SizedBox(
+              width: totalWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── period bands ──────────────────────────────
+                  SizedBox(
+                    height: 18,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (final p in _periodBands)
+                          if (_bandRect(p, winStart, winEnd) case (
+                            final l,
+                            final w
+                          )
+                              when w > 2)
+                            Positioned(
+                              left: l,
+                              width: w,
+                              top: 0,
+                              bottom: 0,
+                              child: Container(
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.symmetric(horizontal: 1),
+                                decoration: BoxDecoration(
+                                  color: p.color.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  p.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: p.color,
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  // ── hour labels + now pill ────────────────────
+                  SizedBox(
+                    height: 16,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (final tk in ticks)
+                          Positioned(
+                            left: _x(winStart, tk),
+                            child: Text(
+                              _time12(tk),
+                              style: TextStyle(
+                                  fontSize: 10, color: tokens.textSecondary),
+                            ),
+                          ),
+                        if (showNow)
+                          Positioned(
+                            left: (nowX - 26).clamp(0.0, totalWidth),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                  color: tokens.primary,
+                                  borderRadius: BorderRadius.circular(999)),
+                              child: Text(
+                                _time12(now, alwaysMinutes: true),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: tokens.onPrimary),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Expanded(
+          // A plain Column (not ListView.builder) so each lane's scroll view
+          // is built once and keeps its linked controller for its lifetime —
+          // recycling would rebind controllers and crash the linked group.
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: 4, bottom: 110),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < widget.rows.length; i++) ...[
+                  if (i == 0 || widget.rows[i].sportName != widget.rows[i - 1].sportName)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 2),
+                      child: Text(
+                        widget.rows[i].sportName.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: tokens.textSecondary,
+                        ),
+                      ),
+                    ),
+                  _CourtLane(
+                    key: ValueKey(widget.rows[i].area.id),
+                    row: widget.rows[i],
+                    controller: _laneFor(widget.rows[i].area.id),
+                    winStart: winStart,
+                    winEnd: winEnd,
+                    totalWidth: totalWidth,
+                    nowX: nowX,
+                    showNow: showNow,
+                    isToday: widget.isToday,
+                    onEmptyTap: (slot) =>
+                        widget.onEmptyTap(widget.rows[i].area, slot),
+                    onBookingTap: (b) =>
+                        widget.onBookingTap(b, widget.rows[i].area),
+                    onMembershipTap: widget.onMembershipTap,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _BlockKind { booked, unpaid, membership }
+
+LinearGradient _blockGradient(_BlockKind k, AppColorTokens t) {
+  switch (k) {
+    case _BlockKind.booked:
+      return LinearGradient(
+        colors: [t.primary, const Color(0xFF00A76A)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    case _BlockKind.unpaid:
+      return const LinearGradient(
+        colors: [Color(0xFFFFB020), Color(0xFF7A4A12)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+    case _BlockKind.membership:
+      return LinearGradient(
+        colors: [t.violet, const Color(0xFF4C1D95)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+  }
+}
+
+class _CourtLane extends StatelessWidget {
+  const _CourtLane({
+    super.key,
+    required this.row,
+    required this.controller,
+    required this.winStart,
+    required this.winEnd,
+    required this.totalWidth,
+    required this.nowX,
+    required this.showNow,
+    required this.isToday,
+    required this.onEmptyTap,
+    required this.onBookingTap,
+    required this.onMembershipTap,
+  });
+
+  final CourtScheduleRow row;
+  final ScrollController controller;
+  final DateTime winStart;
+  final DateTime winEnd;
+  final double totalWidth;
+  final double nowX;
+  final bool showNow;
+  final bool isToday;
+  final ValueChanged<BookingTimeSlot> onEmptyTap;
+  final ValueChanged<Booking> onBookingTap;
+  final ValueChanged<MembershipSessionSlot> onMembershipTap;
+
+  double _x(DateTime t) => t.difference(winStart).inMinutes * _pxPerMin;
+
+  DateTime _hm(String hhmm) {
+    final p = hhmm.split(':');
+    return DateTime(winStart.year, winStart.month, winStart.day,
+        int.parse(p[0]), int.parse(p[1]));
+  }
+
+  ({DateTime? open, DateTime? close}) get _openRange {
+    final d = row.day;
+    if (d == null || d.isClosed || d.slots.isEmpty) {
+      return (open: null, close: null);
+    }
+    return (open: _hm(d.slots.first.startTime), close: _hm(d.slots.last.endTime));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final range = _openRange;
+
+    BookingTimeSlot? slotAt(DateTime t) => row.availableSlots
+        .where((s) =>
+            !t.isBefore(s.startTime) && t.isBefore(s.endTime) && s.available)
+        .firstOrNull;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: AppTypography.caption(context)),
-          const SizedBox(height: 2),
-          Text('$value', style: Theme.of(context).textTheme.titleLarge),
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 14,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: tokens.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text(row.area.name,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: tokens.textPrimary)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(row.sportName,
+                    style: TextStyle(
+                        fontSize: 12, color: tokens.textSecondary)),
+              ),
+              if ((row.priceLabel ?? '').isNotEmpty)
+                Text(row.priceLabel!,
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ScrollConfiguration(
+            behavior:
+                ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: SingleChildScrollView(
+              controller: controller,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: SizedBox(
+                width: totalWidth,
+                height: 68,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: (d) {
+                          final minutes = (d.localPosition.dx / _pxPerMin).round();
+                          final tapped =
+                              winStart.add(Duration(minutes: minutes));
+                          if (isToday && tapped.isBefore(DateTime.now())) return;
+                          final s = slotAt(tapped);
+                          if (s != null) onEmptyTap(s);
+                        },
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: tokens.surface1,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(color: tokens.borderColor),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (range.open != null && range.open!.isAfter(winStart))
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: _x(range.open!),
+                        child: _closed(),
+                      ),
+                    if (range.close != null && range.close!.isBefore(winEnd))
+                      Positioned(
+                        left: _x(range.close!),
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: _closed(),
+                      ),
+                    if (range.open == null) Positioned.fill(child: _closed()),
+                    for (final b in row.bookings)
+                      _block(
+                        context,
+                        start: b.startTime,
+                        end: b.endTime,
+                        kind: b.paymentStatus == PaymentStatus.pending
+                            ? _BlockKind.unpaid
+                            : _BlockKind.booked,
+                        title: b.customerType == CustomerType.guest
+                            ? (b.guestName ?? 'Guest')
+                            : 'Member',
+                        onTap: () => onBookingTap(b),
+                      ),
+                    for (final m in row.membershipSlots)
+                      _block(
+                        context,
+                        start: _hm(m.startTime),
+                        end: _hm(m.endTime),
+                        kind: _BlockKind.membership,
+                        title: m.batchName,
+                        onTap: () => onMembershipTap(m),
+                      ),
+                    if (showNow)
+                      Positioned(
+                        left: nowX,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(width: 2, color: tokens.primary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _closed() => Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      );
+
+  Widget _block(
+    BuildContext context, {
+    required DateTime start,
+    required DateTime end,
+    required _BlockKind kind,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final tokens = context.tokens;
+    final left = _x(start).clamp(0.0, totalWidth);
+    final right = _x(end).clamp(0.0, totalWidth);
+    final w = (right - left).clamp(8.0, totalWidth);
+    return Positioned(
+      left: left + 1.5,
+      top: 5,
+      bottom: 5,
+      width: (w - 3).clamp(6.0, totalWidth),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: _blockGradient(kind, tokens),
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 7,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white)),
+              Text(
+                _time12(start, alwaysMinutes: true),
+                style: TextStyle(
+                    fontSize: 9, color: Colors.white.withValues(alpha: 0.85)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The colour key shown top-right, above the schedule.
+class _ScheduleLegend extends StatelessWidget {
+  const _ScheduleLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget dot(Color c, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 9,
+              height: 9,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [c, c.withValues(alpha: 0.55)]),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(label,
+                style:
+                    const TextStyle(fontSize: 10.5, color: AppColors.muted)),
+          ],
+        );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        dot(AppColors.primary, 'Paid'),
+        const SizedBox(width: 10),
+        dot(const Color(0xFFFFB020), 'Unpaid'),
+        const SizedBox(width: 10),
+        dot(AppColors.violet, 'Session'),
+      ],
+    );
+  }
+}
+
+/// Lets an owner jump the Bookings day strip to any month — a year stepper
+/// above a 12-month grid, rather than paging one week at a time.
+class _MonthPickerSheet extends StatefulWidget {
+  const _MonthPickerSheet({required this.initial});
+
+  final DateTime initial;
+
+  @override
+  State<_MonthPickerSheet> createState() => _MonthPickerSheetState();
+}
+
+class _MonthPickerSheetState extends State<_MonthPickerSheet> {
+  late int _year = widget.initial.year;
+
+  static const _monthShort = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', //
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _year -= 1)),
+                Text('$_year', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => setState(() => _year += 1)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: AppSpacing.sm,
+                crossAxisSpacing: AppSpacing.sm,
+                childAspectRatio: 1.8,
+              ),
+              itemCount: 12,
+              itemBuilder: (context, i) {
+                final month = i + 1;
+                final selected = month == widget.initial.month && _year == widget.initial.year;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  onTap: () => Navigator.of(context).pop(DateTime(_year, month)),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primary.withValues(alpha: 0.16) : AppColors.card,
+                      border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Text(
+                      _monthShort[i],
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: selected ? AppColors.primary : AppColors.foreground,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -886,9 +1762,11 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   late Booking _booking = widget.booking;
   bool _rescheduling = false;
   DateTime? _newDate;
-  List<BookingTimeSlot> _slots = [];
+  TimeOfDay? _newStartTime;
+  TimeOfDay? _newEndTime;
   bool _slotsLoading = false;
-  BookingTimeSlot? _selectedSlot;
+  OperatingDay? _rescheduleDay;
+  List<Booking> _rescheduleExisting = [];
   bool _isWorking = false;
   String? _error;
   bool _isPaying = false;
@@ -964,7 +1842,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   Future<void> _pickRescheduleDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _newDate ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -972,7 +1850,6 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
     setState(() {
       _newDate = picked;
       _slotsLoading = true;
-      _selectedSlot = null;
     });
     final dow = picked.weekday % 7;
     final hoursRepo = ref.read(operatingHoursRepositoryProvider);
@@ -983,19 +1860,70 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
     final existing = await ref.read(bookingRepositoryProvider).getBookingsForCourtOnDate(widget.area.id, picked);
     if (!mounted) return;
     setState(() {
-      _slots = day != null
-          ? computeAvailableSlots(
-              picked,
-              day,
-              existing.where((b) => b.id != _booking.id).map((b) => (startTime: b.startTime, endTime: b.endTime)).toList(),
-            )
-          : [];
+      _rescheduleDay = day;
+      _rescheduleExisting = existing.where((b) => b.id != _booking.id).toList();
       _slotsLoading = false;
     });
   }
 
+  Future<void> _pickRescheduleTime(bool isStart) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: (isStart ? _newStartTime : _newEndTime) ?? TimeOfDay.fromDateTime(_booking.startTime),
+      initialEntryMode: TimePickerEntryMode.dial,
+      builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false), child: child!),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _newStartTime = picked;
+      } else {
+        _newEndTime = picked;
+      }
+    });
+  }
+
+  double get _rescheduleHours {
+    if (_newStartTime == null || _newEndTime == null) return 0;
+    final mins = (_newEndTime!.hour * 60 + _newEndTime!.minute) - (_newStartTime!.hour * 60 + _newStartTime!.minute);
+    return mins <= 0 ? 0 : mins / 60.0;
+  }
+
+  DateTime? _combineReschedule(TimeOfDay? t) {
+    if (_newDate == null || t == null) return null;
+    return DateTime(_newDate!.year, _newDate!.month, _newDate!.day, t.hour, t.minute);
+  }
+
+  _CourtAvailability get _rescheduleAvailability {
+    if (_newDate == null || _newStartTime == null || _newEndTime == null || _rescheduleHours <= 0) {
+      return _CourtAvailability.pickTime;
+    }
+    if (_slotsLoading) return _CourtAvailability.checking;
+    final day = _rescheduleDay;
+    if (day == null || day.isClosed) return _CourtAvailability.outsideHours;
+    final rangeStart = _combineReschedule(_newStartTime)!;
+    final rangeEnd = _combineReschedule(_newEndTime)!;
+    if (!day.is24Hours) {
+      final withinAnySlot = day.slots.any((s) {
+        final sp = s.startTime.split(':');
+        final open = DateTime(_newDate!.year, _newDate!.month, _newDate!.day, int.parse(sp[0]), int.parse(sp[1]));
+        final ep = s.endTime.split(':');
+        var close = DateTime(_newDate!.year, _newDate!.month, _newDate!.day, int.parse(ep[0]), int.parse(ep[1]));
+        if (s.crossesMidnight) close = close.add(const Duration(days: 1));
+        return !rangeStart.isBefore(open) && !rangeEnd.isAfter(close);
+      });
+      if (!withinAnySlot) return _CourtAvailability.outsideHours;
+    }
+    for (final b in _rescheduleExisting) {
+      if (rangeStart.isBefore(b.endTime) && b.startTime.isBefore(rangeEnd)) return _CourtAvailability.conflict;
+    }
+    return _CourtAvailability.available;
+  }
+
   Future<void> _confirmReschedule() async {
-    if (_selectedSlot == null) return;
+    final start = _combineReschedule(_newStartTime);
+    final end = _combineReschedule(_newEndTime);
+    if (start == null || end == null || _rescheduleAvailability != _CourtAvailability.available) return;
     setState(() {
       _isWorking = true;
       _error = null;
@@ -1005,8 +1933,8 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
         RescheduleBookingInput(
           bookingId: _booking.id,
           courtId: widget.area.id,
-          startTime: _selectedSlot!.startTime,
-          endTime: _selectedSlot!.endTime,
+          startTime: start,
+          endTime: end,
         ),
       );
       if (mounted) Navigator.of(context).pop(true);
@@ -1080,29 +2008,58 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
           children: [
             Text('Booking Details', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
-            if (!_rescheduling) ...[
-              Text('${widget.sportName} · ${widget.area.name}', style: Theme.of(context).textTheme.titleSmall),
-              Text(
-                '${Formatters.dateShort(b.startTime)} · '
-                '${TimeOfDay.fromDateTime(b.startTime).format(context)} – ${TimeOfDay.fromDateTime(b.endTime).format(context)}',
-                style: const TextStyle(color: AppColors.muted),
+            // Who + when — visible in both modes, so the person you're
+            // rescheduling never scrolls out of view while you pick a new time.
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.mutedBackground,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.border),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _DetailField(
-                      label: 'Customer',
-                      value: b.customerType == CustomerType.guest ? '${b.guestName} (Guest)' : 'Member',
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        b.customerType == CustomerType.guest ? Icons.person_outline_rounded : Icons.badge_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          b.customerType == CustomerType.guest ? (b.guestName ?? 'Guest') : 'Member',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: _DetailField(
-                      label: 'Amount',
-                      value: b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '—',
-                    ),
+                  const SizedBox(height: 4),
+                  Text('${widget.sportName} · ${widget.area.name}', style: TextStyle(fontSize: 12.5, color: AppColors.muted)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule_rounded, size: 14, color: AppColors.muted),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${Formatters.dateShort(b.startTime)} · '
+                        '${TimeOfDay.fromDateTime(b.startTime).format(context)} – ${TimeOfDay.fromDateTime(b.endTime).format(context)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            if (!_rescheduling) ...[
+              _DetailField(
+                label: 'Amount',
+                value: b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '—',
               ),
               Row(
                 children: [
@@ -1175,25 +2132,72 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                 ),
               ],
             ] else ...[
-              OutlinedButton(onPressed: _pickRescheduleDate, child: Text(_newDate == null ? 'Pick a new date' : Formatters.dateShort(_newDate!))),
-              const SizedBox(height: AppSpacing.sm),
-              if (_slotsLoading)
-                const Center(child: CircularProgressIndicator())
-              else if (_newDate != null && _slots.isEmpty)
-                const Text('No slots available.')
-              else
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: _slots.map((s) {
-                    return BookingSlotChip(
-                      label: TimeOfDay.fromDateTime(s.startTime).format(context),
-                      available: s.available,
-                      selected: _selectedSlot?.startTime == s.startTime,
-                      onTap: () => setState(() => _selectedSlot = s),
-                    );
-                  }).toList(),
+              Text('New date', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
+              const SizedBox(height: 6),
+              InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                onTap: _pickRescheduleDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.mutedBackground,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: _newDate != null ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.muted),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          _newDate == null ? 'Select a date' : Formatters.dateShort(_newDate!),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: _newDate == null ? AppColors.muted : AppColors.foreground),
+                        ),
+                      ),
+                      Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.muted),
+                    ],
+                  ),
                 ),
+              ),
+              if (_newDate != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('New time', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(child: _rescheduleTimeField('Start Time', _newStartTime, () => _pickRescheduleTime(true))),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: _rescheduleTimeField('End Time', _newEndTime, () => _pickRescheduleTime(false))),
+                  ],
+                ),
+                if (_rescheduleHours > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Builder(builder: (context) {
+                    final status = _rescheduleAvailability;
+                    final (icon, color, label) = switch (status) {
+                      _CourtAvailability.available => (Icons.check_circle, AppColors.success, 'Available — ${_rescheduleHours.toStringAsFixed(_rescheduleHours == _rescheduleHours.roundToDouble() ? 0 : 1)} hr'),
+                      _CourtAvailability.conflict => (Icons.error_outline, AppColors.destructive, 'This court is already booked then'),
+                      _CourtAvailability.outsideHours => (Icons.nightlight_round, AppColors.warning, 'Outside operating hours'),
+                      _CourtAvailability.checking => (Icons.hourglass_empty, AppColors.muted, 'Checking…'),
+                      _CourtAvailability.pickTime => (Icons.help_outline, AppColors.muted, '—'),
+                    };
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
+                      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(AppRadius.sm)),
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 15, color: color),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: color))),
+                        ],
+                      ),
+                    );
+                  }),
+                ] else if (_newStartTime != null && _newEndTime != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('End time must be after start time.', style: TextStyle(fontSize: 12, color: AppColors.destructive)),
+                ],
+              ],
               if (_error != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(_error!, style: const TextStyle(color: AppColors.destructive)),
@@ -1213,7 +2217,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                       label: 'Confirm New Time',
                       loadingLabel: 'Saving…',
                       isLoading: _isWorking,
-                      onPressed: _selectedSlot == null ? null : _confirmReschedule,
+                      onPressed: _rescheduleAvailability == _CourtAvailability.available ? _confirmReschedule : null,
                     ),
                   ),
                 ],
@@ -1222,6 +2226,38 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
           ],
         ),
       ),
+      ),
+    );
+  }
+
+  Widget _rescheduleTimeField(String label, TimeOfDay? value, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.mutedBackground,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: value != null ? AppColors.primary.withValues(alpha: 0.5) : AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule_rounded, size: 13, color: AppColors.muted),
+                const SizedBox(width: 4),
+                Text(label, style: TextStyle(fontSize: 10.5, color: AppColors.muted)),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              value == null ? 'Select' : value.format(context),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: value == null ? AppColors.muted : AppColors.foreground),
+            ),
+          ],
+        ),
       ),
     );
   }

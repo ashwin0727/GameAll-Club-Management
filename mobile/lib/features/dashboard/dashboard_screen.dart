@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
@@ -12,14 +13,23 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/dashboard.dart';
+import '../../data/models/finance.dart'
+    show
+        LedgerEntry,
+        LedgerPage,
+        ListLedgerInput,
+        FinanceDateRange,
+        FinanceDateRangePreset,
+        PaymentObligation,
+        PendingPaymentsPage,
+        ListPendingPaymentsInput;
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/app_metric_card.dart';
-import '../../shared/widgets/metric_carousel.dart';
-import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/app_brand_mark.dart';
+import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 
 const Map<DateRangePreset, String> _presetLabels = {
@@ -45,6 +55,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isLoading = true;
   String? _loadError;
   DashboardSummary? _summary;
+  List<LedgerEntry> _recent = const [];
+  List<PaymentObligation> _needs = const [];
+  int _needsCount = 0;
 
   @override
   void initState() {
@@ -81,6 +94,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _summary = summary;
         _isLoading = false;
       });
+      // Best-effort extras — the dashboard renders fine without them.
+      try {
+        final fin = ref.read(financeRepositoryProvider);
+        final extras = await Future.wait([
+          fin.listLedger(ListLedgerInput(
+            facilityId: _facilityId!,
+            dateRange: const FinanceDateRange(
+                preset: FinanceDateRangePreset.thisMonth),
+            limit: 5,
+          )),
+          fin.listPendingPayments(ListPendingPaymentsInput(
+            facilityId: _facilityId!,
+            limit: 3,
+          )),
+        ]);
+        if (!mounted) return;
+        setState(() {
+          _recent = (extras[0] as LedgerPage).entries;
+          final pp = extras[1] as PendingPaymentsPage;
+          _needs = pp.obligations;
+          _needsCount = pp.totalCount;
+        });
+      } catch (_) {}
     } on AppException catch (e) {
       setState(() {
         _isLoading = false;
@@ -96,44 +132,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return 'Good Evening';
   }
 
+  static String _dashDate(DateTime d) {
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return '${wd[d.weekday - 1]}, ${d.day} ${_monthNamesShort[d.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(sessionControllerProvider).user;
+    final session = ref.watch(sessionControllerProvider);
+    final user = session.user;
 
-    return Scaffold(
+    return TabPopScope(
+      tab: AppTab.today,
+      child: Scaffold(
+      backgroundColor: context.tokens.surface0,
       appBar: AppBar(
-        // The brand lockup: logo + "GameAll" over "Club Management".
-        titleSpacing: AppSpacing.sm,
+        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: AppSpacing.lg,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/images/logo-icon.png', width: 30, height: 30),
-            const SizedBox(width: AppSpacing.xs),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('GameAll', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.1)),
-                Text(
-                  'Club Management',
-                  style: TextStyle(fontSize: 9, height: 1.2, color: context.tokens.textSecondary),
-                ),
-              ],
-            ),
+            Image.asset('assets/images/logo-icon.png', width: 24, height: 24),
+            const SizedBox(width: 6),
+            const Text('GameAll',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: () => context.push(AppRoutes.refunds),
+            icon: Icon(Icons.notifications_none_rounded,
+                color: context.tokens.textSecondary),
+          ),
           Padding(
-            padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.sm),
+            padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.lg),
             child: InkWell(
               onTap: () => context.push(AppRoutes.profile),
               customBorder: const CircleBorder(),
-              child: AppAvatar(name: user?.fullName ?? '?', size: AppAvatarSize.small),
+              child: AppAvatar(
+                name: user?.fullName ?? '?',
+                imageUrl: session.facility?.logoUrl,
+                size: AppAvatarSize.medium,
+              ),
             ),
           ),
         ],
       ),
-      body: SafeArea(
+      body: AuthGradientBackground(
+        child: SafeArea(
         child: _isLoading
             ? const _DashboardSkeleton()
             : _loadError != null
@@ -145,22 +194,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     summary: _summary!,
                     greeting: _greeting(),
                     firstName: user?.fullName.split(' ').first,
+                    dateLabel: _dashDate(DateTime.now()),
+                    recent: _recent,
+                    needs: _needs,
+                    needsCount: _needsCount,
+                    facilitySlug:
+                        ref.watch(sessionControllerProvider).facility?.slug,
                     selectedSportId: _selectedSportId,
                     preset: _preset,
-                    onPickSport: () async {
-                      final picked = await _showSportPicker(context, _summary!.sports);
-                      if (picked != _selectedSportId) {
-                        setState(() => _selectedSportId = picked);
-                        _load();
-                      }
-                    },
-                    onPickPreset: () async {
-                      final picked = await _showDatePresetPicker(context, _preset);
-                      if (picked != null && picked != _preset) {
-                        setState(() => _preset = picked);
-                        _load();
-                      }
-                    },
+                    onOpenFilter: _openCommonFilter,
                     revenueMonthOffset: _revenueMonthOffset,
                     onPickRevenueMonth: () async {
                       final picked = await _showRevenueMonthPicker(context, _revenueMonthOffset);
@@ -172,42 +214,133 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
               ),
+        ),
       ),
-      bottomNavigationBar: const AppBottomNav(current: AppTab.home),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.today),
+      ),
     );
   }
 
-  Future<String?> _showSportPicker(BuildContext context, List<AvailableSportOption> sports) {
-    return showModalBottomSheet<String?>(
+  /// One sheet for both filters — sport and period together.
+  Future<void> _openCommonFilter() async {
+    final tokens = context.tokens;
+    var sport = _selectedSportId;
+    var preset = _preset;
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(title: const Text('All Sports'), onTap: () => Navigator.pop(context, null)),
-            ...sports.map(
-              (s) => ListTile(
-                leading: Text(s.sportIcon),
-                title: Text(s.sportName),
-                onTap: () => Navigator.pop(context, s.facilitySportId),
+      showDragHandle: true,
+      backgroundColor: tokens.surface0,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          Widget label(String t) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Text(t,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: tokens.textSecondary)),
+              );
+          Widget pill(String text, bool selected, VoidCallback onTap) =>
+              GestureDetector(
+                onTap: onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? tokens.primary.withValues(alpha: 0.16)
+                        : tokens.surface2,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(
+                        color: selected ? tokens.primary : tokens.borderColor,
+                        width: selected ? 1.5 : 1),
+                  ),
+                  child: Text(text,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              selected ? FontWeight.w700 : FontWeight.w500,
+                          color:
+                              selected ? tokens.primary : tokens.textPrimary)),
+                ),
+              );
+
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Filter',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w800)),
+                      ),
+                      if (sport != null || preset != DateRangePreset.today)
+                        TextButton(
+                          onPressed: () => setSheet(() {
+                            sport = null;
+                            preset = DateRangePreset.today;
+                          }),
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  label('SPORT'),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      pill('All Sports', sport == null,
+                          () => setSheet(() => sport = null)),
+                      for (final s in _summary!.sports)
+                        pill(s.sportName, sport == s.facilitySportId,
+                            () => setSheet(() => sport = s.facilitySportId)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  label('PERIOD'),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final e in _presetLabels.entries)
+                        pill(e.value, preset == e.key,
+                            () => setSheet(() => preset = e.key)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      if (sport != _selectedSportId || preset != _preset) {
+                        setState(() {
+                          _selectedSportId = sport;
+                          _preset = preset;
+                        });
+                        _load();
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48)),
+                    child: const Text('Apply'),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<DateRangePreset?> _showDatePresetPicker(BuildContext context, DateRangePreset current) {
-    return showModalBottomSheet<DateRangePreset>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _presetLabels.entries
-              .map((e) => ListTile(title: Text(e.value), onTap: () => Navigator.pop(context, e.key)))
-              .toList(),
-        ),
+          );
+        },
       ),
     );
   }
@@ -242,18 +375,22 @@ String revenueMonthLabel(int offset) {
   return '${_monthNamesShort[d.month - 1]} ${d.year}';
 }
 
-/// The whole scrolling dashboard body, in mobile-first priority order:
-/// greeting → filters → metrics → expiring alert → schedule → attention →
-/// memberships → revenue → utilization → quick actions.
+/// The redesigned Owner Home — a live snapshot at the top, then what needs
+/// action, then the deeper reports. Every panel is backed by real data
+/// (dashboard summary, finance ledger, pending obligations, today's schedule).
 class _DashboardBody extends StatelessWidget {
   const _DashboardBody({
     required this.summary,
     required this.greeting,
     required this.firstName,
+    required this.dateLabel,
+    required this.recent,
+    required this.needs,
+    required this.needsCount,
+    required this.facilitySlug,
     required this.selectedSportId,
     required this.preset,
-    required this.onPickSport,
-    required this.onPickPreset,
+    required this.onOpenFilter,
     required this.revenueMonthOffset,
     required this.onPickRevenueMonth,
   });
@@ -261,134 +398,1505 @@ class _DashboardBody extends StatelessWidget {
   final DashboardSummary summary;
   final String greeting;
   final String? firstName;
+  final String dateLabel;
+  final List<LedgerEntry> recent;
+  final List<PaymentObligation> needs;
+  final int needsCount;
+  final String? facilitySlug;
   final String? selectedSportId;
   final DateRangePreset preset;
-  final VoidCallback onPickSport;
-  final VoidCallback onPickPreset;
+  final VoidCallback onOpenFilter;
   final int revenueMonthOffset;
   final VoidCallback onPickRevenueMonth;
 
-  String get _sportLabel => selectedSportId == null
-      ? 'All Sports'
-      : summary.sports
+  bool get _isToday => preset == DateRangePreset.today;
+
+  String get _scopeLabel {
+    final sport = selectedSportId == null
+        ? 'All sports'
+        : summary.sports
                 .where((s) => s.facilitySportId == selectedSportId)
                 .map((s) => s.sportName)
                 .firstOrNull ??
-            'All Sports';
+            'All sports';
+    return '$sport  ·  ${_presetLabels[preset]}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final nowMin = now.hour * 60 + now.minute;
+
+    // ── derive "on court now" + free courts from today's schedule ──
+    final tl = summary.scheduleTimeline;
+    // Group courts by sport in first-seen order (Badminton, then Pickleball,
+    // then the rest) so the live strip matches the Courts page grouping.
+    final courtsBySport = <String, List<ScheduleCourtRow>>{};
+    for (final c in tl.courts) {
+      (courtsBySport[c.sportName] ??= []).add(c);
+    }
+    final orderedCourts = [for (final g in courtsBySport.values) ...g];
+    final liveBlocks = <(_ScheduleCourtRef, ScheduleBlock)>[];
+    for (final c in tl.courts) {
+      for (final b in c.blocks) {
+        if (b.startMinute <= nowMin && nowMin < b.endMinute) {
+          liveBlocks.add((_ScheduleCourtRef(c.courtId, c.courtName, c.sportName), b));
+        }
+      }
+    }
+    final busyCourtIds = liveBlocks.map((e) => e.$1.id).toSet();
+    final totalCourts = tl.courts.length;
+    final busyCount = busyCourtIds.length;
+
     final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '$greeting${firstName != null ? ', $firstName' : ''} 👋',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          '${summary.facilityName}${summary.facilityCity.isNotEmpty ? ' · ${summary.facilityCity}' : ''}',
-          style: TextStyle(color: tokens.textSecondary),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
+        // ── facility + date  ·····  filter chip (corner) ──────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            _SelectorChip(label: _sportLabel, onSelect: onPickSport),
-            _SelectorChip(label: _presetLabels[preset]!, onSelect: onPickPreset),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(summary.facilityName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.textSecondary)),
+                  const SizedBox(height: 1),
+                  Text(dateLabel,
+                      style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15)),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            GestureDetector(
+              onTap: onOpenFilter,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 7),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 13, color: tokens.primary),
+                    const SizedBox(width: 5),
+                    Text(_scopeLabel,
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 1),
+                    Icon(Icons.expand_more_rounded,
+                        size: 14, color: tokens.textSecondary),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        _MetricCarousel(kpis: summary.kpis),
+        const SizedBox(height: AppSpacing.md),
+
+        // ── LIVE NOW ──────────────────────────────────────────────
+        _LiveNowCard(
+          isToday: _isToday,
+          now: now,
+          busyCount: busyCount,
+          totalCourts: totalCourts,
+          courts: orderedCourts,
+          busyCourtIds: busyCourtIds,
+          liveBlocks: liveBlocks,
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // ── quick top actions ─────────────────────────────────────
+        _TopActionsRow(slug: facilitySlug),
+        const SizedBox(height: AppSpacing.md),
+
+        // ── money row ─────────────────────────────────────────────
+        _MoneyRow(
+          collectedInr: summary.kpis.revenueInr.value.round(),
+          collectedChange: summary.kpis.revenueInr.changePercent,
+          periodLabel: _presetLabels[preset]!,
+          toCollectInr: summary.payments.pendingInr,
+          bookings: summary.kpis.guestBookings.value.round(),
+          weekPoints: summary.revenueOverview.points,
+        ),
+
         if (summary.memberships.expiringSoon > 0) ...[
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
           _ExpiringMembershipCard(count: summary.memberships.expiringSoon),
         ],
+
+        // ── NEEDS YOU ─────────────────────────────────────────────
+        if (needs.isNotEmpty || summary.attentionItems.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _NeedsYouSection(
+              obligations: needs,
+              count: needsCount,
+              attention: summary.attentionItems),
+        ],
+
+        // ── ON COURT NOW ──────────────────────────────────────────
+        if (_isToday && liveBlocks.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _OnCourtNowSection(liveBlocks: liveBlocks, nowMin: nowMin),
+        ],
+
+        // ── EMPTY SLOTS ───────────────────────────────────────────
+        if (_isToday) ...[
+          Builder(builder: (context) {
+            final gaps = _findGaps(tl, nowMin);
+            if (gaps.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xl),
+              child: _EmptySlotsSection(gaps: gaps),
+            );
+          }),
+        ],
+
+        // ── MEMBERS ───────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        SectionHeader(title: "Today's Schedule"),
-        const SizedBox(height: AppSpacing.sm),
-        _ScheduleTimeline(timeline: summary.scheduleTimeline, showNow: preset == DateRangePreset.today),
+        _MembersCard(
+          memberships: summary.memberships,
+          monthlyRevenueInr: _membershipRevenue(),
+          monthLabel: summary.revenueOverview.monthLabel,
+        ),
+
+        // ── THIS WEEK ─────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        SectionHeader(
+        _DashSection(
+          title: 'This week',
+          child: _WeekBarsCard(points: summary.revenueOverview.points),
+        ),
+
+        // ── RECENT ACTIVITY ───────────────────────────────────────
+        if (recent.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _RecentActivitySection(entries: recent),
+        ],
+
+        // ── REVENUE ───────────────────────────────────────────────
+        const SizedBox(height: AppSpacing.xl),
+        _DashSection(
           title: 'Revenue Overview',
           trailing: _SelectorChip(
-            label: revenueMonthLabel(revenueMonthOffset),
-            onSelect: onPickRevenueMonth,
-          ),
+              label: revenueMonthLabel(revenueMonthOffset),
+              onSelect: onPickRevenueMonth,
+              dense: true),
+          child: _RevenueOverviewCard(overview: summary.revenueOverview),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        _RevenueOverviewCard(overview: summary.revenueOverview),
+
+        // ── SHARE LINK ────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        SectionHeader(title: 'Attention Required'),
-        const SizedBox(height: AppSpacing.sm),
-        _AttentionCard(items: summary.attentionItems),
+        _ShareLinkCard(slug: facilitySlug),
+
+        // ── QUICK ACTIONS (kept, restyled) ────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        SectionHeader(title: 'Memberships'),
-        const SizedBox(height: AppSpacing.sm),
-        _MembershipSummaryCard(memberships: summary.memberships),
-        const SizedBox(height: AppSpacing.xl),
-        SectionHeader(title: 'Court/Turf Utilization'),
-        const SizedBox(height: AppSpacing.sm),
-        _UtilizationCard(utilization: summary.utilization),
-        const SizedBox(height: AppSpacing.xl),
-        SectionHeader(title: 'Quick Actions'),
-        const SizedBox(height: AppSpacing.sm),
-        const _QuickActionGrid(),
-        const SizedBox(height: AppSpacing.xl),
+        _DashSection(
+          title: 'Quick Actions',
+          child: const _QuickActionGrid(),
+        ),
+
+        AppBrandMark(
+          subtitle:
+              '${summary.facilityName}  ·  $totalCourts court${totalCourts == 1 ? '' : 's'}',
+        ),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+
+  int _membershipRevenue() {
+    for (final s in summary.revenueOverview.breakdown) {
+      if (s.key == RevenueBreakdownKey.memberships && !s.unavailable) {
+        return s.amountInr;
+      }
+    }
+    return 0;
+  }
+
+  /// Free windows on each court from now until close — the biggest per court.
+  static List<_SlotGap> _findGaps(ScheduleTimeline tl, int nowMin) {
+    final closeMin = tl.endHour * 60;
+    final startMin = math.max(nowMin, tl.startHour * 60);
+    if (closeMin - startMin < 30) return const [];
+    final gaps = <_SlotGap>[];
+    for (final c in tl.courts) {
+      final busy = c.blocks
+          .where((b) => b.endMinute > startMin)
+          .map((b) => (b.startMinute, b.endMinute))
+          .toList()
+        ..sort((a, b) => a.$1.compareTo(b.$1));
+      var cursor = startMin;
+      for (final (bs, be) in busy) {
+        if (bs - cursor >= 45) {
+          gaps.add(_SlotGap(c.courtName, c.sportName, cursor, bs));
+        }
+        cursor = math.max(cursor, be);
+      }
+      if (closeMin - cursor >= 45) {
+        gaps.add(_SlotGap(c.courtName, c.sportName, cursor, closeMin));
+      }
+    }
+    gaps.sort((a, b) => a.startMin.compareTo(b.startMin));
+    return gaps.take(3).toList();
+  }
+}
+
+class _ScheduleCourtRef {
+  const _ScheduleCourtRef(this.id, this.name, this.sport);
+  final String id;
+  final String name;
+  final String sport;
+}
+
+class _SlotGap {
+  const _SlotGap(this.court, this.sport, this.startMin, this.endMin);
+  final String court;
+  final String sport;
+  final int startMin;
+  final int endMin;
+  int get minutes => endMin - startMin;
+}
+
+String _time12(int minuteOfDay) {
+  final h = (minuteOfDay ~/ 60) % 24;
+  final m = minuteOfDay % 60;
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  final mm = m.toString().padLeft(2, '0');
+  return '$h12:$mm ${h < 12 ? 'AM' : 'PM'}';
+}
+
+/// A short court code from the sport + court number, e.g. Badminton Court 1
+/// → "BC1", Cricket Turf 2 → "CC2". Falls back to initials when there's no
+/// number to key off.
+String _courtCode(String sport, String court) {
+  final sp = sport.trim().isEmpty ? 'C' : sport.trim()[0].toUpperCase();
+  final num = RegExp(r'(\d+)').firstMatch(court)?.group(1);
+  if (num != null) return '${sp}C$num';
+  final rest =
+      court.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+  return rest.isEmpty ? '${sp}C' : '$sp${rest.substring(0, rest.length.clamp(0, 2))}';
+}
+
+Color _blockTypeColor(BuildContext context, ScheduleBlockType t) {
+  final tokens = context.tokens;
+  switch (t) {
+    case ScheduleBlockType.member:
+      return tokens.primary;
+    case ScheduleBlockType.guest:
+      return tokens.electricBlue;
+    case ScheduleBlockType.session:
+      return tokens.violet;
+  }
+}
+
+// ───────────────────────────────────────────────────── LIVE NOW ──
+
+class _LiveNowCard extends StatelessWidget {
+  const _LiveNowCard({
+    required this.isToday,
+    required this.now,
+    required this.busyCount,
+    required this.totalCourts,
+    required this.courts,
+    required this.busyCourtIds,
+    required this.liveBlocks,
+  });
+
+  final bool isToday;
+  final DateTime now;
+  final int busyCount;
+  final int totalCourts;
+  final List<ScheduleCourtRow> courts;
+  final Set<String> busyCourtIds;
+  final List<(_ScheduleCourtRef, ScheduleBlock)> liveBlocks;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final nowMin = now.hour * 60 + now.minute;
+    final pct = totalCourts == 0 ? 0 : (busyCount / totalCourts * 100).round();
+    final typeByCourt = <String, ScheduleBlockType>{
+      for (final (c, b) in liveBlocks) c.id: b.type,
+    };
+    // Courts whose current booking wraps up within 15 minutes.
+    final endingSoon = <String>{
+      for (final (c, b) in liveBlocks)
+        if (b.endMinute - nowMin <= 15) c.id,
+    };
+
+    // "Next free": a court open right now, else the soonest to free up.
+    String? nextFreeLabel;
+    final freeCourt =
+        courts.where((c) => !busyCourtIds.contains(c.courtId)).firstOrNull;
+    if (freeCourt != null) {
+      nextFreeLabel = '${freeCourt.courtName} free now';
+    } else if (liveBlocks.isNotEmpty) {
+      final soonest =
+          liveBlocks.reduce((a, b) => a.$2.endMinute <= b.$2.endMinute ? a : b);
+      nextFreeLabel =
+          '${soonest.$1.name} at ${_time12(soonest.$2.endMinute)}';
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.bookings),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.primary.withValues(alpha: 0.4)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            tokens.primary.withValues(alpha: 0.20),
+            tokens.primary.withValues(alpha: 0.03),
+          ],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (isToday)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: tokens.primary.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                              color: tokens.primary,
+                              shape: BoxShape.circle)),
+                      const SizedBox(width: 5),
+                      Text('Live now',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: tokens.primary)),
+                    ],
+                  ),
+                )
+              else
+                Text('Snapshot',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: tokens.textSecondary)),
+              const Spacer(),
+              Text(
+                  '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+                  style:
+                      TextStyle(fontSize: 12, color: tokens.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text('$busyCount',
+                  style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                      color: tokens.textPrimary)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('of $totalCourts courts busy',
+                    style: TextStyle(
+                        fontSize: 13, color: tokens.textSecondary)),
+              ),
+              Text('$pct%',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: tokens.primary)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              for (final c in courts.take(9)) ...[
+                Expanded(
+                  child: Column(
+                    children: [
+                      Builder(builder: (context) {
+                        final busy = busyCourtIds.contains(c.courtId);
+                        final soon = endingSoon.contains(c.courtId);
+                        final fill = !busy
+                            ? tokens.surface2
+                            : soon
+                                ? tokens.warning
+                                : _blockTypeColor(
+                                    context,
+                                    typeByCourt[c.courtId] ??
+                                        ScheduleBlockType.member);
+                        return Container(
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: fill,
+                            borderRadius: BorderRadius.circular(6),
+                            border: busy
+                                ? null
+                                : Border.all(
+                                    color: tokens.primary
+                                        .withValues(alpha: 0.35)),
+                          ),
+                          child: Icon(
+                            !busy
+                                ? Icons.check_rounded
+                                : soon
+                                    ? Icons.timelapse_rounded
+                                    : Icons.lock_rounded,
+                            size: 11,
+                            color: busy ? Colors.white : tokens.primary,
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 3),
+                      Text(
+                        _courtCode(c.sportName, c.courtName),
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: tokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 5),
+              ],
+            ],
+          ),
+          if (liveBlocks.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            for (final (c, b) in liveBlocks.take(3))
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Row(
+                  children: [
+                    Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                            color: _blockTypeColor(context, b.type),
+                            shape: BoxShape.circle)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                          '${_courtCode(c.sport, c.name)} · ${b.label}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    ),
+                    Text('ends ${_time12(b.endMinute)}',
+                        style: TextStyle(
+                            fontSize: 10.5, color: tokens.textSecondary)),
+                  ],
+                ),
+              ),
+          ],
+          if (nextFreeLabel != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Divider(height: 1, color: tokens.borderColor),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Next free · $nextFreeLabel',
+                      style: TextStyle(
+                          fontSize: 12, color: tokens.textSecondary)),
+                ),
+                GestureDetector(
+                  onTap: () => context.push(AppRoutes.bookings),
+                  child: Text('Fill it',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.primary)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+        ),
+      ),
+    );
+  }
+
+}
+
+// ─────────────────────────────────────────────── TOP ACTIONS ──
+
+class _TopActionsRow extends StatelessWidget {
+  const _TopActionsRow({required this.slug});
+  final String? slug;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    void copyLink() {
+      final link = (slug == null || slug!.isEmpty)
+          ? 'https://gameall.in'
+          : 'https://gameall.in/join/$slug';
+      Clipboard.setData(ClipboardData(text: link));
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Booking link copied')));
+    }
+
+    final actions = <(IconData, String, VoidCallback)>[
+      (Icons.add_rounded, 'Book', () => context.push(AppRoutes.bookings)),
+      (
+        Icons.account_balance_wallet_outlined,
+        'Collect',
+        () => context.push(AppRoutes.financePendingPayments)
+      ),
+      (Icons.link_rounded, 'Share link', copyLink),
+      (
+        Icons.event_busy_outlined,
+        'Block',
+        () => context.push(AppRoutes.bookings)
+      ),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Material(
+              color: tokens.surface1,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: actions[i].$3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: tokens.borderColor),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(actions[i].$1, size: 19, color: tokens.primary),
+                      const SizedBox(height: 5),
+                      Text(actions[i].$2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-/// The dashboard's KPI tiles, shown one at a time by [MetricCarousel].
-class _MetricCarousel extends StatelessWidget {
-  const _MetricCarousel({required this.kpis});
+// ─────────────────────────────────────────────────── MONEY ROW ──
 
-  final DashboardKpis kpis;
+class _MoneyRow extends StatelessWidget {
+  const _MoneyRow({
+    required this.collectedInr,
+    required this.collectedChange,
+    required this.periodLabel,
+    required this.toCollectInr,
+    required this.bookings,
+    required this.weekPoints,
+  });
+
+  final int collectedInr;
+  final double? collectedChange;
+  final String periodLabel;
+  final int toCollectInr;
+  final int bookings;
+  final List<RevenueTrendPoint> weekPoints;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return MetricCarousel(
-      cards: [
-        AppMetricCard(
-          label: 'Revenue',
-          value: Formatters.currencyInr(kpis.revenueInr.value),
-          countTo: kpis.revenueInr.value,
-          formatValue: (v) => Formatters.currencyInr(v.round()),
-          changePercent: kpis.revenueInr.changePercent,
-          icon: Icons.account_balance_wallet_outlined,
-          accentColor: tokens.electricBlue,
+    final last7 =
+        weekPoints.length > 7 ? weekPoints.sublist(weekPoints.length - 7) : weekPoints;
+    final maxV = last7.isEmpty
+        ? 1
+        : last7.map((p) => p.amountInr).reduce(math.max).clamp(1, 1 << 30);
+    final up = (collectedChange ?? 0) >= 0;
+    final changeColor = up ? tokens.success : tokens.destructive;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Material(
+              color: tokens.surface1,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.finance),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: tokens.borderColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Collected · $periodLabel',
+                          style: TextStyle(
+                              fontSize: 11, color: tokens.textSecondary)),
+                      const SizedBox(height: 3),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(Formatters.currencyInr(collectedInr),
+                            style: const TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.w800)),
+                      ),
+                      if (collectedChange != null &&
+                          collectedChange!.abs() >= 0.05) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                                up
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded,
+                                size: 11,
+                                color: changeColor),
+                            Text(
+                                '${collectedChange!.abs().toStringAsFixed(0)}% vs last',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: changeColor)),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        height: 34,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            for (var i = 0; i < last7.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 4),
+                              Expanded(
+                                child: Container(
+                                  height: (last7[i].amountInr / maxV * 34)
+                                      .clamp(3, 34)
+                                      .toDouble(),
+                                  decoration: BoxDecoration(
+                                    color: i == last7.length - 1
+                                        ? tokens.primary
+                                        : tokens.primary
+                                            .withValues(alpha: 0.28),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () =>
+                          context.push(AppRoutes.financePendingPayments),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(
+                              color:
+                                  tokens.warning.withValues(alpha: 0.45)),
+                          gradient: LinearGradient(
+                            colors: [
+                              tokens.warning.withValues(alpha: 0.16),
+                              tokens.warning.withValues(alpha: 0.04),
+                            ],
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                  Formatters.currencyInr(toCollectInr),
+                                  style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: tokens.warning)),
+                            ),
+                            Text('to collect',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: tokens.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: tokens.surface1,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: tokens.borderColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('$bookings',
+                            style: const TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.w800)),
+                        Text('bookings',
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                color: tokens.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────── NEEDS YOU ──
+
+class _NeedsYouSection extends StatelessWidget {
+  const _NeedsYouSection({
+    required this.obligations,
+    required this.count,
+    required this.attention,
+  });
+
+  final List<PaymentObligation> obligations;
+  final int count;
+  final List<AttentionItem> attention;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final n = count > 0 ? count : (obligations.length + attention.length);
+    return _DashSection(
+      title: 'Needs you',
+      trailing: Text('$n item${n == 1 ? '' : 's'}',
+          style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+      child: Column(
+        children: [
+          for (final o in obligations)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _needRow(
+                context,
+                icon: Icons.schedule_rounded,
+                tone: tokens.warning,
+                title: "${o.customerName} hasn't paid",
+                subtitle: o.description,
+                trailing: Formatters.currencyInr(
+                    (o.outstandingMinor / 100).round()),
+                trailingTone: tokens.warning,
+                onTap: () => context.push(AppRoutes.financePendingPayments),
+              ),
+            ),
+          for (final a in attention.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _needRow(
+                context,
+                icon: Icons.error_outline_rounded,
+                tone: tokens.violet,
+                title: a.message,
+                subtitle: null,
+                trailing: null,
+                trailingTone: null,
+                onTap: () => context.push(AppRoutes.memberships),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _needRow(
+    BuildContext context, {
+    required IconData icon,
+    required Color tone,
+    required String title,
+    required String? subtitle,
+    required String? trailing,
+    required Color? trailingTone,
+    required VoidCallback onTap,
+  }) {
+    final tokens = context.tokens;
+    return Material(
+      color: tokens.surface1,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: tokens.borderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(icon, size: 17, color: tone),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w800)),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11, color: tokens.textSecondary)),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Text(trailing,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: trailingTone ?? tokens.textPrimary)),
+              ] else
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: tokens.textSecondary),
+            ],
+          ),
         ),
-        AppMetricCard(
-          label: 'Active Membership',
-          value: kpis.activeMemberships.value.toStringAsFixed(0),
-          countTo: kpis.activeMemberships.value,
-          formatValue: (v) => v.round().toString(),
-          changePercent: kpis.activeMemberships.changePercent,
-          icon: Icons.group_outlined,
-          accentColor: tokens.violet,
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────── ON COURT NOW ──
+
+class _OnCourtNowSection extends StatelessWidget {
+  const _OnCourtNowSection(
+      {required this.liveBlocks, required this.nowMin});
+
+  final List<(_ScheduleCourtRef, ScheduleBlock)> liveBlocks;
+  final int nowMin;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _DashSection(
+      title: 'On court now',
+      trailing: GestureDetector(
+        onTap: () => context.push(AppRoutes.bookings),
+        child: Text('See timeline',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: tokens.primary)),
+      ),
+      child: Column(
+        children: [
+          for (final (c, b) in liveBlocks)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 46,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_courtCode(c.sport, c.name),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: _blockTypeColor(context, b.type))),
+                          Text(c.sport,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: tokens.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(b.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 5),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: ((nowMin - b.startMinute) /
+                                      math.max(1, b.endMinute - b.startMinute))
+                                  .clamp(0.0, 1.0),
+                              minHeight: 5,
+                              backgroundColor: tokens.surface2,
+                              valueColor: AlwaysStoppedAnimation(
+                                  _blockTypeColor(context, b.type)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text('ends ${_time12(b.endMinute)}',
+                        style: TextStyle(
+                            fontSize: 11, color: tokens.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────── EMPTY SLOTS ──
+
+class _EmptySlotsSection extends StatelessWidget {
+  const _EmptySlotsSection({required this.gaps});
+  final List<_SlotGap> gaps;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _DashSection(
+      title: 'Free slots left today',
+      child: SizedBox(
+        height: 118,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: gaps.length,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+          itemBuilder: (context, i) {
+            final g = gaps[i];
+            return Material(
+              color: tokens.surface1,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.bookings),
+                child: Container(
+              width: 130,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: tokens.borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_time12(g.startMin),
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text('${g.court} · ${g.sport}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 10.5, color: tokens.textSecondary)),
+                  Text('${g.minutes} min free',
+                      style: TextStyle(
+                          fontSize: 10.5, color: tokens.textSecondary)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push(AppRoutes.bookings),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: tokens.primary.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text('Fill',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: tokens.primary)),
+                    ),
+                  ),
+                ],
+              ),
+                ),
+              ),
+            );
+          },
         ),
-        AppMetricCard(
-          label: 'Guest Bookings',
-          value: kpis.guestBookings.value.toStringAsFixed(0),
-          countTo: kpis.guestBookings.value,
-          formatValue: (v) => v.round().toString(),
-          changePercent: kpis.guestBookings.changePercent,
-          icon: Icons.group_add_outlined,
-          accentColor: tokens.warning,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────── MEMBERS ──
+
+class _MembersCard extends StatelessWidget {
+  const _MembersCard({
+    required this.memberships,
+    required this.monthlyRevenueInr,
+    required this.monthLabel,
+  });
+
+  final MembershipSummary memberships;
+  final int monthlyRevenueInr;
+  final String monthLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _DashSection(
+      title: 'Members',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(AppRoutes.memberships),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border:
+                  Border.all(color: tokens.violet.withValues(alpha: 0.4)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  tokens.violet.withValues(alpha: 0.22),
+                  tokens.violet.withValues(alpha: 0.05),
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Membership revenue · $monthLabel',
+                    style: TextStyle(
+                        fontSize: 12, color: tokens.textSecondary)),
+                const SizedBox(height: 4),
+                Text(Formatters.currencyInr(monthlyRevenueInr),
+                    style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: tokens.textPrimary)),
+                const SizedBox(height: AppSpacing.md),
+                Divider(height: 1, color: tokens.violet.withValues(alpha: 0.25)),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    _stat(context, '${memberships.active}', 'active',
+                        tokens.textPrimary),
+                    const SizedBox(width: AppSpacing.xl),
+                    _stat(context, '${memberships.expiringSoon}', 'expiring',
+                        tokens.warning),
+                    const SizedBox(width: AppSpacing.xl),
+                    _stat(context, '+${memberships.newThisMonth}', 'new',
+                        tokens.primary),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        AppMetricCard(
-          label: 'Utilization',
-          value: '${kpis.utilizationPercent.value}%',
-          countTo: kpis.utilizationPercent.value,
-          formatValue: (v) => '${v.round()}%',
-          changePercent: kpis.utilizationPercent.changePercent,
-          icon: Icons.pie_chart_outline,
-          accentColor: tokens.primary,
+      ),
+    );
+  }
+
+  Widget _stat(BuildContext context, String value, String label, Color c) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value,
+            style: TextStyle(
+                fontSize: 17, fontWeight: FontWeight.w800, color: c)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11, color: context.tokens.textSecondary)),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────── THIS WEEK ──
+
+class _WeekBarsCard extends StatelessWidget {
+  const _WeekBarsCard({required this.points});
+  final List<RevenueTrendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final last7 =
+        points.length > 7 ? points.sublist(points.length - 7) : points;
+    if (last7.isEmpty) {
+      return _card(context, const SizedBox(height: 40));
+    }
+    final maxV =
+        last7.map((p) => p.amountInr).reduce(math.max).clamp(1, 1 << 30);
+    final avg = last7.map((p) => p.amountInr).reduce((a, b) => a + b) ~/
+        last7.length;
+    const wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final todayIdx = last7.length - 1;
+
+    return _card(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text('avg ${_RevenueOverviewCard._compactInr(avg)}',
+                style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SizedBox(
+            height: 74,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < last7.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          height: (last7[i].amountInr / maxV * 58)
+                              .clamp(4, 58)
+                              .toDouble(),
+                          decoration: BoxDecoration(
+                            color: i == todayIdx
+                                ? tokens.primary
+                                : tokens.surface3,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          wd[_weekdayOf(last7[i].date)],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: i == todayIdx
+                                ? FontWeight.w800
+                                : FontWeight.w500,
+                            color: i == todayIdx
+                                ? tokens.primary
+                                : tokens.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static int _weekdayOf(String iso) {
+    final p = iso.split('-');
+    final d = DateTime(
+        int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+    return d.weekday - 1; // 0..6, Mon..Sun
+  }
+
+  Widget _card(BuildContext context, Widget child) => Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: context.tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: context.tokens.borderColor),
         ),
+        child: child,
+      );
+}
+
+// ─────────────────────────────────────────────── RECENT ACTIVITY ──
+
+class _RecentActivitySection extends StatelessWidget {
+  const _RecentActivitySection({required this.entries});
+  final List<LedgerEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return _DashSection(
+      title: 'Recent activity',
+      trailing: GestureDetector(
+        onTap: () => context.push(AppRoutes.financeTransactions),
+        child: Text('See all',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: tokens.primary)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Column(
+          children: [
+            for (final e in entries.take(4))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                child: Row(
+                  children: [
+                    Text(
+                      '${e.occurredAt.hour.toString().padLeft(2, '0')}:${e.occurredAt.minute.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                          fontSize: 11, color: tokens.textSecondary),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                            color: _dot(context, e),
+                            shape: BoxShape.circle)),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(e.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12.5)),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      '${e.isIncome ? '+' : '−'}${Formatters.currencyInr((e.amountMinor / 100).round())}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: e.isIncome
+                              ? tokens.success
+                              : tokens.destructive),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _dot(BuildContext context, LedgerEntry e) {
+    final tokens = context.tokens;
+    if (!e.isIncome) return tokens.destructive;
+    if (e.sourceType.contains('MEMBERSHIP')) return tokens.violet;
+    return tokens.success;
+  }
+}
+
+// ─────────────────────────────────────────────────── SHARE LINK ──
+
+class _ShareLinkCard extends StatelessWidget {
+  const _ShareLinkCard({required this.slug});
+  final String? slug;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final display = (slug == null || slug!.isEmpty)
+        ? 'gameall.in'
+        : 'gameall.in/join/$slug';
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.violet.withValues(alpha: 0.4)),
+        gradient: LinearGradient(
+          colors: [
+            tokens.violet.withValues(alpha: 0.18),
+            tokens.violet.withValues(alpha: 0.04),
+          ],
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: tokens.violet.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(Icons.link_rounded, size: 18, color: tokens.violet),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Share your booking link',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w800)),
+                Text(display,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 11, color: tokens.textSecondary)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: 'https://$display'));
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                    const SnackBar(content: Text('Link copied')));
+            },
+            child: const Text('Copy'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A titled section with an optional trailing control and consistent spacing.
+class _DashSection extends StatelessWidget {
+  const _DashSection(
+      {required this.title, required this.child, this.trailing});
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 3,
+              height: 15,
+              decoration: BoxDecoration(
+                color: context.tokens.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(title,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.tokens.textPrimary)),
+            ),
+            ?trailing,
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        child,
       ],
     );
   }
@@ -402,293 +1910,65 @@ class _ExpiringMembershipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return AppCard(
-      onTap: () => context.push(AppRoutes.memberships),
-      child: Row(
-        children: [
-          Icon(Icons.card_membership_outlined, color: tokens.warning),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$count membership${count == 1 ? '' : 's'} expiring soon',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text('Tap to view memberships', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.memberships),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: tokens.warning.withValues(alpha: 0.4)),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                tokens.warning.withValues(alpha: 0.16),
+                tokens.warning.withValues(alpha: 0.04),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: tokens.textSecondary),
-        ],
-      ),
-    );
-  }
-}
-
-/// A positioned court-by-court timeline for today — one row per court, each
-/// block a real booking or confirmed membership session placed by its actual
-/// start/end within a window derived from today's operating hours. Scrolls
-/// horizontally; overlapping blocks in a court stack onto separate lanes.
-class _ScheduleTimeline extends StatefulWidget {
-  const _ScheduleTimeline({required this.timeline, required this.showNow});
-
-  final ScheduleTimeline timeline;
-  final bool showNow;
-
-  @override
-  State<_ScheduleTimeline> createState() => _ScheduleTimelineState();
-}
-
-class _ScheduleTimelineState extends State<_ScheduleTimeline> {
-  static const _hourWidth = 64.0;
-  static const _labelWidth = 96.0;
-  static const _laneHeight = 34.0;
-  static const _trackPad = 0.0;
-
-  String? _sportFilter;
-
-  String _hourTick(int hour) {
-    final h = hour % 24;
-    final h12 = h % 12 == 0 ? 12 : h % 12;
-    return '$h12 ${h < 12 ? 'AM' : 'PM'}';
-  }
-
-  Color _blockColor(BuildContext context, ScheduleBlockType type) {
-    switch (type) {
-      case ScheduleBlockType.member:
-        return context.tokens.success;
-      case ScheduleBlockType.guest:
-        return context.tokens.electricBlue;
-      case ScheduleBlockType.session:
-        return context.tokens.violet;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final timeline = widget.timeline;
-    final hours = timeline.endHour - timeline.startHour;
-    if (timeline.courts.isEmpty || hours <= 0) {
-      return const AppCard(child: Text('No courts configured yet.'));
-    }
-
-    final sportNames = timeline.courts.map((c) => c.sportName).toSet().toList()..sort();
-    final activeSport = sportNames.contains(_sportFilter) ? _sportFilter : null;
-    final courts = activeSport == null
-        ? timeline.courts
-        : timeline.courts.where((c) => c.sportName == activeSport).toList();
-
-    final trackWidth = hours * _hourWidth;
-    final windowMinutes = hours * 60;
-    double toX(int minute) => (minute - timeline.startHour * 60) / windowMinutes * trackWidth;
-
-    final now = DateTime.now();
-    final nowMinute = now.hour * 60 + now.minute;
-    final showNowLine =
-        widget.showNow && nowMinute >= timeline.startHour * 60 && nowMinute <= timeline.endHour * 60;
-
-    // The grid settles first (ruler, then each court row), then the
-    // bookings wipe open in the order they start during the day.
-    const rulerSettleMs = 120;
-    final rows = <Widget>[];
-    for (var rowIndex = 0; rowIndex < courts.length; rowIndex++) {
-      final court = courts[rowIndex];
-      final rowHeight = court.laneCount * _laneHeight + _trackPad;
-      final rowDelayMs = rulerSettleMs + rowIndex * 55;
-      rows.add(
-        _DelayedEnter(
-          delay: Duration(milliseconds: rowDelayMs),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: _labelWidth,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        court.courtName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        court.sportName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: tokens.textSecondary),
-                      ),
-                    ],
-                  ),
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tokens.warning.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
+                child: Icon(Icons.card_membership_rounded,
+                    color: tokens.warning, size: 18),
               ),
-              SizedBox(
-                width: trackWidth,
-                height: rowHeight,
-                child: Stack(
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var i = 0; i < hours; i++)
-                      Positioned(
-                        left: i * _hourWidth,
-                        top: 0,
-                        bottom: 0,
-                        child: Container(width: 1, color: tokens.borderColor.withValues(alpha: 0.4)),
-                      ),
-                    for (final block in court.blocks)
-                      Positioned(
-                        left: toX(block.startMinute),
-                        top: block.lane * _laneHeight,
-                        width: (toX(block.endMinute) - toX(block.startMinute)).clamp(6.0, trackWidth).toDouble(),
-                        height: _laneHeight,
-                        child: _DelayedWipe(
-                          delay: Duration(
-                            milliseconds:
-                                rowDelayMs + 140 + (toX(block.startMinute) / (trackWidth == 0 ? 1 : trackWidth) * 260).round(),
-                          ),
-                          child: _block(context, block),
-                        ),
-                      ),
+                    Text(
+                      '$count membership${count == 1 ? '' : 's'} expiring soon',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13.5),
+                    ),
+                    const SizedBox(height: 1),
+                    Text('Tap to review and renew',
+                        style: TextStyle(
+                            color: tokens.textSecondary, fontSize: 11)),
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right_rounded, color: tokens.textSecondary),
             ],
           ),
         ),
-      );
-      rows.add(Divider(height: 1, color: tokens.borderColor.withValues(alpha: 0.6)));
-    }
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (sportNames.length > 1) ...[
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                for (final name in <String?>[null, ...sportNames])
-                  _SportFilterChip(
-                    label: name ?? 'All Courts',
-                    selected: activeSport == name,
-                    onTap: () => setState(() => _sportFilter = name),
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            // Keyed on the filter so switching sports replays the reveal
-            // rather than snapping the new grid into place.
-            key: ValueKey(activeSport ?? '__all'),
-            child: SizedBox(
-              width: _labelWidth + trackWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: _labelWidth, bottom: 4),
-                    child: Row(
-                      children: [
-                        for (var i = 0; i < hours; i++)
-                          SizedBox(
-                            width: _hourWidth,
-                            child: _DelayedEnter(
-                              delay: Duration(milliseconds: i * 18),
-                              slideX: 0,
-                              child: Text(
-                                _hourTick(timeline.startHour + i),
-                                style: TextStyle(fontSize: 10, color: tokens.textSecondary),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Stack(
-                    children: [
-                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: rows),
-                      if (showNowLine)
-                        Positioned(
-                          left: _labelWidth + toX(nowMinute),
-                          top: 0,
-                          bottom: 0,
-                          child: _DelayedEnter(
-                            delay: Duration(milliseconds: rulerSettleMs + courts.length * 55 + 260),
-                            slideX: 0,
-                            child: Container(width: 2, color: tokens.destructive),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: 4,
-            children: [
-              _legendDot(context, tokens.success, 'Member'),
-              _legendDot(context, tokens.electricBlue, 'Guest'),
-              _legendDot(context, tokens.violet, 'Membership session'),
-            ],
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _block(BuildContext context, ScheduleBlock block) {
-    final color = _blockColor(context, block.type);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        border: Border.all(color: color.withValues(alpha: 0.7)),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            block.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
-          ),
-          Text(
-            block.timeLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.85)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legendDot(BuildContext context, Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: context.tokens.textSecondary)),
-      ],
     );
   }
 }
+
+
 
 /// Drives a 0→1 value for chart/bar reveals (line draw, donut sweep,
 /// progress fill). Returns the settled state immediately under reduced
@@ -697,230 +1977,26 @@ class _AnimatedProgress extends StatelessWidget {
   const _AnimatedProgress({
     required this.builder,
     required this.duration,
-    this.delay = Duration.zero,
   });
 
   final Widget Function(double progress) builder;
   final Duration duration;
-  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
     if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return builder(1);
-    final totalMs = duration.inMilliseconds + delay.inMilliseconds;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: totalMs),
-      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
+      duration: duration,
+      curve: Curves.easeOutCubic,
       builder: (context, t, _) => builder(t.clamp(0, 1)),
     );
   }
 }
 
-/// Today's Schedule motion primitives — a delayed fade/slide for the grid
-/// (ruler ticks, court rows) and a delayed left-to-right wipe for the
-/// booking blocks, so the day reveals in the order it happens. Both are
-/// skipped when the platform asks for reduced motion.
-class _DelayedEnter extends StatelessWidget {
-  const _DelayedEnter({required this.delay, required this.child, this.slideX = -8});
 
-  final Duration delay;
-  final Widget child;
-  final double slideX;
 
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
-    const runMs = 420;
-    final totalMs = runMs + delay.inMilliseconds;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: totalMs),
-      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
-      builder: (context, t, child) => Opacity(
-        opacity: t.clamp(0, 1),
-        child: Transform.translate(offset: Offset(slideX * (1 - t), 0), child: child),
-      ),
-      child: child,
-    );
-  }
-}
 
-/// Reveals its child left-to-right by clipping rather than scaling, so the
-/// booking label inside never stretches.
-class _DelayedWipe extends StatelessWidget {
-  const _DelayedWipe({required this.delay, required this.child});
-
-  final Duration delay;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return child;
-    const runMs = 460;
-    final totalMs = runMs + delay.inMilliseconds;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: totalMs),
-      curve: Interval(delay.inMilliseconds / totalMs, 1, curve: Curves.easeOutCubic),
-      builder: (context, t, child) => Opacity(
-        opacity: t.clamp(0, 1),
-        child: ClipRect(clipper: _WipeClipper(t.clamp(0, 1)), child: child),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _WipeClipper extends CustomClipper<Rect> {
-  const _WipeClipper(this.progress);
-
-  final double progress;
-
-  @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * progress, size.height);
-
-  @override
-  bool shouldReclip(_WipeClipper oldClipper) => oldClipper.progress != progress;
-}
-
-/// A pill in the Today's Schedule court/sport filter row.
-class _SportFilterChip extends StatelessWidget {
-  const _SportFilterChip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 32),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? tokens.primary : tokens.surface1,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? tokens.primary : tokens.borderColor),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: selected ? tokens.onPrimary : tokens.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AttentionCard extends StatelessWidget {
-  const _AttentionCard({required this.items});
-
-  final List<AttentionItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    if (items.isEmpty) {
-      return AppCard(
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, color: tokens.success, size: 18),
-            const SizedBox(width: AppSpacing.sm),
-            const Expanded(child: Text("You're all caught up. No immediate attention required.")),
-          ],
-        ),
-      );
-    }
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final item in items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.error_outline, size: 16, color: tokens.warning),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(child: Text(item.message)),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MembershipSummaryCard extends StatelessWidget {
-  const _MembershipSummaryCard({required this.memberships});
-
-  final MembershipSummary memberships;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final total = memberships.active + memberships.expiringSoon + memberships.expired;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$total', style: Theme.of(context).textTheme.headlineSmall),
-          Text('Total members', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
-          const SizedBox(height: AppSpacing.md),
-          if (total > 0)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: Row(
-                children: [
-                  Expanded(flex: memberships.active, child: Container(height: 8, color: tokens.success)),
-                  Expanded(flex: memberships.expiringSoon, child: Container(height: 8, color: tokens.warning)),
-                  Expanded(flex: memberships.expired, child: Container(height: 8, color: tokens.destructive)),
-                ],
-              ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.xs,
-            children: [
-              _LegendDot(color: tokens.success, label: 'Active ${memberships.active}'),
-              _LegendDot(color: tokens.warning, label: 'Expiring ${memberships.expiringSoon}'),
-              _LegendDot(color: tokens.destructive, label: 'Expired ${memberships.expired}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  const _LegendDot({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: context.tokens.textSecondary, fontSize: 11)),
-      ],
-    );
-  }
-}
 
 /// Collected revenue for the selected period, its change vs. the previous
 /// period, and a real day-by-day trend (mobile keeps this compact — the full
@@ -963,86 +2039,158 @@ class _RevenueOverviewCard extends StatelessWidget {
       for (var k = 0; k < tickCount; k++) tickCount <= 1 ? 0 : ((k / (tickCount - 1)) * (n - 1)).round(),
     ];
 
-    return AppCard(
-      onTap: () => context.push(AppRoutes.finance),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CurrencyText(overview.totalInr, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Text('Total Revenue · ${overview.monthLabel}',
-                  style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
-              if (change != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Icon(up ? Icons.arrow_upward : (down ? Icons.arrow_downward : Icons.remove),
-                    size: 12, color: changeColor),
-                Text('${change.abs().toStringAsFixed(1)}%',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: changeColor)),
-              ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 44,
-                height: 130,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    for (final t in yTicks)
-                      Text(_compactInr(t), style: TextStyle(fontSize: 8, color: tokens.textSecondary)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: SizedBox(
-                  height: 130,
-                  child: _AnimatedProgress(
-                    duration: const Duration(milliseconds: 900),
-                    builder: (t) => CustomPaint(
-                      painter: _RevenueChartPainter(
-                        values: values,
-                        niceMax: niceMax,
-                        lineColor: tokens.primary,
-                        gridColor: tokens.borderColor.withValues(alpha: 0.4),
-                        progress: t,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.only(left: 48),
-            child: Stack(
-              children: [
-                const SizedBox(height: 14, width: double.infinity),
-                for (final idx in xTickIdx)
-                  Align(
-                    alignment: Alignment(n <= 1 ? 0 : (idx / (n - 1)) * 2 - 1, 0),
-                    child: Text(
-                      _dayLabel(overview.points[idx].date),
-                      style: TextStyle(fontSize: 8, color: tokens.textSecondary),
-                    ),
-                  ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push(AppRoutes.finance),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: tokens.primary.withValues(alpha: 0.3)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                tokens.primary.withValues(alpha: 0.16),
+                tokens.primary.withValues(alpha: 0.03),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Divider(height: 1, color: tokens.borderColor),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Revenue Breakdown', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          _RevenueBreakdownChart(segments: overview.breakdown, total: overview.totalInr),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Total revenue · ${overview.monthLabel}',
+                  style:
+                      TextStyle(color: tokens.textSecondary, fontSize: 12)),
+              const SizedBox(height: 3),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(Formatters.currencyInr(overview.totalInr),
+                      style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.textPrimary)),
+                  const SizedBox(width: AppSpacing.sm),
+                  if (change != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: changeColor.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                              up
+                                  ? Icons.arrow_upward_rounded
+                                  : (down
+                                      ? Icons.arrow_downward_rounded
+                                      : Icons.remove_rounded),
+                              size: 11,
+                              color: changeColor),
+                          Text('${change.abs().toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: changeColor)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 40,
+                    height: 140,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (final t in yTicks)
+                          Text(_compactInr(t),
+                              style: TextStyle(
+                                  fontSize: 8.5,
+                                  color: tokens.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: SizedBox(
+                      height: 140,
+                      child: _AnimatedProgress(
+                        duration: const Duration(milliseconds: 900),
+                        builder: (t) => CustomPaint(
+                          painter: _RevenueChartPainter(
+                            values: values,
+                            niceMax: niceMax,
+                            lineColor: tokens.primary,
+                            gridColor:
+                                tokens.borderColor.withValues(alpha: 0.35),
+                            progress: t,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 46),
+                child: Stack(
+                  children: [
+                    const SizedBox(height: 14, width: double.infinity),
+                    for (final idx in xTickIdx)
+                      Align(
+                        alignment: Alignment(
+                            n <= 1 ? 0 : (idx / (n - 1)) * 2 - 1, 0),
+                        child: Text(_dayLabel(overview.points[idx].date),
+                            style: TextStyle(
+                                fontSize: 8.5,
+                                color: tokens.textSecondary)),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Divider(
+                  height: 1,
+                  color: tokens.primary.withValues(alpha: 0.2)),
+              const SizedBox(height: AppSpacing.md),
+              Text('Where it came from',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: tokens.textSecondary)),
+              const SizedBox(height: AppSpacing.sm),
+              _RevenueBreakdownChart(
+                  segments: overview.breakdown, total: overview.totalInr),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Open Finance',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.primary)),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 16, color: tokens.primary),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1290,99 +2438,67 @@ class _DonutPainter extends CustomPainter {
       oldDelegate.values != values || oldDelegate.colors != colors || oldDelegate.progress != progress;
 }
 
-class _UtilizationCard extends StatelessWidget {
-  const _UtilizationCard({required this.utilization});
 
-  final UtilizationSummary utilization;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    if (utilization.bySport.isEmpty) {
-      return const AppCard(child: Text('No sports configured yet.'));
-    }
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final (i, s) in utilization.bySport.indexed)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: Text(s.sportName)),
-                      Text('${s.utilizationPercent}%', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    // Each bar fills from empty, staggered down the list.
-                    child: _AnimatedProgress(
-                      duration: const Duration(milliseconds: 700),
-                      delay: Duration(milliseconds: 160 + i * 90),
-                      builder: (t) => LinearProgressIndicator(
-                        value: (s.utilizationPercent / 100).clamp(0, 1).toDouble() * t,
-                        minHeight: 6,
-                        backgroundColor: tokens.surface2,
-                        valueColor: AlwaysStoppedAnimation(tokens.primary),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 2-column grid of real, currently-navigable destinations — never a tile
-/// that leads nowhere (spec §"Owner Home").
+/// Real, currently-navigable destinations as a 3-up grid of vertical tiles —
+/// each with its own accent, so the row scans quickly (spec §"Owner Home").
 class _QuickActionGrid extends StatelessWidget {
   const _QuickActionGrid();
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final actions = <_QuickActionData>[
-      _QuickActionData(Icons.add_circle_outline, 'Add Booking', AppRoutes.bookings),
-      _QuickActionData(Icons.person_add_alt_1_outlined, 'Add Member', AppRoutes.memberships),
-      _QuickActionData(Icons.event_available_outlined, 'Guest Slots', AppRoutes.membershipSessions),
-      _QuickActionData(Icons.groups_outlined, 'Add Guest', AppRoutes.guests),
-      _QuickActionData(Icons.account_balance_wallet_outlined, 'Finance', AppRoutes.finance),
-      _QuickActionData(Icons.currency_exchange, 'Refunds', AppRoutes.refunds),
+      _QuickActionData(Icons.add_rounded, 'Add booking', AppRoutes.bookings,
+          tokens.primary),
+      _QuickActionData(Icons.person_add_alt_1_rounded, 'Add member',
+          AppRoutes.memberships, tokens.violet),
+      _QuickActionData(Icons.event_available_rounded, 'Guest booking',
+          AppRoutes.guestBookings, tokens.electricBlue),
+      _QuickActionData(Icons.groups_rounded, 'Add guest', AppRoutes.guests,
+          tokens.warning),
+      _QuickActionData(Icons.account_balance_wallet_rounded, 'Finance',
+          AppRoutes.finance, tokens.primary),
+      _QuickActionData(Icons.currency_exchange_rounded, 'Refunds',
+          AppRoutes.refunds, tokens.destructive),
     ];
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: AppSpacing.sm,
       crossAxisSpacing: AppSpacing.sm,
-      childAspectRatio: 2.8,
+      childAspectRatio: 1.42,
       children: [
         for (final a in actions)
-          _QuickAction(icon: a.icon, label: a.label, onTap: () => context.push(a.route)),
+          _QuickAction(
+              icon: a.icon,
+              label: a.label,
+              accent: a.accent,
+              onTap: () => context.push(a.route)),
       ],
     );
   }
 }
 
 class _QuickActionData {
-  const _QuickActionData(this.icon, this.label, this.route);
+  const _QuickActionData(this.icon, this.label, this.route, this.accent);
   final IconData icon;
   final String label;
   final String route;
+  final Color accent;
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.label, required this.onTap});
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
+  final Color accent;
   final VoidCallback onTap;
 
   @override
@@ -1390,35 +2506,67 @@ class _QuickAction extends StatelessWidget {
     final tokens = context.tokens;
     return Semantics(
       button: true,
-      label: label,
-      child: InkWell(
-        onTap: onTap,
+      label: label.replaceAll('\n', ' '),
+      child: Material(
+        color: tokens.surface1,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: tokens.surface1,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: tokens.borderColor),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: tokens.primary.withValues(alpha: 0.14), shape: BoxShape.circle),
-                child: Icon(icon, color: tokens.primary, size: 18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: accent.withValues(alpha: 0.28)),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  accent.withValues(alpha: 0.14),
+                  accent.withValues(alpha: 0.02),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [accent, accent.withValues(alpha: 0.6)],
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        spreadRadius: -3,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 17),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: tokens.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1427,30 +2575,48 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _SelectorChip extends StatelessWidget {
-  const _SelectorChip({required this.label, required this.onSelect});
+  const _SelectorChip({
+    required this.label,
+    required this.onSelect,
+    this.dense = false,
+  });
 
   final String label;
   final VoidCallback onSelect;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onSelect,
+    final tokens = context.tokens;
+    return Material(
+      color: tokens.surface1,
       borderRadius: BorderRadius.circular(999),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        decoration: BoxDecoration(
-          border: Border.all(color: context.tokens.borderColor),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-            const SizedBox(width: 4),
-            const Icon(Icons.arrow_drop_down, size: 20),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onSelect,
+        child: Container(
+          constraints: BoxConstraints(minHeight: dense ? 32 : 42),
+          padding: EdgeInsets.symmetric(
+              horizontal: dense ? AppSpacing.md : AppSpacing.lg),
+          decoration: BoxDecoration(
+            border: Border.all(color: tokens.borderColor),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: dense ? 12 : 13,
+                        fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 2),
+              Icon(Icons.expand_more_rounded,
+                  size: dense ? 16 : 18, color: tokens.textSecondary),
+            ],
+          ),
         ),
       ),
     );

@@ -10,6 +10,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
@@ -265,6 +266,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     ),
                   ),
       ),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.money),
     );
   }
 

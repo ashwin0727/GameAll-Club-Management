@@ -98,13 +98,13 @@ class AppMetricCard extends StatelessWidget {
               if (icon != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
-                  child: Icon(icon, size: 14, color: accent),
+                  child: Icon(icon, size: 17, color: accent),
                 ),
               ],
             ],

@@ -51,7 +51,12 @@ class ResponsivePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Center(
+    // Align.topCenter, not Center — this should only cap/center width on
+    // wide screens. Center also centers vertically, which on a short page
+    // (few list rows) inside the minHeight-forced scroll view below pushes
+    // everything down into a large empty band at the top.
+    final content = Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: Breakpoints.maxContentWidth),
         child: Padding(padding: padding, child: child),

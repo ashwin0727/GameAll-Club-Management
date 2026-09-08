@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/models/membership_session.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
-import 'batch_members_sheet.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../authentication/auth_widgets.dart';
 
 const List<({int value, String label})> _days = [
   (value: 1, label: 'Mon'),
@@ -22,10 +23,6 @@ const List<({int value, String label})> _days = [
   (value: 6, label: 'Sat'),
   (value: 0, label: 'Sun'),
 ];
-
-String _daysLabel(List<int> daysOfWeek) {
-  return _days.where((d) => daysOfWeek.contains(d.value)).map((d) => d.label).join('/');
-}
 
 /// Batch management: list existing batches (name, days, time, capacity,
 /// active toggle), a create form, and a "Members" button per batch opening
@@ -200,161 +197,399 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
     }
   }
 
-  Future<void> _openMembers(MembershipBatch batch) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => BatchMembersSheet(facilityId: widget.facilityId, batch: batch),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        maxChildSize: 0.95,
+        initialChildSize: 0.92,
+        maxChildSize: 0.96,
         expand: false,
         builder: (context, scrollController) {
           return SingleChildScrollView(
             controller: scrollController,
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Membership Batches', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: AppSpacing.xs),
+                const Text('Membership batches',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
                 Text(
-                  'Recurring sessions that reserve court capacity for a membership plan.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  'Recurring sessions that reserve court capacity for a plan.',
+                  style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                if (_batches == null)
+                  const Padding(
+                    padding: EdgeInsets.all(AppSpacing.xl),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_batches!.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    decoration: BoxDecoration(
+                      color: tokens.surface1,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: tokens.borderColor),
+                    ),
+                    child: Text('No batches yet — add the first one below.',
+                        style: TextStyle(color: tokens.textSecondary)),
+                  )
+                else
+                  for (final batch in _batches!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _batchCard(context, batch),
+                    ),
+                const SizedBox(height: AppSpacing.xl),
+                _sectionLabel(context, 'ADD A BATCH'),
+                const SizedBox(height: AppSpacing.md),
+                _labeled(context, 'Batch name',
+                    TextField(controller: _nameController)),
+                const SizedBox(height: AppSpacing.md),
+                AppDropdown<String>(
+                  initialValue: _planId,
+                  decoration: const InputDecoration(labelText: 'Plan'),
+                  items: _plans
+                      .map((p) =>
+                          DropdownMenuItem(value: p.id, child: Text(p.name)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _planId = v),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (_batches == null)
-                  const Center(child: Padding(padding: EdgeInsets.all(AppSpacing.lg), child: CircularProgressIndicator()))
-                else ...[
-                  if (_batches!.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                      child: Text('No batches yet — add the first one below.'),
-                    )
-                  else
-                    ..._batches!.map(
-                      (batch) => Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(child: Text(batch.name, style: Theme.of(context).textTheme.titleSmall)),
-                                        if (!batch.isActive) ...[
-                                          const SizedBox(width: AppSpacing.xs),
-                                          const Chip(label: Text('Inactive'), visualDensity: VisualDensity.compact),
-                                        ],
-                                      ],
-                                    ),
-                                    Text(
-                                      '${_daysLabel(batch.daysOfWeek)} · ${batch.startTime.substring(0, 5)}–${batch.endTime.substring(0, 5)} · Capacity ${batch.capacity}',
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Wrap(
-                                spacing: AppSpacing.xs,
-                                children: [
-                                  OutlinedButton(onPressed: () => _openMembers(batch), child: const Text('Members')),
-                                  OutlinedButton(
-                                    onPressed: () => _toggleActive(batch),
-                                    child: Text(batch.isActive ? 'Deactivate' : 'Activate'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                AppDropdown<String>(
+                  initialValue: _facilitySportId,
+                  decoration: const InputDecoration(labelText: 'Sport'),
+                  items: _facilitySports
+                      .map((fs) => DropdownMenuItem(
+                          value: fs.id, child: Text(_sportLabel(fs))))
+                      .toList(),
+                  onChanged: (v) => setState(() {
+                    _facilitySportId = v;
+                    _courtId = null;
+                  }),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppDropdown<String>(
+                  initialValue: _courtId,
+                  decoration: const InputDecoration(labelText: 'Court'),
+                  items: _courtsForSport
+                      .map((a) =>
+                          DropdownMenuItem(value: a.id, child: Text(a.name)))
+                      .toList(),
+                  onChanged: _facilitySportId == null
+                      ? null
+                      : (v) => setState(() => _courtId = v),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _labeled(
+                  context,
+                  'Runs on',
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _days
+                        .map((d) => _DayChip(
+                              label: d.label,
+                              selected: _selectedDays.contains(d.value),
+                              onTap: () => _toggleDay(d.value),
+                            ))
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _TimeBox(
+                        label: 'Starts',
+                        value: Formatters.time12h(_formatTime(_startTime)),
+                        onTap: _pickStart,
                       ),
                     ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text('Add a batch', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Batch name', hintText: 'e.g. Evening Badminton'),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  AppDropdown<String>(
-                    initialValue: _planId,
-                    decoration: const InputDecoration(labelText: 'Plan'),
-                    items: _plans.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
-                    onChanged: (v) => setState(() => _planId = v),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  AppDropdown<String>(
-                    initialValue: _facilitySportId,
-                    decoration: const InputDecoration(labelText: 'Sport'),
-                    items: _facilitySports
-                        .map((fs) => DropdownMenuItem(value: fs.id, child: Text(_sportLabel(fs))))
-                        .toList(),
-                    onChanged: (v) => setState(() {
-                      _facilitySportId = v;
-                      _courtId = null;
-                    }),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  AppDropdown<String>(
-                    initialValue: _courtId,
-                    decoration: const InputDecoration(labelText: 'Court'),
-                    items: _courtsForSport.map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
-                    onChanged: _facilitySportId == null ? null : (v) => setState(() => _courtId = v),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: _days
-                        .map(
-                          (d) => ChoiceChip(
-                            label: Text(d.label),
-                            selected: _selectedDays.contains(d.value),
-                            onSelected: (_) => _toggleDay(d.value),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(onPressed: _pickStart, child: Text('Start ${_formatTime(_startTime)}')),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _TimeBox(
+                        label: 'Ends',
+                        value: Formatters.time12h(_formatTime(_endTime)),
+                        onTap: _pickEnd,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: OutlinedButton(onPressed: _pickEnd, child: Text('End ${_formatTime(_endTime)}'))),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _labeled(
+                  context,
+                  'Capacity',
                   TextField(
                     controller: _capacityController,
-                    decoration: const InputDecoration(labelText: 'Capacity'),
                     keyboardType: TextInputType.number,
                   ),
-                  if (_error != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(_error!, style: const TextStyle(color: AppColors.destructive)),
-                  ],
+                ),
+                if (_error != null) ...[
                   const SizedBox(height: AppSpacing.md),
-                  PrimaryButton(label: 'Add Batch', loadingLabel: 'Saving…', isLoading: _isSaving, onPressed: _addBatch),
+                  Text(_error!,
+                      style: TextStyle(color: tokens.destructive, fontSize: 13)),
                 ],
+                const SizedBox(height: AppSpacing.lg),
+                AuthGradientButton(
+                  label: 'Add batch',
+                  loadingLabel: 'Saving…',
+                  isLoading: _isSaving,
+                  onPressed: _addBatch,
+                ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _sectionLabel(BuildContext context, String text) => Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
+          color: context.tokens.textSecondary,
+        ),
+      );
+
+  Widget _labeled(BuildContext context, String label, Widget field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: context.tokens.textSecondary)),
+          const SizedBox(height: 6),
+          field,
+        ],
+      );
+
+  Widget _batchCard(BuildContext context, MembershipBatch batch) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: tokens.violet.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(Icons.event_repeat_rounded,
+                    size: 20, color: tokens.violet),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(batch.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w800)),
+                        ),
+                        if (!batch.isActive) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: tokens.textSecondary.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text('Inactive',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.textSecondary)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${Formatters.time12h(batch.startTime.substring(0, 5))}–${Formatters.time12h(batch.endTime.substring(0, 5))}',
+                      style: TextStyle(
+                          fontSize: 12, color: tokens.textSecondary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _planName(batch.planId),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: tokens.violet),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _SmallBtn(
+                label: batch.isActive ? 'Deactivate' : 'Activate',
+                danger: batch.isActive,
+                onTap: () => _toggleActive(batch),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _planName(String planId) => _plans
+      .where((p) => p.id == planId)
+      .map((p) => p.name)
+      .firstOrNull ??
+      'Membership';
+}
+
+class _SmallBtn extends StatelessWidget {
+  const _SmallBtn({
+    required this.label,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final color = danger ? tokens.destructive : tokens.violet;
+    return Material(
+      color: Colors.transparent,
+      shape: StadiumBorder(
+          side: BorderSide(color: color.withValues(alpha: 0.5))),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+          alignment: Alignment.center,
+          child: Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              )),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? tokens.violet.withValues(alpha: 0.18)
+              : tokens.surface2,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+            color: selected ? tokens.violet : tokens.borderColor,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? tokens.violet : tokens.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeBox extends StatelessWidget {
+  const _TimeBox({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: tokens.surface2,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style:
+                    TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            const SizedBox(height: 2),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.textPrimary)),
+          ],
+        ),
       ),
     );
   }

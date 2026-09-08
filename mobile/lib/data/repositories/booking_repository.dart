@@ -21,8 +21,8 @@ class BookingRepository {
           .select()
           .eq('court_id', courtId)
           .inFilter('status', ['pending', 'confirmed'])
-          .gte('start_time', dayStart.toIso8601String())
-          .lt('start_time', dayEnd.toIso8601String())
+          .gte('start_time', dayStart.toUtc().toIso8601String())
+          .lt('start_time', dayEnd.toUtc().toIso8601String())
           .order('start_time', ascending: true);
       return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(Booking.fromJson).toList();
     } on PostgrestException catch (e) {
@@ -38,8 +38,8 @@ class BookingRepository {
           .from('bookings')
           .select()
           .eq('facility_id', facilityId)
-          .gte('start_time', from.toIso8601String())
-          .lt('start_time', to.toIso8601String())
+          .gte('start_time', from.toUtc().toIso8601String())
+          .lt('start_time', to.toUtc().toIso8601String())
           .order('start_time', ascending: true);
       return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(Booking.fromJson).toList();
     } on PostgrestException catch (e) {
@@ -54,8 +54,8 @@ class BookingRepository {
         params: {
           'p_facility_id': input.facilityId,
           'p_court_id': input.courtId,
-          'p_start_time': input.startTime.toIso8601String(),
-          'p_end_time': input.endTime.toIso8601String(),
+          'p_start_time': input.startTime.toUtc().toIso8601String(),
+          'p_end_time': input.endTime.toUtc().toIso8601String(),
           'p_customer_type': customerTypeToDb(input.customerType),
           'p_member_id': input.memberId,
           'p_guest_name': input.guestName,
@@ -80,8 +80,8 @@ class BookingRepository {
         params: {
           'p_booking_id': input.bookingId,
           'p_new_court_id': input.courtId,
-          'p_new_start_time': input.startTime.toIso8601String(),
-          'p_new_end_time': input.endTime.toIso8601String(),
+          'p_new_start_time': input.startTime.toUtc().toIso8601String(),
+          'p_new_end_time': input.endTime.toUtc().toIso8601String(),
         },
       );
       return Booking.fromJson(row as Map<String, dynamic>);
@@ -239,8 +239,8 @@ class BookingRepository {
     try {
       final row = await _client.rpc('duplicate_guest_booking', params: {
         'p_booking_id': bookingId,
-        'p_new_start': newStart.toIso8601String(),
-        'p_new_end': newEnd.toIso8601String(),
+        'p_new_start': newStart.toUtc().toIso8601String(),
+        'p_new_end': newEnd.toUtc().toIso8601String(),
       });
       return Booking.fromJson(row as Map<String, dynamic>);
     } on PostgrestException catch (e) {

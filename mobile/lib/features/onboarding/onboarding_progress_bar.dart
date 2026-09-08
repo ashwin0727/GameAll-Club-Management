@@ -3,10 +3,10 @@ import '../../core/theme/app_colors.dart';
 
 const List<String> _steps = [
   'Facility Details',
-  'Sports',
-  'Courts & Turfs',
-  'Operating Hours',
+  'Sports & Courts',
   'Pricing',
+  'Operating Hours',
+  'Payments',
   'Setup',
 ];
 

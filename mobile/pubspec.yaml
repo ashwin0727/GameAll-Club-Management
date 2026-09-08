@@ -58,9 +58,15 @@ dependencies:
   # hands that file to the OS share sheet so the owner can save or send it.
   share_plus: ^13.3.0
   path_provider: ^2.1.6
+  image_picker: ^1.2.3
+  url_launcher: ^6.3.2
+  image_cropper: ^12.2.1
+  linked_scroll_controller: ^0.2.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -95,6 +101,7 @@ flutter:
 
   assets:
     - assets/images/logo-icon.png
+    - assets/sports/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

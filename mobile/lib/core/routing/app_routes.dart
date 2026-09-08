@@ -11,11 +11,18 @@ class AppRoutes {
   static const emailVerification = '/email-verification';
   static const forgotPassword = '/forgot-password';
 
+  static const onboardingWelcome = '/onboarding/welcome';
   static const onboardingFacility = '/onboarding/facility';
+
+  /// The redesigned flow merges Sports and Courts into one step. The two
+  /// legacy routes below still back the interim two-screen chain until the
+  /// merged screen lands (onboarding-redesign sub-project 2).
+  static const onboardingSportsCourts = '/onboarding/sports-courts';
   static const onboardingSports = '/onboarding/sports';
   static const onboardingCourts = '/onboarding/courts';
   static const onboardingOperatingHours = '/onboarding/operating-hours';
   static const onboardingPricing = '/onboarding/pricing';
+  static const onboardingPayments = '/onboarding/payments';
   static const onboardingComplete = '/onboarding/complete';
 
   static const dashboard = '/dashboard';

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data/models/membership.dart';
 import '../../data/models/playing_area.dart';
@@ -47,6 +48,7 @@ class MembershipSlotSection extends ConsumerStatefulWidget {
 class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
   List<FacilitySport> _facilitySports = [];
   Map<String, String> _sportNames = {}; // sportId -> display name
+  Map<String, String> _planNames = {}; // planId -> plan name
   List<PlayingArea> _courts = [];
   List<AssignableBatch> _batches = [];
   bool _loading = true;
@@ -60,6 +62,13 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant MembershipSlotSection old) {
+    super.didUpdateWidget(old);
+    // A different plan means a different set of session batches.
+    if (old.planId != widget.planId) _load();
+  }
+
   Future<void> _load() async {
     try {
       final results = await Future.wait([
@@ -68,6 +77,8 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
         ref.read(playingAreaRepositoryProvider).getPlayingAreas(widget.facilityId),
         ref.read(membershipRepositoryProvider)
             .listAssignableBatches(widget.facilityId, planId: widget.planId),
+        ref.read(membershipRepositoryProvider)
+            .getFacilityPlans(widget.facilityId),
       ]);
       if (!mounted) return;
       final facilitySports = (results[0] as List<FacilitySport>).where((f) => f.enabled).toList();
@@ -76,9 +87,11 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
           .where((a) => !a.archived && a.status == 'ACTIVE' && a.bookingEnabled)
           .toList();
       final batches = results[3] as List<AssignableBatch>;
+      final plans = results[4] as List<MembershipPlan>;
       setState(() {
         _facilitySports = facilitySports;
         _sportNames = {for (final s in sports) s.id: s.name};
+        _planNames = {for (final p in plans) p.id: p.name};
         _courts = courts;
         _batches = batches;
         _loading = false;
@@ -106,7 +119,11 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
 
   List<AssignableBatch> get _batchesForSport {
     final courtIds = _courtsForSport.map((c) => c.id).toSet();
-    return _batches.where((b) => courtIds.contains(b.courtId)).toList();
+    return _batches
+        .where((b) =>
+            courtIds.contains(b.courtId) &&
+            (widget.planId == null || b.planId == widget.planId))
+        .toList();
   }
 
   void _pickSport(String? id) {
@@ -142,24 +159,31 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
 
     final value = widget.value;
     final draft = value is SlotNew ? value.draft : null;
+    final tokens = context.tokens;
+    final batches = _batchesForSport;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppSpacing.sm),
+        color: tokens.surface1,
+        border: Border.all(color: tokens.borderColor),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Court Time Slot',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted)),
-          Text('Optional — reserves this court/time for the member.',
-              style: TextStyle(fontSize: 11, color: AppColors.muted)),
-          const SizedBox(height: AppSpacing.sm),
+          Text('Court time slot',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: tokens.textPrimary)),
+          const SizedBox(height: 2),
+          Text('Optional — reserves a recurring court and time for this member.',
+              style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+          const SizedBox(height: AppSpacing.md),
           AppDropdown<String>(
             initialValue: _facilitySportId.isEmpty ? null : _facilitySportId,
-            decoration: const InputDecoration(labelText: 'Sport (to add a time slot)'),
+            decoration: const InputDecoration(labelText: 'Sport'),
             items: [
               const DropdownMenuItem(value: '', child: Text('No time slot')),
               for (final fs in _facilitySports)
@@ -168,17 +192,41 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
             onChanged: _pickSport,
           ),
           if (_facilitySportId.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _RadioRow(
-              label: 'No reserved slot',
+            const SizedBox(height: AppSpacing.md),
+            _OptionCard(
               selected: value is SlotNone,
               onTap: () => widget.onChanged(const SlotNone()),
+              child: Text('No reserved slot',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.textPrimary)),
             ),
-            for (final b in _batchesForSport) _batchRow(b, value),
-            _RadioRow(
-              label: '+ New time slot',
+            if (batches.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Text(
+                  'No sessions for this plan and sport yet — create one below.',
+                  style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                ),
+              )
+            else
+              for (final b in batches) _batchCard(b, value),
+            _OptionCard(
               selected: value is SlotNew,
-              onTap: () => widget.onChanged(SlotNew(_emptyDraft(_facilitySportId))),
+              onTap: () => widget
+                  .onChanged(SlotNew(_emptyDraft(_facilitySportId))),
+              child: Row(
+                children: [
+                  Icon(Icons.add, size: 16, color: tokens.violet),
+                  const SizedBox(width: 6),
+                  Text('Create a new slot',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.violet)),
+                ],
+              ),
             ),
             if (draft != null) _newSlotEditor(draft),
           ],
@@ -187,22 +235,90 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
     );
   }
 
-  Widget _batchRow(AssignableBatch b, MembershipSlotSelection value) {
+  Widget _batchCard(AssignableBatch b, MembershipSlotSelection value) {
+    final tokens = context.tokens;
     final isCurrent = widget.currentBatchId == b.batchId;
     final disabled = b.spare <= 0 && !isCurrent;
-    return _RadioRow(
-      label: '${b.courtName} · ${formatSlot(b.daysOfWeek, b.startTime, b.endTime)} · '
-          '${b.enrolledCount}/${b.capacity}'
-          '${isCurrent ? ' — current' : ''}${disabled ? ' — full' : ''}',
+    final capColor = disabled
+        ? tokens.warning
+        : (isCurrent ? tokens.violet : tokens.primary);
+    return _OptionCard(
       selected: value is SlotExisting && value.batchId == b.batchId,
       disabled: disabled,
       onTap: () => widget.onChanged(SlotExisting(b.batchId)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(b.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: disabled
+                            ? tokens.textSecondary
+                            : tokens.textPrimary)),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: capColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${b.enrolledCount}/${b.capacity}'
+                  '${isCurrent ? ' · current' : disabled ? ' · full' : ''}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: capColor),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Icon(Icons.place_outlined,
+                  size: 13, color: tokens.textSecondary),
+              const SizedBox(width: 4),
+              Text(b.courtName,
+                  style: TextStyle(
+                      fontSize: 12, color: tokens.textSecondary)),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.card_membership,
+                  size: 13, color: tokens.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _planNames[b.planId] ?? 'Membership',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12, color: tokens.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _newSlotEditor(NewSlotDraft draft) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.lg, top: AppSpacing.xs),
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: context.tokens.violet.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+            color: context.tokens.violet.withValues(alpha: 0.3)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,6 +341,14 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
                 FilterChip(
                   label: Text(dayLabel(d)),
                   selected: draft.daysOfWeek.contains(d),
+                  selectedColor:
+                      context.tokens.violet.withValues(alpha: 0.18),
+                  checkmarkColor: context.tokens.violet,
+                  side: BorderSide(
+                    color: draft.daysOfWeek.contains(d)
+                        ? context.tokens.violet
+                        : context.tokens.borderColor,
+                  ),
                   onSelected: (_) => _patchDraft(draft.copyWith(daysOfWeek: toggleDay(draft.daysOfWeek, d))),
                 ),
             ],
@@ -282,48 +406,62 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
   }
 }
 
-/// A tap-to-select row with a radio glyph — the codebase's radio idiom
-/// (see book_guest_slot_sheet / guest_bookings_screen) rather than the now
-/// deprecated `RadioListTile` group API.
-class _RadioRow extends StatelessWidget {
-  const _RadioRow({
-    required this.label,
+/// A tappable, card-styled option with a leading radio glyph — used for the
+/// "no slot" / per-batch / "new slot" choices so each reads as a distinct
+/// card rather than a cramped label in a list.
+class _OptionCard extends StatelessWidget {
+  const _OptionCard({
     required this.selected,
     required this.onTap,
+    required this.child,
     this.disabled = false,
   });
 
-  final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Widget child;
   final bool disabled;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: disabled ? null : onTap,
+    final tokens = context.tokens;
+    return Opacity(
+      opacity: disabled ? 0.55 : 1,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              size: 18,
-              color: disabled
-                  ? AppColors.muted
-                  : selected
-                      ? AppColors.primary
-                      : AppColors.muted,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 13, color: disabled ? AppColors.muted : null),
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Material(
+          color: selected
+              ? tokens.violet.withValues(alpha: 0.10)
+              : tokens.surface2,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: disabled ? null : onTap,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: selected ? tokens.violet : tokens.borderColor,
+                  width: selected ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    size: 18,
+                    color: selected ? tokens.violet : tokens.textSecondary,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(child: child),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

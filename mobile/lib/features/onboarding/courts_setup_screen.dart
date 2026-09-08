@@ -55,7 +55,7 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
       }
       final facilitySports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
       if (facilitySports.isEmpty) {
-        if (mounted) context.go(AppRoutes.onboardingSports);
+        if (mounted) context.go(AppRoutes.onboardingSportsCourts);
         return;
       }
       final sports = await ref.read(sportsRepositoryProvider).getActiveSports();
@@ -183,10 +183,10 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
     try {
       await ref
           .read(facilityRepositoryProvider)
-          .updateOnboardingStep(_facilityId!, OnboardingStep.operatingHours);
+          .updateOnboardingStep(_facilityId!, OnboardingStep.pricing);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.onboardingOperatingHours);
+      context.go(AppRoutes.onboardingPricing);
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _continueError = e.message);
@@ -202,7 +202,7 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const OnboardingProgressBar(currentStep: 3)),
+      appBar: AppBar(title: const OnboardingProgressBar(currentStep: 2)),
       body: SafeArea(
         child: _isLoading
             ? const LoadingView(message: 'Loading courts & turfs…')

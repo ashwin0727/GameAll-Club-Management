@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/routing/page_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
@@ -123,7 +124,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
 
   Future<void> _openProfile(GuestPlayer guest) async {
     final result = await Navigator.of(context).push<GuestPlayer>(
-      MaterialPageRoute(builder: (context) => GuestProfileScreen(facilityId: _facilityId!, guest: guest)),
+      AppPageRoute(builder: (context) => GuestProfileScreen(facilityId: _facilityId!, guest: guest)),
     );
     if (result != null) _upsertGuest(result);
   }

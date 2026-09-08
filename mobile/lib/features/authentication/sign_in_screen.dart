@@ -8,8 +8,8 @@ import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/validators.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_text_field.dart';
+import 'auth_widgets.dart';
 import 'session_controller.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -24,6 +24,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _obscurePassword = true;
+  bool _keepSignedIn = true;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -71,17 +72,32 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Scaffold(
-      body: SafeArea(
+      body: AuthGradientBackground(
+        child: SafeArea(
         child: ResponsivePage(
+          scrollable: false,
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Welcome back', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: AppSpacing.xs),
-                const Text('Sign in to manage your facility.'),
+            child: AuthLayout(
+              top: [
+                const SizedBox(height: AppSpacing.sm),
+                const AuthBrandMark(),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Log in',
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Use the email your club account was created with.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: tokens.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 if (_errorMessage != null) ...[
                   Text(_errorMessage!, style: const TextStyle(color: AppColors.destructive)),
@@ -92,6 +108,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  prefixIcon: const Icon(Icons.mail_outline),
                   validator: Validators.email,
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -100,6 +117,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   controller: _password,
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
+                  prefixIcon: const Icon(Icons.lock_outline),
                   validator: (v) =>
                       (v == null || v.isEmpty) ? 'Password is required.' : null,
                   suffixIcon: IconButton(
@@ -108,30 +126,56 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => context.push(AppRoutes.forgotPassword),
-                    child: const Text('Forgot password?'),
-                  ),
+                Row(
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: Checkbox(
+                        value: _keepSignedIn,
+                        onChanged: (v) => setState(() => _keepSignedIn = v ?? false),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Text('Keep me signed in', style: TextStyle(color: tokens.textSecondary)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => context.push(AppRoutes.forgotPassword),
+                      child: Text(
+                        'Forgot?',
+                        style: TextStyle(color: tokens.primary, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
-                PrimaryButton(
-                  label: 'Sign In',
+              ],
+              bottom: [
+                AuthGradientButton(
+                  label: 'Log in',
                   loadingLabel: 'Signing in…',
                   isLoading: _isSubmitting,
                   onPressed: _submit,
                 ),
                 const SizedBox(height: AppSpacing.lg),
+                const AuthOrDivider(),
+                const SizedBox(height: AppSpacing.lg),
+                AuthOutlineButton(
+                  label: 'Log in with mobile OTP',
+                  icon: Icons.smartphone_outlined,
+                  onPressed: () => showComingSoon(context, 'Mobile OTP login'),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 Center(
-                  child: TextButton(
-                    onPressed: () => context.go(AppRoutes.createAccount),
-                    child: const Text("Don't have an account? Create one"),
+                  child: AuthFooterPrompt(
+                    prompt: 'New here?',
+                    action: 'Create an account',
+                    onTap: () => context.push(AppRoutes.createAccount),
                   ),
                 ),
               ],
             ),
           ),
+        ),
         ),
       ),
     );

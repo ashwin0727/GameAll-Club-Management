@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/routing/page_transitions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,22 +11,22 @@ import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
-import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_detail_screen.dart';
 import 'membership_access_days_sheet.dart';
 import 'membership_list_presentation.dart';
-import 'membership_revenue_trend.dart';
 import 'membership_plans_sheet.dart';
 import 'slot_format.dart';
 
@@ -152,25 +153,127 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     _debounce = Timer(const Duration(milliseconds: 300), _refresh);
   }
 
-  void _setStatus(MembershipListStatus? status) {
-    setState(() {
-      _status = status;
-      _page = 1;
-    });
-    _refresh();
-  }
-
-  void _setSort(MembershipListSort sort) {
-    setState(() {
-      _sort = sort;
-      _page = 1;
-    });
-    _refresh();
-  }
-
   void _setPage(int page) {
     setState(() => _page = page);
     _refresh();
+  }
+
+  static const _sortOptions = [
+    (MembershipListSort.oldest, 'Oldest First'),
+    (MembershipListSort.nextPayment, 'Next Payment: Soonest'),
+    (MembershipListSort.name, 'Name (A–Z)'),
+  ];
+
+  /// One sheet for both filter controls — status and sort — reached from
+  /// the single tune icon beside search, instead of two separate rows.
+  static const _statusIcons = {
+    null: Icons.apps_rounded,
+    MembershipListStatus.active: Icons.check_circle_outline,
+    MembershipListStatus.paymentIncomplete: Icons.error_outline,
+    MembershipListStatus.inactive: Icons.pause_circle_outline,
+  };
+
+  static const _sortIcons = {
+    MembershipListSort.oldest: Icons.history_rounded,
+    MembershipListSort.nextPayment: Icons.event_available_outlined,
+    MembershipListSort.name: Icons.sort_by_alpha_rounded,
+  };
+
+  Future<void> _openFilterSheet() async {
+    var pendingStatus = _status;
+    var pendingSort = _sort;
+    await showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Filter & Sort', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: AppColors.muted)),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _statusFilters.map((s) {
+                      final selected = pendingStatus == s;
+                      return ChoiceChip(
+                        avatar: Icon(_statusIcons[s], size: 16, color: selected ? AppColors.onPrimary : AppColors.muted),
+                        label: Text(s == null ? 'All Status' : membershipListStatusLabel(s)),
+                        selected: selected,
+                        onSelected: (_) => setSheetState(() => pendingStatus = s),
+                        selectedColor: AppColors.primary,
+                        labelStyle: TextStyle(fontWeight: FontWeight.w600, color: selected ? AppColors.onPrimary : AppColors.foreground),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text('SORT BY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: AppColors.muted)),
+                  const SizedBox(height: AppSpacing.sm),
+                  ...List.generate(_sortOptions.length, (i) {
+                    final entry = _sortOptions[i];
+                    final selected = pendingSort == entry.$1;
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: i == _sortOptions.length - 1 ? 0 : AppSpacing.sm),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        onTap: () => setSheetState(() => pendingSort = entry.$1),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.mutedBackground,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(_sortIcons[entry.$1], size: 18, color: selected ? AppColors.primary : AppColors.muted),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  entry.$2,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                    color: selected ? AppColors.primary : AppColors.foreground,
+                                  ),
+                                ),
+                              ),
+                              if (selected) const Icon(Icons.check_circle, size: 18, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: AppSpacing.lg),
+                  PrimaryButton(
+                    label: 'Apply',
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (pendingStatus != _status || pendingSort != _sort) {
+      setState(() {
+        _status = pendingStatus;
+        _sort = pendingSort;
+        _page = 1;
+      });
+      _refresh();
+    }
   }
 
   Future<void> _openCreate() async {
@@ -201,7 +304,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
 
   Future<void> _openDetail(MembershipListRow row) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => MembershipDetailScreen(membershipId: row.membershipId)),
+      AppPageRoute(builder: (_) => MembershipDetailScreen(membershipId: row.membershipId)),
     );
     if (mounted) _refresh();
   }
@@ -303,51 +406,35 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (_summary != null) _SummaryGrid(summary: _summary!),
-                          if (_facilityId != null) ...[
-                            const SizedBox(height: AppSpacing.md),
-                            MembershipRevenueTrend(facilityId: _facilityId!),
-                          ],
                           const SizedBox(height: AppSpacing.lg),
-                          AppSearchField(
-                            controller: _searchController,
-                            hintText: 'Search by name, phone or email',
-                            onChanged: _onSearchChanged,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          SizedBox(
-                            height: AppSpacing.minTouchTarget,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: _statusFilters
-                                  .map((s) => Padding(
-                                        padding: const EdgeInsets.only(right: AppSpacing.sm),
-                                        child: ChoiceChip(
-                                          label: Text(s == null ? 'All Status' : membershipListStatusLabel(s)),
-                                          selected: _status == s,
-                                          onSelected: (_) => _setStatus(s),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
                           Row(
                             children: [
-                              Text('Sort', style: AppTypography.caption(context)),
+                              Expanded(
+                                child: AppSearchField(
+                                  controller: _searchController,
+                                  hintText: 'Search by name, phone or email',
+                                  onChanged: _onSearchChanged,
+                                ),
+                              ),
                               const SizedBox(width: AppSpacing.sm),
-                              DropdownButton<MembershipListSort>(
-                                value: _sort,
-                                underline: const SizedBox.shrink(),
-                                onChanged: (s) => s == null ? null : _setSort(s),
-                                items: const [
-                                  DropdownMenuItem(value: MembershipListSort.oldest, child: Text('Oldest First')),
-                                  DropdownMenuItem(value: MembershipListSort.nextPayment, child: Text('Next Payment: Soonest')),
-                                  DropdownMenuItem(value: MembershipListSort.name, child: Text('Name (A–Z)')),
-                                ],
+                              InkWell(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                onTap: _openFilterSheet,
+                                child: Container(
+                                  width: AppSpacing.minTouchTarget,
+                                  height: AppSpacing.minTouchTarget,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: _status == null ? AppColors.card : AppColors.primary.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(color: _status == null ? AppColors.border : AppColors.primary),
+                                  ),
+                                  child: Icon(Icons.tune_rounded, size: 20, color: _status == null ? AppColors.muted : AppColors.primary),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: AppSpacing.lg),
                           if (_listLoading)
                             const Padding(
                               padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -388,7 +475,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Create Membership'),
             ),
-      bottomNavigationBar: const AppBottomNav(current: AppTab.memberships),
+      bottomNavigationBar: const AppBottomNav(current: AppTab.members),
     );
   }
 }
@@ -401,41 +488,58 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return MetricCarousel(
-      cards: [
-        AppMetricCard(
-          label: 'Total Members',
-          value: '${summary.totalMembers}',
-          countTo: summary.totalMembers,
-          formatValue: (v) => v.round().toString(),
-          changePercent: summary.totalMembersChangePct,
-          icon: Icons.groups_outlined,
-          accentColor: tokens.violet,
+    final cards = [
+      AppMetricCard(
+        label: 'Total Members',
+        value: '${summary.totalMembers}',
+        countTo: summary.totalMembers,
+        formatValue: (v) => v.round().toString(),
+        changePercent: summary.totalMembersChangePct,
+        icon: Icons.groups_outlined,
+        accentColor: tokens.violet,
+      ),
+      AppMetricCard(
+        label: 'Active Members',
+        value: '${summary.activeMembers}',
+        countTo: summary.activeMembers,
+        formatValue: (v) => v.round().toString(),
+        icon: Icons.verified_user_outlined,
+        accentColor: tokens.success,
+      ),
+      AppMetricCard(
+        label: 'Payment Incomplete',
+        value: '${summary.paymentIncompleteMembers}',
+        countTo: summary.paymentIncompleteMembers,
+        formatValue: (v) => v.round().toString(),
+        icon: Icons.money_off_rounded,
+        accentColor: tokens.destructive,
+      ),
+      AppMetricCard(
+        label: 'Revenue (this month)',
+        value: Formatters.currencyInr(summary.revenueInr),
+        countTo: summary.revenueInr,
+        formatValue: (v) => Formatters.currencyInr(v.round()),
+        changePercent: summary.revenueChangePct,
+        icon: Icons.currency_rupee_rounded,
+        accentColor: tokens.electricBlue,
+      ),
+    ];
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: cards[0]),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: cards[1]),
+          ],
         ),
-        AppMetricCard(
-          label: 'Active Members',
-          value: '${summary.activeMembers}',
-          countTo: summary.activeMembers,
-          formatValue: (v) => v.round().toString(),
-          icon: Icons.verified_user_outlined,
-          accentColor: tokens.success,
-        ),
-        AppMetricCard(
-          label: 'Payment Incomplete',
-          value: '${summary.paymentIncompleteMembers}',
-          countTo: summary.paymentIncompleteMembers,
-          formatValue: (v) => v.round().toString(),
-          icon: Icons.person_off_outlined,
-          accentColor: tokens.destructive,
-        ),
-        AppMetricCard(
-          label: 'Revenue (this month)',
-          value: Formatters.currencyInr(summary.revenueInr),
-          countTo: summary.revenueInr,
-          formatValue: (v) => Formatters.currencyInr(v.round()),
-          changePercent: summary.revenueChangePct,
-          icon: Icons.account_balance_wallet_outlined,
-          accentColor: tokens.electricBlue,
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(child: cards[2]),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: cards[3]),
+          ],
         ),
       ],
     );

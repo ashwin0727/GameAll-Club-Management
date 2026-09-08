@@ -103,8 +103,13 @@ class Booking {
       guestPlayerId: json['guest_player_id'] as String?,
       guestName: json['guest_name'] as String?,
       guestPhone: json['guest_phone'] as String?,
-      startTime: DateTime.parse(json['start_time'] as String),
-      endTime: DateTime.parse(json['end_time'] as String),
+      // Server sends real timestamptz instants (with an offset) — always
+      // convert to local wall-clock immediately on parse, so every screen
+      // that reads .hour/.minute downstream (the timeline, slot chips,
+      // booking details) sees the facility's actual local time rather than
+      // the raw UTC instant.
+      startTime: DateTime.parse(json['start_time'] as String).toLocal(),
+      endTime: DateTime.parse(json['end_time'] as String).toLocal(),
       status: _statusFromDb(json['status'] as String? ?? 'pending'),
       amountMinor: json['amount_minor'] as int?,
       currency: json['currency'] as String? ?? 'INR',
@@ -114,8 +119,8 @@ class Booking {
       partySize: (json['party_size'] as num?)?.toInt() ?? 1,
       paymentMethod: json['payment_method'] as String?,
       createdBy: json['created_by'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );
   }
 

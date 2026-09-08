@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,6 +10,10 @@ import 'core/theme/theme_mode_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock to portrait — the app's layouts are designed portrait-only and the
+  // rotation on device tilt was more disorienting than useful.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   if (!AppConfig.isConfigured) {
     runApp(const _MissingConfigApp());
@@ -24,11 +29,28 @@ Future<void> main() async {
   runApp(const ProviderScope(child: GameAllClubApp()));
 }
 
-class GameAllClubApp extends ConsumerWidget {
+class GameAllClubApp extends ConsumerStatefulWidget {
   const GameAllClubApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GameAllClubApp> createState() => _GameAllClubAppState();
+}
+
+class _GameAllClubAppState extends ConsumerState<GameAllClubApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Re-assert the portrait lock once the engine + activity are attached —
+    // the call in main() can race engine init and be dropped, which lets
+    // Flutter fall back to SCREEN_ORIENTATION_UNSPECIFIED and override the
+    // manifest. Doing it here (post-attach) makes it stick.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeControllerProvider);
     return MaterialApp.router(

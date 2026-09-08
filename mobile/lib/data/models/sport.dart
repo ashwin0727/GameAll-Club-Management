@@ -13,6 +13,18 @@ const Map<String, ({String icon, String description})> _presentation = {
 };
 const _defaultPresentation = (icon: '🏅', description: '');
 
+/// Bundled icon image for a sport, keyed by its [Sport.code]. Drop a
+/// 512×512 transparent PNG at `assets/sports/<code>.png` (lowercase) and it
+/// is picked up automatically; callers fall back to [Sport.icon] (the emoji)
+/// when the file is a placeholder or missing.
+String sportIconAsset(String code) {
+  const known = {
+    'BADMINTON', 'PICKLEBALL', 'CRICKET', 'FOOTBALL', 'TENNIS', 'OTHER',
+  };
+  final key = known.contains(code.toUpperCase()) ? code.toUpperCase() : 'OTHER';
+  return 'assets/sports/${key.toLowerCase()}.png';
+}
+
 /// The global sport catalog — mirrors `sports` (0001/0002 migrations).
 class Sport {
   const Sport({

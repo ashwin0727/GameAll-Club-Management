@@ -14,6 +14,7 @@ class AppTextField extends StatelessWidget {
     this.validator,
     this.autovalidateMode = AutovalidateMode.onUserInteraction,
     this.suffixIcon,
+    this.prefixIcon,
     this.enabled = true,
     this.maxLines = 1,
     this.onChanged,
@@ -27,6 +28,7 @@ class AppTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final AutovalidateMode autovalidateMode;
   final Widget? suffixIcon;
+  final Widget? prefixIcon;
   final bool enabled;
   final int maxLines;
   final ValueChanged<String>? onChanged;
@@ -43,7 +45,11 @@ class AppTextField extends StatelessWidget {
       enabled: enabled,
       maxLines: obscureText ? 1 : maxLines,
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label, suffixIcon: suffixIcon),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixIcon: suffixIcon,
+        prefixIcon: prefixIcon,
+      ),
     );
   }
 }

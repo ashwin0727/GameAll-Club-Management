@@ -13,15 +13,19 @@ import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/finance/expenses_screen.dart';
 import '../../features/finance/finance_screen.dart';
+import '../../features/finance/money_screen.dart';
 import '../../features/finance/pending_payments_screen.dart';
 import '../../features/finance/record_payment_screen.dart';
 import '../../features/finance/transaction_details_screen.dart';
 import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
 import '../../features/memberships/create_membership_screen.dart';
+import '../../features/memberships/members_screen.dart';
 import '../../features/memberships/memberships_screen.dart';
 import '../../features/membership_sessions/membership_sessions_screen.dart';
 import '../../features/onboarding/courts_setup_screen.dart';
+import '../../features/onboarding/onboarding_welcome_screen.dart';
+import '../../features/onboarding/payments_screen.dart';
 import '../../features/onboarding/facility_details_screen.dart';
 import '../../features/onboarding/operating_hours_screen.dart';
 import '../../features/onboarding/pricing_screen.dart';
@@ -31,6 +35,7 @@ import '../../features/profile/profile_screen.dart';
 import '../../features/refunds/refunds_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
+import 'page_transitions.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -57,7 +62,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (path == AppRoutes.splash || isAuthRoute) {
-        return OnboardingRouteResolver.routeFor(session.facility);
+        return OnboardingRouteResolver.entryRouteFor(session.facility);
       }
 
       // Reaching /dashboard with onboarding still incomplete resumes the
@@ -65,87 +70,181 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // isn't fully configured yet (item 28).
       if (path == AppRoutes.dashboard &&
           session.facility?.onboardingStep != OnboardingStep.completed) {
-        return OnboardingRouteResolver.routeFor(session.facility);
+        return OnboardingRouteResolver.entryRouteFor(session.facility);
       }
 
       return null;
     },
     routes: [
-      GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
-      GoRoute(path: AppRoutes.signIn, builder: (context, state) => const SignInScreen()),
+      GoRoute(
+        path: AppRoutes.splash,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const SplashScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.signIn,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const SignInScreen()),
+      ),
       GoRoute(
         path: AppRoutes.createAccount,
-        builder: (context, state) => const CreateAccountScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const CreateAccountScreen()),
       ),
       GoRoute(
         path: AppRoutes.emailVerification,
-        builder: (context, state) => EmailVerificationScreen(
-          email: state.uri.queryParameters['email'] ?? '',
+        pageBuilder: (context, state) => slideOver(
+          state,
+          EmailVerificationScreen(
+            email: state.uri.queryParameters['email'] ?? '',
+          ),
         ),
       ),
       GoRoute(
         path: AppRoutes.forgotPassword,
-        builder: (context, state) => const ForgotPasswordScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const ForgotPasswordScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.onboardingWelcome,
+        pageBuilder: (context, state) =>
+            slideOver(state, const OnboardingWelcomeScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingFacility,
-        builder: (context, state) => const FacilityDetailsScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const FacilityDetailsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.onboardingSportsCourts,
+        pageBuilder: (context, state) =>
+            slideOver(state, const SportsSetupScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingSports,
-        builder: (context, state) => const SportsSetupScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const SportsSetupScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingCourts,
-        builder: (context, state) => const CourtsSetupScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const CourtsSetupScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingOperatingHours,
-        builder: (context, state) => const OperatingHoursScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const OperatingHoursScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingPricing,
-        builder: (context, state) => const PricingScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const PricingScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.onboardingPayments,
+        pageBuilder: (context, state) =>
+            slideOver(state, const PaymentsScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingComplete,
-        builder: (context, state) => const SetupSummaryScreen(),
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const SetupSummaryScreen()),
       ),
-      GoRoute(path: AppRoutes.dashboard, builder: (context, state) => const DashboardScreen()),
-      GoRoute(path: AppRoutes.bookings, builder: (context, state) => const BookingsScreen()),
-      GoRoute(path: AppRoutes.guestBookings, builder: (context, state) => const GuestBookingsScreen()),
-      GoRoute(path: AppRoutes.guests, builder: (context, state) => const GuestsScreen()),
-      GoRoute(path: AppRoutes.memberships, builder: (context, state) => const MembershipsScreen()),
-      GoRoute(path: AppRoutes.membershipsNew, builder: (context, state) => const CreateMembershipScreen()),
+      GoRoute(
+        path: AppRoutes.dashboard,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const DashboardScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.bookings,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const BookingsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.guestBookings,
+        pageBuilder: (context, state) =>
+            slideOver(state, const GuestBookingsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.guests,
+        pageBuilder: (context, state) =>
+            slideOver(state, const GuestsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.memberships,
+        pageBuilder: (context, state) => fadeThrough(
+          state,
+          MembersScreen(
+            openPlans: state.uri.queryParameters['new'] == 'plan',
+            openNew: state.uri.queryParameters['new'] == 'membership',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/memberships/manage',
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const MembershipsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.membershipsNew,
+        pageBuilder: (context, state) =>
+            slideOver(state, const CreateMembershipScreen()),
+      ),
       GoRoute(
         path: AppRoutes.membershipSessions,
-        builder: (context, state) => const MembershipSessionsScreen(),
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const MembershipSessionsScreen()),
       ),
-      GoRoute(path: AppRoutes.refunds, builder: (context, state) => const RefundsScreen()),
-      GoRoute(path: AppRoutes.finance, builder: (context, state) => const FinanceScreen()),
+      GoRoute(
+        path: AppRoutes.refunds,
+        pageBuilder: (context, state) =>
+            slideOver(state, const RefundsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.finance,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const MoneyScreen()),
+      ),
+      GoRoute(
+        path: '/finance/overview',
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const FinanceScreen()),
+      ),
       GoRoute(
         path: AppRoutes.financeTransactions,
-        builder: (context, state) => const TransactionsScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const TransactionsScreen()),
       ),
       GoRoute(
         path: AppRoutes.financeTransactionDetails,
-        builder: (context, state) =>
-            TransactionDetailsScreen(transactionId: state.pathParameters['transactionId']!),
+        pageBuilder: (context, state) => slideOver(
+          state,
+          TransactionDetailsScreen(
+              transactionId: state.pathParameters['transactionId']!),
+        ),
       ),
       GoRoute(
         path: AppRoutes.financeExpenses,
-        builder: (context, state) => const ExpensesScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const ExpensesScreen()),
       ),
       GoRoute(
         path: AppRoutes.financePendingPayments,
-        builder: (context, state) => const PendingPaymentsScreen(),
+        pageBuilder: (context, state) =>
+            slideOver(state, const PendingPaymentsScreen()),
       ),
       GoRoute(
         path: AppRoutes.financeRecordPayment,
-        builder: (context, state) =>
-            RecordPaymentScreen(sourceId: state.pathParameters['sourceId']!),
+        pageBuilder: (context, state) => slideOver(
+          state,
+          RecordPaymentScreen(sourceId: state.pathParameters['sourceId']!),
+        ),
       ),
-      GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
+      GoRoute(
+        path: AppRoutes.profile,
+        pageBuilder: (context, state) =>
+            slideOver(state, const ProfileScreen()),
+      ),
     ],
   );
 });

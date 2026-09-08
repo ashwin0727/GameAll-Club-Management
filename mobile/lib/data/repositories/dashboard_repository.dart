@@ -313,8 +313,10 @@ class DashboardRepository {
           return (
             id: b['id'] as String,
             playingAreaId: b['court_id'] as String,
-            startTime: DateTime.parse(b['start_time'] as String),
-            endTime: DateTime.parse(b['end_time'] as String),
+            // Supabase returns timestamptz in UTC — the schedule window and
+            // the "now" line are local, so these must be too.
+            startTime: DateTime.parse(b['start_time'] as String).toLocal(),
+            endTime: DateTime.parse(b['end_time'] as String).toLocal(),
             status: b['status'] as String,
             type: isGuest ? ScheduleBlockType.guest : ScheduleBlockType.member,
             label: isGuest

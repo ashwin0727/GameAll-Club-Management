@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/routing/page_transitions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -201,7 +202,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     final facilityId = _facilityId;
     if (facilityId == null) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      AppPageRoute<void>(
         builder: (_) => MembershipSessionDetailScreen(facilityId: facilityId, batchId: row.batchId, title: row.name),
       ),
     );

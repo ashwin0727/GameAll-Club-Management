@@ -127,7 +127,9 @@ class Membership {
       id: json['id'] as String,
       facilityId: json['facility_id'] as String,
       memberId: json['member_id'] as String,
-      planId: json['plan_id'] as String,
+      // A self-contained membership (created via create_membership_full) has
+      // no plan_id — the RPC returns it as null.
+      planId: json['plan_id'] as String? ?? '',
       planName: planName ?? (json['plan_name'] as String? ?? ''),
       status: membershipStatusFromDb(json['status'] as String? ?? 'active'),
       startDate: DateTime.parse(json['start_date'] as String),

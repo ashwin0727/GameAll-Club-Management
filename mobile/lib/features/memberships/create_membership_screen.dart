@@ -6,15 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/booking.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import 'access_days.dart';
 import 'membership_charges.dart';
 import 'membership_slot.dart';
@@ -61,7 +62,9 @@ const _discoverySources = [
 class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen> {
   bool get _isEdit => widget.membershipId != null;
   String? _facilityId;
+  String? _memberId; // edit mode — for delete
   bool _loading = true;
+  bool _deleting = false;
   String? _loadError;
 
   // Member
@@ -74,6 +77,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
 
   // Membership
   List<MembershipPlan> _plans = [];
+  List<AssignableBatch> _batches = const [];
   String? _planId;
   final _name = TextEditingController();
   final _description = TextEditingController();
@@ -109,7 +113,6 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
 
   bool _saving = false;
   String? _error;
-  String? _mandateUrl; // non-null (possibly empty) once the success panel shows
 
   /// Edit mode: the form serialised right after prefill. "Save Changes" is
   /// enabled only while [_snapshot] differs from this.
@@ -206,13 +209,21 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         _loadError = facility == null ? 'Complete your facility setup before creating a membership.' : null;
       });
       if (facility != null) {
-        final plans = await ref.read(membershipRepositoryProvider).getFacilityPlans(facility.id, activeOnly: true);
+        final repo = ref.read(membershipRepositoryProvider);
+        final plans = await repo.getFacilityPlans(facility.id, activeOnly: true);
         if (mounted) setState(() => _plans = plans);
+        try {
+          final batches = await repo.listAssignableBatches(facility.id);
+          if (mounted) setState(() => _batches = batches);
+        } on AppException catch (_) {
+          // Batch names are only used to label the success summary.
+        }
       }
       if (widget.membershipId != null) {
         final d = await ref.read(membershipRepositoryProvider).getMembershipDetail(widget.membershipId!);
         if (!mounted) return;
         setState(() {
+          _memberId = d.member.id;
           _fullName.text = d.member.fullName;
           _phone.text = d.member.phone;
           _email.text = d.member.email ?? '';
@@ -335,9 +346,14 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
               batchId: batchId,
               newBatch: newBatch,
             );
-        if (mounted) Navigator.of(context).pop(true);
+        if (mounted) await _showSummaryAndExit();
       } on AppException catch (e) {
         if (mounted) setState(() => _error = e.message);
+      } catch (e, st) {
+        debugPrint('Update membership failed after RPC: $e\n$st');
+        if (mounted) {
+          setState(() => _error = 'Something went wrong. Please try again.');
+        }
       } finally {
         if (mounted) setState(() => _saving = false);
       }
@@ -381,17 +397,25 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
       );
 
       if (_recurring && _mode != MembershipPaymentMode.free && _charges.total > 0) {
+        String? url;
+        var failed = false;
         try {
           final sub = await repo.createMembershipSubscription(membership.id);
-          if (mounted) setState(() => _mandateUrl = sub.shortUrl ?? '');
+          url = sub.shortUrl ?? '';
         } on AppException catch (_) {
-          if (mounted) setState(() => _mandateUrl = '');
+          failed = true;
         }
+        if (mounted) await _showSummaryAndExit(mandateUrl: url, mandateFailed: failed);
         return;
       }
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) await _showSummaryAndExit();
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } catch (e, st) {
+      debugPrint('Create membership failed after RPC: $e\n$st');
+      if (mounted) {
+        setState(() => _error = 'Something went wrong. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -400,71 +424,186 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   static String _dateOnly(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  AssignableBatch? _selectedBatch() {
+    final s = _slot;
+    if (s is! SlotExisting) return null;
+    for (final b in _batches) {
+      if (b.batchId == s.batchId) return b;
+    }
+    return null;
+  }
+
+  /// A compact bottom sheet summarising what was just created, then pops the
+  /// screen so the members list refreshes.
+  Future<void> _showSummaryAndExit({
+    String? mandateUrl,
+    bool mandateFailed = false,
+  }) async {
+    if (!mounted) return;
+    setState(() => _saving = false);
+    final charges = _charges;
+    final batch = _selectedBatch();
+    String? planName;
+    for (final p in _plans) {
+      if (p.id == _planId) planName = p.name;
+    }
+    final membershipName = _name.text.trim().isNotEmpty
+        ? _name.text.trim()
+        : (planName ?? 'Membership');
+    final amountPaid = !_isEdit && _mode == MembershipPaymentMode.paid
+        ? charges.total
+        : 0;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: context.tokens.surface0,
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (_) => _MembershipSummarySheet(
+        isEdit: _isEdit,
+        memberName: _fullName.text.trim(),
+        membershipName: membershipName,
+        batchName: batch?.name ?? (_slot is SlotNew ? 'New session' : null),
+        sportName: batch?.sportName,
+        showPayment: !_isEdit && _mode != MembershipPaymentMode.free,
+        amountPaidInr: amountPaid,
+        totalInr: charges.total,
+        mandateUrl:
+            (mandateUrl != null && mandateUrl.isNotEmpty) ? mandateUrl : null,
+        mandateFailed: mandateFailed,
+      ),
+    );
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  Future<void> _delete() async {
+    final id = _memberId;
+    if (id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete this member?'),
+        content: Text(
+          "${_fullName.text.trim()} and this membership will be removed. "
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+                backgroundColor: context.tokens.destructive),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _deleting = true);
+    try {
+      await ref.read(membershipRepositoryProvider).deleteMember(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Member deleted')));
+        Navigator.of(context).pop(true);
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() {
+          _deleting = false;
+          _error = e.message;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ready = !_loading && _loadError == null && _facilityId != null;
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Edit Membership' : 'Create Membership')),
+      appBar: AppBar(
+        title: Text(_isEdit ? 'Edit membership' : 'New membership',
+            style: const TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          if (_isEdit && _memberId != null)
+            IconButton(
+              tooltip: 'Delete member',
+              icon: _deleting
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.delete_outline,
+                      color: context.tokens.destructive),
+              onPressed: _deleting ? null : _delete,
+            ),
+        ],
+      ),
       body: SafeArea(
         child: _loading
             ? const LoadingView(message: 'Loading…')
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
-                : _mandateUrl != null
-                    ? _MandateSuccessPanel(
-                        shortUrl: _mandateUrl!.isEmpty ? null : _mandateUrl!,
-                        onDone: () => Navigator.of(context).pop(true),
-                      )
-                    : _form(context),
+                : _form(context),
       ),
+      bottomNavigationBar: !ready
+          ? null
+          : SafeArea(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: context.tokens.surface0,
+                  border: Border(
+                      top: BorderSide(color: context.tokens.borderColor)),
+                ),
+                child: AuthGradientButton(
+                  label: _isEdit ? 'Save changes' : 'Create membership',
+                  loadingLabel: _isEdit ? 'Saving…' : 'Creating…',
+                  isLoading: _saving,
+                  onPressed: (_isEdit && !_dirty) ? null : _submit,
+                ),
+              ),
+            ),
     );
   }
 
   Widget _form(BuildContext context) {
     final tokens = context.tokens;
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
       children: [
-        Text(_isEdit ? "Update this member's details" : 'Register a new member', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: tokens.textSecondary)),
+        Text(
+          _isEdit
+              ? "Update this member's details"
+              : 'Add a member and set up their membership.',
+          style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+        ),
         const SizedBox(height: AppSpacing.lg),
 
-        // ── 1 · Member Information ──────────────────────────────────────
+        // ── 1 · Member ────────────────────────────────────────────────
         _Section(
           n: 1,
-          title: 'Member Information',
+          title: 'Member',
           children: [
-            _labeled('Full Name', required: true, child: TextField(controller: _fullName, decoration: const InputDecoration(hintText: 'Enter full name'))),
+            _text('Full name', _fullName, required: true),
+            _phoneField(),
+            _text('Email address', _email,
+                kb: TextInputType.emailAddress),
             _labeled(
-              'Phone Number',
-              required: true,
-              child: Row(
-                children: [
-                  Container(
-                    height: 48,
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: tokens.surface2,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: tokens.borderColor),
-                    ),
-                    child: Text('+91', style: TextStyle(color: tokens.textSecondary)),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(hintText: 'Enter phone number'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _labeled('Email Address', child: TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(hintText: 'Enter email address'))),
-            _labeled(
-              'Date of Birth',
+              'Date of birth',
               child: _PickerField(
-                text: _dob == null ? 'Select date' : Formatters.dateShort(_dob!),
+                text: _dob == null
+                    ? 'Select date'
+                    : Formatters.dateShort(_dob!),
                 placeholder: _dob == null,
                 icon: Icons.calendar_today_outlined,
                 onTap: () async {
@@ -488,26 +627,27 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                 onChanged: (g) => setState(() => _gender = g),
               ),
             ),
-            _labeled('Address', child: TextField(controller: _address, decoration: const InputDecoration(hintText: 'Enter complete address'))),
+            _text('Address', _address, maxLines: 2),
           ],
         ),
 
-        // ── 2 · Membership Details ─────────────────────────────────────
+        // ── 2 · Membership ───────────────────────────────────────────
         _Section(
           n: 2,
-          title: 'Membership Details',
+          title: 'Membership',
           children: [
             if (_plans.isNotEmpty)
               _labeled(
                 'Plan',
                 hint: _planId != null
-                    ? 'Fee and duration are set by the plan'
-                    : 'Or leave as Custom and enter the fee below',
+                    ? 'Fee and duration come from the plan.'
+                    : 'Or keep it custom and set the fee below.',
                 child: AppDropdown<String>(
                   initialValue: _planId ?? '',
                   isExpanded: true,
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('Custom (no plan)')),
+                    const DropdownMenuItem(
+                        value: '', child: Text('Custom (no plan)')),
                     ..._plans.map((p) => DropdownMenuItem(
                           value: p.id,
                           child: Text(
@@ -519,23 +659,24 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                   onChanged: _applyPlan,
                 ),
               ),
-            _labeled('Membership Name', required: true, hint: 'e.g., Premium Membership', child: TextField(controller: _name, decoration: const InputDecoration(hintText: 'Enter membership name'))),
+            _text('Membership name', _name, required: true),
             _labeled(
-              'Membership Type',
+              'Type',
               required: true,
               child: Wrap(
                 spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: MembershipType.values
-                    .map((t) => ChoiceChip(
-                          label: Text(membershipTypeLabel(t)),
+                    .map((t) => _pill(
+                          membershipTypeLabel(t),
                           selected: _type == t,
-                          onSelected: (_) => setState(() => _type = t),
+                          onTap: () => setState(() => _type = t),
                         ))
                     .toList(),
               ),
             ),
             _labeled(
-              'Start Date',
+              'Start date',
               required: true,
               child: _PickerField(
                 text: Formatters.dateShort(_startDate),
@@ -544,7 +685,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: _startDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate:
+                        DateTime.now().subtract(const Duration(days: 365)),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (picked != null) setState(() => _startDate = picked);
@@ -557,20 +699,25 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
               hint: _planId != null && !_isEdit
                   ? 'Set by the plan'
                   : _endDate == null
-                      ? 'e.g., 3 Months, 6 Months, 1 Year'
+                      ? '1 month · 3 months · 6 months · 1 year'
                       : 'Ends ${Formatters.dateShort(_endDate!)}',
               child: _planId != null && !_isEdit
-                  ? InputDecorator(
-                      decoration: const InputDecoration(enabled: false),
-                      child: Text(
-                        _durationDays > 0 ? '$_durationDays days' : '—',
-                        style: TextStyle(color: context.tokens.textSecondary),
-                      ),
+                  ? _PickerField(
+                      text: _durationDays > 0 ? '$_durationDays days' : '—',
+                      placeholder: _durationDays == 0,
+                      onTap: () {},
                     )
                   : _Dropdown<int>(
                       value: _durationDays == 0 ? null : _durationDays,
                       hint: 'Select duration',
-                      items: _durations.map((d) => d.days).toList(),
+                      // Always include the current value — a plan can carry a
+                      // non-preset duration (e.g. 31 days) that would otherwise
+                      // crash the DropdownButton.
+                      items: <int>{
+                        ..._durations.map((d) => d.days),
+                        if (_durationDays > 0) _durationDays,
+                      }.toList()
+                        ..sort(),
                       labelOf: (days) {
                         for (final d in _durations) {
                           if (d.days == days) return d.label;
@@ -581,173 +728,185 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                     ),
             ),
             if (_facilityId != null) ...[
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               MembershipSlotSection(
                 facilityId: _facilityId!,
                 accessDays: _accessDays,
                 value: _slot,
                 planId: _planId,
-                currentBatchId: _slot is SlotExisting ? (_slot as SlotExisting).batchId : null,
+                currentBatchId: _slot is SlotExisting
+                    ? (_slot as SlotExisting).batchId
+                    : null,
                 onChanged: (s) => setState(() => _slot = s),
               ),
+              const SizedBox(height: AppSpacing.lg),
             ],
             if (_type == MembershipType.family)
               _labeled(
-                'Max. Members (Family)',
+                'Family members',
                 child: Row(
                   children: [
-                    IconButton.outlined(onPressed: () => setState(() => _maxFamily = (_maxFamily - 1).clamp(1, 99)), icon: const Icon(Icons.remove)),
-                    SizedBox(width: 40, child: Text('$_maxFamily', textAlign: TextAlign.center)),
-                    IconButton.outlined(onPressed: () => setState(() => _maxFamily = (_maxFamily + 1).clamp(1, 99)), icon: const Icon(Icons.add)),
+                    _StepBtn(
+                        icon: Icons.remove,
+                        onTap: () => setState(() =>
+                            _maxFamily = (_maxFamily - 1).clamp(1, 99))),
+                    SizedBox(
+                        width: 44,
+                        child: Text('$_maxFamily',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 16))),
+                    _StepBtn(
+                        icon: Icons.add,
+                        onTap: () => setState(() =>
+                            _maxFamily = (_maxFamily + 1).clamp(1, 99))),
                   ],
                 ),
               ),
-            _labeled(
-              'Description',
-              child: TextField(
-                controller: _description,
-                maxLines: 3,
-                maxLength: 300,
-                decoration: const InputDecoration(hintText: 'Enter membership description and benefits…'),
-              ),
-            ),
+            _text('Description', _description, maxLines: 3),
           ],
         ),
 
-        // ── 3 · Membership Charges ─────────────────────────────────────
+        // ── 3 · Charges ──────────────────────────────────────────────
         _Section(
           n: 3,
-          title: 'Membership Charges',
+          title: 'Charges',
           children: [
-            _labeled(
-              'Membership Fee',
-              required: true,
-              hint: _planId != null && !_isEdit ? 'Set by the selected plan' : null,
-              child: TextField(
-                controller: _fee,
+            _text('Membership fee', _fee,
+                required: true,
+                kb: TextInputType.number,
                 enabled: _planId == null || _isEdit,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '),
-              ),
-            ),
-            _labeled('Registration Fee', hint: 'One-time, if applicable', child: TextField(controller: _regFee, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ '))),
-            _labeled('GST (%)', hint: 'Applicable tax percentage', child: TextField(controller: _gst, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Enter GST percentage'))),
-            const SizedBox(height: AppSpacing.sm),
+                prefix: '₹',
+                helper: _planId != null && !_isEdit
+                    ? 'Set by the selected plan'
+                    : null),
+            _text('Registration fee', _regFee,
+                kb: TextInputType.number,
+                prefix: '₹',
+                helper: 'One-time, if applicable'),
+            _text('GST %', _gst,
+                kb: TextInputType.number, helper: 'Applicable tax percentage'),
+            const SizedBox(height: AppSpacing.xs),
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(8)),
-              child: Wrap(
-                spacing: AppSpacing.md,
-                runSpacing: AppSpacing.xs,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              decoration: BoxDecoration(
+                color: tokens.surface2,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: tokens.borderColor),
+              ),
+              child: Column(
                 children: [
-                  Text('Sub Total ${Formatters.currencyInr(_charges.subTotal)}'),
-                  const Text('+'),
-                  Text('GST ${Formatters.currencyInr(_charges.gstAmount)}'),
-                  const Text('+'),
-                  Text('Registration ${Formatters.currencyInr(_charges.registration)}'),
-                  const Text('='),
-                  Text('Total ${Formatters.currencyInr(_charges.total)}', style: TextStyle(fontWeight: FontWeight.w700, color: tokens.success)),
+                  _chargeRow('Subtotal',
+                      Formatters.currencyInr(_charges.subTotal)),
+                  _chargeRow('GST',
+                      Formatters.currencyInr(_charges.gstAmount)),
+                  _chargeRow('Registration',
+                      Formatters.currencyInr(_charges.registration)),
+                  Divider(color: tokens.borderColor, height: 18),
+                  _chargeRow('Total',
+                      Formatters.currencyInr(_charges.total),
+                      strong: true),
                 ],
               ),
             ),
           ],
         ),
 
-        // ── 4 · Payment Mode (create only — payment is not edited here) ─
+        // ── 4 · Payment ──────────────────────────────────────────────
         if (!_isEdit)
-        _Section(
-          n: 4,
-          title: 'Payment Mode',
-          children: [
-            ...[
-              (MembershipPaymentMode.paid, 'Paid', 'Collect payment now'),
-              (MembershipPaymentMode.pending, 'Pending', 'Collect payment later'),
-              (MembershipPaymentMode.free, 'Free', 'No payment required'),
-            ].map((m) {
-              final selected = _mode == m.$1;
-              return InkWell(
-                onTap: () => setState(() => _mode = m.$1),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                  child: Row(
-                    children: [
-                      Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                          size: 20, color: selected ? tokens.primary : tokens.textSecondary),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(m.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: Text(m.$3, style: TextStyle(color: tokens.textSecondary, fontSize: 11))),
-                    ],
+          _Section(
+            n: 4,
+            title: 'Payment',
+            children: [
+              for (final m in const [
+                (MembershipPaymentMode.paid, 'Paid', 'Collect payment now'),
+                (
+                  MembershipPaymentMode.pending,
+                  'Pending',
+                  'Collect payment later'
+                ),
+                (MembershipPaymentMode.free, 'Free', 'No payment required'),
+              ])
+                _OptionRow(
+                  selected: _mode == m.$1,
+                  title: m.$2,
+                  subtitle: m.$3,
+                  onTap: () => setState(() => _mode = m.$1),
+                ),
+              if (_mode != MembershipPaymentMode.free) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _labeled(
+                  'Accepted methods',
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: _paymentMethods
+                        .map((pm) => _pill(
+                              pm,
+                              selected: _methods.contains(pm),
+                              onTap: () => setState(() => _methods.contains(pm)
+                                  ? _methods.remove(pm)
+                                  : _methods.add(pm)),
+                            ))
+                        .toList(),
                   ),
                 ),
-              );
-            }),
-            if (_mode != MembershipPaymentMode.free) ...[
-              const SizedBox(height: AppSpacing.sm),
-              _labeled(
-                'Accepted Payment Methods',
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  children: _paymentMethods
-                      .map((pm) => FilterChip(
-                            label: Text(pm),
-                            selected: _methods.contains(pm),
-                            onSelected: (on) => setState(() => on ? _methods.add(pm) : _methods.remove(pm)),
-                          ))
-                      .toList(),
+                _text('Payment reference', _paymentRef,
+                    helper: 'Transaction / reference number (optional)'),
+                _OptionRow(
+                  selected: _recurring,
+                  isCheckbox: true,
+                  title: 'Recurring UPI AutoPay',
+                  subtitle:
+                      'Generates a Razorpay mandate link; the total is charged each cycle.',
+                  onTap: () => setState(() => _recurring = !_recurring),
                 ),
-              ),
-              _labeled('Payment Reference (Optional)', child: TextField(controller: _paymentRef, decoration: const InputDecoration(hintText: 'Enter transaction / reference number'))),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _recurring,
-                onChanged: (v) => setState(() => _recurring = v ?? false),
-                title: const Text('Recurring UPI AutoPay'),
-                subtitle: const Text('Generates a Razorpay mandate link — the total is charged automatically each cycle.'),
-              ),
+              ],
             ],
-          ],
-        ),
+          ),
 
-        // ── 5 · Additional Information ────────────────────────────────
+        // ── 5 · Extra ────────────────────────────────────────────────
         _Section(
-          n: 5,
-          title: 'Additional Information',
+          n: _isEdit ? 4 : 5,
+          title: 'Extra',
           children: [
             _labeled(
-              'Referral By',
+              'Referred by',
               child: _referral != null
-                  ? InputDecorator(
-                      decoration: const InputDecoration(),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(_referral!.fullName)),
-                          TextButton(onPressed: () => setState(() => _referral = null), child: const Text('Change')),
-                        ],
+                  ? _PickerField(
+                      text: _referral!.fullName,
+                      onTap: () {},
+                      trailing: TextButton(
+                        onPressed: () => setState(() => _referral = null),
+                        child: const Text('Change'),
                       ),
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextField(controller: _referralQuery, decoration: const InputDecoration(hintText: 'Select member (optional)')),
-                        ..._referralResults.map((r) => ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(r.fullName),
-                              trailing: Text(r.phone, style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
-                              onTap: () => setState(() {
-                                _referral = r;
-                                _referralQuery.clear();
-                                _referralResults = [];
-                              }),
-                            )),
+                        AppTextField(
+                            label: 'Search member (optional)',
+                            controller: _referralQuery),
+                        for (final r in _referralResults)
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(r.fullName),
+                            trailing: Text(r.phone,
+                                style: TextStyle(
+                                    color: tokens.textSecondary,
+                                    fontSize: 11)),
+                            onTap: () => setState(() {
+                              _referral = r;
+                              _referralQuery.clear();
+                              _referralResults = [];
+                            }),
+                          ),
                       ],
                     ),
             ),
             _labeled(
-              'How did you find us?',
+              'How did they find you?',
               child: _Dropdown<String>(
                 value: _discovery,
                 hint: 'Select an option',
@@ -756,49 +915,181 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                 onChanged: (d) => setState(() => _discovery = d),
               ),
             ),
-            _labeled('Notes', child: TextField(controller: _notes, maxLines: 2, maxLength: 200, decoration: const InputDecoration(hintText: 'Add any notes or special requests…'))),
+            _text('Notes', _notes, maxLines: 2),
           ],
         ),
 
         if (_error != null) ...[
           const SizedBox(height: AppSpacing.sm),
-          Text(_error!, style: const TextStyle(color: AppColors.destructive)),
-        ],
-        const SizedBox(height: AppSpacing.lg),
-        PrimaryButton(
-          label: _isEdit ? 'Save Changes' : 'Create Membership',
-          loadingLabel: _isEdit ? 'Saving…' : 'Creating…',
-          isLoading: _saving,
-          onPressed: _facilityId == null || (_isEdit && !_dirty) ? null : _submit,
-        ),
-        if (!_isEdit) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Center(
-            child: Text('Secure registration · You can edit details later', style: TextStyle(color: tokens.textSecondary, fontSize: 11)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: tokens.destructive.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Text(_error!,
+                style: TextStyle(color: tokens.destructive, fontSize: 13)),
           ),
         ],
-        const SizedBox(height: AppSpacing.xl),
+        if (!_isEdit) ...[
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: Text('You can edit any of this later.',
+                style:
+                    TextStyle(color: tokens.textSecondary, fontSize: 12)),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _labeled(String label, {bool required = false, String? hint, required Widget child}) {
+  // ── field helpers ───────────────────────────────────────────────────────
+
+  Widget _text(
+    String label,
+    TextEditingController c, {
+    bool required = false,
+    bool enabled = true,
+    TextInputType? kb,
+    int maxLines = 1,
+    String? prefix,
+    String? helper,
+  }) {
     final tokens = context.tokens;
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: c,
+            enabled: enabled,
+            keyboardType: kb,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              labelText: required ? '$label *' : label,
+              prefixText: prefix == null ? null : '$prefix ',
+            ),
+          ),
+          if (helper != null) ...[
+            const SizedBox(height: 5),
+            Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: Text(helper,
+                  style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: TextField(
+        controller: _phone,
+        keyboardType: TextInputType.phone,
+        decoration: InputDecoration(
+          labelText: 'Phone number *',
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Text('+91',
+                style: TextStyle(
+                    color: context.tokens.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16)),
+          ),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 0, minHeight: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _pill(String label,
+      {required bool selected, required VoidCallback onTap}) {
+    final tokens = context.tokens;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+        decoration: BoxDecoration(
+          color:
+              selected ? tokens.violet.withValues(alpha: 0.16) : tokens.surface2,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+            color: selected ? tokens.violet : tokens.borderColor,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? tokens.violet : tokens.textPrimary,
+            )),
+      ),
+    );
+  }
+
+  Widget _chargeRow(String label, String value, {bool strong = false}) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label,
+                style: TextStyle(
+                  fontSize: strong ? 14 : 13,
+                  fontWeight: strong ? FontWeight.w800 : FontWeight.w500,
+                  color: strong ? tokens.textPrimary : tokens.textSecondary,
+                )),
+          ),
+          Text(value,
+              style: TextStyle(
+                fontSize: strong ? 15 : 13,
+                fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+                color: strong ? tokens.primary : tokens.textPrimary,
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _labeled(String label,
+      {bool required = false, String? hint, required Widget child}) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text.rich(TextSpan(
             text: label,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: tokens.textSecondary),
-            children: required ? const [TextSpan(text: ' *', style: TextStyle(color: AppColors.destructive))] : null,
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tokens.textSecondary),
+            children: required
+                ? [
+                    TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: tokens.destructive))
+                  ]
+                : null,
           )),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 6),
           child,
           if (hint != null) ...[
-            const SizedBox(height: 2),
-            Text(hint, style: TextStyle(fontSize: 10, color: tokens.textSecondary)),
+            const SizedBox(height: 5),
+            Text(hint,
+                style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
           ],
         ],
       ),
@@ -818,22 +1109,46 @@ class _Section extends StatelessWidget {
     final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      child: AppCard(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.borderColor),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: tokens.primary.withValues(alpha: 0.15),
-                  child: Text('$n', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tokens.primary)),
+                Container(
+                  width: 26,
+                  height: 26,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        tokens.violet,
+                        tokens.violet.withValues(alpha: 0.6)
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('$n',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.onPrimary)),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: tokens.textPrimary)),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             ...children,
           ],
         ),
@@ -842,23 +1157,147 @@ class _Section extends StatelessWidget {
   }
 }
 
+class _StepBtn extends StatelessWidget {
+  const _StepBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: tokens.borderColor),
+          color: tokens.surface2,
+        ),
+        child: Icon(icon, size: 18, color: tokens.textPrimary),
+      ),
+    );
+  }
+}
+
+class _OptionRow extends StatelessWidget {
+  const _OptionRow({
+    required this.selected,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.isCheckbox = false,
+  });
+
+  final bool selected;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool isCheckbox;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color:
+            selected ? tokens.violet.withValues(alpha: 0.10) : tokens.surface2,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: selected ? tokens.violet : tokens.borderColor,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  isCheckbox
+                      ? (selected
+                          ? Icons.check_box
+                          : Icons.check_box_outline_blank)
+                      : (selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked),
+                  size: 18,
+                  color: selected ? tokens.violet : tokens.textSecondary,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 1),
+                      Text(subtitle,
+                          style: TextStyle(
+                              fontSize: 11.5, color: tokens.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PickerField extends StatelessWidget {
-  const _PickerField({required this.text, required this.onTap, this.icon, this.placeholder = false});
+  const _PickerField({
+    required this.text,
+    required this.onTap,
+    this.icon,
+    this.placeholder = false,
+    this.trailing,
+  });
 
   final String text;
   final VoidCallback onTap;
   final IconData? icon;
   final bool placeholder;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: InputDecorator(
-        decoration: InputDecoration(suffixIcon: icon == null ? null : Icon(icon, size: 18)),
-        child: Text(text, style: TextStyle(color: placeholder ? tokens.textSecondary : tokens.textPrimary)),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg, vertical: 14),
+        decoration: BoxDecoration(
+          color: tokens.surface2,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(text,
+                  style: TextStyle(
+                      color: placeholder
+                          ? tokens.textSecondary
+                          : tokens.textPrimary)),
+            ),
+            if (trailing != null)
+              trailing!
+            else if (icon != null)
+              Icon(icon, size: 18, color: tokens.textSecondary),
+          ],
+        ),
       ),
     );
   }
@@ -885,51 +1324,174 @@ class _Dropdown<T> extends StatelessWidget {
   }
 }
 
-class _MandateSuccessPanel extends StatelessWidget {
-  const _MandateSuccessPanel({required this.shortUrl, required this.onDone});
+/// Compact confirmation that slides up from the bottom after a membership is
+/// created or updated — just the essentials: who, which batch/sport, which
+/// membership, and what was paid vs. the total.
+class _MembershipSummarySheet extends StatelessWidget {
+  const _MembershipSummarySheet({
+    required this.isEdit,
+    required this.memberName,
+    required this.membershipName,
+    required this.showPayment,
+    required this.amountPaidInr,
+    required this.totalInr,
+    this.batchName,
+    this.sportName,
+    this.mandateUrl,
+    this.mandateFailed = false,
+  });
 
-  final String? shortUrl;
-  final VoidCallback onDone;
+  final bool isEdit;
+  final String memberName;
+  final String membershipName;
+  final String? batchName;
+  final String? sportName;
+  final bool showPayment;
+  final num amountPaidInr;
+  final num totalInr;
+  final String? mandateUrl;
+  final bool mandateFailed;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.check_circle, size: 48, color: tokens.success),
-            const SizedBox(height: AppSpacing.md),
-            Text('Membership created', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.sm),
-            if (shortUrl != null) ...[
-              Text('Send this UPI AutoPay link to the member:', textAlign: TextAlign.center, style: TextStyle(color: tokens.textSecondary)),
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(8)),
-                child: SelectableText(shortUrl!, style: const TextStyle(fontSize: 11)),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SecondaryButton(
-                label: 'Copy link',
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: shortUrl!));
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
-                },
-              ),
-            ] else
-              Text(
-                'Recurring link could not be generated — you can retry from the list.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: tokens.textSecondary),
-              ),
+            Row(
+              children: [
+                Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: tokens.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    boxShadow: [
+                      BoxShadow(
+                        color: tokens.primary.withValues(alpha: 0.45),
+                        blurRadius: 22,
+                        spreadRadius: -4,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.check_rounded,
+                      color: tokens.onPrimary, size: 24),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    isEdit ? 'Membership updated' : 'Membership created',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(label: 'Back to Memberships', onPressed: onDone),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: tokens.surface1,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: tokens.borderColor),
+              ),
+              child: Column(
+                children: [
+                  _row(context, 'Member', memberName),
+                  if (batchName != null) _row(context, 'Batch', batchName!),
+                  if (sportName != null && sportName!.isNotEmpty)
+                    _row(context, 'Sport', sportName!),
+                  _row(context, 'Membership', membershipName),
+                  if (showPayment) ...[
+                    Divider(color: tokens.borderColor, height: 18),
+                    _row(context, 'Amount paid',
+                        Formatters.currencyInr(amountPaidInr.toInt())),
+                  ],
+                  Divider(color: tokens.borderColor, height: 18),
+                  _row(context, 'Total',
+                      Formatters.currencyInr(totalInr.toInt()),
+                      strong: true),
+                ],
+              ),
+            ),
+            if (mandateUrl != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text('UPI AutoPay link — send this to the member:',
+                  style: TextStyle(
+                      fontSize: 12, color: tokens.textSecondary)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface2,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: SelectableText(mandateUrl!,
+                    style: const TextStyle(fontSize: 12)),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: mandateUrl!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Link copied')));
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy link'),
+                ),
+              ),
+            ] else if (mandateFailed) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'The recurring AutoPay link couldn’t be generated — retry it from the members list.',
+                style:
+                    TextStyle(fontSize: 12, color: tokens.textSecondary),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            AuthGradientButton(
+              label: 'Back to members',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, String label, String value,
+      {bool strong = false}) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                fontSize: strong ? 14 : 13,
+                fontWeight: strong ? FontWeight.w800 : FontWeight.w500,
+                color: strong ? tokens.textPrimary : tokens.textSecondary,
+              )),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(value,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: strong ? 15 : 13,
+                  fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
+                  color: strong ? tokens.primary : tokens.textPrimary,
+                )),
+          ),
+        ],
       ),
     );
   }

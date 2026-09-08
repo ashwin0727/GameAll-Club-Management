@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
-import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -12,11 +11,11 @@ import '../../data/models/operating_hours.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
-import 'onboarding_progress_bar.dart';
+import 'onboarding_scaffold.dart';
 import 'operating_hours_validation.dart';
 
 class _OverrideEntry {
@@ -250,10 +249,10 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
       }
       await ref
           .read(facilityRepositoryProvider)
-          .updateOnboardingStep(_facilityId!, OnboardingStep.pricing);
+          .updateOnboardingStep(_facilityId!, OnboardingStep.payments);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.onboardingPricing);
+      context.push(AppRoutes.onboardingPayments);
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _submitError = e.message);
@@ -268,36 +267,50 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const OnboardingProgressBar(currentStep: 4)),
-      body: SafeArea(
-        child: _isLoading
-            ? const LoadingView(message: 'Loading operating hours…')
-            : _loadError != null
-            ? ErrorView(message: _loadError!, onRetry: _load)
-            : ResponsivePage(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Set your operating hours', style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    const Text('Choose when your facility is open for bookings and activities.'),
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        _QuickSetupChip(label: 'Everyday, same hours', onTap: () => _applyQuickSetup('everyday')),
-                        _QuickSetupChip(label: 'Weekdays only', onTap: () => _applyQuickSetup('weekdays')),
-                        _QuickSetupChip(label: 'Open 24 hours', onTap: () => _applyQuickSetup('24hours')),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (_submitError != null) ...[
-                      Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    ...displayOrder.map((dow) {
+    if (_isLoading || _loadError != null) {
+      return OnboardingScaffold(
+        stepIndex: 3,
+        title: 'When are you open?',
+        onBack: () => context.go(AppRoutes.onboardingPricing),
+        footer: const SizedBox.shrink(),
+        children: [
+          SizedBox(
+            height: 320,
+            child: _isLoading
+                ? const LoadingView(message: 'Loading operating hours…')
+                : ErrorView(message: _loadError!, onRetry: _load),
+          ),
+        ],
+      );
+    }
+    return OnboardingScaffold(
+      stepIndex: 3,
+      title: 'When are you open?',
+      subtitle: "Bookings can't be made outside these hours. Set one pattern, "
+          'then override any day.',
+      onBack: () => context.go(AppRoutes.onboardingPricing),
+      footer: AuthGradientButton(
+        label: 'Next · payments  ›',
+        loadingLabel: 'Saving…',
+        isLoading: _isSubmitting,
+        onPressed: _submit,
+      ),
+      children: [
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            _QuickSetupChip(label: 'Everyday, same hours', onTap: () => _applyQuickSetup('everyday')),
+            _QuickSetupChip(label: 'Weekdays only', onTap: () => _applyQuickSetup('weekdays')),
+            _QuickSetupChip(label: 'Open 24 hours', onTap: () => _applyQuickSetup('24hours')),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        if (_submitError != null) ...[
+          Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        ...displayOrder.map((dow) {
                       // A schedule row missing a day used to throw a
                       // StateError out of build and leave the body blank.
                       final day = _days.where((d) => d.dayOfWeek == dow).firstOrNull ??
@@ -356,17 +369,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                         );
                       }),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
-                    PrimaryButton(
-                      label: 'Continue →',
-                      loadingLabel: 'Saving…',
-                      isLoading: _isSubmitting,
-                      onPressed: _submit,
-                    ),
-                  ],
-                ),
-              ),
-      ),
+      ],
     );
   }
 }

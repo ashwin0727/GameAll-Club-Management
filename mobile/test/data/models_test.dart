@@ -30,7 +30,8 @@ void main() {
       });
 
       expect(facility.type, FacilityType.multiSport);
-      expect(facility.onboardingStep, OnboardingStep.sports);
+      // SPORTS and COURTS both fold onto the merged Sports & Courts step.
+      expect(facility.onboardingStep, OnboardingStep.sportsCourts);
       expect(facility.address.city, 'Chennai');
     });
 

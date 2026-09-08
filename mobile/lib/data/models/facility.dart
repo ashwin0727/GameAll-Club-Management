@@ -67,24 +67,34 @@ enum FacilityType {
   }
 }
 
+/// The redesigned mobile onboarding flow: Facility Details → Sports & Courts
+/// (one merged step) → Pricing → Operating Hours → done.
+///
+/// The database `onboarding_step` enum still carries the pre-redesign values
+/// (`SPORTS`, `COURTS`, `PRICING`, `OPERATING_HOURS`, …). [fromDb] folds both
+/// `SPORTS` and `COURTS` onto [sportsCourts]; that merged step writes
+/// `COURTS` back via [toDb] when it completes, so no enum migration is
+/// needed and the web client keeps working on the same values.
 enum OnboardingStep {
   facilityDetails,
-  sports,
-  courts,
-  operatingHours,
+  sportsCourts,
   pricing,
+  operatingHours,
+  payments,
   completed;
 
   static OnboardingStep fromDb(String value) {
     switch (value) {
       case 'SPORTS':
-        return OnboardingStep.sports;
       case 'COURTS':
-        return OnboardingStep.courts;
-      case 'OPERATING_HOURS':
-        return OnboardingStep.operatingHours;
+      case 'SPORTS_COURTS':
+        return OnboardingStep.sportsCourts;
       case 'PRICING':
         return OnboardingStep.pricing;
+      case 'OPERATING_HOURS':
+        return OnboardingStep.operatingHours;
+      case 'PAYMENTS':
+        return OnboardingStep.payments;
       case 'COMPLETED':
         return OnboardingStep.completed;
       default:
@@ -96,14 +106,14 @@ enum OnboardingStep {
     switch (this) {
       case OnboardingStep.facilityDetails:
         return 'FACILITY_DETAILS';
-      case OnboardingStep.sports:
-        return 'SPORTS';
-      case OnboardingStep.courts:
+      case OnboardingStep.sportsCourts:
         return 'COURTS';
-      case OnboardingStep.operatingHours:
-        return 'OPERATING_HOURS';
       case OnboardingStep.pricing:
         return 'PRICING';
+      case OnboardingStep.operatingHours:
+        return 'OPERATING_HOURS';
+      case OnboardingStep.payments:
+        return 'PAYMENTS';
       case OnboardingStep.completed:
         return 'COMPLETED';
     }
@@ -133,12 +143,14 @@ class Facility {
     required this.id,
     required this.ownerId,
     required this.name,
+    this.slug,
     required this.type,
     this.customType,
     required this.businessEmail,
     required this.businessPhone,
     required this.address,
     this.logoUrl,
+    this.locationUrl,
     this.description,
     required this.status,
     required this.onboardingStep,
@@ -149,12 +161,19 @@ class Facility {
   final String id;
   final String ownerId;
   final String name;
+
+  /// URL slug for the public booking page — `facilities.slug`.
+  final String? slug;
   final FacilityType type;
   final String? customType;
   final String businessEmail;
   final String businessPhone;
   final FacilityAddress address;
   final String? logoUrl;
+
+  /// A Google Maps location link the owner pastes on the Facility Details
+  /// step — `facilities.location_url`. Free-form; not parsed into lat/lng.
+  final String? locationUrl;
   final String? description;
   final String status;
   final OnboardingStep onboardingStep;
@@ -170,6 +189,7 @@ class Facility {
       id: json['id'] as String,
       ownerId: json['owner_id'] as String,
       name: json['name'] as String,
+      slug: json['slug'] as String?,
       type: FacilityType.fromDb(json['facility_type'] as String? ?? 'MULTI_SPORT'),
       customType: json['custom_facility_type'] as String?,
       businessEmail: json['business_email'] as String? ?? '',
@@ -183,6 +203,7 @@ class Facility {
         pinCode: json['postal_code'] as String? ?? '',
       ),
       logoUrl: json['logo_url'] as String?,
+      locationUrl: json['location_url'] as String?,
       description: json['description'] as String?,
       status: json['status'] as String? ?? 'ACTIVE',
       onboardingStep: OnboardingStep.fromDb(json['onboarding_step'] as String? ?? 'FACILITY_DETAILS'),

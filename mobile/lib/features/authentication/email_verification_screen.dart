@@ -36,7 +36,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
       } else if (mounted) {
         // Verified: keep the spinner running into the navigation rather than
         // flicking the button back to idle first.
-        context.go(AppRoutes.onboardingFacility);
+        context.go(AppRoutes.onboardingWelcome);
       }
     } catch (e, stack) {
       debugPrint('Verification check failed: $e\n$stack');

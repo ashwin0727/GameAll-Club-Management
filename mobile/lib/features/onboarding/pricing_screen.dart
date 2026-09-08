@@ -2,21 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
-import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
-import '../../data/models/operating_hours.dart';
+import '../../data/models/facility.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
-import 'onboarding_progress_bar.dart';
+import 'onboarding_scaffold.dart';
 import 'pricing_validation.dart';
 
 const List<({String value, String label})> _dayTypeOptions = [
@@ -57,7 +56,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
   List<FacilitySport> _facilitySports = [];
   List<Sport> _sports = [];
   List<PlayingArea> _areas = [];
-  List<OperatingDay>? _operatingDays;
   final Map<String, List<_PeriodState>> _defaultPeriods = {};
   final Map<String, _AreaOverrideState> _overrides = {};
   bool _isSubmitting = false;
@@ -132,13 +130,12 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
       }
       final facilitySports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
       if (facilitySports.isEmpty) {
-        if (mounted) context.go(AppRoutes.onboardingSports);
+        if (mounted) context.go(AppRoutes.onboardingSportsCourts);
         return;
       }
       final sports = await ref.read(sportsRepositoryProvider).getActiveSports();
       final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
       final plan = await ref.read(pricingRepositoryProvider).getPricingPlan(facility.id);
-      final schedule = await ref.read(operatingHoursRepositoryProvider).getFacilitySchedule(facility.id);
 
       _defaultPeriods.clear();
       _overrides.clear();
@@ -161,7 +158,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
         _facilitySports = facilitySports;
         _sports = sports;
         _areas = areas;
-        _operatingDays = schedule?.days;
         _isLoading = false;
       });
     } on AppException catch (e) {
@@ -190,14 +186,12 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
   bool _validateAll() {
     var isValid = true;
     setState(() {
-      final operatingDays = _operatingDays;
+      // Operating hours are set on the *next* step now, so there is nothing
+      // to cross-check pricing periods against here.
       for (final periods in _defaultPeriods.values) {
         for (final p in periods) {
           _syncAmount(p);
           p.error = validatePricingPeriod(p.draft);
-          if (p.error == null && operatingDays != null) {
-            p.error = validatePricingAgainstOperatingHours(p.draft, operatingDays);
-          }
           if (p.error != null) isValid = false;
         }
         if (hasOverlappingPricingPeriods(periods.map((p) => p.draft).toList())) {
@@ -212,9 +206,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
         for (final p in o.periods) {
           _syncAmount(p);
           p.error = validatePricingPeriod(p.draft);
-          if (p.error == null && operatingDays != null) {
-            p.error = validatePricingAgainstOperatingHours(p.draft, operatingDays);
-          }
           if (p.error != null) isValid = false;
         }
         if (hasOverlappingPricingPeriods(o.periods.map((p) => p.draft).toList())) {
@@ -280,14 +271,12 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
 
     try {
       await ref.read(pricingRepositoryProvider).savePricingRules(_facilityId!, rules);
-      // Goes through the complete_facility_setup RPC (not a raw onboarding_step
-      // write) so profiles.onboarding_completed is flipped in the same
-      // transaction — otherwise a client that reads that column instead of
-      // facility.onboardingStep would send the owner back into onboarding.
-      await ref.read(onboardingRepositoryProvider).completeSetup(_facilityId!);
+      await ref
+          .read(facilityRepositoryProvider)
+          .updateOnboardingStep(_facilityId!, OnboardingStep.operatingHours);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.onboardingComplete);
+      context.push(AppRoutes.onboardingOperatingHours);
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _submitError = e.message);
@@ -310,26 +299,39 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const OnboardingProgressBar(currentStep: 5)),
-      body: SafeArea(
-        child: _isLoading
-            ? const LoadingView(message: 'Loading pricing…')
-            : _loadError != null
-            ? ErrorView(message: _loadError!, onRetry: _load)
-            : ResponsivePage(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Set your pricing', style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    const Text('Define how much customers pay to use your courts and turfs.'),
-                    const SizedBox(height: AppSpacing.xl),
-                    if (_submitError != null) ...[
-                      Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    ..._facilitySports.map((fs) {
+    if (_isLoading || _loadError != null) {
+      return OnboardingScaffold(
+        stepIndex: 2,
+        title: 'Set your pricing',
+        onBack: () => context.go(AppRoutes.onboardingSportsCourts),
+        footer: const SizedBox.shrink(),
+        children: [
+          SizedBox(
+            height: 320,
+            child: _isLoading
+                ? const LoadingView(message: 'Loading pricing…')
+                : ErrorView(message: _loadError!, onRetry: _load),
+          ),
+        ],
+      );
+    }
+    return OnboardingScaffold(
+      stepIndex: 2,
+      title: 'Set your pricing',
+      subtitle: 'Define how much guests pay to use your courts and turfs.',
+      onBack: () => context.go(AppRoutes.onboardingSportsCourts),
+      footer: AuthGradientButton(
+        label: 'Next · operating hours  ›',
+        loadingLabel: 'Saving…',
+        isLoading: _isSubmitting,
+        onPressed: _submit,
+      ),
+      children: [
+        if (_submitError != null) ...[
+          Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        ..._facilitySports.map((fs) {
                       final sport = _sports.where((s) => s.id == fs.sportId).firstOrNull;
                       final areasForSport = _areas.where((a) => a.facilitySportId == fs.id).toList();
                       return Padding(
@@ -414,17 +416,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                         ),
                       );
                     }),
-                    const SizedBox(height: AppSpacing.lg),
-                    PrimaryButton(
-                      label: 'Continue →',
-                      loadingLabel: 'Saving…',
-                      isLoading: _isSubmitting,
-                      onPressed: _submit,
-                    ),
-                  ],
-                ),
-              ),
-      ),
+      ],
     );
   }
 }
