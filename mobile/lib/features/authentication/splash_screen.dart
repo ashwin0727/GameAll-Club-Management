@@ -1,17 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_motion.dart';
+import 'package:video_player/video_player.dart';
 
-/// Restores the real session/facility state before deciding anything — no
-/// arbitrary delay (item 19). go_router's own redirect (see app_router.dart)
-/// does the actual navigation once [SessionController] resolves; this
-/// screen only needs to render while that's in flight.
-///
-/// Premium-minimal per spec §"Splash Screen": centered mark, one subtle
-/// entrance animation, no loading copy. The animation plays once on mount
-/// and settles — it never blocks or delays the redirect above, which can
-/// (and often does) fire before the animation even finishes.
+import '../../core/routing/app_router.dart';
+
+/// The branded splash clip, created once and warmed from `main()` so it's
+/// ready to play the instant the splash appears.
+final VideoPlayerController splashVideo =
+    VideoPlayerController.asset('assets/splash.mp4');
+Future<void>? _warm;
+Future<void> warmSplashVideo() =>
+    _warm ??= splashVideo.initialize().catchError((_) {});
+
+/// Cold-start splash. Fades the branded clip in, plays it through full-frame
+/// on black, then lifts [splashGate] so the router (app_router.dart) moves on.
+/// A safety timeout covers a stuck clip.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -19,44 +24,92 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this, duration: AppMotion.slow)..forward();
-  late final Animation<double> _scale = CurvedAnimation(parent: _controller, curve: AppMotion.emphasized);
-  late final Animation<double> _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  Timer? _timeout;
+  bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeout = Timer(const Duration(seconds: 6), _finish);
+    _start();
+  }
+
+  Future<void> _start() async {
+    await warmSplashVideo();
+    if (_done || !mounted) return;
+    final c = splashVideo;
+    if (!c.value.isInitialized) {
+      _finish();
+      return;
+    }
+    try {
+      c
+        ..setVolume(0)
+        ..addListener(_onTick);
+      await c.play();
+      if (mounted) setState(() {});
+    } catch (_) {
+      _finish();
+    }
+  }
+
+  void _onTick() {
+    final c = splashVideo;
+    if (!c.value.isInitialized) return;
+    final ended = c.value.duration > Duration.zero &&
+        c.value.position >= c.value.duration;
+    if (ended || c.value.hasError) _finish();
+  }
+
+  void _finish() {
+    if (_done) return;
+    _done = true;
+    _timeout?.cancel();
+    splashGate.value = true;
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    splashVideo.removeListener(_onTick);
+    splashVideo.dispose();
+    _timeout?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = splashVideo;
+    final ready = c.value.isInitialized;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fade,
-          child: ScaleTransition(
-            scale: _scale,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset('assets/images/logo-icon.png', width: 88, height: 88),
-                const SizedBox(height: 20),
-                const Text(
-                  'GameAll',
-                  style: TextStyle(color: AppColors.foreground, fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+      backgroundColor: Colors.black,
+      body: AnimatedOpacity(
+        opacity: ready ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOut,
+        child: ready
+            ? Center(
+                // Medium size, and the bottom ~18% clipped so the corner
+                // watermark is never shown — biased up a touch so the mark
+                // stays centred in what's left.
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.shortestSide * 0.62,
+                  child: AspectRatio(
+                    aspectRatio: c.value.aspectRatio / 0.82,
+                    child: ClipRect(
+                      child: Align(
+                        alignment: const Alignment(0, -0.35),
+                        heightFactor: 0.82,
+                        child: AspectRatio(
+                          aspectRatio: c.value.aspectRatio,
+                          child: VideoPlayer(c),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Club Management',
-                  style: TextStyle(color: AppColors.muted, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ),
+              )
+            : const SizedBox.expand(),
       ),
     );
   }

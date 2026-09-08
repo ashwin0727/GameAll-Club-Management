@@ -12,7 +12,6 @@ import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../../shared/widgets/app_brand_mark.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -498,7 +497,6 @@ class _PlansTab extends StatelessWidget {
             ),
           ),
         ],
-        const AppBrandMark(),
       ],
     );
   }
@@ -980,7 +978,6 @@ class _PeopleTabState extends State<_PeopleTab> {
                 },
               ),
             ),
-        const AppBrandMark(),
       ],
     );
   }
@@ -1129,7 +1126,6 @@ class _SessionsTab extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: tokens.violet),
           ),
         ),
-        const AppBrandMark(),
       ],
     );
   }

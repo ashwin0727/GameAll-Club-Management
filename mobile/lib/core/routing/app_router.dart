@@ -50,18 +50,22 @@ import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 import 'page_transitions.dart';
 
+/// `false` until the cold-start splash clip has finished (or timed out). The
+/// router holds every route on [AppRoutes.splash] while it's `false`, so the
+/// branded video always plays through once. [SplashScreen] flips it.
+final splashGate = ValueNotifier<bool>(false);
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    refreshListenable: _SessionListenable(ref),
+    refreshListenable: Listenable.merge([_SessionListenable(ref), splashGate]),
     redirect: (context, state) {
       final session = ref.read(sessionControllerProvider);
       final path = state.matchedLocation;
 
-      // The splash screen alone owns the "still resolving session" period
-      // and performs its own navigation once ready — every other route
-      // waits for a real answer rather than guessing.
-      if (session.isLoading) {
+      // Stay on the splash until BOTH the session has resolved AND the
+      // splash clip has played out — then everything else routes normally.
+      if (session.isLoading || !splashGate.value) {
         return path == AppRoutes.splash ? null : AppRoutes.splash;
       }
 

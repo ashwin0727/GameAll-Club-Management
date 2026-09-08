@@ -15,7 +15,6 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../../shared/widgets/app_brand_mark.dart';
 import '../authentication/session_controller.dart';
 
 /// Profile & settings — the owner's home for everything that isn't day-to-day
@@ -202,7 +201,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _SignOutButton(
                 onTap: () =>
                     ref.read(sessionControllerProvider.notifier).signOut()),
-            AppBrandMark(subtitle: facility?.name),
+            const SizedBox(height: AppSpacing.xxl),
           ],
         ),
       ),

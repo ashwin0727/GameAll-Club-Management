@@ -10,7 +10,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../../shared/widgets/app_brand_mark.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
@@ -237,7 +236,6 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                             onTap: () => context.push(AppRoutes.refunds),
                           ),
                         ],
-                        const AppBrandMark(),
                       ],
                     ),
                   ),

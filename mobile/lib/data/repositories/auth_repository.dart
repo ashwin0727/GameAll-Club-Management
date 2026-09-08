@@ -38,7 +38,14 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _client.auth.signOut();
+    try {
+      // Local scope only — clears this device's session without a network
+      // round-trip that can fail (expired token, offline) and surface as an
+      // unhandled error on the sign-out tap.
+      await _client.auth.signOut(scope: SignOutScope.local);
+    } catch (_) {
+      // The session is being torn down regardless.
+    }
   }
 
   Future<void> resendVerificationEmail(String email) async {

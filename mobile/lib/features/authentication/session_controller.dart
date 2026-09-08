@@ -40,24 +40,38 @@ class SessionController extends Notifier<SessionState> {
     return const SessionState();
   }
 
+  /// Only the first resolution (app start) shows the loading/splash state.
+  /// Later auth-state changes (sign out, token refresh) update the session in
+  /// place — flipping back to `isLoading` would bounce the router through the
+  /// splash screen and flash an error mid-transition.
+  bool _resolvedOnce = false;
+
   Future<void> refresh() async {
-    state = state.copyWith(isLoading: true);
+    if (!_resolvedOnce) state = state.copyWith(isLoading: true);
+
     final authRepo = ref.read(authRepositoryProvider);
     final user = await authRepo.getCurrentUser();
 
-    if (user == null) {
-      state = const SessionState(isLoading: false);
-      return;
-    }
+    final resolvedFacility = user == null
+        ? null
+        : await ref.read(facilityRepositoryProvider).getFacility();
 
-    final facilityRepo = ref.read(facilityRepositoryProvider);
-    final facility = await facilityRepo.getFacility();
-    state = SessionState(user: user, facility: facility, isLoading: false);
+    _resolvedOnce = true;
+    state = SessionState(
+      user: user,
+      facility: resolvedFacility,
+      isLoading: false,
+    );
   }
 
   Future<void> signOut() async {
-    await ref.read(authRepositoryProvider).logout();
+    // Clear the local session first so the UI reacts immediately, then tell
+    // the auth backend. Any failure there is irrelevant — we're logged out.
+    _resolvedOnce = true;
     state = const SessionState(isLoading: false);
+    try {
+      await ref.read(authRepositoryProvider).logout();
+    } catch (_) {}
   }
 }
 

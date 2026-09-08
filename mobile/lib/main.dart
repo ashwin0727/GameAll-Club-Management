@@ -7,9 +7,14 @@ import 'core/config/app_config.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
+import 'features/authentication/splash_screen.dart' show warmSplashVideo;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Start decoding the splash clip now so it plays instantly, in parallel
+  // with Supabase init and the first session resolution.
+  warmSplashVideo();
 
   // Lock to portrait — the app's layouts are designed portrait-only and the
   // rotation on device tilt was more disorienting than useful.

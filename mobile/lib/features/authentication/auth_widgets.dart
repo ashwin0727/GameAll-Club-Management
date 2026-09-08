@@ -307,25 +307,30 @@ class PasswordStrengthMeter extends StatelessWidget {
 
   final String password;
 
-  static const _labels = ['', 'Too short', 'Fair', 'Good', 'Strong'];
+  static const _labels = ['', 'Weak', 'Fair', 'Strong', 'Very strong'];
 
+  /// 0 empty · 1 weak · 2 fair · 3 strong · 4 very strong.
   int get _score {
     if (password.isEmpty) return 0;
     if (password.length < 8) return 1;
-    var checks = 0;
-    if (password.contains(RegExp(r'[A-Z]'))) checks++;
-    if (password.contains(RegExp(r'[a-z]'))) checks++;
-    if (password.contains(RegExp(r'[0-9]'))) checks++;
-    if (password.contains(RegExp(r'[^A-Za-z0-9]'))) checks++;
-    if (password.length >= 12) checks++;
-    return checks <= 1 ? 2 : (checks <= 3 ? 3 : 4);
+    final hasUpper = password.contains(RegExp(r'[A-Z]'));
+    final hasLower = password.contains(RegExp(r'[a-z]'));
+    final hasDigit = password.contains(RegExp(r'[0-9]'));
+    final hasSpecial = password.contains(RegExp(r'[^A-Za-z0-9]'));
+    final classes =
+        [hasUpper, hasLower, hasDigit, hasSpecial].where((x) => x).length;
+    // Every class + a long password = the top rating.
+    if (classes == 4 && password.length >= 12) return 4;
+    if (classes >= 3 && password.length >= 10) return 3;
+    if (classes >= 2) return 2;
+    return 1;
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final score = _score;
-    final active = score == 0 ? 0 : (score == 1 ? 1 : score - 1); // filled segments (0..3)
+    final active = score; // one filled segment per point (0..4)
     final color = switch (score) {
       0 || 1 => tokens.destructive,
       2 => tokens.warning,

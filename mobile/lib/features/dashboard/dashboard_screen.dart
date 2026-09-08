@@ -26,10 +26,8 @@ import '../../data/models/finance.dart'
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
-import '../../shared/widgets/app_brand_mark.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
-import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 
 const Map<DateRangePreset, String> _presetLabels = {
@@ -181,8 +179,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      body: AuthGradientBackground(
-        child: SafeArea(
+      body: SafeArea(
         child: _isLoading
             ? const _DashboardSkeleton()
             : _loadError != null
@@ -214,7 +211,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
               ),
-        ),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.today),
       ),
@@ -606,12 +602,7 @@ class _DashboardBody extends StatelessWidget {
           title: 'Quick Actions',
           child: const _QuickActionGrid(),
         ),
-
-        AppBrandMark(
-          subtitle:
-              '${summary.facilityName}  ·  $totalCourts court${totalCourts == 1 ? '' : 's'}',
-        ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.xxl),
       ],
     );
   }
