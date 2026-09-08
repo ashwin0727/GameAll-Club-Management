@@ -1,0 +1,51 @@
+# Local development config for the Supabase CLI stack.
+# Used ONLY for `supabase start` / `supabase db reset` on a developer machine
+# or in CI to run the migration set against a real Postgres for the
+# integration test suite (supabase/tests/). Production changes are still
+# applied to the linked project by hand.
+
+project_id = "gameall-club-management"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# Match the linked project (Postgres 17.x).
+major_version = 17
+
+[db.pooler]
+enabled = false
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["https://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+
+[analytics]
+enabled = false

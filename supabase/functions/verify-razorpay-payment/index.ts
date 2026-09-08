@@ -17,7 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { fetchRazorpayPayment, mapRazorpayPaymentStatus, verifyPaymentSignature } from "../_shared/razorpay.ts";
+import { captureRazorpayPayment, fetchRazorpayPayment, mapRazorpayPaymentStatus, verifyPaymentSignature } from "../_shared/razorpay.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -118,6 +118,24 @@ Deno.serve(async (req) => {
   if (razorpayPayment.order_id !== body.razorpayOrderId || razorpayPayment.id !== body.razorpayPaymentId) {
     console.error("[verify-razorpay-payment] Razorpay payment does not belong to the claimed order", { paymentOrderId: order.id });
     return jsonResponse({ error: VERIFICATION_FAILED_MESSAGE }, 400);
+  }
+
+  // An authorized-but-not-captured payment would settle as AUTHORIZED and
+  // strand the customer's money (no `payments` row, no booking confirmation).
+  // Capture it here with its own authorized amount before advancing state.
+  if (razorpayPayment.status === "authorized") {
+    try {
+      razorpayPayment = await captureRazorpayPayment(
+        razorpayPayment.id,
+        razorpayPayment.amount,
+        razorpayPayment.currency,
+        razorpayKeyId,
+        razorpayKeySecret,
+      );
+    } catch (err) {
+      console.error("[verify-razorpay-payment] capture failed", { paymentOrderId: order.id, error: String(err) });
+      return jsonResponse({ error: "Unable to reach the payment gateway. Please try again shortly." }, 502);
+    }
   }
 
   const targetStatus = mapRazorpayPaymentStatus(razorpayPayment.status);

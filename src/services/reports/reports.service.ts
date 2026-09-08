@@ -1,0 +1,91 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Reports & Analytics service boundary. Every figure here is server-computed
+// by a Supabase RPC (0058+) — this interface only ever describes the SHAPE
+// of what the backend returns. Nothing in the reports UI counts, sums, or
+// averages a record itself (spec §32 "Data Architecture").
+// ═══════════════════════════════════════════════════════════════════════════
+
+import type { RevenueTrendPoint } from "@/features/finance/types";
+import type {
+  AnalyticsFilter,
+  AnalyticsGranularity,
+  BookingAnalytics,
+  BookingTrendPoint,
+  BookingsBySportRow,
+  BookingSourceRow,
+  OverallUtilization,
+  CourtUtilizationRow,
+  SportUtilizationRow,
+  PeakHourRow,
+  HeatmapCell,
+  RevenueSummary,
+  RevenueBreakdown,
+  PaymentMethodSlice,
+  RevenueBySportRow,
+  RevenueByCourtRow,
+  AnalyticsOverview,
+  MembershipAnalytics,
+  MembershipTypeRow,
+  MembershipSessionAnalytics,
+  GuestReleaseAnalytics,
+  GuestBookingAnalytics,
+  GuestBookingsBySportRow,
+  GuestBookingsByCourtRow,
+  GuestPeakHourRow,
+} from "@/features/reports/types";
+
+export interface ReportsService {
+  /** Status counts + guest/member split + avg guest booking value for the range. */
+  getBookingAnalytics(filter: AnalyticsFilter): Promise<BookingAnalytics>;
+  /** Booking volume over time, zero-filled, bucketed at the given granularity. */
+  getBookingTrend(filter: AnalyticsFilter, granularity: AnalyticsGranularity): Promise<BookingTrendPoint[]>;
+  /** One row per active facility sport (0-count sports included), busiest first. */
+  getBookingsBySport(filter: AnalyticsFilter): Promise<BookingsBySportRow[]>;
+  /** Exactly two rows — GUEST and MEMBER. */
+  getBookingSourceSplit(filter: AnalyticsFilter): Promise<BookingSourceRow[]>;
+
+  /** Facility-wide booked ÷ open (bookable) minutes for the range. */
+  getOverallUtilization(filter: AnalyticsFilter): Promise<OverallUtilization>;
+  /** One row per non-archived court in scope; caller sorts. */
+  getCourtUtilization(filter: AnalyticsFilter): Promise<CourtUtilizationRow[]>;
+  /** One row per active facility sport in scope. */
+  getSportUtilization(filter: AnalyticsFilter): Promise<SportUtilizationRow[]>;
+  /** Demand % per hour of day; closed hours omitted. */
+  getPeakHours(filter: AnalyticsFilter): Promise<PeakHourRow[]>;
+  /** Demand % per (day-of-week, hour) cell; closed cells omitted. */
+  getDemandHeatmap(filter: AnalyticsFilter): Promise<HeatmapCell[]>;
+
+  /** Headline revenue totals — the Finance summary RPC, facility + date only. */
+  getRevenueSummary(filter: AnalyticsFilter): Promise<RevenueSummary>;
+  /** Revenue over time — the Finance trend RPC, facility + date only. */
+  getRevenueTrend(filter: AnalyticsFilter, granularity: AnalyticsGranularity): Promise<RevenueTrendPoint[]>;
+  /** Revenue by source (membership / member booking / guest booking) — Finance. */
+  getRevenueBreakdown(filter: AnalyticsFilter): Promise<RevenueBreakdown>;
+  /** Collected amount per payment method — Finance. */
+  getPaymentMethodBreakdown(filter: AnalyticsFilter): Promise<PaymentMethodSlice[]>;
+  /** Court-attributable paid revenue by sport; sport/court filter narrows. */
+  getRevenueBySport(filter: AnalyticsFilter): Promise<RevenueBySportRow[]>;
+  /** Court-attributable paid revenue by court. */
+  getRevenueByCourt(filter: AnalyticsFilter): Promise<RevenueByCourtRow[]>;
+
+  /** One-row business snapshot for the Overview page; composes the other RPCs. */
+  getAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsOverview>;
+
+  /** Active / new / expiring members + membership revenue & payment completion. */
+  getMembershipAnalytics(filter: AnalyticsFilter): Promise<MembershipAnalytics>;
+  /** New memberships in the range, grouped by type + plan. */
+  getMembershipsByType(filter: AnalyticsFilter): Promise<MembershipTypeRow[]>;
+  /** Session capacity / allocations / released / booked / unused, over sessions in the range. */
+  getMembershipSessionAnalytics(filter: AnalyticsFilter): Promise<MembershipSessionAnalytics>;
+  /** Guest-release capacity released / booked / remaining + realised revenue. */
+  getGuestReleaseAnalytics(filter: AnalyticsFilter): Promise<GuestReleaseAnalytics>;
+
+  /** Ad-hoc guest bookings — status counts, revenue, avg value, collection rate. */
+  getGuestBookingAnalytics(filter: AnalyticsFilter): Promise<GuestBookingAnalytics>;
+  /** Guest booking volume + revenue by sport, busiest first. */
+  getGuestBookingsBySport(filter: AnalyticsFilter): Promise<GuestBookingsBySportRow[]>;
+  /** Guest booking volume + revenue by court, busiest first. */
+  getGuestBookingsByCourt(filter: AnalyticsFilter): Promise<GuestBookingsByCourtRow[]>;
+  /** Guest booking volume by local hour of day. */
+  getGuestPeakHours(filter: AnalyticsFilter): Promise<GuestPeakHourRow[]>;
+}
