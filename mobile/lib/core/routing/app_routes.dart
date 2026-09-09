@@ -48,7 +48,16 @@ class AppRoutes {
   /// The full Transaction Details page — `:transactionId` is a payment id.
   static const financeTransactionDetails = '/finance/transactions/:transactionId';
   static const financeExpenses = '/finance/expenses';
+
+  /// The full Expense Details page — `:expenseId` is an expenses id.
+  static const financeExpenseDetails = '/finance/expenses/:expenseId';
   static const financePendingPayments = '/finance/pending-payments';
+
+  /// End-of-day cash reconciliation. Web's /finance/daily-closing.
+  static const financeDailyClosing = '/finance/daily-closing';
+
+  /// Owner-level Profit & Loss. Web's /finance/profit-loss.
+  static const financeProfitLoss = '/finance/profit-loss';
 
   /// The standalone Record Payment page — `:sourceId` is a booking or
   /// membership id. Reached from Pending Payments.
@@ -76,6 +85,24 @@ class AppRoutes {
   static const maintenanceTicketDetail = '/maintenance/tickets/:ticketId';
   static const maintenanceCourtSchedule = '/maintenance/court-schedule';
   static const maintenanceIssueCategories = '/maintenance/issue-categories';
+
+  /// Staff / Roles / Permissions. Web's NAV_ITEMS "Users & Roles" group;
+  /// mobile has no sidebar, so `/users-roles` is the Staff list and each
+  /// section is its own screen, same pattern as Finance/Reports/Maintenance.
+  static const usersRoles = '/users-roles';
+  static const staffAdd = '/users-roles/staff/add';
+
+  /// `:userId` is a profiles id.
+  static const staffDetails = '/users-roles/staff/:userId';
+  static const roles = '/users-roles/roles';
+  static const roleNew = '/users-roles/roles/new';
+
+  /// `:roleId` is a roles id.
+  static const roleEditor = '/users-roles/roles/:roleId/edit';
+  static const accessHistory = '/users-roles/access-history';
+
+  /// Forced first-sign-in password reset for an admin-created staff account.
+  static const setPassword = '/set-password';
 
   static const profile = '/profile';
 }

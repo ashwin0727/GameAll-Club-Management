@@ -9,6 +9,7 @@ export const profileSchema = z.object({
   role: z.enum(["admin", "staff", "member"]),
   phone: z.string().nullable(),
   onboarding_completed: z.boolean(),
+  must_reset_password: z.boolean().optional().default(false),
   created_at: z.string(),
 });
 

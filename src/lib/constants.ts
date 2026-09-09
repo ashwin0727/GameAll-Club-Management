@@ -33,6 +33,12 @@ export interface NavItem {
   href: string;
   roles: Role[];
   /**
+   * A facility permission key gating the whole section. When set, the item is
+   * hidden unless the signed-in user holds it for the active facility. This is
+   * UX only — the page's own guard and the database enforce access.
+   */
+  permission?: string;
+  /**
    * Sub-pages shown when the section is expanded. A section still has its
    * own href — the parent is a real destination, not just a toggle.
    */
@@ -55,6 +61,8 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Transactions", href: "/finance/transactions" },
       { label: "Payments", href: "/finance/pending-payments" },
       { label: "Expenses", href: "/finance/expenses" },
+      { label: "Daily Closing", href: "/finance/daily-closing" },
+      { label: "P&L", href: "/finance/profit-loss" },
       { label: "Refunds", href: "/refunds" },
     ],
   },
@@ -80,6 +88,17 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Maintenance Tickets", href: "/maintenance/tickets" },
       { label: "Court Schedule", href: "/maintenance/court-schedule" },
       { label: "Issue Categories", href: "/maintenance/issue-categories" },
+    ],
+  },
+  {
+    label: "Users & Roles",
+    href: "/users-roles/staff",
+    roles: ["admin", "staff"],
+    permission: "USERS_VIEW",
+    children: [
+      { label: "Staff", href: "/users-roles/staff" },
+      { label: "Roles & Permissions", href: "/users-roles/roles" },
+      { label: "Access History", href: "/users-roles/access-history" },
     ],
   },
   { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },

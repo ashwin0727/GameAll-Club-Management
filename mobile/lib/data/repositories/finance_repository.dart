@@ -229,11 +229,115 @@ class FinanceRepository {
           'p_category_id': input.categoryId,
           'p_limit': input.limit ?? 25,
           'p_offset': input.offset ?? 0,
+          'p_search': (input.search != null && input.search!.trim().isNotEmpty) ? input.search!.trim() : null,
+          'p_payment_status': input.paymentStatus?.toJson(),
+          'p_payment_method': input.paymentMethod,
+          'p_vendor': (input.vendor != null && input.vendor!.trim().isNotEmpty) ? input.vendor!.trim() : null,
+          'p_min_minor': input.minMinor,
+          'p_max_minor': input.maxMinor,
+          'p_include_void': input.includeVoid,
         },
       );
       return ExpensePage.fromRows(
         (rows as List<dynamic>).map((row) => (row as Map).cast<String, dynamic>()).toList(),
       );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// The Expenses KPI row — `get_expense_summary` (0069).
+  Future<ExpenseSummary> getExpenseSummary(String facilityId, FinanceDateRange dateRange) async {
+    try {
+      final data = await _client.rpc(
+        'get_expense_summary',
+        params: {'p_facility_id': facilityId, ..._dateRangeArgs(dateRange)},
+      );
+      return ExpenseSummary.fromJson(_firstRow(data));
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// One expense in full — `get_expense` (0069). A cross-facility lookup is
+  /// filtered by the RPC's own role check; an empty result means not found.
+  Future<ExpenseDetail?> getExpense(String expenseId) async {
+    try {
+      final data = await _client.rpc('get_expense', params: {'p_expense_id': expenseId});
+      if (data is List && data.isNotEmpty) {
+        return ExpenseDetail.fromJson((data.first as Map).cast<String, dynamic>());
+      }
+      return null;
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Edit a RECORDED expense in place — `update_expense` (0069). Null fields
+  /// are left unchanged.
+  Future<void> updateExpense({
+    required String expenseId,
+    String? categoryId,
+    int? amountMinor,
+    String? spentOn,
+    String? paymentMethod,
+    String? vendor,
+    String? reference,
+    String? notes,
+    int? taxMinor,
+    String? dueOn,
+  }) async {
+    try {
+      await _client.rpc('update_expense', params: {
+        'p_expense_id': expenseId,
+        'p_category_id': categoryId,
+        'p_amount_minor': amountMinor,
+        'p_spent_on': spentOn,
+        'p_payment_method': paymentMethod,
+        'p_vendor': vendor,
+        'p_reference': reference,
+        'p_notes': notes,
+        'p_tax_minor': taxMinor,
+        'p_due_on': dueOn,
+      });
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// A short-lived signed URL for a private expense receipt, or null if there
+  /// is no receipt / it can't be signed. The bucket is private — RLS on
+  /// `storage.objects` still gates the download to facility staff.
+  Future<String?> signedExpenseReceiptUrl(String? path) async {
+    if (path == null || path.isEmpty) return null;
+    try {
+      return await _client.storage.from('expense-receipts').createSignedUrl(path, 300);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Settle all or part of an unpaid expense — `record_expense_payment` (0069).
+  /// [idempotencyKey] makes a double-submit safe. Amount is already minor units.
+  Future<void> recordExpensePayment({
+    required String expenseId,
+    int? amountMinor,
+    String? paidOn,
+    String? paymentMethod,
+    String? reference,
+    String? note,
+    String? idempotencyKey,
+  }) async {
+    try {
+      await _client.rpc('record_expense_payment', params: {
+        'p_expense_id': expenseId,
+        'p_amount_minor': amountMinor,
+        'p_paid_on': paidOn,
+        'p_payment_method': paymentMethod,
+        'p_reference': reference,
+        'p_note': note,
+        'p_idempotency_key': idempotencyKey,
+      });
     } catch (e) {
       throw _mapError(e);
     }
@@ -252,6 +356,10 @@ class FinanceRepository {
     String? vendor,
     String? reference,
     String? notes,
+    ExpensePaymentStatus paymentStatus = ExpensePaymentStatus.paid,
+    int? amountPaidMinor,
+    int? taxMinor,
+    String? dueOn,
   }) async {
     try {
       await _client.rpc(
@@ -265,6 +373,10 @@ class FinanceRepository {
           'p_vendor': vendor,
           'p_reference': reference,
           'p_notes': notes,
+          'p_payment_status': paymentStatus.toJson(),
+          'p_amount_paid_minor': amountPaidMinor,
+          'p_tax_minor': taxMinor,
+          'p_due_on': dueOn,
         },
       );
     } catch (e) {
@@ -478,6 +590,137 @@ class FinanceRepository {
       if (data is Uint8List) return data;
       if (data is List<int>) return Uint8List.fromList(data);
       throw AppException(AppErrorCode.financeDataError);
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Daily Closing (0070) & Profit & Loss (0071).
+  //
+  // Nothing here computes a figure. Expected cash, variance and P&L are all
+  // recomputed server-side from payments / expenses / expense_payments —
+  // `close_daily_closing` never trusts a client number.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// The live figures for a business date ([date] is `yyyy-MM-dd`, facility
+  /// timezone) plus the closing row if one exists.
+  Future<DailyClosingSummary> getDailyClosingSummary(String facilityId, {String? date}) async {
+    try {
+      final data = await _client.rpc(
+        'get_daily_closing_summary',
+        params: {'p_facility_id': facilityId, 'p_date': date},
+      );
+      return DailyClosingSummary.fromJson(_firstRow(data));
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Open the day. Idempotent — returns the existing row if already open.
+  Future<void> openDailyClosing(String facilityId, {String? date, int? openingCashMinor}) async {
+    try {
+      await _client.rpc('open_daily_closing', params: {
+        'p_facility_id': facilityId,
+        'p_date': date,
+        'p_opening_cash_minor': openingCashMinor,
+      });
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<void> setDailyClosingOpeningCash(String closingId, int openingCashMinor) async {
+    try {
+      await _client.rpc('set_daily_closing_opening_cash', params: {
+        'p_closing_id': closingId,
+        'p_opening_cash_minor': openingCashMinor,
+      });
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Close the day. Expected cash is recomputed server-side; a non-zero
+  /// variance without a reason is rejected there.
+  Future<void> closeDailyClosing(String closingId, int actualCashMinor, {String? varianceReason}) async {
+    try {
+      await _client.rpc('close_daily_closing', params: {
+        'p_closing_id': closingId,
+        'p_actual_cash_minor': actualCashMinor,
+        'p_variance_reason': varianceReason,
+      });
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Reopen a closed day — owner/manager only, reason required, audited.
+  Future<void> reopenDailyClosing(String closingId, String reason) async {
+    try {
+      await _client.rpc('reopen_daily_closing', params: {
+        'p_closing_id': closingId,
+        'p_reason': reason,
+      });
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<DailyClosingHistoryPage> listDailyClosings(
+    String facilityId,
+    FinanceDateRange dateRange, {
+    int? limit,
+    int? offset,
+  }) async {
+    try {
+      final rows = await _client.rpc('list_daily_closings', params: {
+        'p_facility_id': facilityId,
+        ..._dateRangeArgs(dateRange),
+        'p_limit': limit ?? 60,
+        'p_offset': offset ?? 0,
+      });
+      return DailyClosingHistoryPage.fromRows(
+        (rows as List<dynamic>).map((row) => (row as Map).cast<String, dynamic>()).toList(),
+      );
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Owner-level Profit & Loss — `get_pnl` (0071).
+  Future<ProfitAndLoss> getProfitAndLoss(
+    String facilityId,
+    FinanceDateRange dateRange, {
+    String? categoryId,
+  }) async {
+    try {
+      final data = await _client.rpc('get_pnl', params: {
+        'p_facility_id': facilityId,
+        ..._dateRangeArgs(dateRange),
+        'p_category_id': categoryId,
+      });
+      return ProfitAndLoss.fromJson(_firstRow(data));
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// Revenue vs expense over time — `get_pnl_trend` (0071).
+  Future<List<PnlTrendPoint>> getPnlTrend(
+    String facilityId,
+    FinanceDateRange dateRange,
+    RevenueTrendGranularity granularity,
+  ) async {
+    try {
+      final rows = await _client.rpc('get_pnl_trend', params: {
+        'p_facility_id': facilityId,
+        ..._dateRangeArgs(dateRange),
+        'p_granularity': granularity.toJson(),
+      });
+      return (rows as List<dynamic>)
+          .map((row) => PnlTrendPoint.fromJson((row as Map).cast<String, dynamic>()))
+          .toList();
     } catch (e) {
       throw _mapError(e);
     }

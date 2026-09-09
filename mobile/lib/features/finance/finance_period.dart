@@ -41,6 +41,8 @@ FinanceDateRange previousFinanceRange(FinanceDateRange range) {
     case FinanceDateRangePreset.yesterday:
     case FinanceDateRangePreset.lastWeek:
     case FinanceDateRangePreset.lastMonth:
+    case FinanceDateRangePreset.thisQuarter:
+    case FinanceDateRangePreset.thisYear:
       return range;
   }
 }

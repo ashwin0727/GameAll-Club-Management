@@ -48,6 +48,11 @@ enum AppErrorCode {
   maintenanceNotFound,
   maintenanceRuleError,
   maintenanceDataError,
+  // Staff / Roles / Permissions — migrations 0072-0077.
+  staffConcurrentUpdate,
+  lastActiveOwner,
+  roleInUse,
+  staffDuplicate,
   network,
   databaseError,
 }
@@ -91,6 +96,10 @@ const Map<AppErrorCode, String> _friendlyMessage = {
   AppErrorCode.maintenanceNotFound: 'That maintenance ticket could not be found.',
   AppErrorCode.maintenanceRuleError: 'Unable to complete this action.',
   AppErrorCode.maintenanceDataError: 'Unable to load maintenance data. Please try again.',
+  AppErrorCode.staffConcurrentUpdate: 'Another administrator updated this. Refresh and try again.',
+  AppErrorCode.lastActiveOwner: 'This facility must always have at least one active owner.',
+  AppErrorCode.roleInUse: "This role is assigned to active staff and can't be changed that way.",
+  AppErrorCode.staffDuplicate: 'That person already has access to this facility.',
   AppErrorCode.network: 'Network error. Check your connection and try again.',
   AppErrorCode.databaseError: 'Something went wrong. Please try again.',
 };

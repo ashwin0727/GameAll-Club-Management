@@ -13,9 +13,9 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -307,10 +307,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         ..._entries.map(_buildEntryCard),
                       if (_totalCount > 0 && !_listLoading) ...[
                         const SizedBox(height: AppSpacing.md),
-                        _Pagination(
+                        PaginationBar(
                           page: _page,
                           totalPages: totalPages,
-                          totalCount: _totalCount,
+                          totalLabel: '$_totalCount transaction${_totalCount == 1 ? '' : 's'}',
                           onPrevious: _page == 0 ? null : () => _goToPage(_page - 1),
                           onNext: _page + 1 >= totalPages ? null : () => _goToPage(_page + 1),
                         ),
@@ -411,42 +411,3 @@ class _Tag extends StatelessWidget {
 }
 
 /// Previous/Next over server-side pages, with the server's own total count.
-class _Pagination extends StatelessWidget {
-  const _Pagination({
-    required this.page,
-    required this.totalPages,
-    required this.totalCount,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final int page;
-  final int totalPages;
-  final int totalCount;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        Text(
-          'Page ${page + 1} of $totalPages · $totalCount transaction${totalCount == 1 ? '' : 's'}',
-          style: AppTypography.secondary(context),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SecondaryButton(label: 'Previous', onPressed: onPrevious),
-            const SizedBox(width: AppSpacing.sm),
-            SecondaryButton(label: 'Next', onPressed: onNext),
-          ],
-        ),
-      ],
-    );
-  }
-}

@@ -18,6 +18,15 @@ import type {
   ExpenseCategory,
   ExpensePage,
   ExpenseRow,
+  ExpenseFilters,
+  ExpenseSummary,
+  ExpenseDetail,
+  CreateExpenseInput,
+  DailyClosingSummary,
+  DailyClosingHistoryPage,
+  DailyClosingRow,
+  ProfitAndLoss,
+  PnlTrendPoint,
   ObligationSource,
   PaymentObligation,
   PendingPaymentFilters,
@@ -270,15 +279,24 @@ export class SupabaseFinanceService implements FinanceService {
     facilityId: string;
     dateRange: FinanceDateRange;
     categoryId?: string | null;
+    filters?: ExpenseFilters;
     limit?: number;
     offset?: number;
   }): Promise<ExpensePage> {
+    const f = input.filters ?? {};
     const { data, error } = await this.supabase.rpc('list_expenses', {
       p_facility_id: input.facilityId,
       ...dateRangeArgs(input.dateRange),
-      p_category_id: input.categoryId ?? null,
+      p_category_id: f.categoryId ?? input.categoryId ?? null,
       p_limit: input.limit ?? 20,
       p_offset: input.offset ?? 0,
+      p_search: f.search?.trim() || null,
+      p_payment_status: f.paymentStatus ?? null,
+      p_payment_method: f.paymentMethod ?? null,
+      p_vendor: f.vendor?.trim() || null,
+      p_min_minor: f.minMinor ?? null,
+      p_max_minor: f.maxMinor ?? null,
+      p_include_void: f.includeVoid ?? true,
     });
     if (error) throw this.mapError(error);
     const expenses: ExpenseRow[] = (data ?? []).map((row) => ({
@@ -286,15 +304,80 @@ export class SupabaseFinanceService implements FinanceService {
       categoryId: row.category_id,
       categoryName: row.category_name,
       amountMinor: row.amount_minor,
+      amountPaidMinor: row.amount_paid_minor,
       currency: row.currency,
       paymentMethod: row.payment_method,
+      paymentStatus: row.payment_status,
       spentOn: row.spent_on,
+      dueOn: row.due_on,
       vendor: row.vendor,
       reference: row.reference,
       notes: row.notes,
+      receiptPath: row.receipt_path,
       status: row.status,
+      createdByName: row.created_by_name,
     }));
     return { expenses, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  async getExpenseSummary(facilityId: string, dateRange: FinanceDateRange): Promise<ExpenseSummary> {
+    const { data, error } = await this.supabase.rpc("get_expense_summary", {
+      p_facility_id: facilityId,
+      ...dateRangeArgs(dateRange),
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const row = data[0];
+    return {
+      totalMinor: row.total_minor,
+      thisMonthMinor: row.this_month_minor,
+      thisWeekMinor: row.this_week_minor,
+      pendingMinor: row.pending_minor,
+      pendingCount: row.pending_count,
+      maintenanceMinor: row.maintenance_minor,
+      otherMinor: row.other_minor,
+    };
+  }
+
+  async getExpense(expenseId: string): Promise<ExpenseDetail | null> {
+    const { data, error } = await this.supabase.rpc("get_expense", { p_expense_id: expenseId });
+    if (error) throw this.mapError(error);
+    const row = data?.[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      facilityId: row.facility_id,
+      categoryId: row.category_id,
+      categoryName: row.category_name,
+      amountMinor: row.amount_minor,
+      amountPaidMinor: row.amount_paid_minor,
+      taxMinor: row.tax_minor,
+      currency: row.currency,
+      paymentStatus: row.payment_status,
+      paymentMethod: row.payment_method,
+      spentOn: row.spent_on,
+      dueOn: row.due_on,
+      vendor: row.vendor,
+      reference: row.reference,
+      notes: row.notes,
+      receiptPath: row.receipt_path,
+      status: row.status,
+      createdBy: row.created_by,
+      createdByName: row.created_by_name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      voidedAt: row.voided_at,
+      voidReason: row.void_reason,
+      sourceMaintenanceTicketId: row.source_maintenance_ticket_id,
+      payments: (row.payments ?? []).map((p) => ({
+        id: p.id,
+        amountMinor: p.amountMinor,
+        paidOn: p.paidOn,
+        paymentMethod: p.paymentMethod,
+        reference: p.reference,
+        note: p.note,
+        createdAt: p.createdAt,
+      })),
+    };
   }
 
   /** Voided, never deleted — books that lose rows cannot be explained. */
@@ -306,16 +389,7 @@ export class SupabaseFinanceService implements FinanceService {
     if (error) throw this.mapError(error);
   }
 
-  async createExpense(input: {
-    facilityId: string;
-    categoryId: string;
-    amountMinor: number;
-    spentOn: string;
-    paymentMethod?: string | null;
-    vendor?: string | null;
-    reference?: string | null;
-    notes?: string | null;
-  }): Promise<void> {
+  async createExpense(input: CreateExpenseInput): Promise<void> {
     const { error } = await this.supabase.rpc("create_expense", {
       p_facility_id: input.facilityId,
       p_category_id: input.categoryId,
@@ -325,8 +399,209 @@ export class SupabaseFinanceService implements FinanceService {
       p_vendor: input.vendor ?? null,
       p_reference: input.reference ?? null,
       p_notes: input.notes ?? null,
+      p_payment_status: input.paymentStatus ?? "PAID",
+      p_amount_paid_minor: input.amountPaidMinor ?? null,
+      p_tax_minor: input.taxMinor ?? null,
+      p_due_on: input.dueOn ?? null,
+      p_receipt_path: input.receiptPath ?? null,
     });
     if (error) throw this.mapError(error);
+  }
+
+  async updateExpense(input: {
+    expenseId: string;
+    categoryId?: string | null;
+    amountMinor?: number | null;
+    spentOn?: string | null;
+    paymentMethod?: string | null;
+    vendor?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    taxMinor?: number | null;
+    dueOn?: string | null;
+    receiptPath?: string | null;
+  }): Promise<void> {
+    const { error } = await this.supabase.rpc("update_expense", {
+      p_expense_id: input.expenseId,
+      p_category_id: input.categoryId ?? null,
+      p_amount_minor: input.amountMinor ?? null,
+      p_spent_on: input.spentOn ?? null,
+      p_payment_method: input.paymentMethod ?? null,
+      p_vendor: input.vendor ?? null,
+      p_reference: input.reference ?? null,
+      p_notes: input.notes ?? null,
+      p_tax_minor: input.taxMinor ?? null,
+      p_due_on: input.dueOn ?? null,
+      p_receipt_path: input.receiptPath ?? null,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  async recordExpensePayment(input: {
+    expenseId: string;
+    amountMinor?: number | null;
+    paidOn?: string | null;
+    paymentMethod?: string | null;
+    reference?: string | null;
+    note?: string | null;
+    idempotencyKey?: string | null;
+  }): Promise<void> {
+    const { error } = await this.supabase.rpc("record_expense_payment", {
+      p_expense_id: input.expenseId,
+      p_amount_minor: input.amountMinor ?? null,
+      p_paid_on: input.paidOn ?? null,
+      p_payment_method: input.paymentMethod ?? null,
+      p_reference: input.reference ?? null,
+      p_note: input.note ?? null,
+      p_idempotency_key: input.idempotencyKey ?? null,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  // ── Daily Closing ──────────────────────────────────────────────────────
+
+  async getDailyClosingSummary(facilityId: string, date?: string | null): Promise<DailyClosingSummary> {
+    const { data, error } = await this.supabase.rpc("get_daily_closing_summary", {
+      p_facility_id: facilityId,
+      p_date: date ?? null,
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const row = data[0];
+    return {
+      closingDate: row.closing_date,
+      openingCashMinor: row.opening_cash_minor,
+      cashCollectedMinor: row.cash_collected_minor,
+      upiCollectedMinor: row.upi_collected_minor,
+      cardCollectedMinor: row.card_collected_minor,
+      onlineCollectedMinor: row.online_collected_minor,
+      bankTransferCollectedMinor: row.bank_transfer_collected_minor,
+      otherCollectedMinor: row.other_collected_minor,
+      totalCollectedMinor: row.total_collected_minor,
+      cashExpenseMinor: row.cash_expense_minor,
+      otherExpenseMinor: row.other_expense_minor,
+      totalExpenseMinor: row.total_expense_minor,
+      expectedCashMinor: row.expected_cash_minor,
+      paymentCount: row.payment_count,
+      expenseCount: row.expense_count,
+      pendingPaymentCount: row.pending_payment_count,
+      closingId: row.closing_id,
+      status: row.status,
+      actualCashMinor: row.actual_cash_minor,
+      varianceMinor: row.variance_minor,
+      varianceReason: row.variance_reason,
+      closedAt: row.closed_at,
+    };
+  }
+
+  async openDailyClosing(facilityId: string, date: string | null, openingCashMinor?: number | null): Promise<void> {
+    const { error } = await this.supabase.rpc("open_daily_closing", {
+      p_facility_id: facilityId,
+      p_date: date ?? null,
+      p_opening_cash_minor: openingCashMinor ?? null,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  async setDailyClosingOpeningCash(closingId: string, openingCashMinor: number): Promise<void> {
+    const { error } = await this.supabase.rpc("set_daily_closing_opening_cash", {
+      p_closing_id: closingId,
+      p_opening_cash_minor: openingCashMinor,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  async closeDailyClosing(closingId: string, actualCashMinor: number, varianceReason?: string | null): Promise<void> {
+    const { error } = await this.supabase.rpc("close_daily_closing", {
+      p_closing_id: closingId,
+      p_actual_cash_minor: actualCashMinor,
+      p_variance_reason: varianceReason ?? null,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  async reopenDailyClosing(closingId: string, reason: string): Promise<void> {
+    const { error } = await this.supabase.rpc("reopen_daily_closing", {
+      p_closing_id: closingId,
+      p_reason: reason,
+    });
+    if (error) throw this.mapError(error);
+  }
+
+  async listDailyClosings(input: {
+    facilityId: string;
+    dateRange: FinanceDateRange;
+    limit?: number;
+    offset?: number;
+  }): Promise<DailyClosingHistoryPage> {
+    const { data, error } = await this.supabase.rpc("list_daily_closings", {
+      p_facility_id: input.facilityId,
+      ...dateRangeArgs(input.dateRange),
+      p_limit: input.limit ?? 60,
+      p_offset: input.offset ?? 0,
+    });
+    if (error) throw this.mapError(error);
+    const closings: DailyClosingRow[] = (data ?? []).map((row) => ({
+      id: row.id,
+      closingDate: row.closing_date,
+      openingCashMinor: row.opening_cash_minor,
+      totalCollectedMinor: row.total_collected_minor,
+      totalExpenseMinor: row.total_expense_minor,
+      expectedCashMinor: row.expected_cash_minor,
+      actualCashMinor: row.actual_cash_minor,
+      varianceMinor: row.variance_minor,
+      status: row.status,
+      closedAt: row.closed_at,
+      closedByName: row.closed_by_name,
+    }));
+    return { closings, totalCount: data?.[0]?.total_count ?? 0 };
+  }
+
+  // ── Profit & Loss ──────────────────────────────────────────────────────
+
+  async getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null): Promise<ProfitAndLoss> {
+    const { data, error } = await this.supabase.rpc("get_pnl", {
+      p_facility_id: facilityId,
+      ...dateRangeArgs(dateRange),
+      p_category_id: categoryId ?? null,
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const row = data[0];
+    return {
+      bookingRevenueMinor: row.booking_revenue_minor,
+      membershipRevenueMinor: row.membership_revenue_minor,
+      guestBookingRevenueMinor: row.guest_booking_revenue_minor,
+      otherRevenueMinor: row.other_revenue_minor,
+      grossRevenueMinor: row.gross_revenue_minor,
+      refundsMinor: row.refunds_minor,
+      totalRevenueMinor: row.total_revenue_minor,
+      totalExpenseMinor: row.total_expense_minor,
+      netProfitMinor: row.net_profit_minor,
+      profitMarginPct: row.profit_margin_pct,
+      expenseByCategory: (row.expense_by_category ?? []).map((c) => ({
+        categoryId: c.categoryId,
+        category: c.category,
+        amountMinor: c.amountMinor,
+      })),
+    };
+  }
+
+  async getPnlTrend(
+    facilityId: string,
+    dateRange: FinanceDateRange,
+    granularity: RevenueTrendGranularity,
+  ): Promise<PnlTrendPoint[]> {
+    const { data, error } = await this.supabase.rpc("get_pnl_trend", {
+      p_facility_id: facilityId,
+      ...dateRangeArgs(dateRange),
+      p_granularity: granularity,
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((row) => ({
+      date: row.bucket_date,
+      revenueMinor: row.revenue_minor,
+      expenseMinor: row.expense_minor,
+      netMinor: row.net_minor,
+    }));
   }
 
   async getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<RevenueBreakdown> {

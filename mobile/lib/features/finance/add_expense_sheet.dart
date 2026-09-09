@@ -33,6 +33,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   static const _methods = ['Cash', 'UPI', 'Card', 'Bank Transfer'];
 
   final _amountController = TextEditingController();
+  final _taxController = TextEditingController();
+  final _amountPaidController = TextEditingController();
   final _vendorController = TextEditingController();
   final _referenceController = TextEditingController();
   final _notesController = TextEditingController();
@@ -40,6 +42,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   late String? _categoryId = widget.categories.isNotEmpty ? widget.categories.first.id : null;
   String _method = 'Cash';
   DateTime _spentOn = DateTime.now();
+  DateTime? _dueOn;
+  ExpensePaymentStatus _paymentStatus = ExpensePaymentStatus.paid;
 
   bool _saving = false;
   String? _error;
@@ -47,6 +51,8 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
   @override
   void dispose() {
     _amountController.dispose();
+    _taxController.dispose();
+    _amountPaidController.dispose();
     _vendorController.dispose();
     _referenceController.dispose();
     _notesController.dispose();
@@ -64,6 +70,17 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
     if (picked != null) setState(() => _spentOn = picked);
   }
 
+  Future<void> _pickDueDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dueOn ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null) setState(() => _dueOn = picked);
+  }
+
   Future<void> _save() async {
     final rupees = num.tryParse(_amountController.text.trim());
     if (rupees == null || rupees <= 0) {
@@ -75,6 +92,17 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
       setState(() => _error = 'Choose a category.');
       return;
     }
+    final amountMinor = (rupees * 100).round();
+    int? amountPaidMinor;
+    if (_paymentStatus == ExpensePaymentStatus.partial) {
+      final paid = num.tryParse(_amountPaidController.text.trim());
+      if (paid == null || paid <= 0 || (paid * 100).round() >= amountMinor) {
+        setState(() => _error = 'A partial payment must be more than zero and less than the total.');
+        return;
+      }
+      amountPaidMinor = (paid * 100).round();
+    }
+    final tax = num.tryParse(_taxController.text.trim());
 
     setState(() {
       _saving = true;
@@ -85,12 +113,18 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             facilityId: widget.facilityId,
             categoryId: categoryId,
             // Stored in minor units, like every other amount in the ledger.
-            amountMinor: (rupees * 100).round(),
+            amountMinor: amountMinor,
             spentOn: DateFormat('yyyy-MM-dd').format(_spentOn),
             paymentMethod: _method,
             vendor: _vendorController.text.trim().isEmpty ? null : _vendorController.text.trim(),
             reference: _referenceController.text.trim().isEmpty ? null : _referenceController.text.trim(),
             notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+            paymentStatus: _paymentStatus,
+            amountPaidMinor: amountPaidMinor,
+            taxMinor: (tax != null && tax > 0) ? (tax * 100).round() : null,
+            dueOn: (_paymentStatus != ExpensePaymentStatus.paid && _dueOn != null)
+                ? DateFormat('yyyy-MM-dd').format(_dueOn!)
+                : null,
           );
       if (mounted) Navigator.of(context).pop(true);
     } on AppException catch (e) {
@@ -152,8 +186,48 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: _taxController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+              decoration: const InputDecoration(labelText: 'Tax / GST (₹, optional)', hintText: '0'),
+            ),
             const SizedBox(height: AppSpacing.md),
-            Text('Payment mode', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+            Text('Payment status', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: ExpensePaymentStatus.values
+                  .map((s) => ChoiceChip(
+                        label: Text(s.label),
+                        selected: _paymentStatus == s,
+                        onSelected: (_) => setState(() => _paymentStatus = s),
+                      ))
+                  .toList(),
+            ),
+            if (_paymentStatus == ExpensePaymentStatus.partial) ...[
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _amountPaidController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                decoration: const InputDecoration(labelText: 'Amount already paid (₹)'),
+              ),
+            ],
+            if (_paymentStatus != ExpensePaymentStatus.paid) ...[
+              const SizedBox(height: AppSpacing.sm),
+              InkWell(
+                onTap: _pickDueDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Due date (optional)'),
+                  child: Text(_dueOn == null ? 'Not set' : DateFormat('d MMM yyyy').format(_dueOn!)),
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            Text('Payment method', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
             Wrap(
               spacing: AppSpacing.sm,

@@ -441,6 +441,16 @@ class _FinanceSectionsNav extends StatelessWidget {
           label: 'Pending Payments',
           route: AppRoutes.financePendingPayments,
         ),
+        _SectionPill(
+          icon: Icons.point_of_sale_outlined,
+          label: 'Daily Closing',
+          route: AppRoutes.financeDailyClosing,
+        ),
+        _SectionPill(
+          icon: Icons.trending_up,
+          label: 'P&L',
+          route: AppRoutes.financeProfitLoss,
+        ),
       ],
     );
   }

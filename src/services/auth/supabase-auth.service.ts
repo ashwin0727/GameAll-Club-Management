@@ -208,5 +208,10 @@ export class SupabaseAuthService implements AuthService {
   async updatePassword(password: string): Promise<void> {
     const { error } = await this.supabase.auth.updateUser({ password });
     if (error) throw toAuthError(error);
+    // Clears profiles.must_reset_password and activates any INVITED facility
+    // assignments waiting on the staff member's first sign-in. A no-op for a
+    // normal password reset (the flag is already false), so it is safe to
+    // call unconditionally.
+    await this.supabase.rpc("mark_password_reset_complete");
   }
 }

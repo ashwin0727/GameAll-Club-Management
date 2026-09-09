@@ -78,3 +78,50 @@ export async function signOut(supabase: SupabaseClient<Database>): Promise<void>
   const { error } = await supabase.auth.signOut();
   if (error) throw new Error(error.message);
 }
+
+/** The signed-in user's active facility, their role there, and the permission
+ *  keys they hold — resolved through facility_users (owner OR active staff
+ *  assignment), never ownership. The database (has_permission + RLS) stays
+ *  authoritative; this only lets server components and the nav hide what the
+ *  user cannot use. */
+export interface FacilityContext {
+  facilityId: string;
+  facilityName: string;
+  baseRole: "owner" | "manager" | "staff";
+  permissions: string[];
+}
+
+export const getFacilityContext = cache(async (): Promise<FacilityContext | null> => {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return null;
+
+  // RLS on facilities scopes this to the user's own facilities (ACTIVE only).
+  const { data: facilities } = await supabase
+    .from("facilities")
+    .select("id, name, owner_id")
+    .order("created_at", { ascending: true });
+  const facility =
+    (facilities ?? []).find((f) => f.owner_id === user.id) ?? facilities?.[0] ?? null;
+  if (!facility) return null;
+
+  const { data: assignment } = await supabase
+    .from("facility_users")
+    .select("role")
+    .eq("facility_id", facility.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const { data: permissions } = await supabase.rpc("my_facility_permissions", {
+    p_facility: facility.id,
+  });
+
+  return {
+    facilityId: facility.id,
+    facilityName: facility.name,
+    baseRole: (assignment?.role ?? (facility.owner_id === user.id ? "owner" : "staff")) as
+      | "owner"
+      | "manager"
+      | "staff",
+    permissions: permissions ?? [],
+  };
+});

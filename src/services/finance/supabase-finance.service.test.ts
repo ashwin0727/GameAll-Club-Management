@@ -198,3 +198,115 @@ describe("SupabaseFinanceService.getTransaction", () => {
     await expect(service.getTransaction("txn-missing")).rejects.toMatchObject({ code: "FINANCE_DATA_ERROR" });
   });
 });
+describe("SupabaseFinanceService — Expenses / Daily Closing / P&L (0069-0071)", () => {
+  it("getExpenseSummary maps the server KPI row", async () => {
+    const row = {
+      total_minor: 50000,
+      this_month_minor: 30000,
+      this_week_minor: 10000,
+      pending_minor: 8000,
+      pending_count: 2,
+      maintenance_minor: 12000,
+      other_minor: 38000,
+    };
+    const rpc = vi.fn(async () => ({ data: [row], error: null }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    const result = await service.getExpenseSummary("f1", { preset: "THIS_MONTH" });
+    expect(rpc).toHaveBeenCalledWith("get_expense_summary", {
+      p_facility_id: "f1",
+      p_preset: "THIS_MONTH",
+      p_start_date: null,
+      p_end_date: null,
+    });
+    expect(result.pendingCount).toBe(2);
+    expect(result.maintenanceMinor).toBe(12000);
+  });
+
+  it("recordExpensePayment forwards the idempotency key", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    await service.recordExpensePayment({ expenseId: "e1", amountMinor: 5000, idempotencyKey: "k-1" });
+    expect(rpc).toHaveBeenCalledWith("record_expense_payment", {
+      p_expense_id: "e1",
+      p_amount_minor: 5000,
+      p_paid_on: null,
+      p_payment_method: null,
+      p_reference: null,
+      p_note: null,
+      p_idempotency_key: "k-1",
+    });
+  });
+
+  it("getDailyClosingSummary maps every collection bucket + status", async () => {
+    const row = {
+      closing_date: "2026-09-09",
+      opening_cash_minor: 5000,
+      cash_collected_minor: 10000,
+      upi_collected_minor: 8500,
+      card_collected_minor: 0,
+      online_collected_minor: 0,
+      bank_transfer_collected_minor: 0,
+      other_collected_minor: 0,
+      total_collected_minor: 18500,
+      cash_expense_minor: 2000,
+      other_expense_minor: 0,
+      total_expense_minor: 2000,
+      expected_cash_minor: 13000,
+      payment_count: 3,
+      expense_count: 1,
+      pending_payment_count: 0,
+      closing_id: "c1",
+      status: "OPEN",
+      actual_cash_minor: null,
+      variance_minor: null,
+      variance_reason: null,
+      closed_at: null,
+    };
+    const rpc = vi.fn(async () => ({ data: [row], error: null }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    const result = await service.getDailyClosingSummary("f1", "2026-09-09");
+    expect(result.expectedCashMinor).toBe(13000);
+    expect(result.status).toBe("OPEN");
+  });
+
+  it("closeDailyClosing sends actual cash + reason", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    await service.closeDailyClosing("c1", 12500, "Cash shortage");
+    expect(rpc).toHaveBeenCalledWith("close_daily_closing", {
+      p_closing_id: "c1",
+      p_actual_cash_minor: 12500,
+      p_variance_reason: "Cash shortage",
+    });
+  });
+
+  it("getProfitAndLoss maps revenue split, totals and category breakdown", async () => {
+    const row = {
+      booking_revenue_minor: 60000,
+      membership_revenue_minor: 30000,
+      guest_booking_revenue_minor: 10000,
+      other_revenue_minor: 0,
+      gross_revenue_minor: 100000,
+      refunds_minor: 5000,
+      total_revenue_minor: 95000,
+      total_expense_minor: 15000,
+      net_profit_minor: 80000,
+      profit_margin_pct: 84.2,
+      expense_by_category: [{ categoryId: "cat1", category: "Rent", amountMinor: 15000 }],
+    };
+    const rpc = vi.fn(async () => ({ data: [row], error: null }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    const result = await service.getProfitAndLoss("f1", { preset: "THIS_MONTH" });
+    expect(result.netProfitMinor).toBe(80000);
+    expect(result.profitMarginPct).toBe(84.2);
+    expect(result.expenseByCategory[0]?.category).toBe("Rent");
+  });
+
+  it("maps a facility-isolation rejection on P&L to FINANCE_ACCESS_DENIED", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
+    const service = new SupabaseFinanceService({ rpc } as never);
+    await expect(service.getProfitAndLoss("f2", { preset: "TODAY" })).rejects.toMatchObject({
+      code: "FINANCE_ACCESS_DENIED",
+    });
+  });
+});

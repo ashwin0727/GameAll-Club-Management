@@ -15,11 +15,14 @@ import {
   CalendarRange,
   ChevronDown,
   Wrench,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_ITEMS, type NavItem } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
+import type { PermissionKey } from "@/features/staff/types";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
@@ -31,6 +34,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/finance": BadgeIndianRupee,
   "/reports": BarChart3,
   "/maintenance": Wrench,
+  "/users-roles/staff": ShieldCheck,
   "/inventory": Boxes,
 };
 
@@ -46,7 +50,15 @@ export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen);
-  const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const perms = usePermissionContext();
+  const items = NAV_ITEMS.filter(
+    (item) =>
+      item.roles.includes(role) &&
+      // A permission-gated section is hidden until the user holds the key for
+      // the active facility (or there is no permission context yet — e.g.
+      // mid-onboarding — in which case fall back to the role gate above).
+      (!item.permission || !perms || perms.can(item.permission as PermissionKey)),
+  );
 
   return (
     <>

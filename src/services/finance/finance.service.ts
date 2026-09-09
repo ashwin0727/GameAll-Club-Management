@@ -12,6 +12,14 @@ import type {
   LedgerPage,
   ExpenseCategory,
   ExpensePage,
+  ExpenseFilters,
+  ExpenseSummary,
+  ExpenseDetail,
+  CreateExpenseInput,
+  DailyClosingSummary,
+  DailyClosingHistoryPage,
+  ProfitAndLoss,
+  PnlTrendPoint,
   ObligationSource,
   PendingPaymentFilters,
   PaymentObligation,
@@ -57,18 +65,50 @@ export interface FinanceService {
     idempotencyKey: string;
   }): Promise<{ duplicate: boolean; outstandingMinor?: number }>;
   listExpenseCategories(facilityId: string): Promise<ExpenseCategory[]>;
-  listExpenses(input: { facilityId: string; dateRange: FinanceDateRange; categoryId?: string | null; limit?: number; offset?: number }): Promise<ExpensePage>;
-  voidExpense(expenseId: string, reason?: string | null): Promise<void>;
-  createExpense(input: {
+  listExpenses(input: {
     facilityId: string;
-    categoryId: string;
-    amountMinor: number;
-    spentOn: string;
+    dateRange: FinanceDateRange;
+    categoryId?: string | null;
+    filters?: ExpenseFilters;
+    limit?: number;
+    offset?: number;
+  }): Promise<ExpensePage>;
+  getExpenseSummary(facilityId: string, dateRange: FinanceDateRange): Promise<ExpenseSummary>;
+  getExpense(expenseId: string): Promise<ExpenseDetail | null>;
+  voidExpense(expenseId: string, reason?: string | null): Promise<void>;
+  createExpense(input: CreateExpenseInput): Promise<void>;
+  updateExpense(input: {
+    expenseId: string;
+    categoryId?: string | null;
+    amountMinor?: number | null;
+    spentOn?: string | null;
     paymentMethod?: string | null;
     vendor?: string | null;
     reference?: string | null;
     notes?: string | null;
+    taxMinor?: number | null;
+    dueOn?: string | null;
+    receiptPath?: string | null;
   }): Promise<void>;
+  recordExpensePayment(input: {
+    expenseId: string;
+    amountMinor?: number | null;
+    paidOn?: string | null;
+    paymentMethod?: string | null;
+    reference?: string | null;
+    note?: string | null;
+    idempotencyKey?: string | null;
+  }): Promise<void>;
+  // Daily Closing
+  getDailyClosingSummary(facilityId: string, date?: string | null): Promise<DailyClosingSummary>;
+  openDailyClosing(facilityId: string, date: string | null, openingCashMinor?: number | null): Promise<void>;
+  setDailyClosingOpeningCash(closingId: string, openingCashMinor: number): Promise<void>;
+  closeDailyClosing(closingId: string, actualCashMinor: number, varianceReason?: string | null): Promise<void>;
+  reopenDailyClosing(closingId: string, reason: string): Promise<void>;
+  listDailyClosings(input: { facilityId: string; dateRange: FinanceDateRange; limit?: number; offset?: number }): Promise<DailyClosingHistoryPage>;
+  // Profit & Loss
+  getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null): Promise<ProfitAndLoss>;
+  getPnlTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity): Promise<PnlTrendPoint[]>;
   /** Server-side filtered, searched, and paginated (spec §"Transaction Pagination"). */
   listTransactions(input: ListTransactionsInput): Promise<TransactionPage>;
   getTransaction(transactionId: string): Promise<FinanceTransaction>;

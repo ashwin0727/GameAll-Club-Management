@@ -39,6 +39,13 @@ export type ServiceErrorCode =
   | "MAINTENANCE_NOT_FOUND"
   | "MAINTENANCE_RULE_ERROR"
   | "MAINTENANCE_DATA_ERROR"
+  | "STAFF_ACCESS_DENIED"
+  | "STAFF_CONCURRENT_UPDATE"
+  | "STAFF_LAST_OWNER"
+  | "STAFF_ROLE_IN_USE"
+  | "STAFF_DUPLICATE"
+  | "STAFF_INVITE_FAILED"
+  | "STAFF_DATA_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -83,6 +90,13 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   // Overridden per-call with the specific rule the RPC rejected the request for.
   MAINTENANCE_RULE_ERROR: "Unable to complete this action.",
   MAINTENANCE_DATA_ERROR: "Unable to load maintenance data. Please try again.",
+  STAFF_ACCESS_DENIED: "You don't have permission to manage staff.",
+  STAFF_CONCURRENT_UPDATE: "Another administrator updated this. Refresh and try again.",
+  STAFF_LAST_OWNER: "This facility must always have at least one active owner.",
+  STAFF_ROLE_IN_USE: "This role is assigned to active staff and can't be changed that way.",
+  STAFF_DUPLICATE: "That person already has access to this facility.",
+  STAFF_INVITE_FAILED: "Could not add the staff member. Please try again.",
+  STAFF_DATA_ERROR: "Unable to load staff data. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

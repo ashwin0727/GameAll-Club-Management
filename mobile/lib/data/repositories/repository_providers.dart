@@ -17,6 +17,7 @@ import 'refund_repository.dart';
 import 'finance_repository.dart';
 import 'reports_repository.dart';
 import 'maintenance_repository.dart';
+import 'staff_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
@@ -97,4 +98,8 @@ final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
 
 final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
   return MaintenanceRepository(ref.watch(supabaseClientProvider));
+});
+
+final staffRepositoryProvider = Provider<StaffRepository>((ref) {
+  return StaffRepository(ref.watch(supabaseClientProvider));
 });

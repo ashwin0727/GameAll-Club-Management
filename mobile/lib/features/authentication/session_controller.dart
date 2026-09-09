@@ -5,45 +5,62 @@ import '../../data/repositories/repository_providers.dart';
 import '../../data/services/supabase_provider.dart';
 
 class SessionState {
-  const SessionState({this.user, this.facility, this.isLoading = true});
+  const SessionState({
+    this.user,
+    this.facility,
+    this.baseRole,
+    this.permissions = const <String>{},
+    this.isLoading = true,
+  });
 
   final AppUser? user;
   final Facility? facility;
+
+  /// The signed-in user's facility_users.role for [facility] — owner / manager
+  /// / staff. Null while unresolved or when the user has no assignment.
+  final String? baseRole;
+
+  /// The permission keys the user holds for [facility] (my_facility_permissions).
+  final Set<String> permissions;
   final bool isLoading;
 
   bool get isAuthenticated => user != null;
 
-  SessionState copyWith({AppUser? user, Facility? facility, bool? isLoading}) {
+  /// UX gate only — the database (has_permission + RLS) is the real boundary.
+  /// A facility owner implicitly holds everything, mirroring has_permission.
+  bool can(String key) => baseRole == 'owner' || permissions.contains(key);
+  bool canAny(Iterable<String> keys) => keys.any(can);
+
+  SessionState copyWith({
+    AppUser? user,
+    Facility? facility,
+    String? baseRole,
+    Set<String>? permissions,
+    bool? isLoading,
+  }) {
     return SessionState(
       user: user ?? this.user,
       facility: facility ?? this.facility,
+      baseRole: baseRole ?? this.baseRole,
+      permissions: permissions ?? this.permissions,
       isLoading: isLoading ?? this.isLoading,
     );
   }
 }
 
-/// The single place that resolves "who is signed in, and how far along is
-/// their facility's onboarding" — the mobile equivalent of the web app's
-/// `useCurrentUser()` + `getFacilityService().getFacility()` pairing, kept
-/// together here since both are needed for every routing decision.
+/// The single place that resolves "who is signed in, which facility they
+/// operate, and what they may do there" — the mobile equivalent of the web's
+/// useCurrentUser() + getFacilityContext() pairing.
 class SessionController extends Notifier<SessionState> {
   @override
   SessionState build() {
-    // Re-resolve whenever Supabase's own auth state changes (sign in/out,
-    // token refresh) instead of only once at app start.
     ref.listen(authStateProvider, (previous, next) {
       refresh();
     });
-    // Kick off the first resolution; the initial synchronous state is
-    // "loading" until it completes.
     Future.microtask(refresh);
     return const SessionState();
   }
 
-  /// Only the first resolution (app start) shows the loading/splash state.
-  /// Later auth-state changes (sign out, token refresh) update the session in
-  /// place — flipping back to `isLoading` would bounce the router through the
-  /// splash screen and flash an error mid-transition.
   bool _resolvedOnce = false;
 
   Future<void> refresh() async {
@@ -52,21 +69,38 @@ class SessionController extends Notifier<SessionState> {
     final authRepo = ref.read(authRepositoryProvider);
     final user = await authRepo.getCurrentUser();
 
-    final resolvedFacility = user == null
-        ? null
-        : await ref.read(facilityRepositoryProvider).getFacility();
+    Facility? facility;
+    String? baseRole;
+    var permissions = const <String>{};
+
+    if (user != null) {
+      facility = await ref.read(facilityRepositoryProvider).getFacility();
+      if (facility != null) {
+        final client = ref.read(supabaseClientProvider);
+        final assignment = await client
+            .from('facility_users')
+            .select('role')
+            .eq('facility_id', facility.id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+        baseRole = (assignment?['role'] as String?) ?? (facility.ownerId == user.id ? 'owner' : null);
+        final staff = ref.read(staffRepositoryProvider);
+        permissions = (await staff.myFacilityPermissions(facility.id)).toSet();
+        await staff.recordMyLogin(); // last-login stamp for the Staff list
+      }
+    }
 
     _resolvedOnce = true;
     state = SessionState(
       user: user,
-      facility: resolvedFacility,
+      facility: facility,
+      baseRole: baseRole,
+      permissions: permissions,
       isLoading: false,
     );
   }
 
   Future<void> signOut() async {
-    // Clear the local session first so the UI reacts immediately, then tell
-    // the auth backend. Any failure there is irrelevant — we're logged out.
     _resolvedOnce = true;
     state = const SessionState(isLoading: false);
     try {
