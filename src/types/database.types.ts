@@ -1257,6 +1257,187 @@ export interface Database {
           },
         ];
       };
+      coaches: {
+        Row: {
+          id: string;
+          facility_id: string;
+          user_id: string;
+          specialization: string | null;
+          experience_years: number | null;
+          certifications: string | null;
+          bio: string | null;
+          hourly_rate_minor: number | null;
+          status: "ACTIVE" | "INACTIVE" | "ON_LEAVE";
+          joined_on: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { facility_id: string; user_id: string };
+        Update: Partial<Database["public"]["Tables"]["coaches"]["Insert"]>;
+        Relationships: [];
+      };
+      coach_availability: {
+        Row: {
+          id: string;
+          coach_id: string;
+          facility_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          created_at: string;
+        };
+        Insert: { coach_id: string; facility_id: string; day_of_week: number; start_time: string; end_time: string };
+        Update: Partial<Database["public"]["Tables"]["coach_availability"]["Insert"]>;
+        Relationships: [];
+      };
+      coach_availability_exceptions: {
+        Row: {
+          id: string;
+          coach_id: string;
+          facility_id: string;
+          exception_date: string;
+          is_available: boolean;
+          start_time: string | null;
+          end_time: string | null;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: { coach_id: string; facility_id: string; exception_date: string; is_available: boolean };
+        Update: Partial<Database["public"]["Tables"]["coach_availability_exceptions"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_programs: {
+        Row: {
+          id: string;
+          facility_id: string;
+          name: string;
+          level: string;
+          age_group: string;
+          category: string;
+          description: string | null;
+          facility_sport_id: string | null;
+          default_duration_minutes: number;
+          default_capacity: number;
+          session_count: number | null;
+          default_price_minor: number | null;
+          is_membership_included: boolean;
+          status: "ACTIVE" | "INACTIVE";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { facility_id: string; name: string };
+        Update: Partial<Database["public"]["Tables"]["coaching_programs"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_sessions: {
+        Row: {
+          id: string;
+          facility_id: string;
+          program_id: string;
+          coach_id: string;
+          court_id: string;
+          start_at: string;
+          end_at: string;
+          capacity: number;
+          status: "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+          notes: string | null;
+          objective: string | null;
+          objective_result: string | null;
+          completed_at: string | null;
+          completed_by: string | null;
+          cancelled_at: string | null;
+          cancel_reason: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          facility_id: string;
+          program_id: string;
+          coach_id: string;
+          court_id: string;
+          start_at: string;
+          end_at: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coaching_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_session_students: {
+        Row: {
+          id: string;
+          session_id: string;
+          enrollment_id: string;
+          facility_id: string;
+          status: "ENROLLED" | "REMOVED";
+          added_by: string | null;
+          added_at: string;
+        };
+        Insert: { session_id: string; enrollment_id: string; facility_id: string };
+        Update: Partial<Database["public"]["Tables"]["coaching_session_students"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_enrollments: {
+        Row: {
+          id: string;
+          facility_id: string;
+          member_id: string;
+          program_id: string;
+          coach_id: string | null;
+          start_date: string;
+          end_date: string | null;
+          sessions_total: number | null;
+          price_minor: number;
+          pricing_type: "STANDARD" | "CUSTOM" | "MEMBERSHIP_INCLUDED";
+          status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          cancelled_at: string | null;
+          cancel_reason: string | null;
+        };
+        Insert: { facility_id: string; member_id: string; program_id: string };
+        Update: Partial<Database["public"]["Tables"]["coaching_enrollments"]["Insert"]>;
+        Relationships: [];
+      };
+      student_progress_notes: {
+        Row: {
+          id: string;
+          facility_id: string;
+          enrollment_id: string;
+          session_id: string | null;
+          coach_id: string | null;
+          skill_or_goal: string | null;
+          note: string;
+          progress_status: "ON_TRACK" | "NEEDS_WORK" | "EXCELLING" | "AT_RISK";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { facility_id: string; enrollment_id: string; note: string };
+        Update: Partial<Database["public"]["Tables"]["student_progress_notes"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_events: {
+        Row: {
+          id: string;
+          facility_id: string;
+          event: string;
+          actor: string | null;
+          coach_id: string | null;
+          program_id: string | null;
+          session_id: string | null;
+          enrollment_id: string | null;
+          summary: string;
+          detail: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: { facility_id: string; event: string; summary: string };
+        Update: Partial<Database["public"]["Tables"]["coaching_events"]["Insert"]>;
+        Relationships: [];
+      };
       inventory_categories: {
         Row: {
           id: string;
@@ -4044,6 +4225,327 @@ export interface Database {
           sort_order: number;
           item_count: number;
           inventory_value_minor: number;
+        }[];
+      };
+
+      // ── Coaching ─────────────────────────────────────────────────────────
+      add_coach: {
+        Args: {
+          p_facility_id: string;
+          p_user_id: string;
+          p_specialization?: string | null;
+          p_experience_years?: number | null;
+          p_certifications?: string | null;
+          p_bio?: string | null;
+          p_hourly_rate_minor?: number | null;
+          p_status?: string;
+          p_joined_on?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaches"]["Row"];
+      };
+      update_coach: {
+        Args: {
+          p_coach_id: string;
+          p_specialization?: string | null;
+          p_experience_years?: number | null;
+          p_certifications?: string | null;
+          p_bio?: string | null;
+          p_hourly_rate_minor?: number | null;
+          p_status?: string | null;
+          p_joined_on?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaches"]["Row"];
+      };
+      set_coach_availability: { Args: { p_coach_id: string; p_windows: unknown }; Returns: undefined };
+      set_coach_availability_exception: {
+        Args: {
+          p_coach_id: string;
+          p_exception_date: string;
+          p_is_available: boolean;
+          p_start_time?: string | null;
+          p_end_time?: string | null;
+          p_reason?: string | null;
+        };
+        Returns: undefined;
+      };
+      delete_coach_availability_exception: { Args: { p_exception_id: string }; Returns: undefined };
+      coach_is_available: { Args: { p_coach_id: string; p_start: string; p_end: string }; Returns: boolean };
+      create_coaching_program: {
+        Args: {
+          p_facility_id: string;
+          p_name: string;
+          p_level?: string;
+          p_age_group?: string;
+          p_category?: string;
+          p_description?: string | null;
+          p_facility_sport_id?: string | null;
+          p_default_duration_minutes?: number;
+          p_default_capacity?: number;
+          p_session_count?: number | null;
+          p_default_price_minor?: number | null;
+          p_is_membership_included?: boolean;
+        };
+        Returns: Database["public"]["Tables"]["coaching_programs"]["Row"];
+      };
+      update_coaching_program: {
+        Args: {
+          p_program_id: string;
+          p_name?: string | null;
+          p_level?: string | null;
+          p_age_group?: string | null;
+          p_category?: string | null;
+          p_description?: string | null;
+          p_facility_sport_id?: string | null;
+          p_default_duration_minutes?: number | null;
+          p_default_capacity?: number | null;
+          p_session_count?: number | null;
+          p_default_price_minor?: number | null;
+          p_is_membership_included?: boolean | null;
+          p_status?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_programs"]["Row"];
+      };
+      create_coaching_session: {
+        Args: {
+          p_facility_id: string;
+          p_program_id: string;
+          p_coach_id: string;
+          p_court_id: string;
+          p_start_at: string;
+          p_end_at: string;
+          p_capacity?: number | null;
+          p_notes?: string | null;
+          p_objective?: string | null;
+          p_status?: string;
+          p_auto_enroll?: boolean;
+        };
+        Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
+      };
+      reschedule_coaching_session: {
+        Args: {
+          p_session_id: string;
+          p_coach_id?: string | null;
+          p_court_id?: string | null;
+          p_start_at?: string | null;
+          p_end_at?: string | null;
+          p_capacity?: number | null;
+          p_notes?: string | null;
+          p_objective?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
+      };
+      set_coaching_session_status: {
+        Args: { p_session_id: string; p_status: string };
+        Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
+      };
+      complete_coaching_session: {
+        Args: { p_session_id: string; p_notes?: string | null; p_objective_result?: string | null };
+        Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
+      };
+      cancel_coaching_session: {
+        Args: { p_session_id: string; p_reason: string };
+        Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
+      };
+      add_session_student: {
+        Args: { p_session_id: string; p_enrollment_id: string };
+        Returns: Database["public"]["Tables"]["coaching_session_students"]["Row"];
+      };
+      remove_session_student: { Args: { p_session_id: string; p_enrollment_id: string }; Returns: undefined };
+      create_coaching_enrollment: {
+        Args: {
+          p_facility_id: string;
+          p_member_id: string;
+          p_program_id: string;
+          p_coach_id?: string | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_sessions_total?: number | null;
+          p_price_minor?: number | null;
+          p_pricing_type?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_enrollments"]["Row"];
+      };
+      update_coaching_enrollment: {
+        Args: {
+          p_enrollment_id: string;
+          p_coach_id?: string | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_sessions_total?: number | null;
+          p_price_minor?: number | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_enrollments"]["Row"];
+      };
+      set_coaching_enrollment_status: {
+        Args: { p_enrollment_id: string; p_status: string; p_reason?: string | null };
+        Returns: Database["public"]["Tables"]["coaching_enrollments"]["Row"];
+      };
+      add_progress_note: {
+        Args: {
+          p_enrollment_id: string;
+          p_note: string;
+          p_skill_or_goal?: string | null;
+          p_progress_status?: string;
+          p_session_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["student_progress_notes"]["Row"];
+      };
+      update_progress_note: {
+        Args: {
+          p_note_id: string;
+          p_note?: string | null;
+          p_skill_or_goal?: string | null;
+          p_progress_status?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["student_progress_notes"]["Row"];
+      };
+      delete_progress_note: { Args: { p_note_id: string }; Returns: undefined };
+      get_coaching_overview: { Args: { p_facility_id: string }; Returns: Record<string, unknown> };
+      list_coaches: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_status?: string | null;
+          p_specialization?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          user_id: string;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          avatar_url: string | null;
+          specialization: string | null;
+          experience_years: number | null;
+          status: "ACTIVE" | "INACTIVE" | "ON_LEAVE";
+          program_count: number;
+          session_count: number;
+          student_count: number;
+          total_count: number;
+        }[];
+      };
+      get_coach: { Args: { p_coach_id: string }; Returns: Record<string, unknown> };
+      list_coach_candidates: {
+        Args: { p_facility_id: string };
+        Returns: { user_id: string; full_name: string; email: string | null; title: string | null }[];
+      };
+      list_coach_options: {
+        Args: { p_facility_id: string };
+        Returns: { id: string; name: string; specialization: string | null }[];
+      };
+      list_coaching_programs: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_status?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          name: string;
+          level: string;
+          age_group: string;
+          category: string;
+          default_duration_minutes: number;
+          default_capacity: number;
+          session_count: number | null;
+          default_price_minor: number | null;
+          is_membership_included: boolean;
+          status: "ACTIVE" | "INACTIVE";
+          student_count: number;
+          scheduled_session_count: number;
+          total_count: number;
+        }[];
+      };
+      get_coaching_program: { Args: { p_program_id: string }; Returns: Record<string, unknown> };
+      list_coaching_program_options: {
+        Args: { p_facility_id: string };
+        Returns: {
+          id: string;
+          name: string;
+          default_capacity: number;
+          default_duration_minutes: number;
+          default_price_minor: number | null;
+          is_membership_included: boolean;
+          session_count: number | null;
+        }[];
+      };
+      list_coaching_sessions: {
+        Args: {
+          p_facility_id: string;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_coach_id?: string | null;
+          p_program_id?: string | null;
+          p_court_id?: string | null;
+          p_status?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          program_id: string;
+          program_name: string;
+          coach_id: string;
+          coach_name: string;
+          court_id: string;
+          court_name: string;
+          start_at: string;
+          end_at: string;
+          capacity: number;
+          enrolled_count: number;
+          status: "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+          total_count: number;
+        }[];
+      };
+      get_coaching_session: { Args: { p_session_id: string }; Returns: Record<string, unknown> };
+      list_coaching_enrollments: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_program_id?: string | null;
+          p_status?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          member_id: string;
+          student_name: string;
+          student_phone: string | null;
+          program_id: string;
+          program_name: string;
+          coach_name: string | null;
+          start_date: string;
+          end_date: string | null;
+          sessions_total: number | null;
+          price_minor: number;
+          paid_minor: number;
+          status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
+          payment_status: "INCLUDED" | "PAID" | "PARTIAL" | "PENDING";
+          total_count: number;
+        }[];
+      };
+      get_coaching_enrollment: { Args: { p_enrollment_id: string }; Returns: Record<string, unknown> };
+      get_coaching_reports: {
+        Args: { p_facility_id: string; p_preset?: string | null; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: Record<string, unknown>;
+      };
+      list_coaching_events: {
+        Args: { p_facility_id: string; p_event?: string | null; p_limit?: number; p_offset?: number };
+        Returns: {
+          id: string;
+          event: string;
+          summary: string;
+          actor_name: string | null;
+          detail: Record<string, unknown>;
+          created_at: string;
+          total_count: number;
         }[];
       };
     };

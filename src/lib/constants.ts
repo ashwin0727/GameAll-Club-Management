@@ -115,6 +115,21 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Categories", href: "/inventory/categories" },
     ],
   },
+  {
+    label: "Coaching",
+    href: "/coaching",
+    roles: ["admin", "staff"],
+    permission: "COACHING_VIEW",
+    children: [
+      { label: "Overview", href: "/coaching" },
+      { label: "Coaches", href: "/coaching/coaches" },
+      { label: "Programs", href: "/coaching/programs" },
+      { label: "Schedule", href: "/coaching/schedule" },
+      { label: "Sessions", href: "/coaching/sessions" },
+      { label: "Enrollments", href: "/coaching/enrollments" },
+      { label: "Reports", href: "/coaching/reports" },
+    ],
+  },
 ];
 
 export const QUERY_STALE_TIME_MS = 30_000;

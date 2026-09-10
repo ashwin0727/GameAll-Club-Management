@@ -67,6 +67,20 @@ import '../../features/inventory/purchase_order_detail_screen.dart';
 import '../../features/inventory/vendors_screen.dart';
 import '../../features/inventory/vendor_detail_screen.dart';
 import '../../features/inventory/inventory_categories_screen.dart';
+import '../../features/coaching/coaching_overview_screen.dart';
+import '../../features/coaching/coaches_screen.dart';
+import '../../features/coaching/coach_form_screen.dart';
+import '../../features/coaching/coach_detail_screen.dart';
+import '../../features/coaching/coaching_programs_screen.dart';
+import '../../features/coaching/coaching_program_form_screen.dart';
+import '../../features/coaching/coaching_program_detail_screen.dart';
+import '../../features/coaching/coaching_schedule_screen.dart';
+import '../../features/coaching/coaching_sessions_screen.dart';
+import '../../features/coaching/coaching_session_form_screen.dart';
+import '../../features/coaching/coaching_session_detail_screen.dart';
+import '../../features/coaching/coaching_enrollments_screen.dart';
+import '../../features/coaching/coaching_enrollment_detail_screen.dart';
+import '../../features/coaching/coaching_reports_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 import 'page_transitions.dart';
@@ -418,6 +432,47 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             slideOver(state, VendorDetailScreen(vendorId: state.pathParameters['vendorId']!)),
       ),
       GoRoute(path: AppRoutes.inventoryCategories, builder: (context, state) => const InventoryCategoriesScreen()),
+
+      // ── Coaching Management ────────────────────────────────────────────
+      GoRoute(path: AppRoutes.coaching, builder: (context, state) => const CoachingOverviewScreen()),
+      GoRoute(path: AppRoutes.coachingCoaches, builder: (context, state) => const CoachesScreen()),
+      GoRoute(
+        path: AppRoutes.coachingCoachAdd,
+        pageBuilder: (context, state) => slideOver(state, const CoachFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.coachingCoachDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, CoachDetailScreen(coachId: state.pathParameters['coachId']!)),
+      ),
+      GoRoute(path: AppRoutes.coachingPrograms, builder: (context, state) => const CoachingProgramsScreen()),
+      GoRoute(
+        path: AppRoutes.coachingProgramNew,
+        pageBuilder: (context, state) => slideOver(state, const CoachingProgramFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.coachingProgramDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, CoachingProgramDetailScreen(programId: state.pathParameters['programId']!)),
+      ),
+      GoRoute(path: AppRoutes.coachingSchedule, builder: (context, state) => const CoachingScheduleScreen()),
+      GoRoute(path: AppRoutes.coachingSessions, builder: (context, state) => const CoachingSessionsScreen()),
+      GoRoute(
+        path: AppRoutes.coachingSessionNew,
+        pageBuilder: (context, state) => slideOver(state, const CoachingSessionFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.coachingSessionDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, CoachingSessionDetailScreen(sessionId: state.pathParameters['sessionId']!)),
+      ),
+      GoRoute(path: AppRoutes.coachingEnrollments, builder: (context, state) => const CoachingEnrollmentsScreen()),
+      GoRoute(
+        path: AppRoutes.coachingEnrollmentDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, CoachingEnrollmentDetailScreen(enrollmentId: state.pathParameters['enrollmentId']!)),
+      ),
+      GoRoute(path: AppRoutes.coachingReports, builder: (context, state) => const CoachingReportsScreen()),
     ],
   );
 });

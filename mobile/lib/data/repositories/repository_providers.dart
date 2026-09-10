@@ -19,6 +19,7 @@ import 'reports_repository.dart';
 import 'maintenance_repository.dart';
 import 'staff_repository.dart';
 import 'inventory_repository.dart';
+import 'coaching_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
@@ -107,4 +108,8 @@ final staffRepositoryProvider = Provider<StaffRepository>((ref) {
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
   return InventoryRepository(ref.watch(supabaseClientProvider));
+});
+
+final coachingRepositoryProvider = Provider<CoachingRepository>((ref) {
+  return CoachingRepository(ref.watch(supabaseClientProvider));
 });

@@ -1195,7 +1195,8 @@ class ListLedgerInput {
 enum ObligationSource {
   guestBooking,
   booking,
-  membership;
+  membership,
+  coachingEnrollment;
 
   String toJson() {
     switch (this) {
@@ -1205,6 +1206,8 @@ enum ObligationSource {
         return 'BOOKING';
       case ObligationSource.membership:
         return 'MEMBERSHIP';
+      case ObligationSource.coachingEnrollment:
+        return 'COACHING_ENROLLMENT';
     }
   }
 
@@ -1216,6 +1219,8 @@ enum ObligationSource {
         return ObligationSource.booking;
       case 'MEMBERSHIP':
         return ObligationSource.membership;
+      case 'COACHING_ENROLLMENT':
+        return ObligationSource.coachingEnrollment;
       default:
         throw ArgumentError('Unknown ObligationSource: $value');
     }
@@ -1229,6 +1234,8 @@ enum ObligationSource {
         return 'Court Booking';
       case ObligationSource.membership:
         return 'Membership';
+      case ObligationSource.coachingEnrollment:
+        return 'Coaching';
     }
   }
 }

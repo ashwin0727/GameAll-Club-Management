@@ -153,7 +153,7 @@ export interface ExpenseCategory {
   name: string;
 }
 
-export type ObligationSource = "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP";
+export type ObligationSource = "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP" | "COACHING_ENROLLMENT";
 export type ObligationStatus = "PENDING" | "PARTIALLY_PAID" | "OVERDUE" | "PAID";
 
 /**
