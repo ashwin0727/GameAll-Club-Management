@@ -115,6 +115,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Categories", href: "/inventory/categories" },
     ],
   },
+  { label: "Tournament Management", href: "/tournaments", roles: ["admin", "staff"] },
   {
     label: "Coaching",
     href: "/coaching",

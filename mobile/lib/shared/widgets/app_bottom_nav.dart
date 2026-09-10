@@ -62,6 +62,7 @@ const _moreDestinations = <({IconData icon, String label, String route, String? 
   (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
   (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
   (icon: Icons.sports_tennis_outlined, label: 'Coaching', route: AppRoutes.coaching, permission: 'COACHING_VIEW'),
+  (icon: Icons.emoji_events_outlined, label: 'Tournament Management', route: AppRoutes.tournaments, permission: null),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
   (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
   (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),

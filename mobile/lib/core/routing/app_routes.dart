@@ -148,6 +148,11 @@ class AppRoutes {
   static const coachingEnrollmentDetail = '/coaching/enrollments/:enrollmentId';
   static const coachingReports = '/coaching/reports';
 
+  /// Tournament Management is a SEPARATE app — this route is a handoff/bridge
+  /// screen that explains it and opens or links to it. No tournament features
+  /// live in this app.
+  static const tournaments = '/tournaments';
+
   /// Forced first-sign-in password reset for an admin-created staff account.
   static const setPassword = '/set-password';
 

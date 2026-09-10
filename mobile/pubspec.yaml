@@ -103,6 +103,7 @@ flutter:
 
   assets:
     - assets/images/logo-icon.png
+    - assets/images/
     - assets/sports/
     - assets/splash.mp4
 
