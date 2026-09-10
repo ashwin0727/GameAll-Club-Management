@@ -60,6 +60,7 @@ const _moreDestinations = <({IconData icon, String label, String route, String? 
   (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
   (icon: Icons.insights_outlined, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
   (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
+  (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
   (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
   (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),

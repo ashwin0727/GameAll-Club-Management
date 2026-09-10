@@ -101,6 +101,27 @@ class AppRoutes {
   static const roleEditor = '/users-roles/roles/:roleId/edit';
   static const accessHistory = '/users-roles/access-history';
 
+  /// Inventory & Vendors. Web's NAV_ITEMS "Inventory & Vendors" sidebar group;
+  /// mobile has no sidebar, so `/inventory` is the Overview and each section is
+  /// its own screen, same pattern as Finance/Reports/Maintenance/Users.
+  static const inventory = '/inventory';
+  static const inventoryItems = '/inventory/items';
+  static const inventoryItemNew = '/inventory/items/new';
+
+  /// `:itemId` is an inventory_items id.
+  static const inventoryItemDetail = '/inventory/items/:itemId';
+  static const inventoryMovements = '/inventory/movements';
+  static const inventoryPurchaseOrders = '/inventory/purchase-orders';
+  static const inventoryPurchaseOrderNew = '/inventory/purchase-orders/new';
+
+  /// `:poId` is a purchase_orders id.
+  static const inventoryPurchaseOrderDetail = '/inventory/purchase-orders/:poId';
+  static const inventoryVendors = '/inventory/vendors';
+
+  /// `:vendorId` is a vendors id.
+  static const inventoryVendorDetail = '/inventory/vendors/:vendorId';
+  static const inventoryCategories = '/inventory/categories';
+
   /// Forced first-sign-in password reset for an admin-created staff account.
   static const setPassword = '/set-password';
 

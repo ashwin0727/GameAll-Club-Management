@@ -1181,12 +1181,26 @@ export interface Database {
           available_quantity: number;
           condition: string;
           created_at: string;
+          category_id: string | null;
+          brand: string | null;
+          description: string | null;
+          unit: string;
+          reorder_level: number;
+          default_unit_cost_minor: number | null;
+          unit_cost_minor: number;
+          preferred_vendor_id: string | null;
+          image_path: string | null;
+          status: "ACTIVE" | "INACTIVE";
+          current_stock: number;
+          created_by: string | null;
+          updated_by: string | null;
+          updated_at: string | null;
         };
         Insert: {
           id?: string;
           facility_id: string;
           name: string;
-          category: string;
+          category?: string;
           sku: string;
           total_quantity?: number;
           available_quantity?: number;
@@ -1242,6 +1256,135 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+      inventory_categories: {
+        Row: {
+          id: string;
+          facility_id: string;
+          name: string;
+          description: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { facility_id: string; name: string };
+        Update: Partial<Database["public"]["Tables"]["inventory_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      vendors: {
+        Row: {
+          id: string;
+          facility_id: string;
+          name: string;
+          contact_person: string | null;
+          phone: string | null;
+          email: string | null;
+          address: string | null;
+          gst_number: string | null;
+          pan_number: string | null;
+          notes: string | null;
+          status: "ACTIVE" | "INACTIVE";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { facility_id: string; name: string };
+        Update: Partial<Database["public"]["Tables"]["vendors"]["Insert"]>;
+        Relationships: [];
+      };
+      inventory_movements: {
+        Row: {
+          id: string;
+          facility_id: string;
+          item_id: string;
+          movement_type: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "PURCHASE_RECEIVED" | "RETURN";
+          quantity: number;
+          balance_after: number;
+          unit_cost_minor: number | null;
+          reason: string | null;
+          notes: string | null;
+          reference_type: string | null;
+          reference_id: string | null;
+          performed_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          facility_id: string;
+          item_id: string;
+          movement_type: string;
+          quantity: number;
+          balance_after: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["inventory_movements"]["Insert"]>;
+        Relationships: [];
+      };
+      inventory_events: {
+        Row: {
+          id: string;
+          facility_id: string;
+          event: string;
+          actor: string | null;
+          item_id: string | null;
+          vendor_id: string | null;
+          purchase_order_id: string | null;
+          summary: string;
+          detail: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: { facility_id: string; event: string; summary: string };
+        Update: Partial<Database["public"]["Tables"]["inventory_events"]["Insert"]>;
+        Relationships: [];
+      };
+      purchase_orders: {
+        Row: {
+          id: string;
+          facility_id: string;
+          vendor_id: string;
+          po_number: string;
+          order_date: string;
+          expected_delivery: string | null;
+          status: "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
+          subtotal_minor: number;
+          tax_minor: number;
+          discount_minor: number;
+          total_minor: number;
+          reference: string | null;
+          notes: string | null;
+          invoice_path: string | null;
+          expense_id: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          cancelled_at: string | null;
+          cancel_reason: string | null;
+        };
+        Insert: { facility_id: string; vendor_id: string; po_number: string };
+        Update: Partial<Database["public"]["Tables"]["purchase_orders"]["Insert"]>;
+        Relationships: [];
+      };
+      purchase_order_items: {
+        Row: {
+          id: string;
+          purchase_order_id: string;
+          item_id: string;
+          quantity_ordered: number;
+          quantity_received: number;
+          unit_cost_minor: number;
+          tax_minor: number;
+          discount_minor: number;
+          line_total_minor: number;
+        };
+        Insert: {
+          purchase_order_id: string;
+          item_id: string;
+          quantity_ordered: number;
+          unit_cost_minor: number;
+          line_total_minor: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["purchase_order_items"]["Insert"]>;
+        Relationships: [];
       };
       operating_schedules: {
         Row: {
@@ -3625,6 +3768,283 @@ export interface Database {
       list_facility_staff: {
         Args: { p_facility_id: string };
         Returns: { user_id: string; full_name: string; role: FacilityRole }[];
+      };
+
+      // ── Inventory & Vendors ──────────────────────────────────────────────
+      create_vendor: {
+        Args: {
+          p_facility_id: string;
+          p_name: string;
+          p_contact_person?: string | null;
+          p_phone?: string | null;
+          p_email?: string | null;
+          p_address?: string | null;
+          p_gst_number?: string | null;
+          p_pan_number?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["vendors"]["Row"];
+      };
+      update_vendor: {
+        Args: {
+          p_vendor_id: string;
+          p_name?: string | null;
+          p_contact_person?: string | null;
+          p_phone?: string | null;
+          p_email?: string | null;
+          p_address?: string | null;
+          p_gst_number?: string | null;
+          p_pan_number?: string | null;
+          p_notes?: string | null;
+          p_status?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["vendors"]["Row"];
+      };
+      create_inventory_category: {
+        Args: { p_facility_id: string; p_name: string; p_description?: string | null; p_sort_order?: number };
+        Returns: Database["public"]["Tables"]["inventory_categories"]["Row"];
+      };
+      update_inventory_category: {
+        Args: {
+          p_category_id: string;
+          p_name?: string | null;
+          p_description?: string | null;
+          p_is_active?: boolean | null;
+          p_sort_order?: number | null;
+        };
+        Returns: Database["public"]["Tables"]["inventory_categories"]["Row"];
+      };
+      create_inventory_item: {
+        Args: {
+          p_facility_id: string;
+          p_name: string;
+          p_sku: string;
+          p_category_id?: string | null;
+          p_unit?: string;
+          p_reorder_level?: number;
+          p_brand?: string | null;
+          p_description?: string | null;
+          p_default_unit_cost_minor?: number | null;
+          p_preferred_vendor_id?: string | null;
+          p_image_path?: string | null;
+          p_opening_stock?: number;
+        };
+        Returns: Database["public"]["Tables"]["inventory_items"]["Row"];
+      };
+      update_inventory_item: {
+        Args: {
+          p_item_id: string;
+          p_name?: string | null;
+          p_sku?: string | null;
+          p_category_id?: string | null;
+          p_unit?: string | null;
+          p_reorder_level?: number | null;
+          p_brand?: string | null;
+          p_description?: string | null;
+          p_default_unit_cost_minor?: number | null;
+          p_preferred_vendor_id?: string | null;
+          p_image_path?: string | null;
+          p_status?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["inventory_items"]["Row"];
+      };
+      record_stock_movement: {
+        Args: {
+          p_item_id: string;
+          p_movement_type: string;
+          p_quantity: number;
+          p_reason?: string | null;
+          p_notes?: string | null;
+          p_unit_cost_minor?: number | null;
+          p_reference_type?: string;
+          p_reference_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["inventory_movements"]["Row"];
+      };
+      create_purchase_order: {
+        Args: {
+          p_facility_id: string;
+          p_vendor_id: string;
+          p_lines: unknown;
+          p_order_date?: string | null;
+          p_expected_delivery?: string | null;
+          p_reference?: string | null;
+          p_notes?: string | null;
+          p_invoice_path?: string | null;
+        };
+        Returns: string;
+      };
+      update_purchase_order: {
+        Args: {
+          p_po_id: string;
+          p_lines?: unknown;
+          p_expected_delivery?: string | null;
+          p_reference?: string | null;
+          p_notes?: string | null;
+          p_invoice_path?: string | null;
+        };
+        Returns: undefined;
+      };
+      place_purchase_order: {
+        Args: { p_po_id: string };
+        Returns: undefined;
+      };
+      receive_purchase_order: {
+        Args: { p_po_id: string; p_receipts: unknown };
+        Returns: undefined;
+      };
+      cancel_purchase_order: {
+        Args: { p_po_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      record_purchase_payment: {
+        Args: {
+          p_po_id: string;
+          p_amount_minor: number;
+          p_paid_on?: string | null;
+          p_payment_method?: string | null;
+          p_reference?: string | null;
+          p_note?: string | null;
+        };
+        Returns: undefined;
+      };
+      get_inventory_overview: {
+        Args: { p_facility_id: string };
+        Returns: Record<string, unknown>;
+      };
+      list_inventory_items: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_category_id?: string | null;
+          p_status?: string | null;
+          p_stock_status?: string | null;
+          p_vendor_id?: string | null;
+          p_sort?: string;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          name: string;
+          sku: string;
+          brand: string | null;
+          category_id: string | null;
+          category_name: string | null;
+          unit: string;
+          current_stock: number;
+          reorder_level: number;
+          unit_cost_minor: number;
+          inventory_value_minor: number;
+          status: "ACTIVE" | "INACTIVE";
+          stock_status: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+          preferred_vendor_id: string | null;
+          preferred_vendor_name: string | null;
+          image_path: string | null;
+          updated_at: string | null;
+          total_count: number;
+        }[];
+      };
+      get_inventory_item: {
+        Args: { p_item_id: string };
+        Returns: Record<string, unknown>;
+      };
+      list_stock_movements: {
+        Args: {
+          p_facility_id: string;
+          p_movement_type?: string | null;
+          p_item_id?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_performed_by?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          created_at: string;
+          movement_type: "STOCK_IN" | "STOCK_OUT" | "ADJUSTMENT" | "PURCHASE_RECEIVED" | "RETURN";
+          item_id: string;
+          item_name: string;
+          quantity: number;
+          balance_after: number;
+          unit_cost_minor: number | null;
+          reason: string | null;
+          notes: string | null;
+          reference_type: string | null;
+          reference_id: string | null;
+          reference_label: string | null;
+          performed_by: string | null;
+          performed_by_name: string | null;
+          total_count: number;
+        }[];
+      };
+      list_vendors: {
+        Args: {
+          p_facility_id: string;
+          p_search?: string | null;
+          p_status?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          name: string;
+          contact_person: string | null;
+          phone: string | null;
+          email: string | null;
+          status: "ACTIVE" | "INACTIVE";
+          po_count: number;
+          total_purchases_minor: number;
+          outstanding_minor: number;
+          total_count: number;
+        }[];
+      };
+      get_vendor: {
+        Args: { p_vendor_id: string };
+        Returns: Record<string, unknown>;
+      };
+      list_purchase_orders: {
+        Args: {
+          p_facility_id: string;
+          p_vendor_id?: string | null;
+          p_status?: string | null;
+          p_payment_status?: string | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          id: string;
+          po_number: string;
+          vendor_id: string;
+          vendor_name: string;
+          order_date: string;
+          expected_delivery: string | null;
+          status: "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
+          total_minor: number;
+          amount_paid_minor: number;
+          payment_status: string;
+          item_count: number;
+          total_count: number;
+        }[];
+      };
+      get_purchase_order: {
+        Args: { p_po_id: string };
+        Returns: Record<string, unknown>;
+      };
+      list_inventory_categories: {
+        Args: { p_facility_id: string };
+        Returns: {
+          id: string;
+          name: string;
+          description: string | null;
+          is_active: boolean;
+          sort_order: number;
+          item_count: number;
+          inventory_value_minor: number;
+        }[];
       };
     };
     Enums: {

@@ -101,7 +101,20 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Access History", href: "/users-roles/access-history" },
     ],
   },
-  { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
+  {
+    label: "Inventory & Vendors",
+    href: "/inventory",
+    roles: ["admin", "staff"],
+    permission: "INVENTORY_VIEW",
+    children: [
+      { label: "Overview", href: "/inventory" },
+      { label: "Items", href: "/inventory/items" },
+      { label: "Stock Movements", href: "/inventory/movements" },
+      { label: "Purchase Orders", href: "/inventory/purchase-orders" },
+      { label: "Vendors", href: "/inventory/vendors" },
+      { label: "Categories", href: "/inventory/categories" },
+    ],
+  },
 ];
 
 export const QUERY_STALE_TIME_MS = 30_000;

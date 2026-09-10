@@ -56,6 +56,17 @@ import '../../features/maintenance/create_maintenance_ticket_screen.dart';
 import '../../features/maintenance/maintenance_ticket_detail_screen.dart';
 import '../../features/maintenance/maintenance_court_schedule_screen.dart';
 import '../../features/maintenance/maintenance_issue_categories_screen.dart';
+import '../../features/inventory/inventory_overview_screen.dart';
+import '../../features/inventory/inventory_items_screen.dart';
+import '../../features/inventory/inventory_item_detail_screen.dart';
+import '../../features/inventory/inventory_item_form_screen.dart';
+import '../../features/inventory/stock_movements_screen.dart';
+import '../../features/inventory/purchase_orders_screen.dart';
+import '../../features/inventory/purchase_order_form_screen.dart';
+import '../../features/inventory/purchase_order_detail_screen.dart';
+import '../../features/inventory/vendors_screen.dart';
+import '../../features/inventory/vendor_detail_screen.dart';
+import '../../features/inventory/inventory_categories_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 import 'page_transitions.dart';
@@ -376,6 +387,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.maintenanceCourtSchedule, builder: (context, state) => const MaintenanceCourtScheduleScreen()),
       GoRoute(path: AppRoutes.maintenanceIssueCategories, builder: (context, state) => const MaintenanceIssueCategoriesScreen()),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
+
+      // ── Inventory & Vendors ────────────────────────────────────────────
+      GoRoute(path: AppRoutes.inventory, builder: (context, state) => const InventoryOverviewScreen()),
+      GoRoute(path: AppRoutes.inventoryItems, builder: (context, state) => const InventoryItemsScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryItemNew,
+        pageBuilder: (context, state) => slideOver(state, const InventoryItemFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.inventoryItemDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, InventoryItemDetailScreen(itemId: state.pathParameters['itemId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryMovements, builder: (context, state) => const StockMovementsScreen()),
+      GoRoute(path: AppRoutes.inventoryPurchaseOrders, builder: (context, state) => const PurchaseOrdersScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryPurchaseOrderNew,
+        pageBuilder: (context, state) => slideOver(state, const PurchaseOrderFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.inventoryPurchaseOrderDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, PurchaseOrderDetailScreen(poId: state.pathParameters['poId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryVendors, builder: (context, state) => const VendorsScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryVendorDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, VendorDetailScreen(vendorId: state.pathParameters['vendorId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryCategories, builder: (context, state) => const InventoryCategoriesScreen()),
     ],
   );
 });

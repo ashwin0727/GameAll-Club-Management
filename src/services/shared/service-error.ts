@@ -46,6 +46,11 @@ export type ServiceErrorCode =
   | "STAFF_DUPLICATE"
   | "STAFF_INVITE_FAILED"
   | "STAFF_DATA_ERROR"
+  | "INVENTORY_ACCESS_DENIED"
+  | "INVENTORY_NOT_FOUND"
+  | "INVENTORY_DUPLICATE"
+  | "INVENTORY_RULE_ERROR"
+  | "INVENTORY_DATA_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -97,6 +102,12 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   STAFF_DUPLICATE: "That person already has access to this facility.",
   STAFF_INVITE_FAILED: "Could not add the staff member. Please try again.",
   STAFF_DATA_ERROR: "Unable to load staff data. Please try again.",
+  INVENTORY_ACCESS_DENIED: "You don't have permission to do that.",
+  INVENTORY_NOT_FOUND: "That record could not be found.",
+  INVENTORY_DUPLICATE: "That name or code is already in use.",
+  // Overridden per-call with the specific rule the RPC rejected the request for.
+  INVENTORY_RULE_ERROR: "Unable to complete this action.",
+  INVENTORY_DATA_ERROR: "Unable to load inventory data. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 
