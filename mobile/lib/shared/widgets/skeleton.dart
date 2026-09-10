@@ -89,6 +89,11 @@ class SkeletonList extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.lg),
       physics: const NeverScrollableScrollPhysics(),
+      // Placed inside a Column / SingleChildScrollView on most screens
+      // (ResponsivePage), where the incoming height is unbounded — a
+      // non-shrink-wrapped ListView there renders nothing (a blank page)
+      // while the request is in flight.
+      shrinkWrap: true,
       itemCount: itemCount,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
       itemBuilder: (context, _) => Container(

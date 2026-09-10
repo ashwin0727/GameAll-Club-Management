@@ -85,7 +85,7 @@ class AuthRepository {
 
     final profile = await _client
         .from('profiles')
-        .select('id, full_name, email, role, onboarding_completed')
+        .select('id, full_name, email, role, onboarding_completed, must_reset_password')
         .eq('id', authUser.id)
         .maybeSingle();
 

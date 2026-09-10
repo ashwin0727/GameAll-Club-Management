@@ -133,14 +133,19 @@ class FacilityRepository {
     if (userId == null) throw AppException(AppErrorCode.unauthenticated);
 
     try {
-      final row = await _client
+      // Resolve via facility access, not ownership — a manager or staff member
+      // has an ACTIVE facility_users row but owns nothing. RLS on `facilities`
+      // (is_facility_member, which now also requires status = 'ACTIVE') scopes
+      // this to the facilities the signed-in user may see; the owned one wins.
+      final rows = await _client
           .from('facilities')
           .select()
-          .eq('owner_id', userId)
-          .order('created_at', ascending: true)
-          .limit(1)
-          .maybeSingle();
-      return row == null ? null : Facility.fromJson(row);
+          .order('created_at', ascending: true) as List<dynamic>;
+      final list = rows.map((r) => (r as Map).cast<String, dynamic>()).toList();
+      if (list.isEmpty) return null;
+      final owned = list.where((f) => f['owner_id'] == userId);
+      final row = owned.isNotEmpty ? owned.first : list.first;
+      return Facility.fromJson(row);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

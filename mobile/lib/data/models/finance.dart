@@ -23,6 +23,8 @@ enum FinanceDateRangePreset {
   lastWeek,
   thisMonth,
   lastMonth,
+  thisQuarter,
+  thisYear,
   custom;
 
   String toJson() {
@@ -39,6 +41,10 @@ enum FinanceDateRangePreset {
         return 'THIS_MONTH';
       case FinanceDateRangePreset.lastMonth:
         return 'LAST_MONTH';
+      case FinanceDateRangePreset.thisQuarter:
+        return 'THIS_QUARTER';
+      case FinanceDateRangePreset.thisYear:
+        return 'THIS_YEAR';
       case FinanceDateRangePreset.custom:
         return 'CUSTOM';
     }
@@ -58,6 +64,10 @@ enum FinanceDateRangePreset {
         return FinanceDateRangePreset.thisMonth;
       case 'LAST_MONTH':
         return FinanceDateRangePreset.lastMonth;
+      case 'THIS_QUARTER':
+        return FinanceDateRangePreset.thisQuarter;
+      case 'THIS_YEAR':
+        return FinanceDateRangePreset.thisYear;
       case 'CUSTOM':
         return FinanceDateRangePreset.custom;
       default:
@@ -80,6 +90,10 @@ enum FinanceDateRangePreset {
         return 'This Month';
       case FinanceDateRangePreset.lastMonth:
         return 'Last Month';
+      case FinanceDateRangePreset.thisQuarter:
+        return 'This Quarter';
+      case FinanceDateRangePreset.thisYear:
+        return 'This Year';
       case FinanceDateRangePreset.custom:
         return 'Custom Range';
     }
@@ -464,34 +478,79 @@ class ExpenseCategory {
 /// `date`), not a timestamp — an expense is filed against a day, not an
 /// instant. [status] is the backend's own vocabulary (`RECORDED` / `VOID`)
 /// verbatim; a voided expense is never removed, only marked.
+/// PAID / PARTIAL / PENDING — how much of an expense has actually been settled.
+/// An expense counts against Net Revenue the moment it is RECORDED (accrual);
+/// this only drives cash reconciliation and the "still owe" view.
+enum ExpensePaymentStatus {
+  paid,
+  partial,
+  pending;
+
+  static ExpensePaymentStatus fromJson(String value) {
+    switch (value) {
+      case 'PAID':
+        return ExpensePaymentStatus.paid;
+      case 'PARTIAL':
+        return ExpensePaymentStatus.partial;
+      case 'PENDING':
+        return ExpensePaymentStatus.pending;
+      default:
+        return ExpensePaymentStatus.paid;
+    }
+  }
+
+  String toJson() => switch (this) {
+        ExpensePaymentStatus.paid => 'PAID',
+        ExpensePaymentStatus.partial => 'PARTIAL',
+        ExpensePaymentStatus.pending => 'PENDING',
+      };
+
+  String get label => switch (this) {
+        ExpensePaymentStatus.paid => 'Paid',
+        ExpensePaymentStatus.partial => 'Partial',
+        ExpensePaymentStatus.pending => 'Unpaid',
+      };
+}
+
 class ExpenseRow {
   const ExpenseRow({
     required this.id,
     required this.categoryId,
     required this.categoryName,
     required this.amountMinor,
+    required this.amountPaidMinor,
     required this.currency,
     required this.paymentMethod,
+    required this.paymentStatus,
     required this.spentOn,
+    required this.dueOn,
     required this.vendor,
     required this.reference,
     required this.notes,
+    required this.receiptPath,
     required this.status,
+    required this.createdByName,
   });
 
   final String id;
   final String categoryId;
   final String categoryName;
   final int amountMinor;
+  final int amountPaidMinor;
   final String currency;
   final String? paymentMethod;
+  final ExpensePaymentStatus paymentStatus;
   final String spentOn;
+  final String? dueOn;
   final String? vendor;
   final String? reference;
   final String? notes;
+  final String? receiptPath;
   final String status;
+  final String? createdByName;
 
   bool get isVoid => status == 'VOID';
+  int get outstandingMinor => amountMinor - amountPaidMinor;
 
   factory ExpenseRow.fromJson(Map<String, dynamic> json) {
     return ExpenseRow(
@@ -499,13 +558,168 @@ class ExpenseRow {
       categoryId: json['category_id'] as String,
       categoryName: json['category_name'] as String,
       amountMinor: (json['amount_minor'] as num).toInt(),
+      amountPaidMinor: (json['amount_paid_minor'] as num?)?.toInt() ?? 0,
       currency: json['currency'] as String,
       paymentMethod: json['payment_method'] as String?,
+      paymentStatus: ExpensePaymentStatus.fromJson((json['payment_status'] as String?) ?? 'PAID'),
       spentOn: json['spent_on'] as String,
+      dueOn: json['due_on'] as String?,
       vendor: json['vendor'] as String?,
       reference: json['reference'] as String?,
       notes: json['notes'] as String?,
+      receiptPath: json['receipt_path'] as String?,
       status: json['status'] as String,
+      createdByName: json['created_by_name'] as String?,
+    );
+  }
+}
+
+/// The Expenses KPI row — `get_expense_summary` (0069). All RECORDED expenses,
+/// in the facility's timezone.
+class ExpenseSummary {
+  const ExpenseSummary({
+    required this.totalMinor,
+    required this.thisMonthMinor,
+    required this.thisWeekMinor,
+    required this.pendingMinor,
+    required this.pendingCount,
+    required this.maintenanceMinor,
+    required this.otherMinor,
+  });
+
+  final int totalMinor;
+  final int thisMonthMinor;
+  final int thisWeekMinor;
+  final int pendingMinor;
+  final int pendingCount;
+  final int maintenanceMinor;
+  final int otherMinor;
+
+  factory ExpenseSummary.fromJson(Map<String, dynamic> json) {
+    return ExpenseSummary(
+      totalMinor: (json['total_minor'] as num).toInt(),
+      thisMonthMinor: (json['this_month_minor'] as num).toInt(),
+      thisWeekMinor: (json['this_week_minor'] as num).toInt(),
+      pendingMinor: (json['pending_minor'] as num).toInt(),
+      pendingCount: (json['pending_count'] as num).toInt(),
+      maintenanceMinor: (json['maintenance_minor'] as num).toInt(),
+      otherMinor: (json['other_minor'] as num).toInt(),
+    );
+  }
+}
+
+/// One settlement against an expense — `get_expense`'s `payments` array.
+class ExpensePaymentEntry {
+  const ExpensePaymentEntry({
+    required this.id,
+    required this.amountMinor,
+    required this.paidOn,
+    required this.paymentMethod,
+    required this.reference,
+    required this.note,
+  });
+
+  final String id;
+  final int amountMinor;
+  final String paidOn;
+  final String? paymentMethod;
+  final String? reference;
+  final String? note;
+
+  factory ExpensePaymentEntry.fromJson(Map<String, dynamic> json) {
+    return ExpensePaymentEntry(
+      id: json['id'] as String,
+      amountMinor: (json['amountMinor'] as num).toInt(),
+      paidOn: json['paidOn'] as String,
+      paymentMethod: json['paymentMethod'] as String?,
+      reference: json['reference'] as String?,
+      note: json['note'] as String?,
+    );
+  }
+}
+
+/// One expense in full — `get_expense` (0069).
+class ExpenseDetail {
+  const ExpenseDetail({
+    required this.id,
+    required this.facilityId,
+    required this.categoryId,
+    required this.categoryName,
+    required this.amountMinor,
+    required this.amountPaidMinor,
+    required this.taxMinor,
+    required this.currency,
+    required this.paymentStatus,
+    required this.paymentMethod,
+    required this.spentOn,
+    required this.dueOn,
+    required this.vendor,
+    required this.reference,
+    required this.notes,
+    required this.receiptPath,
+    required this.status,
+    required this.createdByName,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.voidReason,
+    required this.sourceMaintenanceTicketId,
+    required this.payments,
+  });
+
+  final String id;
+  final String facilityId;
+  final String categoryId;
+  final String categoryName;
+  final int amountMinor;
+  final int amountPaidMinor;
+  final int? taxMinor;
+  final String currency;
+  final ExpensePaymentStatus paymentStatus;
+  final String? paymentMethod;
+  final String spentOn;
+  final String? dueOn;
+  final String? vendor;
+  final String? reference;
+  final String? notes;
+  final String? receiptPath;
+  final String status;
+  final String? createdByName;
+  final String createdAt;
+  final String updatedAt;
+  final String? voidReason;
+  final String? sourceMaintenanceTicketId;
+  final List<ExpensePaymentEntry> payments;
+
+  bool get isVoid => status == 'VOID';
+  int get outstandingMinor => amountMinor - amountPaidMinor;
+
+  factory ExpenseDetail.fromJson(Map<String, dynamic> json) {
+    return ExpenseDetail(
+      id: json['id'] as String,
+      facilityId: json['facility_id'] as String,
+      categoryId: json['category_id'] as String,
+      categoryName: json['category_name'] as String,
+      amountMinor: (json['amount_minor'] as num).toInt(),
+      amountPaidMinor: (json['amount_paid_minor'] as num?)?.toInt() ?? 0,
+      taxMinor: (json['tax_minor'] as num?)?.toInt(),
+      currency: json['currency'] as String,
+      paymentStatus: ExpensePaymentStatus.fromJson((json['payment_status'] as String?) ?? 'PAID'),
+      paymentMethod: json['payment_method'] as String?,
+      spentOn: json['spent_on'] as String,
+      dueOn: json['due_on'] as String?,
+      vendor: json['vendor'] as String?,
+      reference: json['reference'] as String?,
+      notes: json['notes'] as String?,
+      receiptPath: json['receipt_path'] as String?,
+      status: json['status'] as String,
+      createdByName: json['created_by_name'] as String?,
+      createdAt: json['created_at'] as String,
+      updatedAt: json['updated_at'] as String,
+      voidReason: json['void_reason'] as String?,
+      sourceMaintenanceTicketId: json['source_maintenance_ticket_id'] as String?,
+      payments: ((json['payments'] as List<dynamic>?) ?? const [])
+          .map((e) => ExpensePaymentEntry.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
     );
   }
 }
@@ -538,6 +752,13 @@ class ListExpensesInput {
     this.categoryId,
     this.limit,
     this.offset,
+    this.search,
+    this.paymentStatus,
+    this.paymentMethod,
+    this.vendor,
+    this.minMinor,
+    this.maxMinor,
+    this.includeVoid = true,
   });
 
   final String facilityId;
@@ -545,6 +766,259 @@ class ListExpensesInput {
   final String? categoryId;
   final int? limit;
   final int? offset;
+  final String? search;
+  final ExpensePaymentStatus? paymentStatus;
+  final String? paymentMethod;
+  final String? vendor;
+  final int? minMinor;
+  final int? maxMinor;
+  final bool includeVoid;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Finance rework — Daily Closing (0070) & Profit & Loss (0071).
+// Mirrors src/features/finance/types.ts. No client-side money arithmetic:
+// every figure is an RPC response field.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum DailyClosingStatus { notStarted, open, closed, reopened }
+
+DailyClosingStatus _closingStatusFrom(String value) {
+  switch (value) {
+    case 'OPEN':
+      return DailyClosingStatus.open;
+    case 'CLOSED':
+      return DailyClosingStatus.closed;
+    case 'REOPENED':
+      return DailyClosingStatus.reopened;
+    default:
+      return DailyClosingStatus.notStarted;
+  }
+}
+
+/// The live figures for a business date plus the closing row if one exists —
+/// `get_daily_closing_summary` (0070).
+class DailyClosingSummary {
+  const DailyClosingSummary({
+    required this.closingDate,
+    required this.openingCashMinor,
+    required this.cashCollectedMinor,
+    required this.upiCollectedMinor,
+    required this.cardCollectedMinor,
+    required this.onlineCollectedMinor,
+    required this.bankTransferCollectedMinor,
+    required this.otherCollectedMinor,
+    required this.totalCollectedMinor,
+    required this.cashExpenseMinor,
+    required this.otherExpenseMinor,
+    required this.totalExpenseMinor,
+    required this.expectedCashMinor,
+    required this.paymentCount,
+    required this.expenseCount,
+    required this.pendingPaymentCount,
+    required this.closingId,
+    required this.status,
+    required this.actualCashMinor,
+    required this.varianceMinor,
+    required this.varianceReason,
+    required this.closedAt,
+  });
+
+  final String closingDate;
+  final int openingCashMinor;
+  final int cashCollectedMinor;
+  final int upiCollectedMinor;
+  final int cardCollectedMinor;
+  final int onlineCollectedMinor;
+  final int bankTransferCollectedMinor;
+  final int otherCollectedMinor;
+  final int totalCollectedMinor;
+  final int cashExpenseMinor;
+  final int otherExpenseMinor;
+  final int totalExpenseMinor;
+  final int expectedCashMinor;
+  final int paymentCount;
+  final int expenseCount;
+  final int pendingPaymentCount;
+  final String? closingId;
+  final DailyClosingStatus status;
+  final int? actualCashMinor;
+  final int? varianceMinor;
+  final String? varianceReason;
+  final String? closedAt;
+
+  factory DailyClosingSummary.fromJson(Map<String, dynamic> json) {
+    int i(String k) => (json[k] as num?)?.toInt() ?? 0;
+    return DailyClosingSummary(
+      closingDate: json['closing_date'] as String,
+      openingCashMinor: i('opening_cash_minor'),
+      cashCollectedMinor: i('cash_collected_minor'),
+      upiCollectedMinor: i('upi_collected_minor'),
+      cardCollectedMinor: i('card_collected_minor'),
+      onlineCollectedMinor: i('online_collected_minor'),
+      bankTransferCollectedMinor: i('bank_transfer_collected_minor'),
+      otherCollectedMinor: i('other_collected_minor'),
+      totalCollectedMinor: i('total_collected_minor'),
+      cashExpenseMinor: i('cash_expense_minor'),
+      otherExpenseMinor: i('other_expense_minor'),
+      totalExpenseMinor: i('total_expense_minor'),
+      expectedCashMinor: i('expected_cash_minor'),
+      paymentCount: i('payment_count'),
+      expenseCount: i('expense_count'),
+      pendingPaymentCount: i('pending_payment_count'),
+      closingId: json['closing_id'] as String?,
+      status: _closingStatusFrom((json['status'] as String?) ?? 'NOT_STARTED'),
+      actualCashMinor: (json['actual_cash_minor'] as num?)?.toInt(),
+      varianceMinor: (json['variance_minor'] as num?)?.toInt(),
+      varianceReason: json['variance_reason'] as String?,
+      closedAt: json['closed_at'] as String?,
+    );
+  }
+}
+
+/// One row of `list_daily_closings` (0070).
+class DailyClosingRow {
+  const DailyClosingRow({
+    required this.id,
+    required this.closingDate,
+    required this.openingCashMinor,
+    required this.totalCollectedMinor,
+    required this.totalExpenseMinor,
+    required this.expectedCashMinor,
+    required this.actualCashMinor,
+    required this.varianceMinor,
+    required this.status,
+    required this.closedByName,
+  });
+
+  final String id;
+  final String closingDate;
+  final int openingCashMinor;
+  final int? totalCollectedMinor;
+  final int? totalExpenseMinor;
+  final int? expectedCashMinor;
+  final int? actualCashMinor;
+  final int? varianceMinor;
+  final DailyClosingStatus status;
+  final String? closedByName;
+
+  factory DailyClosingRow.fromJson(Map<String, dynamic> json) {
+    return DailyClosingRow(
+      id: json['id'] as String,
+      closingDate: json['closing_date'] as String,
+      openingCashMinor: (json['opening_cash_minor'] as num?)?.toInt() ?? 0,
+      totalCollectedMinor: (json['total_collected_minor'] as num?)?.toInt(),
+      totalExpenseMinor: (json['total_expense_minor'] as num?)?.toInt(),
+      expectedCashMinor: (json['expected_cash_minor'] as num?)?.toInt(),
+      actualCashMinor: (json['actual_cash_minor'] as num?)?.toInt(),
+      varianceMinor: (json['variance_minor'] as num?)?.toInt(),
+      status: _closingStatusFrom((json['status'] as String?) ?? 'OPEN'),
+      closedByName: json['closed_by_name'] as String?,
+    );
+  }
+}
+
+class DailyClosingHistoryPage {
+  const DailyClosingHistoryPage({required this.closings, required this.totalCount});
+
+  final List<DailyClosingRow> closings;
+  final int totalCount;
+
+  factory DailyClosingHistoryPage.fromRows(List<Map<String, dynamic>> rows) {
+    return DailyClosingHistoryPage(
+      closings: rows.map(DailyClosingRow.fromJson).toList(),
+      totalCount: rows.isEmpty ? 0 : (rows.first['total_count'] as num).toInt(),
+    );
+  }
+}
+
+/// One slice of `get_pnl`'s `expense_by_category`.
+class PnlExpenseCategorySlice {
+  const PnlExpenseCategorySlice({required this.categoryId, required this.category, required this.amountMinor});
+
+  final String categoryId;
+  final String category;
+  final int amountMinor;
+
+  factory PnlExpenseCategorySlice.fromJson(Map<String, dynamic> json) {
+    return PnlExpenseCategorySlice(
+      categoryId: json['categoryId'] as String,
+      category: json['category'] as String,
+      amountMinor: (json['amountMinor'] as num).toInt(),
+    );
+  }
+}
+
+/// `get_pnl` (0071) — recognised revenue less refunds less recorded expenses.
+class ProfitAndLoss {
+  const ProfitAndLoss({
+    required this.bookingRevenueMinor,
+    required this.membershipRevenueMinor,
+    required this.guestBookingRevenueMinor,
+    required this.otherRevenueMinor,
+    required this.grossRevenueMinor,
+    required this.refundsMinor,
+    required this.totalRevenueMinor,
+    required this.totalExpenseMinor,
+    required this.netProfitMinor,
+    required this.profitMarginPct,
+    required this.expenseByCategory,
+  });
+
+  final int bookingRevenueMinor;
+  final int membershipRevenueMinor;
+  final int guestBookingRevenueMinor;
+  final int otherRevenueMinor;
+  final int grossRevenueMinor;
+  final int refundsMinor;
+  final int totalRevenueMinor;
+  final int totalExpenseMinor;
+  final int netProfitMinor;
+  final double profitMarginPct;
+  final List<PnlExpenseCategorySlice> expenseByCategory;
+
+  factory ProfitAndLoss.fromJson(Map<String, dynamic> json) {
+    int i(String k) => (json[k] as num?)?.toInt() ?? 0;
+    return ProfitAndLoss(
+      bookingRevenueMinor: i('booking_revenue_minor'),
+      membershipRevenueMinor: i('membership_revenue_minor'),
+      guestBookingRevenueMinor: i('guest_booking_revenue_minor'),
+      otherRevenueMinor: i('other_revenue_minor'),
+      grossRevenueMinor: i('gross_revenue_minor'),
+      refundsMinor: i('refunds_minor'),
+      totalRevenueMinor: i('total_revenue_minor'),
+      totalExpenseMinor: i('total_expense_minor'),
+      netProfitMinor: i('net_profit_minor'),
+      profitMarginPct: ((json['profit_margin_pct'] as num?) ?? 0).toDouble(),
+      expenseByCategory: ((json['expense_by_category'] as List<dynamic>?) ?? const [])
+          .map((e) => PnlExpenseCategorySlice.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
+    );
+  }
+}
+
+/// One bucket of `get_pnl_trend` (0071).
+class PnlTrendPoint {
+  const PnlTrendPoint({
+    required this.date,
+    required this.revenueMinor,
+    required this.expenseMinor,
+    required this.netMinor,
+  });
+
+  final String date;
+  final int revenueMinor;
+  final int expenseMinor;
+  final int netMinor;
+
+  factory PnlTrendPoint.fromJson(Map<String, dynamic> json) {
+    return PnlTrendPoint(
+      date: json['bucket_date'] as String,
+      revenueMinor: (json['revenue_minor'] as num).toInt(),
+      expenseMinor: (json['expense_minor'] as num).toInt(),
+      netMinor: (json['net_minor'] as num).toInt(),
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

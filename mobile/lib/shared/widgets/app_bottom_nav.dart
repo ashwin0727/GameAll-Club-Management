@@ -53,15 +53,17 @@ const _tabs = <({
 /// Everything that doesn't fit the bar, reached through the "+" button.
 /// Create actions for Plans / People / Sessions now live as a context-aware
 /// button on the Members hub itself, so they're intentionally not repeated here.
-const _moreDestinations = <({IconData icon, String label, String route})>[
-  (icon: Icons.event_available_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings),
-  (icon: Icons.groups_outlined, label: 'Guest Players', route: AppRoutes.guests),
-  (icon: Icons.event_repeat_outlined, label: 'Membership Sessions', route: AppRoutes.membershipSessions),
-  (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance),
-  (icon: Icons.insights_outlined, label: 'Reports & Analytics', route: AppRoutes.reports),
-  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance),
-  (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds),
-  (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile),
+const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
+  (icon: Icons.event_available_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
+  (icon: Icons.groups_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
+  (icon: Icons.event_repeat_outlined, label: 'Membership Sessions', route: AppRoutes.membershipSessions, permission: null),
+  (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
+  (icon: Icons.insights_outlined, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
+  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
+  (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
+  (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
+  (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
+  (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),
 ];
 
 /// Floating bottom navigation — a rounded, shadowed bar that hovers above
@@ -108,9 +110,14 @@ class _AppBottomNavState extends ConsumerState<AppBottomNav>
   }
 
   void _openMenu() {
+    final session = ref.read(sessionControllerProvider);
+    final destinations = _moreDestinations
+        .where((d) => d.permission == null || session.can(d.permission!))
+        .toList();
     _entry = OverlayEntry(
       builder: (_) => _SpeedDialOverlay(
         animation: _menu,
+        destinations: destinations,
         onClose: _closeMenu,
         onSelect: (route) {
           _entry?.remove();
@@ -354,11 +361,13 @@ class _PlusButton extends StatelessWidget {
 class _SpeedDialOverlay extends StatelessWidget {
   const _SpeedDialOverlay({
     required this.animation,
+    required this.destinations,
     required this.onClose,
     required this.onSelect,
   });
 
   final Animation<double> animation;
+  final List<({IconData icon, String label, String route, String? permission})> destinations;
   final VoidCallback onClose;
   final ValueChanged<String> onSelect;
 
@@ -367,7 +376,7 @@ class _SpeedDialOverlay extends StatelessWidget {
     final tokens = context.tokens;
     final safeBottom = MediaQuery.of(context).padding.bottom;
     final buttonBottom = safeBottom + AppSpacing.md + (68 - 48) / 2;
-    final count = _moreDestinations.length;
+    final count = destinations.length;
 
     return AnimatedBuilder(
       animation: animation,
@@ -444,7 +453,7 @@ class _SpeedDialOverlay extends StatelessWidget {
 
   Widget _dialItem(BuildContext context, AppColorTokens tokens, int i,
       int count, double v) {
-    final d = _moreDestinations[i];
+    final d = destinations[i];
     // Bottom-most item (closest to the button) animates in first.
     final start = (count - 1 - i) * 0.12;
     final raw = ((v - start) / (1 - start)).clamp(0.0, 1.0);

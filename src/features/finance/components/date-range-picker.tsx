@@ -11,6 +11,8 @@ const PRESET_LABELS: Record<FinanceDateRangePreset, string> = {
   LAST_WEEK: "Last Week",
   THIS_MONTH: "This Month",
   LAST_MONTH: "Last Month",
+  THIS_QUARTER: "This Quarter",
+  THIS_YEAR: "This Year",
   CUSTOM: "Custom Range",
 };
 

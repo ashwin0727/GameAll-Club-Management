@@ -179,6 +179,28 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.sm,
+                          children: [
+                            _FinanceLink(
+                              icon: Icons.account_balance_wallet_outlined,
+                              label: 'Expenses',
+                              onTap: () => context.push(AppRoutes.financeExpenses),
+                            ),
+                            _FinanceLink(
+                              icon: Icons.point_of_sale_outlined,
+                              label: 'Daily Closing',
+                              onTap: () => context.push(AppRoutes.financeDailyClosing),
+                            ),
+                            _FinanceLink(
+                              icon: Icons.trending_up,
+                              label: 'P&L',
+                              onTap: () => context.push(AppRoutes.financeProfitLoss),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: AppSpacing.xl),
                         Row(
                           children: [
@@ -726,6 +748,41 @@ class _MonthPill extends StatelessWidget {
             const SizedBox(width: 2),
             Icon(Icons.keyboard_arrow_down_rounded,
                 size: 18, color: tokens.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact pill linking to a Finance sub-section from the Money landing.
+class _FinanceLink extends StatelessWidget {
+  const _FinanceLink({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: tokens.surface2,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: tokens.primary),
+            const SizedBox(width: AppSpacing.xs),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

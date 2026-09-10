@@ -10,7 +10,16 @@
 import type { PaymentSourceType } from "@/features/payments/types";
 
 /** Every preset the backend's resolve_finance_date_range understands — the frontend only ever picks one of these (or CUSTOM + explicit dates), it never computes "today"/"this week" boundaries itself (spec §"Date Range" / §"Date/Time"). */
-export type FinanceDateRangePreset = "TODAY" | "YESTERDAY" | "THIS_WEEK" | "LAST_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "CUSTOM";
+export type FinanceDateRangePreset =
+  | "TODAY"
+  | "YESTERDAY"
+  | "THIS_WEEK"
+  | "LAST_WEEK"
+  | "THIS_MONTH"
+  | "LAST_MONTH"
+  | "THIS_QUARTER"
+  | "THIS_YEAR"
+  | "CUSTOM";
 
 export interface FinanceDateRange {
   preset: FinanceDateRangePreset;
@@ -196,23 +205,182 @@ export interface PendingPaymentFilters {
   sort?: ObligationSort;
 }
 
+export type ExpensePaymentStatus = "PAID" | "PARTIAL" | "PENDING";
+
 export interface ExpenseRow {
   id: string;
   categoryId: string;
   categoryName: string;
   amountMinor: number;
+  amountPaidMinor: number;
   currency: string;
   paymentMethod: string | null;
+  paymentStatus: ExpensePaymentStatus;
   spentOn: string;
+  dueOn: string | null;
   vendor: string | null;
   reference: string | null;
   notes: string | null;
+  receiptPath: string | null;
   status: string;
+  createdByName: string | null;
 }
 
 export interface ExpensePage {
   expenses: ExpenseRow[];
   totalCount: number;
+}
+
+export interface ExpenseSummary {
+  totalMinor: number;
+  thisMonthMinor: number;
+  thisWeekMinor: number;
+  pendingMinor: number;
+  pendingCount: number;
+  maintenanceMinor: number;
+  otherMinor: number;
+}
+
+export interface ExpenseFilters {
+  search?: string | null;
+  categoryId?: string | null;
+  paymentStatus?: ExpensePaymentStatus | null;
+  paymentMethod?: string | null;
+  vendor?: string | null;
+  minMinor?: number | null;
+  maxMinor?: number | null;
+  includeVoid?: boolean;
+}
+
+export interface ExpensePaymentEntry {
+  id: string;
+  amountMinor: number;
+  paidOn: string;
+  paymentMethod: string | null;
+  reference: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface ExpenseDetail {
+  id: string;
+  facilityId: string;
+  categoryId: string;
+  categoryName: string;
+  amountMinor: number;
+  amountPaidMinor: number;
+  taxMinor: number | null;
+  currency: string;
+  paymentStatus: ExpensePaymentStatus;
+  paymentMethod: string | null;
+  spentOn: string;
+  dueOn: string | null;
+  vendor: string | null;
+  reference: string | null;
+  notes: string | null;
+  receiptPath: string | null;
+  status: string;
+  createdBy: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+  sourceMaintenanceTicketId: string | null;
+  payments: ExpensePaymentEntry[];
+}
+
+export interface CreateExpenseInput {
+  facilityId: string;
+  categoryId: string;
+  amountMinor: number;
+  spentOn: string;
+  paymentMethod?: string | null;
+  vendor?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+  paymentStatus?: ExpensePaymentStatus;
+  amountPaidMinor?: number | null;
+  taxMinor?: number | null;
+  dueOn?: string | null;
+  receiptPath?: string | null;
+}
+
+// ── Daily Closing ─────────────────────────────────────────────────────────
+
+export type DailyClosingStatus = "NOT_STARTED" | "OPEN" | "CLOSED" | "REOPENED";
+
+export interface DailyClosingSummary {
+  closingDate: string;
+  openingCashMinor: number;
+  cashCollectedMinor: number;
+  upiCollectedMinor: number;
+  cardCollectedMinor: number;
+  onlineCollectedMinor: number;
+  bankTransferCollectedMinor: number;
+  otherCollectedMinor: number;
+  totalCollectedMinor: number;
+  cashExpenseMinor: number;
+  otherExpenseMinor: number;
+  totalExpenseMinor: number;
+  expectedCashMinor: number;
+  paymentCount: number;
+  expenseCount: number;
+  pendingPaymentCount: number;
+  closingId: string | null;
+  status: DailyClosingStatus;
+  actualCashMinor: number | null;
+  varianceMinor: number | null;
+  varianceReason: string | null;
+  closedAt: string | null;
+}
+
+export interface DailyClosingRow {
+  id: string;
+  closingDate: string;
+  openingCashMinor: number;
+  totalCollectedMinor: number | null;
+  totalExpenseMinor: number | null;
+  expectedCashMinor: number | null;
+  actualCashMinor: number | null;
+  varianceMinor: number | null;
+  status: DailyClosingStatus;
+  closedAt: string | null;
+  closedByName: string | null;
+}
+
+export interface DailyClosingHistoryPage {
+  closings: DailyClosingRow[];
+  totalCount: number;
+}
+
+// ── Profit & Loss ─────────────────────────────────────────────────────────
+
+export interface PnlExpenseCategorySlice {
+  categoryId: string;
+  category: string;
+  amountMinor: number;
+}
+
+export interface ProfitAndLoss {
+  bookingRevenueMinor: number;
+  membershipRevenueMinor: number;
+  guestBookingRevenueMinor: number;
+  otherRevenueMinor: number;
+  grossRevenueMinor: number;
+  refundsMinor: number;
+  totalRevenueMinor: number;
+  totalExpenseMinor: number;
+  netProfitMinor: number;
+  profitMarginPct: number;
+  expenseByCategory: PnlExpenseCategorySlice[];
+}
+
+export interface PnlTrendPoint {
+  date: string;
+  revenueMinor: number;
+  expenseMinor: number;
+  netMinor: number;
 }
 
 export interface TransactionPaymentHistoryRow {

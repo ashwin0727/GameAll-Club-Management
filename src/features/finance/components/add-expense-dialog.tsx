@@ -15,10 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toMinorUnits } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import { ServiceError } from "@/services/shared/service-error";
-import type { ExpenseCategory } from "@/features/finance/types";
+import type { ExpenseCategory, ExpensePaymentStatus } from "@/features/finance/types";
 
 const METHODS = ["Cash", "UPI", "Card", "Bank Transfer"];
 
@@ -29,7 +30,7 @@ function today(): string {
 
 /**
  * Records an expense — the one kind of transaction an owner enters by hand.
- * Income arrives through a payment against a booking or membership, and is
+ * Income arrives through a payment against a booking or membership and is
  * never typed in here, which is what keeps the ledger traceable.
  */
 export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
@@ -39,11 +40,15 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
 
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
+  const [taxAmount, setTaxAmount] = useState("");
   const [method, setMethod] = useState("Cash");
   const [spentOn, setSpentOn] = useState(today);
+  const [dueOn, setDueOn] = useState("");
   const [vendor, setVendor] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<ExpensePaymentStatus>("PAID");
+  const [amountPaid, setAmountPaid] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,10 +76,14 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
 
   function reset() {
     setAmount("");
+    setTaxAmount("");
     setVendor("");
     setReference("");
     setNotes("");
     setSpentOn(today());
+    setDueOn("");
+    setPaymentStatus("PAID");
+    setAmountPaid("");
     setError(null);
   }
 
@@ -90,6 +99,15 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
       setError("Choose a category.");
       return;
     }
+    const amountMinor = toMinorUnits(amount, "INR");
+    let amountPaidMinor: number | null = null;
+    if (paymentStatus === "PARTIAL") {
+      amountPaidMinor = toMinorUnits(amountPaid || "0", "INR");
+      if (amountPaidMinor <= 0 || amountPaidMinor >= amountMinor) {
+        setError("A partial payment must be more than zero and less than the total.");
+        return;
+      }
+    }
 
     setBusy(true);
     setError(null);
@@ -97,13 +115,16 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
       await getFinanceService().createExpense({
         facilityId,
         categoryId,
-        // Stored in minor units, like every other amount in the ledger.
-        amountMinor: Math.round(rupees * 100),
+        amountMinor,
         spentOn,
         paymentMethod: method,
         vendor: vendor.trim() || null,
         reference: reference.trim() || null,
         notes: notes.trim() || null,
+        paymentStatus,
+        amountPaidMinor,
+        taxMinor: taxAmount ? toMinorUnits(taxAmount, "INR") : null,
+        dueOn: paymentStatus !== "PAID" && dueOn ? dueOn : null,
       });
       setOpen(false);
       reset();
@@ -118,11 +139,11 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
   return (
     <>
       <Button type="button" size="sm" className="min-h-9" onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4" aria-hidden /> Add Transaction
+        <Plus className="h-4 w-4" aria-hidden /> Add Expense
       </Button>
 
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : (setOpen(false), reset()))}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add expense</DialogTitle>
             <DialogDescription>
@@ -156,17 +177,56 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
                   placeholder="0"
                 />
               </Field>
-              <Field id="expense-date" label="Date">
-                <Input
-                  id="expense-date"
-                  type="date"
-                  value={spentOn}
-                  onChange={(e) => setSpentOn(e.target.value)}
-                />
+              <Field id="expense-date" label="Expense date">
+                <Input id="expense-date" type="date" value={spentOn} onChange={(e) => setSpentOn(e.target.value)} />
               </Field>
             </div>
 
-            <Field id="expense-method" label="Payment mode">
+            <Field id="expense-tax" label="Tax / GST (₹, optional)">
+              <Input
+                id="expense-tax"
+                inputMode="decimal"
+                value={taxAmount}
+                onChange={(e) => setTaxAmount(e.target.value)}
+                placeholder="0"
+              />
+            </Field>
+
+            <Field id="expense-status" label="Payment status">
+              <div className="flex flex-wrap gap-2">
+                {(["PAID", "PARTIAL", "PENDING"] as ExpensePaymentStatus[]).map((s) => (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant={s === paymentStatus ? "default" : "outline"}
+                    onClick={() => setPaymentStatus(s)}
+                  >
+                    {s === "PARTIAL" ? "Partial" : s === "PENDING" ? "Unpaid" : "Paid"}
+                  </Button>
+                ))}
+              </div>
+            </Field>
+
+            {paymentStatus === "PARTIAL" && (
+              <Field id="expense-paid" label="Amount already paid (₹)">
+                <Input
+                  id="expense-paid"
+                  inputMode="decimal"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+            )}
+
+            {paymentStatus !== "PAID" && (
+              <Field id="expense-due" label="Due date (optional)">
+                <Input id="expense-due" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
+              </Field>
+            )}
+
+            <Field id="expense-method" label="Payment method">
               <div className="flex flex-wrap gap-2">
                 {METHODS.map((m) => (
                   <Button
@@ -183,7 +243,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field id="expense-vendor" label="Vendor (optional)">
+              <Field id="expense-vendor" label="Vendor / Payee (optional)">
                 <Input id="expense-vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
               </Field>
               <Field id="expense-reference" label="Reference (optional)">

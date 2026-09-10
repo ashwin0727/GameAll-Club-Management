@@ -76,16 +76,19 @@ export class SupabaseFacilityService implements FacilityService {
     } = await this.supabase.auth.getUser();
     if (!user) throw new ServiceError("UNAUTHENTICATED");
 
+    // Resolve via facility access, not ownership: a manager or staff member
+    // has an ACTIVE facility_users row but owns nothing. RLS on `facilities`
+    // (is_facility_member, which now also requires status = 'ACTIVE') already
+    // scopes this select to the facilities the signed-in user may see — an
+    // owned facility is preferred, otherwise the first (primary) assignment.
     const { data, error } = await this.supabase
       .from("facilities")
       .select("*")
-      .eq("owner_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: true });
 
     if (error) throw mapSupabaseError(error);
-    return data ? toFacility(data) : null;
+    const facility = (data ?? []).find((f) => f.owner_id === user.id) ?? data?.[0] ?? null;
+    return facility ? toFacility(facility) : null;
   }
 
   async getFacilities(): Promise<Facility[]> {

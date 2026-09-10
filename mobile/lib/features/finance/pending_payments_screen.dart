@@ -16,6 +16,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -113,11 +114,13 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
         _totalCount = page.totalCount;
         _summary = results[1] as PendingPaymentsSummary;
       });
-    } on AppException catch (e) {
+    } catch (e, stack) {
       if (!mounted || requestId != _requestId) return;
+      debugPrint('Pending payments load failed: $e\n$stack');
       // Deliberately NOT an empty list: telling someone nothing is owed when
-      // the query failed is the worst way this page can be wrong.
-      setState(() => _error = e.message);
+      // the query failed is the worst way this page can be wrong. Any error
+      // type surfaces here rather than leaving the screen stuck on skeletons.
+      setState(() => _error = e is AppException ? e.message : 'Unable to load pending payments. Pull to retry.');
     }
   }
 
@@ -236,10 +239,10 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                         ..._obligations!.map(_buildObligationCard),
                         if (_totalCount > 0) ...[
                           const SizedBox(height: AppSpacing.md),
-                          _Pagination(
+                          PaginationBar(
                             page: _page,
                             totalPages: totalPages,
-                            totalCount: _totalCount,
+                            totalLabel: '$_totalCount owed',
                             onPrevious: _page == 0 ? null : () => _goToPage(_page - 1),
                             onNext: _page + 1 >= totalPages ? null : () => _goToPage(_page + 1),
                           ),
@@ -443,40 +446,3 @@ class _ErrorPanel extends StatelessWidget {
   }
 }
 
-class _Pagination extends StatelessWidget {
-  const _Pagination({
-    required this.page,
-    required this.totalPages,
-    required this.totalCount,
-    required this.onPrevious,
-    required this.onNext,
-  });
-
-  final int page;
-  final int totalPages;
-  final int totalCount;
-  final VoidCallback? onPrevious;
-  final VoidCallback? onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        Text('Page ${page + 1} of $totalPages · $totalCount owed',
-            style: AppTypography.secondary(context)),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SecondaryButton(label: 'Previous', onPressed: onPrevious),
-            const SizedBox(width: AppSpacing.sm),
-            SecondaryButton(label: 'Next', onPressed: onNext),
-          ],
-        ),
-      ],
-    );
-  }
-}

@@ -12,6 +12,16 @@ import '../../features/bookings/bookings_screen.dart';
 import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/finance/expenses_screen.dart';
+import '../../features/finance/expense_details_screen.dart';
+import '../../features/finance/daily_closing_screen.dart';
+import '../../features/finance/profit_loss_screen.dart';
+import '../../features/staff/staff_list_screen.dart';
+import '../../features/staff/add_staff_screen.dart';
+import '../../features/staff/staff_details_screen.dart';
+import '../../features/staff/roles_screen.dart';
+import '../../features/staff/role_editor_screen.dart';
+import '../../features/staff/access_history_screen.dart';
+import '../../features/staff/set_password_screen.dart';
 import '../../features/finance/finance_screen.dart';
 import '../../features/finance/money_screen.dart';
 import '../../features/finance/pending_payments_screen.dart';
@@ -46,6 +56,17 @@ import '../../features/maintenance/create_maintenance_ticket_screen.dart';
 import '../../features/maintenance/maintenance_ticket_detail_screen.dart';
 import '../../features/maintenance/maintenance_court_schedule_screen.dart';
 import '../../features/maintenance/maintenance_issue_categories_screen.dart';
+import '../../features/inventory/inventory_overview_screen.dart';
+import '../../features/inventory/inventory_items_screen.dart';
+import '../../features/inventory/inventory_item_detail_screen.dart';
+import '../../features/inventory/inventory_item_form_screen.dart';
+import '../../features/inventory/stock_movements_screen.dart';
+import '../../features/inventory/purchase_orders_screen.dart';
+import '../../features/inventory/purchase_order_form_screen.dart';
+import '../../features/inventory/purchase_order_detail_screen.dart';
+import '../../features/inventory/vendors_screen.dart';
+import '../../features/inventory/vendor_detail_screen.dart';
+import '../../features/inventory/inventory_categories_screen.dart';
 import 'app_routes.dart';
 import 'onboarding_route_resolver.dart';
 import 'page_transitions.dart';
@@ -76,6 +97,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       if (!session.isAuthenticated) {
         return isAuthRoute ? null : AppRoutes.signIn;
+      }
+
+      // A staff account created by an administrator must set its own password
+      // before anything else — the router keeps them here until it clears.
+      if (session.user!.mustResetPassword) {
+        return path == AppRoutes.setPassword ? null : AppRoutes.setPassword;
       }
 
       if (path == AppRoutes.splash || isAuthRoute) {
@@ -246,6 +273,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             slideOver(state, const ExpensesScreen()),
       ),
       GoRoute(
+        path: AppRoutes.financeExpenseDetails,
+        pageBuilder: (context, state) => slideOver(
+          state,
+          ExpenseDetailsScreen(expenseId: state.pathParameters['expenseId']!),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.financeDailyClosing,
+        pageBuilder: (context, state) =>
+            slideOver(state, const DailyClosingScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.financeProfitLoss,
+        pageBuilder: (context, state) =>
+            slideOver(state, const ProfitLossScreen()),
+      ),
+      GoRoute(
         path: AppRoutes.financePendingPayments,
         pageBuilder: (context, state) =>
             slideOver(state, const PendingPaymentsScreen()),
@@ -261,6 +305,52 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.profile,
         pageBuilder: (context, state) =>
             slideOver(state, const ProfileScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.setPassword,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const SetPasswordScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.usersRoles,
+        pageBuilder: (context, state) =>
+            fadeThrough(state, const StaffListScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.staffAdd,
+        pageBuilder: (context, state) =>
+            slideOver(state, const AddStaffScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.staffDetails,
+        pageBuilder: (context, state) => slideOver(
+          state,
+          StaffDetailsScreen(userId: state.pathParameters['userId']!),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.roles,
+        pageBuilder: (context, state) =>
+            slideOver(state, const RolesScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.roleNew,
+        pageBuilder: (context, state) => slideOver(
+          state,
+          RoleEditorScreen(templateId: state.uri.queryParameters['template']),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.roleEditor,
+        pageBuilder: (context, state) => slideOver(
+          state,
+          RoleEditorScreen(roleId: state.pathParameters['roleId']),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.accessHistory,
+        pageBuilder: (context, state) =>
+            slideOver(state, const AccessHistoryScreen()),
       ),
       GoRoute(path: AppRoutes.reports, builder: (context, state) => const ReportsHubScreen()),
       GoRoute(
@@ -297,6 +387,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.maintenanceCourtSchedule, builder: (context, state) => const MaintenanceCourtScheduleScreen()),
       GoRoute(path: AppRoutes.maintenanceIssueCategories, builder: (context, state) => const MaintenanceIssueCategoriesScreen()),
       GoRoute(path: AppRoutes.profile, builder: (context, state) => const ProfileScreen()),
+
+      // ── Inventory & Vendors ────────────────────────────────────────────
+      GoRoute(path: AppRoutes.inventory, builder: (context, state) => const InventoryOverviewScreen()),
+      GoRoute(path: AppRoutes.inventoryItems, builder: (context, state) => const InventoryItemsScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryItemNew,
+        pageBuilder: (context, state) => slideOver(state, const InventoryItemFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.inventoryItemDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, InventoryItemDetailScreen(itemId: state.pathParameters['itemId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryMovements, builder: (context, state) => const StockMovementsScreen()),
+      GoRoute(path: AppRoutes.inventoryPurchaseOrders, builder: (context, state) => const PurchaseOrdersScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryPurchaseOrderNew,
+        pageBuilder: (context, state) => slideOver(state, const PurchaseOrderFormScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.inventoryPurchaseOrderDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, PurchaseOrderDetailScreen(poId: state.pathParameters['poId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryVendors, builder: (context, state) => const VendorsScreen()),
+      GoRoute(
+        path: AppRoutes.inventoryVendorDetail,
+        pageBuilder: (context, state) =>
+            slideOver(state, VendorDetailScreen(vendorId: state.pathParameters['vendorId']!)),
+      ),
+      GoRoute(path: AppRoutes.inventoryCategories, builder: (context, state) => const InventoryCategoriesScreen()),
     ],
   );
 });

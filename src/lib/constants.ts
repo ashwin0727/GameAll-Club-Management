@@ -33,6 +33,12 @@ export interface NavItem {
   href: string;
   roles: Role[];
   /**
+   * A facility permission key gating the whole section. When set, the item is
+   * hidden unless the signed-in user holds it for the active facility. This is
+   * UX only — the page's own guard and the database enforce access.
+   */
+  permission?: string;
+  /**
    * Sub-pages shown when the section is expanded. A section still has its
    * own href — the parent is a real destination, not just a toggle.
    */
@@ -55,6 +61,8 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Transactions", href: "/finance/transactions" },
       { label: "Payments", href: "/finance/pending-payments" },
       { label: "Expenses", href: "/finance/expenses" },
+      { label: "Daily Closing", href: "/finance/daily-closing" },
+      { label: "P&L", href: "/finance/profit-loss" },
       { label: "Refunds", href: "/refunds" },
     ],
   },
@@ -82,7 +90,31 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Issue Categories", href: "/maintenance/issue-categories" },
     ],
   },
-  { label: "Inventory", href: "/inventory", roles: ["admin", "staff"] },
+  {
+    label: "Users & Roles",
+    href: "/users-roles/staff",
+    roles: ["admin", "staff"],
+    permission: "USERS_VIEW",
+    children: [
+      { label: "Staff", href: "/users-roles/staff" },
+      { label: "Roles & Permissions", href: "/users-roles/roles" },
+      { label: "Access History", href: "/users-roles/access-history" },
+    ],
+  },
+  {
+    label: "Inventory & Vendors",
+    href: "/inventory",
+    roles: ["admin", "staff"],
+    permission: "INVENTORY_VIEW",
+    children: [
+      { label: "Overview", href: "/inventory" },
+      { label: "Items", href: "/inventory/items" },
+      { label: "Stock Movements", href: "/inventory/movements" },
+      { label: "Purchase Orders", href: "/inventory/purchase-orders" },
+      { label: "Vendors", href: "/inventory/vendors" },
+      { label: "Categories", href: "/inventory/categories" },
+    ],
+  },
 ];
 
 export const QUERY_STALE_TIME_MS = 30_000;

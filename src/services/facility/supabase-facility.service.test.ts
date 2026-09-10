@@ -82,7 +82,9 @@ describe("SupabaseFacilityService", () => {
 
   it("maps membership_access_days onto the Facility", async () => {
     const auth = { getUser: vi.fn(async () => ({ data: { user: { id: "owner-1" } } })) };
-    const from = vi.fn(() => fakeQueryBuilder({ data: FACILITY_ROW, error: null }));
+    // getFacility resolves via facility access now, so the query returns the
+    // set of facilities RLS lets the user see — the owned one is preferred.
+    const from = vi.fn(() => fakeQueryBuilder({ data: [FACILITY_ROW], error: null }));
     const service = new SupabaseFacilityService({ auth, from } as never);
 
     const facility = await service.getFacility();
