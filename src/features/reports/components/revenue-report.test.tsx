@@ -32,6 +32,7 @@ describe("RevenueReport", () => {
       membershipMinor: 6_000_000,
       memberBookingMinor: 500_000,
       guestBookingMinor: 4_500_000,
+      coachingMinor: 1_000_000,
       refundsMinor: 0,
       netMinor: 11_000_000,
     };

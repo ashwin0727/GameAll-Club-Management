@@ -612,6 +612,7 @@ export class SupabaseFinanceService implements FinanceService {
       membershipRevenueMinor: row.membership_revenue_minor,
       memberBookingRevenueMinor: row.member_booking_revenue_minor,
       guestBookingRevenueMinor: row.guest_booking_revenue_minor,
+      coachingRevenueMinor: row.coaching_revenue_minor,
       refundsMinor: row.refunds_minor,
       netRevenueMinor: row.net_revenue_minor,
       membershipIncludedUsageCount: row.membership_included_usage_count,

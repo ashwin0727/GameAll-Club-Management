@@ -122,10 +122,12 @@ void main() {
       'membership_revenue_minor': 6000000,
       'member_booking_revenue_minor': 500000,
       'guest_booking_revenue_minor': 4500000,
+      'coaching_revenue_minor': 1200000,
       'refunds_minor': 0,
       'net_revenue_minor': 11000000,
     });
     expect(b.guestBookingMinor, 4500000);
+    expect(b.coachingMinor, 1200000);
 
     final m = PaymentMethodSlice.fromJson({'payment_method': 'UPI', 'amount_minor': 5000000, 'payment_count': 20});
     expect(m.method, 'UPI');

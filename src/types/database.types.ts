@@ -554,6 +554,7 @@ export interface Database {
           facility_id: string;
           member_id: string | null;
           membership_id: string | null;
+          coaching_enrollment_id: string | null;
           payment_order_id: string | null;
           booking_id: string | null;
           guest_player_id: string | null;
@@ -571,6 +572,7 @@ export interface Database {
           facility_id: string;
           member_id?: string | null;
           membership_id?: string | null;
+          coaching_enrollment_id?: string | null;
           payment_order_id?: string | null;
           booking_id?: string | null;
           guest_player_id?: string | null;
@@ -3448,6 +3450,7 @@ export interface Database {
           refunds_minor: number;
           net_revenue_minor: number;
           membership_included_usage_count: number;
+          coaching_revenue_minor: number;
         }[];
       };
       get_revenue_trend: {

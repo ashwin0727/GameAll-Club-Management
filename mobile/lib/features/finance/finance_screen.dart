@@ -318,6 +318,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       (label: 'Guest Bookings', amountMinor: breakdown.guestBookingRevenueMinor),
       (label: 'Memberships', amountMinor: breakdown.membershipRevenueMinor),
       (label: 'Member Bookings', amountMinor: breakdown.memberBookingRevenueMinor),
+      (label: 'Coaching', amountMinor: breakdown.coachingRevenueMinor),
       (label: 'Refunds', amountMinor: breakdown.refundsMinor),
     ];
     return Column(

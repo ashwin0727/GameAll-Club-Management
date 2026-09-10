@@ -445,12 +445,13 @@ describe("buildRevenueOverview", () => {
 
 describe("buildRevenueOverview breakdown", () => {
   const now = new Date(2026, 7, 15);
-  it("splits the month's paid revenue into bookings / memberships / other, coaching stays unavailable", () => {
+  it("splits the month's paid revenue into bookings / memberships / coaching / other", () => {
     const ov = buildRevenueOverview(
       [
         { status: "paid", amount_inr: 400, created_at: new Date(2026, 7, 2).toISOString(), booking_id: "b1" },
         { status: "paid", amount_inr: 100, created_at: new Date(2026, 7, 3).toISOString(), booking_id: "b2" },
         { status: "paid", amount_inr: 600, created_at: new Date(2026, 7, 10).toISOString(), membership_id: "m1" },
+        { status: "paid", amount_inr: 300, created_at: new Date(2026, 7, 11).toISOString(), coaching_enrollment_id: "e1" },
         { status: "paid", amount_inr: 50, created_at: new Date(2026, 7, 12).toISOString() },
       ],
       now,
@@ -459,7 +460,7 @@ describe("buildRevenueOverview breakdown", () => {
     const by = Object.fromEntries(ov.breakdown.map((s) => [s.key, s]));
     expect(by.bookings).toMatchObject({ amountInr: 500, count: 2 });
     expect(by.memberships).toMatchObject({ amountInr: 600, count: 1 });
+    expect(by.coaching).toMatchObject({ amountInr: 300, count: 1, unavailable: false });
     expect(by.other).toMatchObject({ amountInr: 50 });
-    expect(by.coaching).toMatchObject({ amountInr: 0, unavailable: true });
   });
 });

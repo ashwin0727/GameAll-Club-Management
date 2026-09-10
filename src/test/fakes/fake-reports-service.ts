@@ -61,6 +61,7 @@ export class FakeReportsService implements ReportsService {
     membershipMinor: 0,
     memberBookingMinor: 0,
     guestBookingMinor: 0,
+    coachingMinor: 0,
     refundsMinor: 0,
     netMinor: 0,
   };

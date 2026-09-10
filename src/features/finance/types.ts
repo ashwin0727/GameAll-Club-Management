@@ -50,6 +50,7 @@ export interface RevenueBreakdown {
   membershipRevenueMinor: number;
   memberBookingRevenueMinor: number;
   guestBookingRevenueMinor: number;
+  coachingRevenueMinor: number;
   refundsMinor: number;
   netRevenueMinor: number;
   /** Volume, never revenue — a member's included session is never paid (spec §"Membership Included Usage"). */
