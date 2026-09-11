@@ -1,0 +1,10 @@
+# The Vercel CLI only reads the root .gitignore/.vercelignore, not nested
+# ones — mobile/.gitignore excludes its own build output from git, but
+# without this file the CLI still uploaded ~3GB of Flutter build artifacts
+# (mobile/build, mobile/.dart_tool) and blew past the 100MB-per-file limit.
+# The Flutter app isn't part of this Next.js deployment at all.
+mobile/
+
+# Local Supabase CLI state, not needed by the deployed app.
+supabase/.branches
+supabase/.temp
