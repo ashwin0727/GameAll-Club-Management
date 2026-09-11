@@ -26,7 +26,7 @@ import type {
 } from "../types";
 
 const INR = "INR";
-const REVENUE_COLOURS = ["#FFB020", "#8B5CF6", "#00D084", "#5B6CFF"];
+const REVENUE_COLOURS = ["#FFB020", "#8B5CF6", "#00D084", "#5B6CFF", "#F97316"];
 const METHOD_COLOURS = ["#5B6CFF", "#00D084", "#8B5CF6", "#FFB020", "#FF4D67"];
 
 /** Drops zero slices and assigns a colour + formatted caption (from finance-dashboard.tsx). */
@@ -138,6 +138,7 @@ export function RevenueReport() {
           { label: "Guest Bookings", value: breakdown.guestBookingMinor },
           { label: "Memberships", value: breakdown.membershipMinor },
           { label: "Member Bookings", value: breakdown.memberBookingMinor },
+          { label: "Coaching", value: breakdown.coachingMinor },
         ],
         REVENUE_COLOURS,
       )

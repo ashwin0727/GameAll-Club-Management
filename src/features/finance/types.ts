@@ -50,6 +50,7 @@ export interface RevenueBreakdown {
   membershipRevenueMinor: number;
   memberBookingRevenueMinor: number;
   guestBookingRevenueMinor: number;
+  coachingRevenueMinor: number;
   refundsMinor: number;
   netRevenueMinor: number;
   /** Volume, never revenue — a member's included session is never paid (spec §"Membership Included Usage"). */
@@ -153,7 +154,7 @@ export interface ExpenseCategory {
   name: string;
 }
 
-export type ObligationSource = "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP";
+export type ObligationSource = "GUEST_BOOKING" | "BOOKING" | "MEMBERSHIP" | "COACHING_ENROLLMENT";
 export type ObligationStatus = "PENDING" | "PARTIALLY_PAID" | "OVERDUE" | "PAID";
 
 /**

@@ -117,6 +117,7 @@ void main() {
         'membership_revenue_minor': 150000,
         'member_booking_revenue_minor': 50000,
         'guest_booking_revenue_minor': 150000,
+        'coaching_revenue_minor': 90000,
         'refunds_minor': 80000,
         'net_revenue_minor': 270000,
         'membership_included_usage_count': 2,
@@ -125,6 +126,7 @@ void main() {
       expect(breakdown.membershipRevenueMinor, 150000);
       expect(breakdown.memberBookingRevenueMinor, 50000);
       expect(breakdown.guestBookingRevenueMinor, 150000);
+      expect(breakdown.coachingRevenueMinor, 90000);
       expect(breakdown.refundsMinor, 80000);
       expect(breakdown.netRevenueMinor, 270000);
       // Volume, never revenue.

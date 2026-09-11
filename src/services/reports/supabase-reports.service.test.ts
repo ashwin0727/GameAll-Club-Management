@@ -259,13 +259,14 @@ describe("SupabaseReportsService revenue", () => {
     expect(rpc).toHaveBeenCalledWith("get_revenue_trend", expect.objectContaining({ p_granularity: "weekly" }));
   });
 
-  it("getRevenueBreakdown maps the five fields", async () => {
+  it("getRevenueBreakdown maps the six fields", async () => {
     const rpc = vi.fn(async () => ({
       data: [
         {
           membership_revenue_minor: 6000000,
           member_booking_revenue_minor: 500000,
           guest_booking_revenue_minor: 4500000,
+          coaching_revenue_minor: 1200000,
           refunds_minor: 0,
           net_revenue_minor: 11000000,
         },
@@ -277,6 +278,7 @@ describe("SupabaseReportsService revenue", () => {
       membershipMinor: 6000000,
       memberBookingMinor: 500000,
       guestBookingMinor: 4500000,
+      coachingMinor: 1200000,
       refundsMinor: 0,
       netMinor: 11000000,
     });

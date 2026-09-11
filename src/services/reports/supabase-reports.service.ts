@@ -207,6 +207,7 @@ export class SupabaseReportsService implements ReportsService {
       membershipMinor: r.membership_revenue_minor,
       memberBookingMinor: r.member_booking_revenue_minor,
       guestBookingMinor: r.guest_booking_revenue_minor,
+      coachingMinor: r.coaching_revenue_minor,
       refundsMinor: r.refunds_minor,
       netMinor: r.net_revenue_minor,
     };

@@ -92,7 +92,7 @@ export class SupabaseDashboardService implements DashboardService {
       this.supabase.from("memberships").select("id, status, end_date, created_at").eq("facility_id", facilityId),
       this.supabase
         .from("payments")
-        .select("status, amount_inr, created_at, booking_id, membership_id")
+        .select("status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id")
         .eq("facility_id", facilityId)
         .gte("created_at", earliestFrom)
         .lt("created_at", current.to),
@@ -103,7 +103,7 @@ export class SupabaseDashboardService implements DashboardService {
       }),
       this.supabase
         .from("payments")
-        .select("status, amount_inr, created_at, booking_id, membership_id")
+        .select("status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id")
         .eq("facility_id", facilityId)
         .gte("created_at", revWindowFrom)
         .lt("created_at", revWindowTo),
