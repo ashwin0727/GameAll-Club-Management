@@ -8,17 +8,16 @@ import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
-import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'finance_presentation.dart';
 
@@ -150,45 +149,166 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
     if (mounted) _load();
   }
 
-  Future<void> _pickStatus() async {
-    final picked = await showPickerSheet<PendingPaymentStatusFilter>(
-      context: context,
-      selected: _status,
-      options: PendingPaymentStatusFilter.values
-          .map((s) => (value: s, label: s.label))
-          .toList(),
-    );
-    if (picked != null) _applyFilterChange(() => _status = picked);
-  }
+  bool get _hasActiveFilters =>
+      _sourceType != null ||
+      _status != PendingPaymentStatusFilter.allOutstanding ||
+      _sort != ObligationSort.dueDate;
 
-  Future<void> _pickSource() async {
-    final picked = await showPickerSheet<String>(
-      context: context,
-      selected: _sourceType?.toJson() ?? 'ALL',
-      options: [
-        (value: 'ALL', label: 'All Sources'),
-        ...ObligationSource.values.map((s) => (value: s.toJson(), label: s.label)),
-      ],
-    );
-    if (picked == null) return;
-    _applyFilterChange(() => _sourceType = picked == 'ALL' ? null : ObligationSource.fromJson(picked));
-  }
+  /// One sheet for every filter on the page, opened from the icon beside
+  /// the search field — the same pattern as Guest Bookings, so filtering
+  /// is the same gesture everywhere in the app.
+  ///
+  /// Each group is single-select because that is what the backend can
+  /// express: `list_pending_payments` takes one `status` and one
+  /// `sourceType`, not arrays. Selecting two statuses has no server-side
+  /// meaning, and faking it by over-fetching and filtering locally would
+  /// silently corrupt the pager's counts.
+  Future<void> _openFilterSheet() async {
+    final tokens = context.tokens;
+    var tmpStatus = _status;
+    var tmpSource = _sourceType;
+    var tmpSort = _sort;
 
-  Future<void> _pickSort() async {
-    final picked = await showPickerSheet<ObligationSort>(
+    await showModalBottomSheet<void>(
       context: context,
-      selected: _sort,
-      options: ObligationSort.values.map((s) => (value: s, label: s.label)).toList(),
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: tokens.surface0,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          Widget heading(String text) => Text(text,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: tokens.textSecondary));
+
+          Widget group<T>(
+            String title,
+            List<({T value, String label})> opts,
+            T current,
+            ValueChanged<T> onPick,
+          ) =>
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  heading(title),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      for (final o in opts)
+                        _ChoiceChip(
+                          label: o.label,
+                          selected: o.value == current,
+                          onTap: () => setSheet(() => onPick(o.value)),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text('Filter payments',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w800)),
+                        ),
+                        if (tmpStatus !=
+                                PendingPaymentStatusFilter.allOutstanding ||
+                            tmpSource != null ||
+                            tmpSort != ObligationSort.dueDate)
+                          TextButton(
+                            onPressed: () => setSheet(() {
+                              tmpStatus =
+                                  PendingPaymentStatusFilter.allOutstanding;
+                              tmpSource = null;
+                              tmpSort = ObligationSort.dueDate;
+                            }),
+                            child: const Text('Clear all'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    group<PendingPaymentStatusFilter>(
+                      'STATUS',
+                      PendingPaymentStatusFilter.values
+                          .map((s) => (value: s, label: s.label))
+                          .toList(),
+                      tmpStatus,
+                      (v) => tmpStatus = v,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    group<ObligationSource?>(
+                      'SOURCE',
+                      [
+                        (value: null, label: 'All sources'),
+                        ...ObligationSource.values
+                            .map((s) => (value: s, label: s.label)),
+                      ],
+                      tmpSource,
+                      (v) => tmpSource = v,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    group<ObligationSort>(
+                      'SORT BY',
+                      ObligationSort.values
+                          .map((s) => (value: s, label: s.label))
+                          .toList(),
+                      tmpSort,
+                      (v) => tmpSort = v,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    AuthGradientButton(
+                      label: 'Show results',
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        _applyFilterChange(() {
+                          _status = tmpStatus;
+                          _sourceType = tmpSource;
+                          _sort = tmpSort;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
-    if (picked != null) _applyFilterChange(() => _sort = picked);
   }
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final totalPages = _totalCount == 0 ? 1 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
+    final filtered = _search.trim().isNotEmpty ||
+        _sourceType != null ||
+        _status != PendingPaymentStatusFilter.allOutstanding;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pending Payments')),
+      backgroundColor: tokens.surface0,
+      appBar: AppBar(
+        title: const Text('Pending Payments',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
       body: SafeArea(
         child: !_isReady
             ? ErrorView(message: _loadError ?? 'Unable to load pending payments.')
@@ -198,34 +318,22 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Track and collect outstanding payments.',
-                        style: AppTypography.secondary(context),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _KpiRow(summary: _summary),
+                      _OutstandingHero(summary: _summary, count: _totalCount),
                       const SizedBox(height: AppSpacing.lg),
-                      TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Search',
-                          hintText: 'Customer, phone, booking or membership ID',
-                        ),
-                        onChanged: _onSearchChanged,
-                        onSubmitted: (v) => _applyFilterChange(() => _search = v),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
+                      Row(
                         children: [
-                          PickerChip(label: _status.label, onSelect: _pickStatus),
-                          PickerChip(
-                            label: _sourceType?.label ?? 'All Sources',
-                            onSelect: _pickSource,
+                          Expanded(
+                            child: _SearchField(
+                              controller: _searchController,
+                              onChanged: _onSearchChanged,
+                              onSubmitted: (v) =>
+                                  _applyFilterChange(() => _search = v),
+                            ),
                           ),
-                          PickerChip(label: 'Sort: ${_sort.label}', onSelect: _pickSort),
+                          const SizedBox(width: AppSpacing.sm),
+                          _FilterButton(
+                              active: _hasActiveFilters,
+                              onTap: _openFilterSheet),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
@@ -234,9 +342,16 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                       else if (_obligations == null)
                         const LoadingView(message: 'Loading pending payments…')
                       else if (_obligations!.isEmpty)
-                        _AllCaughtUp()
+                        _AllCaughtUp(filtered: filtered)
                       else ...[
-                        ..._obligations!.map(_buildObligationCard),
+                        for (final o in _obligations!)
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: _ObligationCard(
+                                obligation: o,
+                                onRecord: () => _openRecord(o)),
+                          ),
                         if (_totalCount > 0) ...[
                           const SizedBox(height: AppSpacing.md),
                           PaginationBar(
@@ -256,60 +371,6 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
       ),
     );
   }
-
-  Widget _buildObligationCard(PaymentObligation o) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(o.customerName, style: AppTypography.rowTitle(context)),
-                      Text('${o.sourceType.label} · ${o.reference}',
-                          style: AppTypography.caption(context)),
-                      const SizedBox(height: 2),
-                      Text(o.description, style: AppTypography.caption(context)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                StatusBadge(label: o.status.label, tone: _tone(o.status)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _AmountRow(label: 'Total', minor: o.totalMinor),
-            _AmountRow(label: 'Paid', minor: o.paidMinor, muted: true),
-            const Divider(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Outstanding', style: AppTypography.rowTitle(context)),
-                ),
-                Text(financeAmount(o.outstandingMinor),
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Due ${Formatters.dateShort(DateTime.parse(o.dueOn))}',
-                style: AppTypography.caption(context)),
-            const SizedBox(height: AppSpacing.sm),
-            PrimaryButton(
-              label: o.isSettled ? 'View' : 'Record ${financeAmount(o.outstandingMinor)}',
-              onPressed: () => _openRecord(o),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 StatusTone _tone(ObligationStatus status) {
@@ -325,74 +386,422 @@ StatusTone _tone(ObligationStatus status) {
   }
 }
 
-class _KpiRow extends StatelessWidget {
-  const _KpiRow({required this.summary});
+/// The money-owed hero. One solid marigold slab carrying the figure the
+/// whole page exists for, with the three-way split banded underneath it —
+/// so "how much" and "how urgent" read in one glance instead of four flat
+/// tiles that all look equally important.
+class _OutstandingHero extends StatelessWidget {
+  const _OutstandingHero({required this.summary, required this.count});
 
   final PendingPaymentsSummary? summary;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final fill = tokens.accentSolid(tokens.warning);
+    final onC = tokens.onAccent(tokens.warning);
     final s = summary;
-    final tiles = <({String label, String value, Color? accent})>[
-      (label: 'Outstanding Total', value: s == null ? '—' : financeAmount(s.outstandingMinor), accent: AppColors.primary),
-      (label: 'Pending', value: s == null ? '—' : financeAmount(s.pendingMinor), accent: null),
-      (label: 'Partially Paid', value: s == null ? '—' : financeAmount(s.partiallyPaidMinor), accent: null),
-      (label: 'Overdue', value: s == null ? '—' : financeAmount(s.overdueMinor), accent: AppColors.destructive),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = (constraints.maxWidth / 160).floor().clamp(1, tiles.length);
-        final width = (constraints.maxWidth - (AppSpacing.sm * (columns - 1))) / columns;
-        return Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: tiles
-              .map((t) => SizedBox(
-                    width: width,
-                    child: AppCard(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(t.label, style: AppTypography.caption(context)),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            t.value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(color: t.accent, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ))
-              .toList(),
-        );
-      },
+
+    Widget fig(String label, int? minor, {bool alert = false}) {
+      final text = minor == null ? '—' : financeAmount(minor);
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (alert && (minor ?? 0) > 0)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFFFF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: tokens.destructive)),
+              )
+            else
+              Text(text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w800, color: onC)),
+            const SizedBox(height: 1),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11, color: onC.withValues(alpha: 0.75))),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text('Outstanding total',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: onC.withValues(alpha: 0.8))),
+              ),
+              if (count > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: onC.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('$count to collect',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: onC)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              s == null ? '—' : financeAmount(s.outstandingMinor),
+              style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  height: 1.1,
+                  color: onC),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(height: 1, color: onC.withValues(alpha: 0.22)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              fig('Pending', s?.pendingMinor),
+              fig('Partly paid', s?.partiallyPaidMinor),
+              fig('Overdue', s?.overdueMinor, alert: true),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _AmountRow extends StatelessWidget {
-  const _AmountRow({required this.label, required this.minor, this.muted = false});
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
 
-  final String label;
-  final int minor;
-  final bool muted;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
 
   @override
   Widget build(BuildContext context) {
-    final style = muted ? AppTypography.secondary(context) : null;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Row(
+    final tokens = context.tokens;
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: TextStyle(fontSize: 14, color: tokens.textPrimary),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: 14),
+          prefixIcon:
+              Icon(Icons.search_rounded, size: 20, color: tokens.textSecondary),
+          hintText: 'Search name, phone or reference',
+          hintStyle: TextStyle(fontSize: 14, color: tokens.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+/// The single filter affordance, sitting beside the search field. Carries a
+/// dot when anything is narrowing the list, so an unexpected empty page is
+/// never a mystery.
+class _FilterButton extends StatelessWidget {
+  const _FilterButton({required this.active, required this.onTap});
+
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final fill = active ? tokens.accentSolid(tokens.primary) : tokens.surface1;
+    final fg = active ? tokens.onAccent(tokens.primary) : tokens.textPrimary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: active ? fill : tokens.borderColor),
+        ),
+        child: Icon(Icons.tune_rounded, size: 20, color: fg),
+      ),
+    );
+  }
+}
+
+class _ChoiceChip extends StatelessWidget {
+  const _ChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final fill =
+        selected ? tokens.accentSolid(tokens.primary) : tokens.surface1;
+    final fg = selected ? tokens.onAccent(tokens.primary) : tokens.textPrimary;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding:
+            const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 9),
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: selected ? fill : tokens.borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(Icons.check_rounded, size: 14, color: fg),
+              const SizedBox(width: 4),
+            ],
+            Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    color: fg)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One thing someone owes. Leads with who and how much, shows how far
+/// along the payment is as a bar rather than two number rows, and puts the
+/// action — the amount you'd actually take — on the button.
+class _ObligationCard extends StatelessWidget {
+  const _ObligationCard({required this.obligation, required this.onRecord});
+
+  final PaymentObligation obligation;
+  final VoidCallback onRecord;
+
+  static String _initials(String name) {
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final o = obligation;
+    final overdue = o.status == ObligationStatus.overdue;
+    // How much of the bill is already in — the single most useful thing to
+    // see before deciding what to chase.
+    final progress = o.totalMinor <= 0
+        ? 0.0
+        : (o.paidMinor / o.totalMinor).clamp(0.0, 1.0).toDouble();
+    final accent = overdue ? tokens.destructive : tokens.warning;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+            color: overdue
+                ? tokens.destructive.withValues(alpha: 0.45)
+                : tokens.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: AppTypography.secondary(context))),
-          Text(financeAmount(minor), style: style),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tokens.accentSolid(tokens.violet),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Text(_initials(o.customerName),
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: tokens.onAccent(tokens.violet))),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(o.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                            color: tokens.textPrimary)),
+                    const SizedBox(height: 1),
+                    Text('${o.sourceType.label} · ${o.reference}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 11.5, color: tokens.textSecondary)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              StatusBadge(label: o.status.label, tone: _tone(o.status)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(o.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+          const SizedBox(height: AppSpacing.md),
+
+          // paid-of-total progress
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              height: 6,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                      child: ColoredBox(color: tokens.surface2)),
+                  FractionallySizedBox(
+                    widthFactor: progress,
+                    child: ColoredBox(color: tokens.accentSolid(tokens.primary)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                    '${financeAmount(o.paidMinor)} of ${financeAmount(o.totalMinor)} paid',
+                    style:
+                        TextStyle(fontSize: 11, color: tokens.textSecondary)),
+              ),
+              Text('Due ${Formatters.dateShort(DateTime.parse(o.dueOn))}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: overdue ? FontWeight.w800 : FontWeight.w500,
+                      color:
+                          overdue ? tokens.destructive : tokens.textSecondary)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Outstanding',
+                        style: TextStyle(
+                            fontSize: 11, color: tokens.textSecondary)),
+                    Text(financeAmount(o.outstandingMinor),
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                            color: accent)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              GestureDetector(
+                onTap: onRecord,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: o.isSettled
+                        ? tokens.surface2
+                        : tokens.accentSolid(tokens.primary),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: o.isSettled
+                        ? Border.all(color: tokens.borderColor)
+                        : null,
+                  ),
+                  child: Text(
+                    o.isSettled ? 'View' : 'Collect',
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: o.isSettled
+                            ? tokens.textPrimary
+                            : tokens.onAccent(tokens.primary)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -400,19 +809,42 @@ class _AmountRow extends StatelessWidget {
 }
 
 class _AllCaughtUp extends StatelessWidget {
+  const _AllCaughtUp({required this.filtered});
+
+  final bool filtered;
+
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
         child: Column(
           children: [
-            const Icon(Icons.check_circle_outline, size: 40, color: AppColors.primary),
-            const SizedBox(height: AppSpacing.sm),
-            Text("You're all caught up", style: AppTypography.rowTitle(context)),
+            Container(
+              width: 64,
+              height: 64,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.accentSolid(tokens.primary),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check_rounded,
+                  size: 32, color: tokens.onAccent(tokens.primary)),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(filtered ? 'Nothing matches' : "You're all caught up",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: tokens.textPrimary)),
             const SizedBox(height: AppSpacing.xs),
-            Text('There are no pending payments for the selected filters.',
-                textAlign: TextAlign.center, style: AppTypography.secondary(context)),
+            Text(
+                filtered
+                    ? 'No outstanding payments fit these filters. Try widening them.'
+                    : 'Every booking and membership is fully paid.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
           ],
         ),
       ),

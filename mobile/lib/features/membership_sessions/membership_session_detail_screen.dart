@@ -386,21 +386,21 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
 
   Widget _chip(IconData icon, String label) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(tokens.violet);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: tokens.surface0.withValues(alpha: 0.35),
+        color: onC.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: tokens.violet.withValues(alpha: 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: tokens.textPrimary),
+          Icon(icon, size: 13, color: onC),
           const SizedBox(width: 5),
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: onC)),
         ],
       ),
     );
@@ -410,19 +410,12 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
 
   Widget _hero(MembershipSessionDetail d) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(tokens.violet);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.violet.withValues(alpha: 0.35)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            tokens.violet.withValues(alpha: 0.28),
-            tokens.violet.withValues(alpha: 0.06),
-          ],
-        ),
+        color: tokens.accentSolid(tokens.violet),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,11 +427,10 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: tokens.violet.withValues(alpha: 0.20),
+                  color: onC.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(Icons.event_repeat_rounded,
-                    color: tokens.violet, size: 22),
+                child: Icon(Icons.event_repeat_rounded, color: onC, size: 22),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -446,12 +438,15 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(d.name,
-                        style: const TextStyle(
-                            fontSize: 19, fontWeight: FontWeight.w800)),
+                        style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            color: onC)),
                     const SizedBox(height: 2),
                     Text('${d.sportName} · ${d.courtName}',
                         style: TextStyle(
-                            fontSize: 13, color: tokens.textSecondary)),
+                            fontSize: 13,
+                            color: onC.withValues(alpha: 0.75))),
                   ],
                 ),
               ),
@@ -482,7 +477,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.16),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -728,13 +723,11 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       color: tiles[i].highlight
-                          ? tokens.primary.withValues(alpha: 0.10)
+                          ? tokens.accentSolid(tokens.primary)
                           : tokens.surface2,
-                      border: Border.all(
-                        color: tiles[i].highlight
-                            ? tokens.primary.withValues(alpha: 0.5)
-                            : tokens.borderColor,
-                      ),
+                      border: tiles[i].highlight
+                          ? null
+                          : Border.all(color: tokens.borderColor),
                     ),
                     child: Column(
                       children: [
@@ -743,13 +736,17 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
                               color: tiles[i].highlight
-                                  ? tokens.primary
+                                  ? tokens.onAccent(tokens.primary)
                                   : tokens.textPrimary,
                             )),
                         const SizedBox(height: 1),
                         Text(tiles[i].label,
                             style: TextStyle(
-                                fontSize: 11, color: tokens.textSecondary)),
+                                fontSize: 11,
+                                color: tiles[i].highlight
+                                    ? tokens.onAccent(tokens.primary)
+                                        .withValues(alpha: 0.8)
+                                    : tokens.textSecondary)),
                       ],
                     ),
                   ),

@@ -384,11 +384,7 @@ class _CreateFab extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [tokens.violet, tokens.violet.withValues(alpha: 0.72)],
-          ),
+          color: tokens.accentSolid(tokens.violet),
           boxShadow: [
             BoxShadow(
               color: tokens.violet.withValues(alpha: 0.42),
@@ -530,15 +526,7 @@ class _RecurringRevenueCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: tokens.violet.withValues(alpha: 0.35)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              tokens.violet.withValues(alpha: 0.30),
-              tokens.violet.withValues(alpha: 0.06),
-            ],
-          ),
+          color: tokens.accentSolid(tokens.violet),
         ),
         child: Stack(
           children: [
@@ -553,8 +541,8 @@ class _RecurringRevenueCard extends StatelessWidget {
                   child: CustomPaint(
                     painter: _Sparkline(
                       values: values,
-                      line: tokens.violet,
-                      fill: tokens.violet.withValues(alpha: 0.22),
+                      line: const Color(0xFFFFFFFF),
+                      fill: const Color(0x33FFFFFF),
                     ),
                   ),
                 ),
@@ -566,39 +554,44 @@ class _RecurringRevenueCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.show_chart_rounded,
-                          size: 16, color: tokens.violet),
+                      const Icon(Icons.show_chart_rounded,
+                          size: 16, color: Color(0xFFFFFFFF)),
                       const SizedBox(width: 6),
                       Text('Recurring revenue',
                           style: TextStyle(
-                              fontSize: 13, color: tokens.textSecondary)),
+                              fontSize: 13,
+                              color: const Color(0xFFFFFFFF)
+                                  .withValues(alpha: 0.8))),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     Formatters.currencyInr(amountInr),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
-                      color: tokens.textPrimary,
+                      color: Color(0xFFFFFFFF),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Row(
                     children: [
-                      _MiniFig(value: '$activeCount', label: 'active'),
+                      _MiniFig(
+                          value: '$activeCount',
+                          label: 'active',
+                          onAccent: true),
                       const SizedBox(width: AppSpacing.xl),
                       _MiniFig(
                         value: '$expiringCount',
                         label: 'expiring',
-                        color: tokens.warning,
+                        onAccent: true,
                       ),
                       const SizedBox(width: AppSpacing.xl),
                       _MiniFig(
                         value: '+$newThisMonth',
                         label:
                             'new in ${_monthShort[DateTime.now().month - 1]}',
-                        color: tokens.primary,
+                        onAccent: true,
                       ),
                     ],
                   ),
@@ -679,15 +672,17 @@ class _Sparkline extends CustomPainter {
 }
 
 class _MiniFig extends StatelessWidget {
-  const _MiniFig({required this.value, required this.label, this.color});
+  const _MiniFig(
+      {required this.value, required this.label, this.onAccent = false});
 
   final String value;
   final String label;
-  final Color? color;
+  final bool onAccent;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    const white = Color(0xFFFFFFFF);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -695,10 +690,14 @@ class _MiniFig extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: color ?? tokens.textPrimary,
+              color: onAccent ? white : tokens.textPrimary,
             )),
         Text(label,
-            style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+            style: TextStyle(
+                fontSize: 12,
+                color: onAccent
+                    ? white.withValues(alpha: 0.75)
+                    : tokens.textSecondary)),
       ],
     );
   }

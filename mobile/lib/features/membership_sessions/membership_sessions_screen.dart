@@ -14,7 +14,6 @@ import '../../data/models/membership_session_dashboard.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
@@ -267,7 +266,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
           countTo: s?.activeSessions,
           formatValue: n,
           icon: Icons.play_circle_outline,
-          accentColor: AppColors.success,
+          accentColor: context.tokens.success,
         ),
         AppMetricCard(
           label: "Today's Sessions",
@@ -275,7 +274,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
           countTo: s?.todaysSessions,
           formatValue: n,
           icon: Icons.today,
-          accentColor: AppColors.electricBlue,
+          accentColor: context.tokens.electricBlue,
         ),
         AppMetricCard(
           label: 'Guest Slots Released',
@@ -283,7 +282,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
           countTo: s?.guestSlotsReleased,
           formatValue: n,
           icon: Icons.group_add_outlined,
-          accentColor: AppColors.warning,
+          accentColor: context.tokens.warning,
         ),
         AppMetricCard(
           label: 'Utilization',
@@ -291,7 +290,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
           countTo: s?.avgUtilizationPct,
           formatValue: (v) => '${v.round()}%',
           icon: Icons.donut_small,
-          accentColor: AppColors.violet,
+          accentColor: context.tokens.violet,
         ),
       ],
     );
@@ -382,18 +381,24 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
+    final t = context.tokens;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.mutedBackground,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: t.borderColor),
       ),
       child: DropdownButton<T>(
         value: value,
-        hint: Text(hint),
+        hint: Text(hint, style: TextStyle(color: t.textSecondary)),
         underline: const SizedBox.shrink(),
         isDense: true,
+        style: TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w700, color: t.textPrimary),
+        icon: Icon(Icons.expand_more_rounded,
+            size: 18, color: t.textSecondary),
+        dropdownColor: t.surface3,
         borderRadius: BorderRadius.circular(AppRadius.md),
         items: items,
         onChanged: onChanged,
@@ -451,80 +456,159 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
   }
 
   Widget _sessionCard(MembershipSessionListRow row) {
+    final t = context.tokens;
     final chip = sessionStatusChip(row.status);
     final utilization = (row.utilizationPct.clamp(0, 100)) / 100;
-    return AppCard(
-      onTap: () => _openDetail(row),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    // Utilization is the number that decides whether a batch is worth
+    // keeping, so let it carry colour: healthy green, thin amber, empty red.
+    final bar = row.utilizationPct >= 60
+        ? t.primary
+        : (row.utilizationPct >= 30 ? t.warning : t.destructive);
+
+    return Material(
+      color: t.surface1,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openDetail(row),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: t.borderColor),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(row.name, style: Theme.of(context).textTheme.titleSmall),
-                    Text(
-                      '${row.sportName} · ${row.courtName}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: t.accentSolid(t.violet),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                  ],
+                    child: Icon(Icons.event_repeat_rounded,
+                        size: 19, color: t.onAccent(t.violet)),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(row.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color: t.textPrimary)),
+                        const SizedBox(height: 1),
+                        Text(
+                          '${row.sportName} · ${row.courtName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: t.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  StatusBadge(label: chip.label, tone: chip.tone),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Icon(Icons.schedule_rounded,
+                      size: 14, color: t.textSecondary),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      '${daysLabel(row.daysOfWeek)} · ${hhmm(row.startTime)}–${hhmm(row.endTime)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: t.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  _pill(Icons.people_alt_rounded,
+                      '${row.rosterCount}/${row.capacity} members'),
+                  const SizedBox(width: AppSpacing.sm),
+                  _pill(Icons.group_add_rounded,
+                      '${row.guestBookedToday}/${row.releasedToday} guests'),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                // Fills from empty, matching the web row's bar-grow.
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, anim, _) => LinearProgressIndicator(
+                    value: utilization * anim,
+                    minHeight: 7,
+                    backgroundColor: t.surface2,
+                    valueColor:
+                        AlwaysStoppedAnimation(t.accentSolid(bar)),
+                  ),
                 ),
               ),
-              StatusBadge(label: chip.label, tone: chip.tone),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '${daysLabel(row.daysOfWeek)} · ${hhmm(row.startTime)}–${hhmm(row.endTime)}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              _pill(Icons.people_outline, '${row.rosterCount}/${row.capacity} members'),
-              const SizedBox(width: AppSpacing.sm),
-              _pill(Icons.group_add_outlined, '${row.guestBookedToday}/${row.releasedToday} guests'),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            // Fills from empty, matching the web row's bar-grow.
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 700),
-              curve: Curves.easeOutCubic,
-              builder: (context, t, _) => LinearProgressIndicator(
-                value: utilization * t,
-                minHeight: 6,
-                backgroundColor: AppColors.border,
-                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('Utilization',
+                        style: TextStyle(
+                            fontSize: 11, color: t.textSecondary)),
+                  ),
+                  Text('${row.utilizationPct}%',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: t.accentSolid(bar))),
+                ],
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text('${row.utilizationPct}% utilization', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
-        ],
+        ),
       ),
     );
   }
 
   Widget _pill(IconData icon, String label) {
+    final t = context.tokens;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+      padding:
+          const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.mutedBackground,
+        color: t.surface2,
         borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: t.borderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: AppColors.muted),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+          Icon(icon, size: 13, color: t.textSecondary),
+          const SizedBox(width: 5),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: t.textPrimary)),
         ],
       ),
     );
@@ -533,33 +617,57 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
   Widget _guestLinkCard() {
     final facilityId = _facilityId;
     if (facilityId == null) return const SizedBox.shrink();
+    final t = context.tokens;
+    final onC = t.onAccent(t.violet);
     final link = 'https://gameall.club/join/$facilityId';
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: t.accentSolid(t.violet),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      child: Row(
         children: [
-          Text('Guest Booking Link', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Share this link so guests can book released membership slots.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: onC.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Icon(Icons.link_rounded, size: 18, color: onC),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: Text(link, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
-              ),
-              IconButton(
-                icon: const Icon(Icons.copy, size: 18),
-                onPressed: () async {
-                  await Clipboard.setData(ClipboardData(text: link));
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
-                  }
-                },
-              ),
-            ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Guest booking link',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: onC)),
+                const SizedBox(height: 1),
+                Text(link,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: onC.withValues(alpha: 0.75))),
+              ],
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: onC),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: link));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Link copied')));
+              }
+            },
+            child: const Text('Copy'),
           ),
         ],
       ),

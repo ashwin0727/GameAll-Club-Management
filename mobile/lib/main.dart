@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
 import 'core/routing/app_router.dart';
+import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
 import 'features/authentication/splash_screen.dart' show warmSplashVideo;
@@ -71,7 +72,19 @@ class _GameAllClubAppState extends ConsumerState<GameAllClubApp> {
       routerConfig: router,
       // Never suppress the platform's accessibility text scaling — a large
       // system font size must still produce a usable app (item 9/80).
-      builder: (context, child) => child ?? const SizedBox.shrink(),
+      builder: (context, child) {
+        // Screens without an AppBar (e.g. the dashboard) don't pick up
+        // AppBarTheme.systemOverlayStyle — assert it here from the theme
+        // that actually resolved so the status bar always contrasts.
+        final theme = Theme.of(context);
+        SystemChrome.setSystemUIOverlayStyle(
+          systemOverlayFor(
+            theme.extension<AppColorTokens>() ?? AppColorTokens.dark,
+            theme.brightness,
+          ),
+        );
+        return child ?? const SizedBox.shrink();
+      },
     );
   }
 }

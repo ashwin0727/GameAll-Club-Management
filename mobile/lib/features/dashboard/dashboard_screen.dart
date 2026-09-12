@@ -22,6 +22,7 @@ import '../../data/models/finance.dart'
         FinanceDateRangePreset,
         PaymentObligation,
         PendingPaymentsPage,
+        PendingPaymentsSummary,
         ListPendingPaymentsInput;
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
@@ -56,6 +57,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<LedgerEntry> _recent = const [];
   List<PaymentObligation> _needs = const [];
   int _needsCount = 0;
+
+  /// What is actually owed right now, in rupees. The dashboard summary's
+  /// `payments.pendingInr` only sums `payments` rows with status 'created',
+  /// so an unpaid booking that never got a payments row reads as ₹0 even
+  /// while it shows up under "Needs you". `get_pending_payments_summary` is
+  /// the same source the Pending Payments screen uses, so the two agree.
+  int? _outstandingInr;
 
   @override
   void initState() {
@@ -106,6 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             facilityId: _facilityId!,
             limit: 3,
           )),
+          fin.getPendingPaymentsSummary(_facilityId!),
         ]);
         if (!mounted) return;
         setState(() {
@@ -113,6 +122,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           final pp = extras[1] as PendingPaymentsPage;
           _needs = pp.obligations;
           _needsCount = pp.totalCount;
+          _outstandingInr =
+              ((extras[2] as PendingPaymentsSummary).outstandingMinor / 100)
+                  .round();
         });
       } catch (_) {}
     } on AppException catch (e) {
@@ -195,6 +207,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     recent: _recent,
                     needs: _needs,
                     needsCount: _needsCount,
+                    outstandingInr: _outstandingInr,
                     facilitySlug:
                         ref.watch(sessionControllerProvider).facility?.slug,
                     selectedSportId: _selectedSportId,
@@ -248,9 +261,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md, vertical: 9),
                   decoration: BoxDecoration(
-                    color: selected
-                        ? tokens.primary.withValues(alpha: 0.16)
-                        : tokens.surface2,
+                    color: selected ? tokens.primary : tokens.surface2,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(
                         color: selected ? tokens.primary : tokens.borderColor,
@@ -261,8 +272,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           fontSize: 13,
                           fontWeight:
                               selected ? FontWeight.w700 : FontWeight.w500,
-                          color:
-                              selected ? tokens.primary : tokens.textPrimary)),
+                          color: selected
+                              ? tokens.onAccent(tokens.primary)
+                              : tokens.textPrimary)),
                 ),
               );
 
@@ -383,6 +395,7 @@ class _DashboardBody extends StatelessWidget {
     required this.recent,
     required this.needs,
     required this.needsCount,
+    required this.outstandingInr,
     required this.facilitySlug,
     required this.selectedSportId,
     required this.preset,
@@ -398,6 +411,10 @@ class _DashboardBody extends StatelessWidget {
   final List<LedgerEntry> recent;
   final List<PaymentObligation> needs;
   final int needsCount;
+
+  /// Authoritative "owed right now", or null while the finance RPC is still
+  /// in flight / failed — the summary's own figure is the fallback.
+  final int? outstandingInr;
   final String? facilitySlug;
   final String? selectedSportId;
   final DateRangePreset preset;
@@ -523,7 +540,7 @@ class _DashboardBody extends StatelessWidget {
           collectedInr: summary.kpis.revenueInr.value.round(),
           collectedChange: summary.kpis.revenueInr.changePercent,
           periodLabel: _presetLabels[preset]!,
-          toCollectInr: summary.payments.pendingInr,
+          toCollectInr: outstandingInr ?? summary.payments.pendingInr,
           bookings: summary.kpis.guestBookings.value.round(),
           weekPoints: summary.revenueOverview.points,
         ),
@@ -716,11 +733,12 @@ class _LiveNowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    // Solid green "hero" card — reads like a filled button, not a tint.
+    final card = tokens.accentSolid(tokens.primary);
+    final onCard = tokens.onAccent(card);
+    final onCardDim = onCard.withValues(alpha: 0.72);
     final nowMin = now.hour * 60 + now.minute;
     final pct = totalCourts == 0 ? 0 : (busyCount / totalCourts * 100).round();
-    final typeByCourt = <String, ScheduleBlockType>{
-      for (final (c, b) in liveBlocks) c.id: b.type,
-    };
     // Courts whose current booking wraps up within 15 minutes.
     final endingSoon = <String>{
       for (final (c, b) in liveBlocks)
@@ -749,15 +767,7 @@ class _LiveNowCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.primary.withValues(alpha: 0.4)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            tokens.primary.withValues(alpha: 0.20),
-            tokens.primary.withValues(alpha: 0.03),
-          ],
-        ),
+        color: card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -769,7 +779,7 @@ class _LiveNowCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: tokens.primary.withValues(alpha: 0.16),
+                    color: onCard.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
@@ -779,14 +789,13 @@ class _LiveNowCard extends StatelessWidget {
                           width: 6,
                           height: 6,
                           decoration: BoxDecoration(
-                              color: tokens.primary,
-                              shape: BoxShape.circle)),
+                              color: onCard, shape: BoxShape.circle)),
                       const SizedBox(width: 5),
                       Text('Live now',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: tokens.primary)),
+                              color: onCard)),
                     ],
                   ),
                 )
@@ -795,12 +804,11 @@ class _LiveNowCard extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: tokens.textSecondary)),
+                        color: onCardDim)),
               const Spacer(),
               Text(
                   '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-                  style:
-                      TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: onCardDim)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -813,18 +821,17 @@ class _LiveNowCard extends StatelessWidget {
                       fontSize: 40,
                       fontWeight: FontWeight.w800,
                       height: 1,
-                      color: tokens.textPrimary)),
+                      color: onCard)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text('of $totalCourts courts busy',
-                    style: TextStyle(
-                        fontSize: 13, color: tokens.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: onCardDim)),
               ),
               Text('$pct%',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: tokens.primary)),
+                      color: onCard)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -838,13 +845,10 @@ class _LiveNowCard extends StatelessWidget {
                         final busy = busyCourtIds.contains(c.courtId);
                         final soon = endingSoon.contains(c.courtId);
                         final fill = !busy
-                            ? tokens.surface2
+                            ? onCard.withValues(alpha: 0.14)
                             : soon
-                                ? tokens.warning
-                                : _blockTypeColor(
-                                    context,
-                                    typeByCourt[c.courtId] ??
-                                        ScheduleBlockType.member);
+                                ? tokens.accentSolid(tokens.warning)
+                                : onCard;
                         return Container(
                           height: 28,
                           alignment: Alignment.center,
@@ -854,8 +858,7 @@ class _LiveNowCard extends StatelessWidget {
                             border: busy
                                 ? null
                                 : Border.all(
-                                    color: tokens.primary
-                                        .withValues(alpha: 0.35)),
+                                    color: onCard.withValues(alpha: 0.4)),
                           ),
                           child: Icon(
                             !busy
@@ -864,7 +867,11 @@ class _LiveNowCard extends StatelessWidget {
                                     ? Icons.timelapse_rounded
                                     : Icons.lock_rounded,
                             size: 11,
-                            color: busy ? Colors.white : tokens.primary,
+                            color: busy
+                                ? (soon
+                                    ? tokens.onAccent(tokens.warning)
+                                    : card)
+                                : onCard,
                           ),
                         );
                       }),
@@ -876,7 +883,7 @@ class _LiveNowCard extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: tokens.textSecondary),
+                            color: onCardDim),
                       ),
                     ],
                   ),
@@ -896,34 +903,33 @@ class _LiveNowCard extends StatelessWidget {
                         width: 6,
                         height: 6,
                         decoration: BoxDecoration(
-                            color: _blockTypeColor(context, b.type),
-                            shape: BoxShape.circle)),
+                            color: onCard, shape: BoxShape.circle)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                           '${_courtCode(c.sport, c.name)} · ${b.label}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11.5, fontWeight: FontWeight.w600)),
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: onCard)),
                     ),
                     Text('ends ${_time12(b.endMinute)}',
-                        style: TextStyle(
-                            fontSize: 10.5, color: tokens.textSecondary)),
+                        style: TextStyle(fontSize: 10.5, color: onCardDim)),
                   ],
                 ),
               ),
           ],
           if (nextFreeLabel != null) ...[
             const SizedBox(height: AppSpacing.md),
-            Divider(height: 1, color: tokens.borderColor),
+            Divider(height: 1, color: onCard.withValues(alpha: 0.2)),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 Expanded(
                   child: Text('Next free · $nextFreeLabel',
-                      style: TextStyle(
-                          fontSize: 12, color: tokens.textSecondary)),
+                      style: TextStyle(fontSize: 12, color: onCardDim)),
                 ),
                 GestureDetector(
                   onTap: () => context.push(AppRoutes.bookings),
@@ -931,7 +937,7 @@ class _LiveNowCard extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: tokens.primary)),
+                          color: onCard)),
                 ),
               ],
             ),
@@ -1038,8 +1044,8 @@ class _MoneyRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final last7 =
-        weekPoints.length > 7 ? weekPoints.sublist(weekPoints.length - 7) : weekPoints;
+    final last7 = _trailingWeek(weekPoints);
+    final todayKey = _dayKeyOf(DateTime.now());
     final maxV = last7.isEmpty
         ? 1
         : last7.map((p) => p.amountInr).reduce(math.max).clamp(1, 1 << 30);
@@ -1107,18 +1113,44 @@ class _MoneyRow extends StatelessWidget {
                             for (var i = 0; i < last7.length; i++) ...[
                               if (i > 0) const SizedBox(width: 4),
                               Expanded(
-                                child: Container(
-                                  height: (last7[i].amountInr / maxV * 34)
-                                      .clamp(3, 34)
-                                      .toDouble(),
-                                  decoration: BoxDecoration(
-                                    color: i == last7.length - 1
-                                        ? tokens.primary
-                                        : tokens.primary
-                                            .withValues(alpha: 0.28),
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                ),
+                                child: Builder(builder: (context) {
+                                  final isToday = last7[i].date == todayKey;
+                                  final v = last7[i].amountInr;
+                                  // Value drives BOTH height and colour, so a
+                                  // quiet day is legible as a quiet day even
+                                  // when every bar is squashed to the floor.
+                                  final f =
+                                      (v / maxV).clamp(0.0, 1.0).toDouble();
+                                  // Opaque ends — blended onto the card, not
+                                  // alpha'd over it, so bars read as a solid
+                                  // dark green rather than a wash.
+                                  final low = Color.alphaBlend(
+                                      tokens.primary.withValues(alpha: 0.30),
+                                      tokens.surface1);
+                                  // A zero day is never highlighted, today
+                                  // included — a bright, tall bar on ₹0 reads
+                                  // as "best day of the week" and is a lie.
+                                  final lit = isToday && v > 0;
+                                  return Container(
+                                    height: (f * 34).clamp(4, 34).toDouble(),
+                                    decoration: BoxDecoration(
+                                      color: lit
+                                          ? tokens.primary
+                                          : Color.lerp(low, tokens.primary, f),
+                                      borderRadius: BorderRadius.circular(3),
+                                      boxShadow: lit
+                                          ? [
+                                              BoxShadow(
+                                                color: tokens.primary
+                                                    .withValues(alpha: 0.45),
+                                                blurRadius: 8,
+                                                spreadRadius: -2,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                  );
+                                }),
                               ),
                             ],
                           ],
@@ -1147,15 +1179,7 @@ class _MoneyRow extends StatelessWidget {
                         padding: const EdgeInsets.all(AppSpacing.md),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(AppRadius.lg),
-                          border: Border.all(
-                              color:
-                                  tokens.warning.withValues(alpha: 0.45)),
-                          gradient: LinearGradient(
-                            colors: [
-                              tokens.warning.withValues(alpha: 0.16),
-                              tokens.warning.withValues(alpha: 0.04),
-                            ],
-                          ),
+                          color: tokens.accentSolid(tokens.warning),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,12 +1193,13 @@ class _MoneyRow extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.w800,
-                                      color: tokens.warning)),
+                                      color: tokens.onAccent(tokens.warning))),
                             ),
                             Text('to collect',
                                 style: TextStyle(
                                     fontSize: 10.5,
-                                    color: tokens.textSecondary)),
+                                    color: tokens.onAccent(tokens.warning)
+                                        .withValues(alpha: 0.75))),
                           ],
                         ),
                       ),
@@ -1496,14 +1521,14 @@ class _EmptySlotsSection extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: tokens.primary.withValues(alpha: 0.16),
+                        color: tokens.primary,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text('Fill',
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: tokens.primary)),
+                              color: tokens.onAccent(tokens.primary))),
                     ),
                   ),
                 ],
@@ -1534,6 +1559,8 @@ class _MembersCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(tokens.violet);
+    final onCDim = onC.withValues(alpha: 0.75);
     return _DashSection(
       title: 'Members',
       child: Material(
@@ -1545,42 +1572,30 @@ class _MembersCard extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              border:
-                  Border.all(color: tokens.violet.withValues(alpha: 0.4)),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  tokens.violet.withValues(alpha: 0.22),
-                  tokens.violet.withValues(alpha: 0.05),
-                ],
-              ),
+              color: tokens.accentSolid(tokens.violet),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Membership revenue · $monthLabel',
-                    style: TextStyle(
-                        fontSize: 12, color: tokens.textSecondary)),
+                    style: TextStyle(fontSize: 12, color: onCDim)),
                 const SizedBox(height: 4),
                 Text(Formatters.currencyInr(monthlyRevenueInr),
                     style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
-                        color: tokens.textPrimary)),
+                        color: onC)),
                 const SizedBox(height: AppSpacing.md),
-                Divider(height: 1, color: tokens.violet.withValues(alpha: 0.25)),
+                Divider(height: 1, color: onC.withValues(alpha: 0.2)),
                 const SizedBox(height: AppSpacing.md),
                 Row(
                   children: [
-                    _stat(context, '${memberships.active}', 'active',
-                        tokens.textPrimary),
+                    _stat(context, '${memberships.active}', 'active', onC),
                     const SizedBox(width: AppSpacing.xl),
                     _stat(context, '${memberships.expiringSoon}', 'expiring',
-                        tokens.warning),
+                        onC),
                     const SizedBox(width: AppSpacing.xl),
-                    _stat(context, '+${memberships.newThisMonth}', 'new',
-                        tokens.primary),
+                    _stat(context, '+${memberships.newThisMonth}', 'new', onC),
                   ],
                 ),
               ],
@@ -1600,10 +1615,36 @@ class _MembersCard extends StatelessWidget {
                 fontSize: 17, fontWeight: FontWeight.w800, color: c)),
         Text(label,
             style: TextStyle(
-                fontSize: 11, color: context.tokens.textSecondary)),
+                fontSize: 11,
+                color: context.tokens
+                    .onAccent(context.tokens.violet)
+                    .withValues(alpha: 0.75))),
       ],
     );
   }
+}
+
+/// 'YYYY-MM-DD' — matches the key `buildRevenueTrend` writes.
+String _dayKeyOf(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+/// The seven days ENDING TODAY out of a month-long trend series.
+///
+/// `buildRevenueTrend` zero-fills one point per calendar day across the
+/// whole selected month, so the tail of that list is the end of the month
+/// — days that have not happened yet. `sublist(length - 7)` therefore plots
+/// seven future zeroes and hides everything actually collected, which is
+/// why the chart read as flat while today showed real revenue. Anchor the
+/// window on today instead, falling back to the end of the series when an
+/// earlier month is selected and today is not in it.
+List<RevenueTrendPoint> _trailingWeek(List<RevenueTrendPoint> points) {
+  if (points.length <= 7) return points;
+  final todayKey = _dayKeyOf(DateTime.now());
+  var end = points.lastIndexWhere((p) => p.date.compareTo(todayKey) <= 0);
+  if (end < 0) end = points.length - 1;
+  return points.sublist((end - 6).clamp(0, points.length - 1), end + 1);
 }
 
 // ─────────────────────────────────────────────────── THIS WEEK ──
@@ -1615,8 +1656,7 @@ class _WeekBarsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final last7 =
-        points.length > 7 ? points.sublist(points.length - 7) : points;
+    final last7 = _trailingWeek(points);
     if (last7.isEmpty) {
       return _card(context, const SizedBox(height: 40));
     }
@@ -1625,7 +1665,9 @@ class _WeekBarsCard extends StatelessWidget {
     final avg = last7.map((p) => p.amountInr).reduce((a, b) => a + b) ~/
         last7.length;
     const wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    final todayIdx = last7.length - 1;
+    // Match by date, not position — for a past month today isn't in range.
+    final todayIdx =
+        last7.indexWhere((p) => p.date == _dayKeyOf(DateTime.now()));
 
     return _card(
       context,
@@ -1649,17 +1691,36 @@ class _WeekBarsCard extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Container(
-                          height: (last7[i].amountInr / maxV * 58)
-                              .clamp(4, 58)
-                              .toDouble(),
-                          decoration: BoxDecoration(
-                            color: i == todayIdx
-                                ? tokens.primary
-                                : tokens.surface3,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
+                        Builder(builder: (context) {
+                          final v = last7[i].amountInr;
+                          final f = (v / maxV).clamp(0.0, 1.0).toDouble();
+                          // Same rule as the Collected sparkline: the bar's
+                          // depth of green tracks the amount, so the week
+                          // reads at a glance even before you parse heights.
+                          final low = Color.alphaBlend(
+                              tokens.primary.withValues(alpha: 0.30),
+                              tokens.surface1);
+                          final lit = i == todayIdx && v > 0;
+                          return Container(
+                            height: (f * 58).clamp(4, 58).toDouble(),
+                            decoration: BoxDecoration(
+                              color: lit
+                                  ? tokens.primary
+                                  : Color.lerp(low, tokens.primary, f),
+                              borderRadius: BorderRadius.circular(6),
+                              boxShadow: lit
+                                  ? [
+                                      BoxShadow(
+                                        color: tokens.primary
+                                            .withValues(alpha: 0.45),
+                                        blurRadius: 10,
+                                        spreadRadius: -2,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        }),
                         const SizedBox(height: 5),
                         Text(
                           wd[_weekdayOf(last7[i].date)],
@@ -1792,6 +1853,7 @@ class _ShareLinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(tokens.violet);
     final display = (slug == null || slug!.isEmpty)
         ? 'gameall.in'
         : 'gameall.in/join/$slug';
@@ -1799,13 +1861,7 @@ class _ShareLinkCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.violet.withValues(alpha: 0.4)),
-        gradient: LinearGradient(
-          colors: [
-            tokens.violet.withValues(alpha: 0.18),
-            tokens.violet.withValues(alpha: 0.04),
-          ],
-        ),
+        color: tokens.accentSolid(tokens.violet),
       ),
       child: Row(
         children: [
@@ -1814,24 +1870,27 @@ class _ShareLinkCard extends StatelessWidget {
             height: 36,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: tokens.violet.withValues(alpha: 0.2),
+              color: onC.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(Icons.link_rounded, size: 18, color: tokens.violet),
+            child: Icon(Icons.link_rounded, size: 18, color: onC),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Share your booking link',
+                Text('Share your booking link',
                     style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w800)),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: onC)),
                 Text(display,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontSize: 11, color: tokens.textSecondary)),
+                        fontSize: 11,
+                        color: onC.withValues(alpha: 0.75))),
               ],
             ),
           ),
@@ -1843,6 +1902,7 @@ class _ShareLinkCard extends StatelessWidget {
                 ..showSnackBar(
                     const SnackBar(content: Text('Link copied')));
             },
+            style: TextButton.styleFrom(foregroundColor: onC),
             child: const Text('Copy'),
           ),
         ],
@@ -1901,6 +1961,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(tokens.warning);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1910,15 +1971,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: tokens.warning.withValues(alpha: 0.4)),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                tokens.warning.withValues(alpha: 0.16),
-                tokens.warning.withValues(alpha: 0.04),
-              ],
-            ),
+            color: tokens.accentSolid(tokens.warning),
           ),
           child: Row(
             children: [
@@ -1927,11 +1980,11 @@ class _ExpiringMembershipCard extends StatelessWidget {
                 height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: tokens.warning.withValues(alpha: 0.2),
+                  color: onC.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Icon(Icons.card_membership_rounded,
-                    color: tokens.warning, size: 18),
+                    color: onC, size: 18),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -1940,17 +1993,21 @@ class _ExpiringMembershipCard extends StatelessWidget {
                   children: [
                     Text(
                       '$count membership${count == 1 ? '' : 's'} expiring soon',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 13.5),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          color: onC),
                     ),
                     const SizedBox(height: 1),
                     Text('Tap to review and renew',
                         style: TextStyle(
-                            color: tokens.textSecondary, fontSize: 11)),
+                            color: onC.withValues(alpha: 0.75),
+                            fontSize: 11)),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: tokens.textSecondary),
+              Icon(Icons.chevron_right_rounded,
+                  color: onC.withValues(alpha: 0.75)),
             ],
           ),
         ),
@@ -2039,15 +2096,8 @@ class _RevenueOverviewCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: tokens.primary.withValues(alpha: 0.3)),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                tokens.primary.withValues(alpha: 0.16),
-                tokens.primary.withValues(alpha: 0.03),
-              ],
-            ),
+            border: Border.all(color: tokens.borderColor),
+            color: tokens.surface1,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2154,9 +2204,7 @@ class _RevenueOverviewCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Divider(
-                  height: 1,
-                  color: tokens.primary.withValues(alpha: 0.2)),
+              Divider(height: 1, color: tokens.borderColor),
               const SizedBox(height: AppSpacing.md),
               Text('Where it came from',
                   style: TextStyle(
@@ -2495,11 +2543,12 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final onC = tokens.onAccent(accent);
     return Semantics(
       button: true,
       label: label.replaceAll('\n', ' '),
       child: Material(
-        color: tokens.surface1,
+        color: tokens.accentSolid(accent),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -2508,15 +2557,7 @@ class _QuickAction extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: accent.withValues(alpha: 0.28)),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  accent.withValues(alpha: 0.14),
-                  accent.withValues(alpha: 0.02),
-                ],
-              ),
+              color: tokens.accentSolid(accent),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2526,22 +2567,10 @@ class _QuickAction extends StatelessWidget {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [accent, accent.withValues(alpha: 0.6)],
-                    ),
+                    color: onC.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    boxShadow: [
-                      BoxShadow(
-                        color: accent.withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        spreadRadius: -3,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 17),
+                  child: Icon(icon, color: onC, size: 17),
                 ),
                 const SizedBox(height: 6),
                 FittedBox(
@@ -2552,7 +2581,7 @@ class _QuickAction extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: tokens.textPrimary,
+                      color: onC,
                     ),
                   ),
                 ),

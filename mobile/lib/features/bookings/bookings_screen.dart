@@ -384,6 +384,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   Widget _buildWeekStrip() {
     final days = _monthDays;
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -406,7 +407,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                     ),
                     const SizedBox(width: 2),
                     Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 18, color: AppColors.muted),
+                        size: 18, color: tokens.textSecondary),
                   ],
                 ),
               ),
@@ -440,11 +441,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 final isWeekend = day.weekday == DateTime.saturday ||
                     day.weekday == DateTime.sunday;
                 final weekdayColor = selected
-                    ? AppColors.onPrimary
-                    : (isWeekend ? AppColors.warning : AppColors.muted);
+                    ? tokens.onAccent(tokens.primary)
+                    : (isWeekend ? tokens.warning : tokens.textSecondary);
                 final numberColor = selected
-                    ? AppColors.onPrimary
-                    : (isWeekend ? AppColors.warning : AppColors.foreground);
+                    ? tokens.onAccent(tokens.primary)
+                    : (isWeekend ? tokens.warning : tokens.textPrimary);
                 return GestureDetector(
                   onTap: () => _selectDay(day),
                   child: AnimatedContainer(
@@ -452,22 +453,24 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                     curve: Curves.easeOut,
                     width: 54,
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.primary : AppColors.card,
+                      color: selected
+                          ? tokens.accentSolid(tokens.primary)
+                          : tokens.surface1,
                       border: Border.all(
                         color: selected
-                            ? AppColors.primary
+                            ? tokens.accentSolid(tokens.primary)
                             : (isToday
-                                ? AppColors.primary.withValues(alpha: 0.5)
+                                ? tokens.primary.withValues(alpha: 0.5)
                                 : (isWeekend
-                                    ? AppColors.warning.withValues(alpha: 0.4)
-                                    : AppColors.border)),
+                                    ? tokens.warning.withValues(alpha: 0.4)
+                                    : tokens.borderColor)),
                       ),
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       boxShadow: selected
                           ? [
                               BoxShadow(
                                 color:
-                                    AppColors.primary.withValues(alpha: 0.4),
+                                    tokens.primary.withValues(alpha: 0.4),
                                 blurRadius: 16,
                                 spreadRadius: -2,
                                 offset: const Offset(0, 4),
@@ -748,6 +751,19 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
     (label: 'EVENING', startHour: 16, endHour: 24, color: AppColors.electricBlue),
   ];
 
+  Color _bandColor(String label, AppColorTokens t) {
+    switch (label) {
+      case 'TWILIGHT':
+        return t.violet;
+      case 'MORNING':
+        return t.warning;
+      case 'NOON':
+        return t.primary;
+      default:
+        return t.electricBlue;
+    }
+  }
+
   (double, double) _bandRect(
     ({String label, int startHour, int endHour, Color color}) p,
     DateTime winStart,
@@ -784,9 +800,9 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (widget.loading)
-          const LinearProgressIndicator(
+          LinearProgressIndicator(
               minHeight: 2,
-              color: AppColors.primary,
+              color: tokens.primary,
               backgroundColor: Colors.transparent),
         SizedBox(
           height: 42,
@@ -817,25 +833,29 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
                               width: w,
                               top: 0,
                               bottom: 0,
-                              child: Container(
-                                alignment: Alignment.center,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  color: p.color.withValues(alpha: 0.16),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  p.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.clip,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                    color: p.color,
+                              child: Builder(builder: (context) {
+                                final bc = _bandColor(p.label, tokens);
+                                return Container(
+                                  alignment: Alignment.center,
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 1),
+                                  decoration: BoxDecoration(
+                                    color: bc.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                ),
-                              ),
+                                  child: Text(
+                                    p.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.clip,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                      color: bc,
+                                    ),
+                                  ),
+                                );
+                              }),
                             ),
                       ],
                     ),
@@ -1089,7 +1109,7 @@ class _CourtLane extends StatelessWidget {
                         top: 0,
                         bottom: 0,
                         width: _x(range.open!),
-                        child: _closed(),
+                        child: _closed(tokens),
                       ),
                     if (range.close != null && range.close!.isBefore(winEnd))
                       Positioned(
@@ -1097,9 +1117,10 @@ class _CourtLane extends StatelessWidget {
                         right: 0,
                         top: 0,
                         bottom: 0,
-                        child: _closed(),
+                        child: _closed(tokens),
                       ),
-                    if (range.open == null) Positioned.fill(child: _closed()),
+                    if (range.open == null)
+                      Positioned.fill(child: _closed(tokens)),
                     for (final b in row.bookings)
                       _block(
                         context,
@@ -1139,9 +1160,11 @@ class _CourtLane extends StatelessWidget {
     );
   }
 
-  Widget _closed() => Container(
+  Widget _closed(AppColorTokens tokens) => Container(
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.28),
+          color: tokens.isLight
+              ? tokens.surface2
+              : Colors.black.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
       );
@@ -1208,6 +1231,7 @@ class _ScheduleLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     Widget dot(Color c, String label) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1215,24 +1239,24 @@ class _ScheduleLegend extends StatelessWidget {
               width: 9,
               height: 9,
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [c, c.withValues(alpha: 0.55)]),
+                color: c,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
             const SizedBox(width: 4),
             Text(label,
-                style:
-                    const TextStyle(fontSize: 10.5, color: AppColors.muted)),
+                style: TextStyle(
+                    fontSize: 10.5, color: tokens.textSecondary)),
           ],
         );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        dot(AppColors.primary, 'Paid'),
+        dot(tokens.primary, 'Paid'),
         const SizedBox(width: 10),
         dot(const Color(0xFFFFB020), 'Unpaid'),
         const SizedBox(width: 10),
-        dot(AppColors.violet, 'Session'),
+        dot(tokens.violet, 'Session'),
       ],
     );
   }
@@ -1258,6 +1282,7 @@ class _MonthPickerSheetState extends State<_MonthPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -1293,15 +1318,15 @@ class _MonthPickerSheetState extends State<_MonthPickerSheet> {
                   child: Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.primary.withValues(alpha: 0.16) : AppColors.card,
-                      border: Border.all(color: selected ? AppColors.primary : AppColors.border),
+                      color: selected ? tokens.accentSolid(tokens.primary) : tokens.surface1,
+                      border: Border.all(color: selected ? tokens.accentSolid(tokens.primary) : tokens.borderColor),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Text(
                       _monthShort[i],
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: selected ? AppColors.primary : AppColors.foreground,
+                        color: selected ? tokens.onAccent(tokens.primary) : tokens.textPrimary,
                       ),
                     ),
                   ),

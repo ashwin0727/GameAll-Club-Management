@@ -225,7 +225,9 @@ class DashboardRepository {
           .map((p) => (
                 status: p['status'] as String,
                 amountInr: p['amount_inr'] as int,
-                createdAt: DateTime.parse(p['created_at'] as String),
+                // Supabase hands back UTC — bucket by the LOCAL calendar day
+                // or a payment taken before 05:30 IST lands on yesterday.
+                createdAt: DateTime.parse(p['created_at'] as String).toLocal(),
                 bookingId: p['booking_id'] as String?,
                 membershipId: p['membership_id'] as String?,
               ))

@@ -111,6 +111,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
 
+            // Every module hub the app ships, reachable from here as well as
+            // from the "+" menu — permission-gated exactly as that menu is,
+            // so a staff member never sees a door they can't open.
+            _sectionLabel('Manage'),
+            _GroupCard(children: [
+              _NavRow(
+                  icon: Icons.confirmation_number_outlined,
+                  label: 'Guest Bookings',
+                  onTap: () => context.push(AppRoutes.guestBookings)),
+              _NavRow(
+                  icon: Icons.groups_2_outlined,
+                  label: 'Guest Players',
+                  onTap: () => context.push(AppRoutes.guests)),
+              _NavRow(
+                  icon: Icons.event_repeat_outlined,
+                  label: 'Membership Sessions',
+                  onTap: () => context.push(AppRoutes.membershipSessions)),
+              _NavRow(
+                  icon: Icons.card_membership_outlined,
+                  label: 'Memberships',
+                  onTap: () => context.push(AppRoutes.memberships)),
+              _NavRow(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Finance',
+                  onTap: () => context.push(AppRoutes.finance)),
+              _NavRow(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Reports & Analytics',
+                  onTap: () => context.push(AppRoutes.reports)),
+              _NavRow(
+                  icon: Icons.handyman_outlined,
+                  label: 'Maintenance',
+                  onTap: () => context.push(AppRoutes.maintenance)),
+              if (session.can('INVENTORY_VIEW'))
+                _NavRow(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Inventory & Vendors',
+                    onTap: () => context.push(AppRoutes.inventory)),
+              _NavRow(
+                  icon: Icons.currency_exchange_rounded,
+                  label: 'Refunds',
+                  onTap: () => context.push(AppRoutes.refunds)),
+              if (session.can('USERS_VIEW'))
+                _NavRow(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Users & Roles',
+                    onTap: () => context.push(AppRoutes.usersRoles)),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
             _sectionLabel('Facility'),
             _GroupCard(children: [
               _NavRow(
@@ -153,10 +203,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   icon: Icons.receipt_long_outlined,
                   label: 'Invoices & tax',
                   onTap: _soon),
+              // Labelled for where it actually lands — there is no
+              // expense-categories screen; this is the Expenses list.
               _NavRow(
-                  icon: Icons.category_outlined,
-                  label: 'Expense categories',
+                  icon: Icons.receipt_outlined,
+                  label: 'Expenses',
                   onTap: () => context.push(AppRoutes.financeExpenses)),
+              _NavRow(
+                  icon: Icons.pending_actions_outlined,
+                  label: 'Pending payments',
+                  onTap: () =>
+                      context.push(AppRoutes.financePendingPayments)),
+              _NavRow(
+                  icon: Icons.point_of_sale_outlined,
+                  label: 'Daily closing',
+                  onTap: () => context.push(AppRoutes.financeDailyClosing)),
+              _NavRow(
+                  icon: Icons.trending_up_rounded,
+                  label: 'Profit & loss',
+                  onTap: () => context.push(AppRoutes.financeProfitLoss)),
             ]),
             const SizedBox(height: AppSpacing.xl),
 
@@ -477,20 +542,12 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
+    final onC = t.onAccent(t.primary);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: t.primary.withValues(alpha: 0.28)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            t.primary.withValues(alpha: 0.16),
-            t.violet.withValues(alpha: 0.10),
-            t.surface1.withValues(alpha: 0.0),
-          ],
-        ),
+        color: t.accentSolid(t.primary),
       ),
       child: Column(
         children: [
@@ -524,14 +581,17 @@ class _HeaderCard extends StatelessWidget {
                     Text(name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w800)),
+                        style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: onC)),
                     const SizedBox(height: 2),
                     Text(phone,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 12.5, color: t.textSecondary)),
+                            fontSize: 12.5,
+                            color: onC.withValues(alpha: 0.75))),
                   ],
                 ),
               ),
@@ -540,22 +600,20 @@ class _HeaderCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: t.primary.withValues(alpha: 0.14),
+                  color: onC.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: t.primary.withValues(alpha: 0.5)),
                 ),
                 child: Text(roleLabel,
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: t.primary)),
+                        color: onC)),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Material(
-            color: t.surface2,
+            color: t.surface1,
             borderRadius: BorderRadius.circular(AppRadius.md),
             clipBehavior: Clip.antiAlias,
             child: InkWell(

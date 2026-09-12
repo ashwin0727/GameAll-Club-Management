@@ -468,19 +468,17 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final solid = accent != null;
+    final fill = solid ? tokens.accentSolid(accent!) : tokens.surface1;
+    final onFill = solid ? tokens.onAccent(accent!) : null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: accent != null
-              ? accent!.withValues(alpha: 0.08)
-              : tokens.surface1,
+          color: fill,
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-              color: accent != null
-                  ? accent!.withValues(alpha: 0.5)
-                  : tokens.borderColor),
+          border: solid ? null : Border.all(color: tokens.borderColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,18 +487,22 @@ class _MiniStat extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: accent ?? tokens.textSecondary,
+                  color: onFill?.withValues(alpha: 0.8) ??
+                      tokens.textSecondary,
                 )),
             const SizedBox(height: 6),
             Text(amount,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: tokens.textPrimary,
+                  color: onFill ?? tokens.textPrimary,
                 )),
             const SizedBox(height: 2),
             Text(sub,
-                style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: onFill?.withValues(alpha: 0.75) ??
+                        tokens.textSecondary)),
           ],
         ),
       ),
@@ -691,19 +693,23 @@ class _AttentionStrip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: tokens.warning.withValues(alpha: 0.10),
+          color: tokens.accentSolid(tokens.warning),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: tokens.warning.withValues(alpha: 0.4)),
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, size: 18, color: tokens.warning),
+            Icon(Icons.warning_amber_rounded,
+                size: 18, color: tokens.onAccent(tokens.warning)),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(parts.join(' · '),
-                  style: TextStyle(fontSize: 12.5, color: tokens.textPrimary)),
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      color: tokens.onAccent(tokens.warning))),
             ),
-            Icon(Icons.chevron_right, size: 18, color: tokens.textSecondary),
+            Icon(Icons.chevron_right,
+                size: 18,
+                color: tokens.onAccent(tokens.warning).withValues(alpha: 0.75)),
           ],
         ),
       ),

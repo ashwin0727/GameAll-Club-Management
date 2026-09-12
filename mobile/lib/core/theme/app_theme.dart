@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_spacing.dart';
@@ -8,6 +9,22 @@ import 'app_typography.dart';
 /// twice (light + dark) from the same [AppColorTokens] source so both
 /// stay in lockstep. Dark is the primary visual direction (spec); light is
 /// a proper, independently-tuned palette rather than a naive inversion.
+/// System status-bar / navigation-bar styling for a given theme — dark
+/// icons on the light theme, light icons on the dark theme, so the system
+/// bar never reads invisible against the app ground.
+SystemUiOverlayStyle systemOverlayFor(AppColorTokens tokens, Brightness b) {
+  final isLight = b == Brightness.light;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+    statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
+    systemNavigationBarColor: tokens.surface0,
+    systemNavigationBarIconBrightness:
+        isLight ? Brightness.dark : Brightness.light,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+}
+
 class AppTheme {
   const AppTheme._();
 
@@ -29,6 +46,11 @@ class AppTheme {
     final textTheme = AppTypography.textTheme(primaryText: tokens.textPrimary, secondaryText: tokens.textSecondary);
     final base = ThemeData(colorScheme: colorScheme, useMaterial3: true, brightness: brightness, textTheme: textTheme);
 
+    // Status-bar / nav-bar icons must contrast the app ground: dark icons on
+    // the light theme, light icons on the dark theme. Without this the
+    // system bar reads white-on-white in light mode and vanishes.
+    final overlay = systemOverlayFor(tokens, brightness);
+
     return base.copyWith(
       scaffoldBackgroundColor: tokens.surface0,
       extensions: [tokens],
@@ -41,6 +63,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge,
+        systemOverlayStyle: overlay,
       ),
       cardTheme: CardThemeData(
         color: tokens.surface1,
@@ -180,8 +203,12 @@ class AppTheme {
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: tokens.primary),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? tokens.onPrimary : tokens.textSecondary),
-        trackColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? tokens.primary : tokens.surface2),
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? Colors.white : tokens.textSecondary),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? tokens.primary : tokens.surface2),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? Colors.transparent : tokens.borderColor),
       ),
     );
   }

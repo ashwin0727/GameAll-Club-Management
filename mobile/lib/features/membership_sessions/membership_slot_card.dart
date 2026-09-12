@@ -7,7 +7,6 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data/models/membership_session.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
 import 'book_guest_slot_sheet.dart';
 import 'capacity.dart';
 
@@ -115,42 +114,63 @@ class _MembershipSlotCardState extends ConsumerState<MembershipSlotCard> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.tokens;
     final slot = widget.slot;
     final capacity = _capacity;
     final state = computeSlotDisplayState(capacity);
     final releasable = maxReleasable(capacity);
     final restorable = maxRestorable(capacity);
 
-    final String emoji;
+    // Each state gets a real accent rather than an emoji: violet is this
+    // app's membership colour, marigold means "open to guests, money on
+    // the table", red means nothing more can be sold here.
+    final IconData icon;
     final String title;
     final Color tone;
     switch (state) {
       case MembershipSlotDisplayState.membershipAllocated:
       case MembershipSlotDisplayState.membershipPartiallyUsed:
-        emoji = '🔒';
-        title = 'Membership Protected';
-        tone = AppColors.muted;
+        icon = Icons.lock_outline_rounded;
+        title = 'Protected';
+        tone = t.violet;
         break;
       case MembershipSlotDisplayState.membershipFull:
-        emoji = '🔒';
-        title = 'Membership Full';
-        tone = AppColors.muted;
+        icon = Icons.lock_rounded;
+        title = 'Full';
+        tone = t.violet;
         break;
       case MembershipSlotDisplayState.releasedForGuest:
-        emoji = '🟢';
+        icon = Icons.lock_open_rounded;
         title = capacity.guestBookedCount == 0
-            ? 'Guest Capacity Released'
-            : '${capacity.guestAvailableCapacity} Guest Slot${capacity.guestAvailableCapacity == 1 ? '' : 's'} Available';
-        tone = AppColors.warning;
+            ? 'Open to guests'
+            : '${capacity.guestAvailableCapacity} guest slot${capacity.guestAvailableCapacity == 1 ? '' : 's'} left';
+        tone = t.warning;
         break;
       case MembershipSlotDisplayState.guestBooked:
-        emoji = '🔴';
-        title = 'Guest Capacity Full';
-        tone = AppColors.destructive;
+        icon = Icons.event_busy_rounded;
+        title = 'Guests full';
+        tone = t.destructive;
         break;
     }
 
-    return AppCard(
+    // Capacity, split the way an owner actually thinks about it.
+    final total = capacity.capacity <= 0 ? 1 : capacity.capacity;
+    final members = capacity.memberBookedCount.clamp(0, total);
+    final guestsIn = capacity.guestBookedCount.clamp(0, total);
+    final guestsOpen =
+        (capacity.releasedCapacity - capacity.guestBookedCount).clamp(0, total);
+
+    Widget seg(int n, Color c) => n <= 0
+        ? const SizedBox.shrink()
+        : Expanded(flex: n, child: ColoredBox(color: c));
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: t.borderColor),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -162,77 +182,178 @@ class _MembershipSlotCardState extends ConsumerState<MembershipSlotCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${slot.courtName} · ${slot.sportName} · ${slot.startTime.substring(0, 5)}–${slot.endTime.substring(0, 5)}',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      '${slot.startTime.substring(0, 5)} – ${slot.endTime.substring(0, 5)}',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: t.textPrimary),
                     ),
+                    const SizedBox(height: 1),
                     Text(
-                      slot.batchName,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
+                      '${slot.courtName} · ${slot.sportName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(fontSize: 12, color: t.textSecondary),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.12),
+                  color: t.accentSolid(tone),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text(
-                  '$emoji $title',
-                  style: TextStyle(color: tone, fontWeight: FontWeight.w600, fontSize: 11),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 12, color: t.onAccent(tone)),
+                    const SizedBox(width: 4),
+                    Text(title,
+                        style: TextStyle(
+                            color: t.onAccent(tone),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11)),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 2),
+          Text(slot.batchName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: t.violet)),
+          const SizedBox(height: AppSpacing.md),
+
+          // Who is holding this hour — members, guests in, guests still
+          // sellable, and dead space — as one bar instead of a sentence.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              height: 7,
+              child: Row(
+                children: [
+                  seg(members, t.accentSolid(t.violet)),
+                  seg(guestsIn, t.accentSolid(t.warning)),
+                  seg(
+                      guestsOpen,
+                      Color.alphaBlend(
+                          t.warning.withValues(alpha: 0.35), t.surface1)),
+                  seg(
+                      (total - members - guestsIn - guestsOpen)
+                          .clamp(0, total),
+                      t.surface2),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
           Text(
             capacity.releasedCapacity > 0
-                ? '${capacity.memberBookedCount} / ${capacity.capacity} members using · ${capacity.guestBookedCount} / ${capacity.releasedCapacity} guest slots used'
-                : '${capacity.memberBookedCount} / ${capacity.capacity} members using',
-            style: Theme.of(context).textTheme.bodySmall,
+                ? '${capacity.memberBookedCount}/${capacity.capacity} members · ${capacity.guestBookedCount}/${capacity.releasedCapacity} guest slots used'
+                : '${capacity.memberBookedCount}/${capacity.capacity} members · ${capacity.unusedCapacity} unused',
+            style: TextStyle(fontSize: 11.5, color: t.textSecondary),
           ),
-          if (state == MembershipSlotDisplayState.membershipFull)
-            Text(
-              'Guest Play Unavailable — no unused capacity to release.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-            ),
-          if (state == MembershipSlotDisplayState.membershipAllocated ||
-              state == MembershipSlotDisplayState.membershipPartiallyUsed)
-            Text(
-              '${capacity.unusedCapacity} unused membership slot${capacity.unusedCapacity == 1 ? '' : 's'}.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
-            ),
-          if (_error != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(_error!, style: const TextStyle(color: AppColors.destructive)),
+          if (state == MembershipSlotDisplayState.membershipFull) ...[
+            const SizedBox(height: 2),
+            Text('No unused capacity to release for guest play.',
+                style: TextStyle(fontSize: 11.5, color: t.textSecondary)),
           ],
-          const SizedBox(height: AppSpacing.sm),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Color.alphaBlend(
+                    t.destructive.withValues(alpha: 0.12), t.surface1),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Text(_error!,
+                  style: TextStyle(color: t.destructive, fontSize: 12)),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
               if (releasable > 0)
-                OutlinedButton(
-                  onPressed: _pending != null ? null : () => _release(releasable),
-                  child: Text(_pending == _Pending.release ? 'Releasing…' : 'Release $releasable for Guest Play'),
+                _SlotAction(
+                  label: _pending == _Pending.release
+                      ? 'Releasing…'
+                      : 'Release $releasable to guests',
+                  accent: t.warning,
+                  onTap: _pending != null ? null : () => _release(releasable),
                 ),
               if (restorable > 0)
-                OutlinedButton(
-                  onPressed: _pending != null ? null : () => _restore(restorable),
-                  child: Text(
-                    _pending == _Pending.restore ? 'Restoring…' : 'Restore $restorable Slot${restorable == 1 ? '' : 's'}',
-                  ),
+                _SlotAction(
+                  label: _pending == _Pending.restore
+                      ? 'Restoring…'
+                      : 'Restore $restorable',
+                  onTap: _pending != null ? null : () => _restore(restorable),
                 ),
               if (capacity.releasedCapacity > 0)
-                FilledButton(
-                  onPressed: capacity.guestAvailableCapacity == 0 ? null : _openBookGuestSlot,
-                  child: Text(capacity.guestAvailableCapacity > 0 ? 'Book Guest' : 'Guest Capacity Full'),
+                _SlotAction(
+                  label: capacity.guestAvailableCapacity > 0
+                      ? 'Book guest'
+                      : 'Guests full',
+                  accent: t.primary,
+                  onTap: capacity.guestAvailableCapacity == 0
+                      ? null
+                      : _openBookGuestSlot,
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A pill action. Solid when it carries an accent, quiet outline otherwise —
+/// so "Release to guests" and "Book guest" read as the money-making moves
+/// and "Restore" stays secondary.
+class _SlotAction extends StatelessWidget {
+  const _SlotAction({required this.label, required this.onTap, this.accent});
+
+  final String label;
+  final VoidCallback? onTap;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final disabled = onTap == null;
+    final solid = accent != null && !disabled;
+    return Opacity(
+      opacity: disabled ? 0.5 : 1,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: 9),
+          decoration: BoxDecoration(
+            color: solid ? t.accentSolid(accent!) : t.surface2,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: solid ? null : Border.all(color: t.borderColor),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: solid ? t.onAccent(accent!) : t.textPrimary,
+            ),
+          ),
+        ),
       ),
     );
   }

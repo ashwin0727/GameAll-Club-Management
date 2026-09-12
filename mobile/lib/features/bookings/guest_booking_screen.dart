@@ -555,17 +555,9 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 height: _stepCircleSize,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: (done || active)
-                      ? LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color.lerp(t.primary, Colors.white, 0.18)!,
-                            t.primary,
-                          ],
-                        )
-                      : null,
-                  color: (done || active) ? null : t.surface2,
+                  color: (done || active)
+                      ? t.accentSolid(t.primary)
+                      : t.surface2,
                   shape: BoxShape.circle,
                   border: Border.all(
                       color: (done || active)
@@ -577,12 +569,15 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                       : null,
                 ),
                 child: done
-                    ? Icon(Icons.check_rounded, size: 16, color: t.onPrimary)
+                    ? Icon(Icons.check_rounded,
+                        size: 16, color: t.onAccent(t.primary))
                     : Text('${idx + 1}',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: active ? t.onPrimary : t.textSecondary)),
+                            color: active
+                                ? t.onAccent(t.primary)
+                                : t.textSecondary)),
               ),
               const SizedBox(height: 6),
               SizedBox(
@@ -628,15 +623,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 height: 30,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      t.violet,
-                      t.violet.withValues(alpha: 0.6),
-                    ],
-                  ),
+                  color: t.accentSolid(t.violet),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, size: 16, color: Colors.white),
+                child: Icon(icon, size: 16, color: t.onAccent(t.violet)),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(title,
@@ -790,11 +780,11 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                 BorderRadius.circular(AppRadius.md),
                             border: Border.all(
                                 color: selected
-                                    ? t.violet
+                                    ? t.accentSolid(t.violet)
                                     : t.borderColor,
                                 width: selected ? 1.5 : 1),
                             color: selected
-                                ? t.violet.withValues(alpha: 0.14)
+                                ? t.accentSolid(t.violet)
                                 : t.surface2,
                           ),
                           child: Column(
@@ -806,9 +796,12 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(c.name,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.w800,
-                                            fontSize: 13),
+                                            fontSize: 13,
+                                            color: selected
+                                                ? t.onAccent(t.violet)
+                                                : t.textPrimary),
                                         overflow: TextOverflow.ellipsis),
                                   ),
                                   Icon(
@@ -817,7 +810,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                         : Icons.circle_outlined,
                                     size: 18,
                                     color: selected
-                                        ? t.violet
+                                        ? t.onAccent(t.violet)
                                         : t.textSecondary,
                                   ),
                                 ],
@@ -829,7 +822,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                       : 'Outdoor',
                                   style: TextStyle(
                                       fontSize: 11,
-                                      color: t.textSecondary)),
+                                      color: selected
+                                          ? t.onAccent(t.violet)
+                                              .withValues(alpha: 0.75)
+                                          : t.textSecondary)),
                             ],
                           ),
                         ),
@@ -863,20 +859,20 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md, vertical: 9),
                   decoration: BoxDecoration(
-                    color: t.primary.withValues(alpha: 0.12),
+                    color: t.accentSolid(t.primary),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.hourglass_bottom_rounded,
-                          size: 14, color: t.primary),
+                          size: 14, color: t.onAccent(t.primary)),
                       const SizedBox(width: 6),
                       Text(
                           'Duration: ${_hours.toStringAsFixed(_hours == _hours.roundToDouble() ? 0 : 1)} hr',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: t.primary)),
+                              color: t.onAccent(t.primary))),
                     ],
                   ),
                 ),
@@ -1128,16 +1124,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            t.primary.withValues(alpha: 0.22),
-            t.primary.withValues(alpha: 0.06),
-          ],
-        ),
+        color: t.accentSolid(t.primary),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: t.primary.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -1145,7 +1133,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             child: Text('Total Amount',
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: t.textPrimary,
+                    color: t.onAccent(t.primary),
                     fontSize: 14)),
           ),
           Text(
@@ -1153,7 +1141,9 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 ? '—'
                 : Formatters.currencyInr((_grandTotalMinor! / 100).round()),
             style: TextStyle(
-                fontWeight: FontWeight.w800, color: t.primary, fontSize: 18),
+                fontWeight: FontWeight.w800,
+                color: t.onAccent(t.primary),
+                fontSize: 18),
           ),
         ],
       ),
@@ -1204,10 +1194,12 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.md),
               border: Border.all(
-                  color: selected ? t.violet : t.borderColor,
+                  color: selected
+                      ? t.accentSolid(t.violet)
+                      : t.borderColor,
                   width: selected ? 1.5 : 1),
               color: selected
-                  ? t.violet.withValues(alpha: 0.10)
+                  ? t.accentSolid(t.violet)
                   : t.surface2,
             ),
             child: Row(
@@ -1218,19 +1210,29 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                         ? Icons.radio_button_checked
                         : Icons.radio_button_unchecked,
                     size: 18,
-                    color: selected ? t.violet : t.textSecondary),
+                    color: selected
+                        ? t.onAccent(t.violet)
+                        : t.textSecondary),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: selected
+                                  ? t.onAccent(t.violet)
+                                  : t.textPrimary)),
                       const SizedBox(height: 1),
                       Text(subtitle,
                           style: TextStyle(
-                              fontSize: 11.5, color: t.textSecondary)),
+                              fontSize: 11.5,
+                              color: selected
+                                  ? t.onAccent(t.violet)
+                                      .withValues(alpha: 0.8)
+                                  : t.textSecondary)),
                     ],
                   ),
                 ),
@@ -1479,14 +1481,7 @@ class _BookingConfirmedSheet extends StatelessWidget {
                   height: 40,
                   width: 40,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color.lerp(t.primary, Colors.white, 0.18)!,
-                        t.primary,
-                      ],
-                    ),
+                    color: t.accentSolid(t.primary),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     boxShadow: [
                       BoxShadow(
@@ -1496,7 +1491,8 @@ class _BookingConfirmedSheet extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(Icons.check_rounded, color: t.onPrimary, size: 24),
+                  child: Icon(Icons.check_rounded,
+                      color: t.onAccent(t.primary), size: 24),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 const Expanded(

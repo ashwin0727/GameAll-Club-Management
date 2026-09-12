@@ -1130,15 +1130,8 @@ class _OverviewCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: green.withValues(alpha: 0.35)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              green.withValues(alpha: 0.22),
-              green.withValues(alpha: 0.04),
-            ],
-          ),
+          border: Border.all(color: tokens.borderColor),
+          color: tokens.surface1,
         ),
         child: Stack(
           children: [
@@ -1576,12 +1569,12 @@ class _FilterPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: 9),
         decoration: BoxDecoration(
-          color: selected
-              ? tokens.violet.withValues(alpha: 0.16)
-              : tokens.surface2,
+          color: selected ? tokens.accentSolid(tokens.violet) : tokens.surface2,
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
-            color: selected ? tokens.violet : tokens.borderColor,
+            color: selected
+                ? tokens.accentSolid(tokens.violet)
+                : tokens.borderColor,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1589,14 +1582,17 @@ class _FilterPill extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (selected) ...[
-              Icon(Icons.check_rounded, size: 14, color: tokens.violet),
+              Icon(Icons.check_rounded,
+                  size: 14, color: tokens.onAccent(tokens.violet)),
               const SizedBox(width: 4),
             ],
             Text(label,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? tokens.violet : tokens.textPrimary,
+                  color: selected
+                      ? tokens.onAccent(tokens.violet)
+                      : tokens.textPrimary,
                 )),
           ],
         ),
@@ -1615,11 +1611,7 @@ class _NewBookingFab extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [tokens.primary, tokens.primary.withValues(alpha: 0.72)],
-        ),
+        color: tokens.accentSolid(tokens.primary),
         boxShadow: [
           BoxShadow(
             color: tokens.primary.withValues(alpha: 0.42),
@@ -1640,11 +1632,12 @@ class _NewBookingFab extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.add_rounded, size: 18, color: tokens.onPrimary),
+                Icon(Icons.add_rounded,
+                    size: 18, color: tokens.onAccent(tokens.primary)),
                 const SizedBox(width: AppSpacing.sm),
                 Text('New booking',
                     style: TextStyle(
-                        color: tokens.onPrimary,
+                        color: tokens.onAccent(tokens.primary),
                         fontWeight: FontWeight.w800,
                         fontSize: 14)),
               ],

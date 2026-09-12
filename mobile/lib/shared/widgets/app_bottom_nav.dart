@@ -22,29 +22,29 @@ const _tabs = <({
 })>[
   (
     tab: AppTab.today,
-    icon: Icons.monitor_heart_outlined,
-    activeIcon: Icons.monitor_heart_rounded,
+    icon: Icons.today_outlined,
+    activeIcon: Icons.today_rounded,
     label: 'Today',
     route: AppRoutes.dashboard,
   ),
   (
     tab: AppTab.courts,
-    icon: Icons.calendar_today_outlined,
-    activeIcon: Icons.calendar_today_rounded,
+    icon: Icons.calendar_month_outlined,
+    activeIcon: Icons.calendar_month_rounded,
     label: 'Courts',
     route: AppRoutes.bookings,
   ),
   (
     tab: AppTab.money,
-    icon: Icons.credit_card_outlined,
-    activeIcon: Icons.credit_card_rounded,
+    icon: Icons.account_balance_wallet_outlined,
+    activeIcon: Icons.account_balance_wallet_rounded,
     label: 'Money',
     route: AppRoutes.finance,
   ),
   (
     tab: AppTab.members,
-    icon: Icons.people_alt_outlined,
-    activeIcon: Icons.people_alt_rounded,
+    icon: Icons.groups_outlined,
+    activeIcon: Icons.groups_rounded,
     label: 'Members',
     route: AppRoutes.memberships,
   ),
@@ -54,16 +54,16 @@ const _tabs = <({
 /// Create actions for Plans / People / Sessions now live as a context-aware
 /// button on the Members hub itself, so they're intentionally not repeated here.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
-  (icon: Icons.event_available_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
-  (icon: Icons.groups_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
+  (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
+  (icon: Icons.groups_2_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
   (icon: Icons.event_repeat_outlined, label: 'Membership Sessions', route: AppRoutes.membershipSessions, permission: null),
   (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
-  (icon: Icons.insights_outlined, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
-  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
+  (icon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
+  (icon: Icons.handyman_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
   (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
-  (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
-  (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
-  (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),
+  (icon: Icons.currency_exchange_rounded, label: 'Refunds', route: AppRoutes.refunds, permission: null),
+  (icon: Icons.admin_panel_settings_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
+  (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),
 ];
 
 /// Floating bottom navigation — a rounded, shadowed bar that hovers above
@@ -469,53 +469,31 @@ class _SpeedDialOverlay extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: AppSpacing.md),
             child: GestureDetector(
               onTap: () => onSelect(d.route),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: tokens.surface2,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(color: tokens.borderColor),
+              // Name only — no icon. A row of glowing green name pills
+              // reads faster than a column of icons the owner has to
+              // decode, and every destination here is a word, not a shape.
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg, vertical: 12),
+                decoration: BoxDecoration(
+                  color: tokens.accentSolid(tokens.primary),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  boxShadow: [
+                    BoxShadow(
+                      color: tokens.primary.withValues(alpha: 0.45),
+                      blurRadius: 22,
+                      spreadRadius: -3,
+                      offset: const Offset(0, 6),
                     ),
-                    child: Text(d.label,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: tokens.textPrimary,
-                            decoration: TextDecoration.none)),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Container(
-                    height: 48,
-                    width: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.lerp(tokens.primary, Colors.white, 0.16)!,
-                          tokens.primary,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: tokens.primary.withValues(alpha: 0.5),
-                          blurRadius: 22,
-                          spreadRadius: -2,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Icon(d.icon, size: 20, color: tokens.onPrimary),
-                  ),
-                ],
+                  ],
+                ),
+                child: Text(d.label,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.1,
+                        color: tokens.onAccent(tokens.primary),
+                        decoration: TextDecoration.none)),
               ),
             ),
           ),
