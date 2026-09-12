@@ -25,6 +25,7 @@ const SOURCE_LABEL: Record<PaymentObligation["sourceType"], string> = {
   GUEST_BOOKING: "Guest Booking",
   BOOKING: "Court Booking",
   MEMBERSHIP: "Membership",
+  COACHING_ENROLLMENT: "Coaching",
 };
 
 function today(): string {

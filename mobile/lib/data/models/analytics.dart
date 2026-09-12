@@ -453,6 +453,7 @@ class ReportRevenueBreakdown {
     required this.membershipMinor,
     required this.memberBookingMinor,
     required this.guestBookingMinor,
+    required this.coachingMinor,
     required this.refundsMinor,
     required this.netMinor,
   });
@@ -460,6 +461,7 @@ class ReportRevenueBreakdown {
   final int membershipMinor;
   final int memberBookingMinor;
   final int guestBookingMinor;
+  final int coachingMinor;
   final int refundsMinor;
   final int netMinor;
 
@@ -467,6 +469,7 @@ class ReportRevenueBreakdown {
         membershipMinor: _int(json['membership_revenue_minor']),
         memberBookingMinor: _int(json['member_booking_revenue_minor']),
         guestBookingMinor: _int(json['guest_booking_revenue_minor']),
+        coachingMinor: _int(json['coaching_revenue_minor']),
         refundsMinor: _int(json['refunds_minor']),
         netMinor: _int(json['net_revenue_minor']),
       );

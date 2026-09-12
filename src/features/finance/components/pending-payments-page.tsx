@@ -30,6 +30,7 @@ const SOURCE_LABEL: Record<ObligationSource, string> = {
   GUEST_BOOKING: "Guest Booking",
   BOOKING: "Court Booking",
   MEMBERSHIP: "Membership",
+  COACHING_ENROLLMENT: "Coaching",
 };
 
 function statusTone(status: PaymentObligation["status"]): "success" | "warning" | "destructive" | "secondary" {

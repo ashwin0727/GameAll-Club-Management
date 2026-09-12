@@ -331,32 +331,44 @@ void main() {
   group('buildRevenueOverview', () {
     final now = DateTime(2026, 8, 15);
 
-    ({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId}) pay(
+    ({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId, String? coachingEnrollmentId})
+        pay(
       int amount,
       DateTime at, {
       String status = 'paid',
       String? bookingId,
       String? membershipId,
-    }) => (status: status, amountInr: amount, createdAt: at, bookingId: bookingId, membershipId: membershipId);
+      String? coachingEnrollmentId,
+    }) => (
+          status: status,
+          amountInr: amount,
+          createdAt: at,
+          bookingId: bookingId,
+          membershipId: membershipId,
+          coachingEnrollmentId: coachingEnrollmentId,
+        );
 
     test('totals the selected month, compares to previous, always returns a full day series', () {
       final payments = [
-        pay(1000, DateTime(2026, 7, 10)),
+        pay(1300, DateTime(2026, 7, 10)),
         pay(400, DateTime(2026, 8, 2), bookingId: 'b1'),
         pay(600, DateTime(2026, 8, 20), membershipId: 'm1'),
+        pay(300, DateTime(2026, 8, 12), coachingEnrollmentId: 'e1'),
         pay(999, DateTime(2026, 8, 5), status: 'created'),
       ];
       final ov = DashboardCalculator.buildRevenueOverview(payments, now, 0);
       expect(ov.monthLabel, 'Aug 2026');
-      expect(ov.totalInr, 1000);
-      expect(ov.changePercent, 0);
+      expect(ov.totalInr, 1300);
+      expect(ov.changePercent, 0); // Aug 1300 == Jul 1300
       expect(ov.points, hasLength(31));
-      expect(ov.points.fold<int>(0, (s, p) => s + p.amountInr), 1000);
+      expect(ov.points.fold<int>(0, (s, p) => s + p.amountInr), 1300);
       final byKey = {for (final s in ov.breakdown) s.key: s};
       expect(byKey[RevenueBreakdownKey.bookings]!.amountInr, 400);
       expect(byKey[RevenueBreakdownKey.bookings]!.count, 1);
       expect(byKey[RevenueBreakdownKey.memberships]!.amountInr, 600);
-      expect(byKey[RevenueBreakdownKey.coaching]!.unavailable, isTrue);
+      expect(byKey[RevenueBreakdownKey.coaching]!.amountInr, 300);
+      expect(byKey[RevenueBreakdownKey.coaching]!.count, 1);
+      expect(byKey[RevenueBreakdownKey.coaching]!.unavailable, isFalse);
     });
 
     test('returns a zero-filled month (non-empty) when there is no revenue', () {

@@ -145,6 +145,7 @@ export interface RevenueBreakdown {
   membershipMinor: number;
   memberBookingMinor: number;
   guestBookingMinor: number;
+  coachingMinor: number;
   refundsMinor: number;
   netMinor: number;
 }

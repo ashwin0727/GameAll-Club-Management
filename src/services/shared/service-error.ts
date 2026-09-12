@@ -51,6 +51,12 @@ export type ServiceErrorCode =
   | "INVENTORY_DUPLICATE"
   | "INVENTORY_RULE_ERROR"
   | "INVENTORY_DATA_ERROR"
+  | "COACHING_ACCESS_DENIED"
+  | "COACHING_NOT_FOUND"
+  | "COACHING_DUPLICATE"
+  | "COACHING_CONFLICT"
+  | "COACHING_RULE_ERROR"
+  | "COACHING_DATA_ERROR"
   | "DATABASE_ERROR";
 
 const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
@@ -108,6 +114,14 @@ const FRIENDLY_MESSAGE: Record<ServiceErrorCode, string> = {
   // Overridden per-call with the specific rule the RPC rejected the request for.
   INVENTORY_RULE_ERROR: "Unable to complete this action.",
   INVENTORY_DATA_ERROR: "Unable to load inventory data. Please try again.",
+  COACHING_ACCESS_DENIED: "You don't have permission to do that.",
+  COACHING_NOT_FOUND: "That record could not be found.",
+  COACHING_DUPLICATE: "That already exists.",
+  // Overridden per-call with the specific conflict (coach/court/booking/maintenance).
+  COACHING_CONFLICT: "That time slot isn't available.",
+  // Overridden per-call with the specific rule the RPC rejected the request for.
+  COACHING_RULE_ERROR: "Unable to complete this action.",
+  COACHING_DATA_ERROR: "Unable to load coaching data. Please try again.",
   DATABASE_ERROR: "Something went wrong. Please try again.",
 };
 

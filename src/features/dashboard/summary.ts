@@ -499,6 +499,7 @@ type RevenuePayment = {
   created_at: string;
   booking_id?: string | null;
   membership_id?: string | null;
+  coaching_enrollment_id?: string | null;
 };
 
 export function buildRevenueOverview(
@@ -527,12 +528,14 @@ export function buildRevenueOverview(
     to: monthEndD.toISOString(),
   });
 
-  // Breakdown: bookings vs memberships come from the payment's linked entity;
-  // coaching has no payment source yet; "other" catches anything uncategorised.
+  // Breakdown: bookings / memberships / coaching come from the payment's
+  // linked entity; "other" catches anything uncategorised.
   let bookingCount = 0;
   let bookingInr = 0;
   let membershipCount = 0;
   let membershipInr = 0;
+  let coachingCount = 0;
+  let coachingInr = 0;
   let otherCount = 0;
   let otherInr = 0;
   for (const p of monthPaid) {
@@ -542,6 +545,9 @@ export function buildRevenueOverview(
     } else if (p.booking_id != null) {
       bookingCount++;
       bookingInr += p.amount_inr;
+    } else if (p.coaching_enrollment_id != null) {
+      coachingCount++;
+      coachingInr += p.amount_inr;
     } else {
       otherCount++;
       otherInr += p.amount_inr;
@@ -557,7 +563,7 @@ export function buildRevenueOverview(
     breakdown: [
       { key: "bookings", label: "Bookings", amountInr: bookingInr, count: bookingCount, unavailable: false },
       { key: "memberships", label: "Memberships", amountInr: membershipInr, count: membershipCount, unavailable: false },
-      { key: "coaching", label: "Coaching", amountInr: 0, count: null, unavailable: true },
+      { key: "coaching", label: "Coaching", amountInr: coachingInr, count: coachingCount || null, unavailable: coachingInr === 0 },
       { key: "other", label: "Other", amountInr: otherInr, count: otherCount || null, unavailable: otherInr === 0 },
     ],
   };

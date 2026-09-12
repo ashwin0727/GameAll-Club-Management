@@ -230,6 +230,7 @@ class RevenueBreakdown {
     required this.membershipRevenueMinor,
     required this.memberBookingRevenueMinor,
     required this.guestBookingRevenueMinor,
+    required this.coachingRevenueMinor,
     required this.refundsMinor,
     required this.netRevenueMinor,
     required this.membershipIncludedUsageCount,
@@ -238,6 +239,7 @@ class RevenueBreakdown {
   final int membershipRevenueMinor;
   final int memberBookingRevenueMinor;
   final int guestBookingRevenueMinor;
+  final int coachingRevenueMinor;
   final int refundsMinor;
   final int netRevenueMinor;
   final int membershipIncludedUsageCount;
@@ -247,6 +249,7 @@ class RevenueBreakdown {
       membershipRevenueMinor: (json['membership_revenue_minor'] as num).toInt(),
       memberBookingRevenueMinor: (json['member_booking_revenue_minor'] as num).toInt(),
       guestBookingRevenueMinor: (json['guest_booking_revenue_minor'] as num).toInt(),
+      coachingRevenueMinor: (json['coaching_revenue_minor'] as num?)?.toInt() ?? 0,
       refundsMinor: (json['refunds_minor'] as num).toInt(),
       netRevenueMinor: (json['net_revenue_minor'] as num).toInt(),
       membershipIncludedUsageCount: (json['membership_included_usage_count'] as num).toInt(),
@@ -1195,7 +1198,8 @@ class ListLedgerInput {
 enum ObligationSource {
   guestBooking,
   booking,
-  membership;
+  membership,
+  coachingEnrollment;
 
   String toJson() {
     switch (this) {
@@ -1205,6 +1209,8 @@ enum ObligationSource {
         return 'BOOKING';
       case ObligationSource.membership:
         return 'MEMBERSHIP';
+      case ObligationSource.coachingEnrollment:
+        return 'COACHING_ENROLLMENT';
     }
   }
 
@@ -1216,6 +1222,8 @@ enum ObligationSource {
         return ObligationSource.booking;
       case 'MEMBERSHIP':
         return ObligationSource.membership;
+      case 'COACHING_ENROLLMENT':
+        return ObligationSource.coachingEnrollment;
       default:
         throw ArgumentError('Unknown ObligationSource: $value');
     }
@@ -1229,6 +1237,8 @@ enum ObligationSource {
         return 'Court Booking';
       case ObligationSource.membership:
         return 'Membership';
+      case ObligationSource.coachingEnrollment:
+        return 'Coaching';
     }
   }
 }

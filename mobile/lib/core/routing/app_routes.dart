@@ -122,6 +122,37 @@ class AppRoutes {
   static const inventoryVendorDetail = '/inventory/vendors/:vendorId';
   static const inventoryCategories = '/inventory/categories';
 
+  /// Coaching Management. Web's NAV_ITEMS "Coaching" sidebar group; mobile has
+  /// no sidebar, so `/coaching` is the Overview and each section is its own
+  /// screen (same pattern as Finance/Reports/Maintenance/Inventory).
+  static const coaching = '/coaching';
+  static const coachingCoaches = '/coaching/coaches';
+  static const coachingCoachAdd = '/coaching/coaches/add';
+
+  /// `:coachId` is a coaches id.
+  static const coachingCoachDetail = '/coaching/coaches/:coachId';
+  static const coachingPrograms = '/coaching/programs';
+  static const coachingProgramNew = '/coaching/programs/new';
+
+  /// `:programId` is a coaching_programs id.
+  static const coachingProgramDetail = '/coaching/programs/:programId';
+  static const coachingSchedule = '/coaching/schedule';
+  static const coachingSessions = '/coaching/sessions';
+  static const coachingSessionNew = '/coaching/sessions/new';
+
+  /// `:sessionId` is a coaching_sessions id.
+  static const coachingSessionDetail = '/coaching/sessions/:sessionId';
+  static const coachingEnrollments = '/coaching/enrollments';
+
+  /// `:enrollmentId` is a coaching_enrollments id.
+  static const coachingEnrollmentDetail = '/coaching/enrollments/:enrollmentId';
+  static const coachingReports = '/coaching/reports';
+
+  /// Tournament Management is a SEPARATE app — this route is a handoff/bridge
+  /// screen that explains it and opens or links to it. No tournament features
+  /// live in this app.
+  static const tournaments = '/tournaments';
+
   /// Forced first-sign-in password reset for an admin-created staff account.
   static const setPassword = '/set-password';
 

@@ -175,6 +175,7 @@ export function FinanceDashboard() {
           { label: "Guest Bookings", value: breakdown.guestBookingRevenueMinor },
           { label: "Memberships", value: breakdown.membershipRevenueMinor },
           { label: "Member Bookings", value: breakdown.memberBookingRevenueMinor },
+          { label: "Coaching", value: breakdown.coachingRevenueMinor },
         ],
         REVENUE_COLOURS,
       )

@@ -431,7 +431,7 @@ class DashboardCalculator {
   /// month. The series is always one point per day (zero-filled). Mirrors
   /// src/features/dashboard/summary.ts `buildRevenueOverview`.
   static RevenueOverview buildRevenueOverview(
-    List<({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId})> payments,
+    List<({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId, String? coachingEnrollmentId})> payments,
     DateTime now,
     int monthOffset,
   ) {
@@ -439,7 +439,7 @@ class DashboardCalculator {
     final monthEnd = DateTime(now.year, now.month - monthOffset + 1, 1);
     final prevMonthStart = DateTime(now.year, now.month - monthOffset - 1, 1);
 
-    Iterable<({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId})>
+    Iterable<({String status, int amountInr, DateTime createdAt, String? bookingId, String? membershipId, String? coachingEnrollmentId})>
         paidBetween(DateTime from, DateTime to) => payments.where(
               (p) => p.status == 'paid' && !p.createdAt.isBefore(from) && p.createdAt.isBefore(to),
             );
@@ -454,7 +454,14 @@ class DashboardCalculator {
       DateRange(from: monthStart, to: monthEnd),
     );
 
-    var bookingCount = 0, bookingInr = 0, membershipCount = 0, membershipInr = 0, otherCount = 0, otherInr = 0;
+    var bookingCount = 0,
+        bookingInr = 0,
+        membershipCount = 0,
+        membershipInr = 0,
+        coachingCount = 0,
+        coachingInr = 0,
+        otherCount = 0,
+        otherInr = 0;
     for (final p in monthPaid) {
       if (p.membershipId != null) {
         membershipCount++;
@@ -462,6 +469,9 @@ class DashboardCalculator {
       } else if (p.bookingId != null) {
         bookingCount++;
         bookingInr += p.amountInr;
+      } else if (p.coachingEnrollmentId != null) {
+        coachingCount++;
+        coachingInr += p.amountInr;
       } else {
         otherCount++;
         otherInr += p.amountInr;
@@ -488,12 +498,12 @@ class DashboardCalculator {
           count: membershipCount,
           unavailable: false,
         ),
-        const RevenueBreakdownSegment(
+        RevenueBreakdownSegment(
           key: RevenueBreakdownKey.coaching,
           label: 'Coaching',
-          amountInr: 0,
-          count: null,
-          unavailable: true,
+          amountInr: coachingInr,
+          count: coachingCount == 0 ? null : coachingCount,
+          unavailable: coachingInr == 0,
         ),
         RevenueBreakdownSegment(
           key: RevenueBreakdownKey.other,

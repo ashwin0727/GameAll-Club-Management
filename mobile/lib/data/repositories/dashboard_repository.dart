@@ -77,7 +77,7 @@ class DashboardRepository {
 
       final paymentsRows = await _client
           .from('payments')
-          .select('status, amount_inr, created_at, booking_id, membership_id')
+          .select('status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id')
           .eq('facility_id', facilityId)
           .gte('created_at', earliestFrom.toIso8601String())
           .lt('created_at', period.current.to.toIso8601String());
@@ -87,7 +87,7 @@ class DashboardRepository {
       final revWindowTo = DateTime(now.year, now.month - revenueMonthOffset + 1, 1);
       final revenuePaymentsRows = await _client
           .from('payments')
-          .select('status, amount_inr, created_at, booking_id, membership_id')
+          .select('status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id')
           .eq('facility_id', facilityId)
           .gte('created_at', revWindowFrom.toIso8601String())
           .lt('created_at', revWindowTo.toIso8601String());
@@ -153,13 +153,14 @@ class DashboardRepository {
 
       final allPayments = (paymentsRows as List<dynamic>).cast<Map<String, dynamic>>();
 
-      List<({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt})>
+      List<({String status, int amountInr, String? bookingId, String? membershipId, String? coachingEnrollmentId, DateTime createdAt})>
           paymentsInWindow(DateRange w) => allPayments
               .map((p) => (
                     status: p['status'] as String,
                     amountInr: p['amount_inr'] as int,
                     bookingId: p['booking_id'] as String?,
                     membershipId: p['membership_id'] as String?,
+                    coachingEnrollmentId: p['coaching_enrollment_id'] as String?,
                     createdAt: DateTime.parse(p['created_at'] as String),
                   ))
               .where((p) => !p.createdAt.isBefore(w.from) && p.createdAt.isBefore(w.to))
@@ -198,13 +199,13 @@ class DashboardRepository {
 
       final scope = sportScope;
       bool paymentInScope(
-              ({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt}) p) =>
+              ({String status, int amountInr, String? bookingId, String? membershipId, String? coachingEnrollmentId, DateTime createdAt}) p) =>
           scope == null ||
           (p.bookingId != null && scope.bookingIds.contains(p.bookingId)) ||
           (p.membershipId != null && scope.membershipIds.contains(p.membershipId));
 
       ({String status, int amountInr, String? bookingId, String? membershipId}) revenueShape(
-              ({String status, int amountInr, String? bookingId, String? membershipId, DateTime createdAt}) p) =>
+              ({String status, int amountInr, String? bookingId, String? membershipId, String? coachingEnrollmentId, DateTime createdAt}) p) =>
           (status: p.status, amountInr: p.amountInr, bookingId: p.bookingId, membershipId: p.membershipId);
 
       final scopedCurrentPayments = scope == null ? currentPayments : currentPayments.where(paymentInScope).toList();
@@ -230,6 +231,7 @@ class DashboardRepository {
                 createdAt: DateTime.parse(p['created_at'] as String).toLocal(),
                 bookingId: p['booking_id'] as String?,
                 membershipId: p['membership_id'] as String?,
+                coachingEnrollmentId: p['coaching_enrollment_id'] as String?,
               ))
           .toList();
       final revenueOverview = DashboardCalculator.buildRevenueOverview(revenuePayments, now, revenueMonthOffset);

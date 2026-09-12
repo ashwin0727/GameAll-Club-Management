@@ -173,6 +173,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                 (label: 'Guest Bookings', value: analyticsAmount(b?.guestBookingMinor ?? 0)),
                 (label: 'Memberships', value: analyticsAmount(b?.membershipMinor ?? 0)),
                 (label: 'Member Bookings', value: analyticsAmount(b?.memberBookingMinor ?? 0)),
+                (label: 'Coaching', value: analyticsAmount(b?.coachingMinor ?? 0)),
                 (label: 'Refunds', value: analyticsAmount(b?.refundsMinor ?? 0)),
               ]),
             ),

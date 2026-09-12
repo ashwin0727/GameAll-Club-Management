@@ -61,9 +61,9 @@ const _moreDestinations = <({IconData icon, String label, String route, String? 
   (icon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
   (icon: Icons.handyman_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
   (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
-  (icon: Icons.currency_exchange_rounded, label: 'Refunds', route: AppRoutes.refunds, permission: null),
-  (icon: Icons.admin_panel_settings_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
-  (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),
+  (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
+  (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
+  (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),
 ];
 
 /// Floating bottom navigation — a rounded, shadowed bar that hovers above
