@@ -31,6 +31,7 @@ export function BookGuestSlotDialog({
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [isBooking, setIsBooking] = useState(false);
+  const [isSavingGuest, setIsSavingGuest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { startCheckout, isProcessing: isPaying } = usePaymentCheckout();
 
@@ -57,12 +58,15 @@ export function BookGuestSlotDialog({
       setError(phoneError);
       return;
     }
+    setIsSavingGuest(true);
     try {
       const guest = await getGuestService().findOrCreateGuest({ facilityId, name: newName, phone: newPhone.trim() || null });
       setSelectedGuest(guest);
       setShowNewGuestForm(false);
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to save this guest.");
+    } finally {
+      setIsSavingGuest(false);
     }
   }
 
@@ -141,10 +145,16 @@ export function BookGuestSlotDialog({
                 className="h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm"
               />
               <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={saveNewGuest}>
-                  Save Guest
+                <Button type="button" size="sm" disabled={isSavingGuest} onClick={saveNewGuest}>
+                  {isSavingGuest ? "Saving…" : "Save Guest"}
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewGuestForm(false)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isSavingGuest}
+                  onClick={() => setShowNewGuestForm(false)}
+                >
                   Cancel
                 </Button>
               </div>

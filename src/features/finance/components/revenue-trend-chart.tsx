@@ -30,8 +30,12 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
     return <p className="py-8 text-center text-sm text-muted-foreground">No revenue data for this period.</p>;
   }
 
+  // Keyed on the actual values so a filter change remounts the chart and
+  // re-plays its entrance animation instead of silently re-plotting.
+  const dataKey = points.map((p) => `${p.date}:${p.grossMinor}`).join(",");
+
   return (
-    <div className="h-72 w-full" role="img" aria-label="Revenue trend chart">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue trend chart">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>
@@ -86,6 +90,9 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
             // readings actually are rather than reading as one long segment.
             dot={{ r: 3, fill: "#00D084", strokeWidth: 0 }}
             activeDot={{ r: 5, fill: "#00D084", stroke: "var(--background)", strokeWidth: 2 }}
+            isAnimationActive
+            animationDuration={700}
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>

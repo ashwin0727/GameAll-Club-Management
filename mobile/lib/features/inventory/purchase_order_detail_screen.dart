@@ -127,7 +127,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
                 if (canPlace)
                   ElevatedButton(
                     onPressed: _busy ? null : () => _run(() => ref.read(inventoryRepositoryProvider).placePurchaseOrder(po.id)),
-                    child: const Text('Place Order'),
+                    child: Text(_busy ? 'Placing…' : 'Place Order'),
                   ),
                 if (canReceive)
                   ElevatedButton(onPressed: _busy ? null : () => _receive(po), child: const Text('Receive Goods')),

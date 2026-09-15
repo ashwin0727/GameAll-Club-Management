@@ -15,11 +15,13 @@ export function RemovePlayingAreaDialog({
   onOpenChange,
   label,
   onConfirm,
+  pending = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   label: string;
   onConfirm: () => void;
+  pending?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,11 +34,11 @@ export function RemovePlayingAreaDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" variant="destructive" onClick={onConfirm}>
-            Remove
+          <Button type="button" variant="destructive" disabled={pending} onClick={onConfirm}>
+            {pending ? "Removing…" : "Remove"}
           </Button>
         </DialogFooter>
       </DialogContent>

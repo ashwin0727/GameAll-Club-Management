@@ -57,8 +57,14 @@ class RevenueTrendChart extends StatelessWidget {
           SizedBox(
             height: 160,
             width: double.infinity,
-            child: CustomPaint(
-              painter: _RevenueTrendPainter(points: points, peakMinor: peakMinor),
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey(points.map((p) => '${p.date}:${p.grossMinor}').join(',')),
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, progress, _) => CustomPaint(
+                painter: _RevenueTrendPainter(points: points, peakMinor: peakMinor, progress: progress),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -77,10 +83,14 @@ class RevenueTrendChart extends StatelessWidget {
 }
 
 class _RevenueTrendPainter extends CustomPainter {
-  _RevenueTrendPainter({required this.points, required this.peakMinor});
+  _RevenueTrendPainter({required this.points, required this.peakMinor, required this.progress});
 
   final List<RevenueTrendPoint> points;
   final int peakMinor;
+
+  /// 0 (flat baseline) → 1 (fully drawn) — animates the chart growing in
+  /// from the bottom instead of appearing instantly.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -98,7 +108,8 @@ class _RevenueTrendPainter extends CustomPainter {
 
     Offset offsetFor(int index) {
       final dx = points.length == 1 ? size.width / 2 : size.width * (index / (points.length - 1));
-      final dy = size.height - (size.height * (points[index].grossMinor / scaleMax));
+      final targetDy = size.height - (size.height * (points[index].grossMinor / scaleMax));
+      final dy = size.height - (size.height - targetDy) * progress;
       return Offset(dx, dy);
     }
 
@@ -108,7 +119,7 @@ class _RevenueTrendPainter extends CustomPainter {
       canvas.drawCircle(
         linePoints.first,
         4,
-        Paint()..color = AppColors.primary,
+        Paint()..color = AppColors.primary.withValues(alpha: progress),
       );
       return;
     }
@@ -148,5 +159,5 @@ class _RevenueTrendPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RevenueTrendPainter oldDelegate) =>
-      oldDelegate.points != points || oldDelegate.peakMinor != peakMinor;
+      oldDelegate.points != points || oldDelegate.peakMinor != peakMinor || oldDelegate.progress != progress;
 }

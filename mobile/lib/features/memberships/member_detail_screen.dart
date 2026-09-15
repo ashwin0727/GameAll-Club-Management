@@ -37,6 +37,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   String? _error;
   MembershipDetail? _d;
   bool _recording = false;
+  bool _deleting = false;
   bool _changed = false;
 
   @override
@@ -138,6 +139,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       ),
     );
     if (ok != true) return;
+    setState(() => _deleting = true);
     try {
       await ref.read(membershipRepositoryProvider).deleteMember(memberId);
       if (mounted) {
@@ -151,6 +153,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
       }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
@@ -186,8 +190,17 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
             if (d != null)
               IconButton(
                 tooltip: 'Delete member',
-                icon: Icon(Icons.delete_outline, color: tokens.destructive),
-                onPressed: () => _delete(d.member.id, d.member.fullName),
+                icon: _deleting
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: tokens.destructive,
+                        ),
+                      )
+                    : Icon(Icons.delete_outline, color: tokens.destructive),
+                onPressed: _deleting ? null : () => _delete(d.member.id, d.member.fullName),
               ),
           ],
         ),

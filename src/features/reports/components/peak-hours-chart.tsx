@@ -18,8 +18,13 @@ export function PeakHoursChart({ rows }: { rows: PeakHourRow[] }) {
     return <p className="py-8 text-center text-sm text-muted-foreground">No booking activity in this period.</p>;
   }
 
+  // Keyed on the actual values (not just length — the bucket count often
+  // stays fixed across filters) so a filter change remounts the chart and
+  // re-plays its entrance animation instead of silently re-plotting.
+  const dataKey = rows.map((r) => `${r.hour}:${r.demandPct}`).join(",");
+
   return (
-    <div className="h-64 w-full" role="img" aria-label="Peak booking hours">
+    <div key={dataKey} className="h-64 w-full" role="img" aria-label="Peak booking hours">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
@@ -60,7 +65,14 @@ export function PeakHoursChart({ rows }: { rows: PeakHourRow[] }) {
             }}
             labelFormatter={(label: number) => formatHourLabel(label)}
           />
-          <Bar dataKey="demandPct" fill="#5B6CFF" radius={[3, 3, 0, 0]} />
+          <Bar
+            dataKey="demandPct"
+            fill="#5B6CFF"
+            radius={[3, 3, 0, 0]}
+            isAnimationActive
+            animationDuration={600}
+            animationEasing="ease-out"
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

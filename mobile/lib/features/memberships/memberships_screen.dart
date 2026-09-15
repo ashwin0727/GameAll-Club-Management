@@ -68,6 +68,10 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
   int _page = 1;
   Timer? _debounce;
 
+  /// membershipIds with a record-payment/delete call in flight — disables
+  /// that row's action menu so a double-tap can't fire the request twice.
+  final Set<String> _busyRowIds = {};
+
   bool _listLoading = false;
   MembershipPageSummary? _summary;
   MembershipListResult _list = const MembershipListResult(rows: [], totalCount: 0);
@@ -326,6 +330,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       ),
     );
     if (ok != true) return;
+    setState(() => _busyRowIds.add(row.membershipId));
     try {
       await ref.read(membershipRepositoryProvider).recordMembershipPayment(row.membershipId);
       if (!mounted) return;
@@ -334,6 +339,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busyRowIds.remove(row.membershipId));
     }
   }
 
@@ -355,6 +362,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       ),
     );
     if (ok != true) return;
+    setState(() => _busyRowIds.add(row.membershipId));
     try {
       await ref.read(membershipRepositoryProvider).deleteMember(row.memberId);
       if (!mounted) return;
@@ -363,6 +371,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     } on AppException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busyRowIds.remove(row.membershipId));
     }
   }
 
@@ -453,7 +463,13 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                           else ...[
                             ..._list.rows.map((row) => Padding(
                                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                                  child: _MembershipRowCard(row: row, onView: () => _openDetail(row), onRecordPayment: row.status == MembershipListStatus.paymentIncomplete ? () => _recordPayment(row) : null, onDelete: () => _confirmDelete(row)),
+                                  child: _MembershipRowCard(
+                                    row: row,
+                                    onView: () => _openDetail(row),
+                                    onRecordPayment: row.status == MembershipListStatus.paymentIncomplete ? () => _recordPayment(row) : null,
+                                    onDelete: () => _confirmDelete(row),
+                                    isBusy: _busyRowIds.contains(row.membershipId),
+                                  ),
                                 )),
                             const SizedBox(height: AppSpacing.sm),
                             _Pagination(
@@ -549,12 +565,19 @@ class _SummaryGrid extends StatelessWidget {
 }
 
 class _MembershipRowCard extends StatelessWidget {
-  const _MembershipRowCard({required this.row, required this.onView, this.onRecordPayment, required this.onDelete});
+  const _MembershipRowCard({
+    required this.row,
+    required this.onView,
+    this.onRecordPayment,
+    required this.onDelete,
+    this.isBusy = false,
+  });
 
   final MembershipListRow row;
   final VoidCallback onView;
   final VoidCallback? onRecordPayment;
   final VoidCallback onDelete;
+  final bool isBusy;
 
   String get _initials {
     final parts = row.memberName.split(' ').where((p) => p.isNotEmpty).take(2);
@@ -566,7 +589,7 @@ class _MembershipRowCard extends StatelessWidget {
     final tokens = context.tokens;
     final overdue = isPastDate(row.endDate);
     return AppCard(
-      onTap: onView,
+      onTap: isBusy ? null : onView,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -589,7 +612,17 @@ class _MembershipRowCard extends StatelessWidget {
                 ),
               ),
               StatusBadge(label: membershipListStatusLabel(row.status), tone: membershipListStatusTone(row.status)),
-              PopupMenuButton<String>(
+              if (isBusy)
+                const Padding(
+                  padding: EdgeInsets.all(AppSpacing.sm),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, size: 20),
                 tooltip: 'More actions',
                 onSelected: (v) {

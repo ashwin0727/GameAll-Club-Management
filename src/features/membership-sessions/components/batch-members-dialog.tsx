@@ -26,6 +26,8 @@ export function BatchMembersDialog({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Pick<Member, "id" | "fullName" | "phone" | "email">[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   function reload() {
     getMembershipSessionService()
@@ -72,6 +74,7 @@ export function BatchMembersDialog({
 
   async function assign(memberId: string, fullName: string) {
     setError(null);
+    setAssigningId(memberId);
     try {
       await getMembershipSessionService().assignBatchMember(batch.id, memberId);
       setMemberNames((prev) => ({ ...prev, [memberId]: fullName }));
@@ -80,12 +83,19 @@ export function BatchMembersDialog({
       reload();
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to assign this member.");
+    } finally {
+      setAssigningId(null);
     }
   }
 
   async function remove(memberId: string) {
-    await getMembershipSessionService().removeBatchMember(batch.id, memberId);
-    reload();
+    setRemovingId(memberId);
+    try {
+      await getMembershipSessionService().removeBatchMember(batch.id, memberId);
+      reload();
+    } finally {
+      setRemovingId(null);
+    }
   }
 
   return (
@@ -107,8 +117,14 @@ export function BatchMembersDialog({
                 {assigned.map((m) => (
                   <div key={m.id} className="flex items-center justify-between p-2 text-sm">
                     <span>{memberNames[m.memberId] ?? m.memberId}</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(m.memberId)}>
-                      Remove
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={removingId === m.memberId}
+                      onClick={() => remove(m.memberId)}
+                    >
+                      {removingId === m.memberId ? "Removing…" : "Remove"}
                     </Button>
                   </div>
                 ))}
@@ -129,10 +145,17 @@ export function BatchMembersDialog({
                     <button
                       key={r.id}
                       type="button"
+                      disabled={assigningId === r.id}
                       onClick={() => assign(r.id, r.fullName)}
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {r.fullName} <span className="text-muted-foreground">· {r.phone}</span>
+                      {assigningId === r.id ? (
+                        "Assigning…"
+                      ) : (
+                        <>
+                          {r.fullName} <span className="text-muted-foreground">· {r.phone}</span>
+                        </>
+                      )}
                     </button>
                   ))}
                 </div>
