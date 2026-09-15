@@ -1,4 +1,5 @@
 import type { DashboardSummary, DateRangePreset } from "@/features/dashboard/types";
+import type { Facility } from "@/features/onboarding/types";
 
 export interface DashboardSummaryParams {
   /** null = All Sports (aggregate). */
@@ -15,7 +16,11 @@ export interface DashboardSummaryParams {
  * memberships, payments, attention items — into one response, reusing the
  * facility/sports/playing-areas/operating-hours services already built
  * rather than the page issuing a dozen independent requests.
+ *
+ * Takes the already-resolved `facility` (not just its id) so the caller's
+ * existing facility fetch can be reused instead of this service fetching it
+ * again internally.
  */
 export interface DashboardService {
-  getDashboardSummary(facilityId: string, params: DashboardSummaryParams): Promise<DashboardSummary>;
+  getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary>;
 }

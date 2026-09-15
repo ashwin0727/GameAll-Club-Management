@@ -13,7 +13,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
 import { GuestBookingActions } from "@/features/bookings/components/guest-booking-actions";
 import { ShareBookingLink } from "@/features/public-booking/components/share-booking-link";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getBookingService } from "@/services/bookings";
@@ -167,8 +167,9 @@ function Sparkline({ points }: { points: number[] }) {
 
 export function GuestBookingsDashboard() {
   const router = useRouter();
-  const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [facilityName, setFacilityName] = useState("");
+  const { data: facility } = useFacility();
+  const facilityId = facility?.id ?? null;
+  const facilityName = facility?.name ?? "";
   const [currency, setCurrency] = useState("INR");
 
   const [summary, setSummary] = useState<GuestBookingsSummary | null>(null);
@@ -194,16 +195,13 @@ export function GuestBookingsDashboard() {
   const [areas, setAreas] = useState<PlayingArea[]>([]);
 
   useEffect(() => {
+    if (!facilityId) return;
     let cancelled = false;
     (async () => {
-      const f = await getFacilityService().getFacility();
-      if (cancelled || !f) return;
-      setFacilityId(f.id);
-      setFacilityName(f.name);
       const [fs, allSports, pa] = await Promise.all([
-        getSportsService().getFacilitySports(f.id),
+        getSportsService().getFacilitySports(facilityId),
         getSportsService().getActiveSports(),
-        getPlayingAreasService().getPlayingAreas(f.id),
+        getPlayingAreasService().getPlayingAreas(facilityId),
       ]);
       if (cancelled) return;
       setFacilitySports(fs.filter((x) => x.enabled));
@@ -213,7 +211,7 @@ export function GuestBookingsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facilityId]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);

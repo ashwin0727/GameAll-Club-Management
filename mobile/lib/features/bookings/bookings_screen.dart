@@ -34,6 +34,7 @@ import '../payments/payment_status_panel.dart';
 import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../authentication/session_controller.dart';
 
 enum _CourtAvailability { pickTime, available, conflict, outsideHours, checking }
 
@@ -92,7 +93,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _isLoading = false;

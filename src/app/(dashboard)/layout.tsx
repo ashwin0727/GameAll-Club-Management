@@ -3,7 +3,9 @@ import { getCurrentProfile, getFacilityContext } from "@/features/auth/api/auth.
 import { AppShell } from "@/components/shared/app-shell";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const profile = await getCurrentProfile();
+  // Both share the same cached auth.getUser() call under the hood, so
+  // running them together costs one round trip instead of two sequential ones.
+  const [profile, facilityContext] = await Promise.all([getCurrentProfile(), getFacilityContext()]);
 
   if (!profile) {
     redirect("/login");
@@ -14,8 +16,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (profile.must_reset_password) {
     redirect("/reset-password?forced=1");
   }
-
-  const facilityContext = await getFacilityContext();
 
   return (
     <AppShell profile={profile} facilityContext={facilityContext}>

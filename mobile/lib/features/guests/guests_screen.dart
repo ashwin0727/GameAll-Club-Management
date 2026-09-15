@@ -17,6 +17,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import 'guest_form_sheet.dart';
 import 'guest_profile_screen.dart';
+import '../authentication/session_controller.dart';
 
 class GuestsScreen extends ConsumerStatefulWidget {
   const GuestsScreen({super.key});
@@ -56,7 +57,8 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _isLoading = false;

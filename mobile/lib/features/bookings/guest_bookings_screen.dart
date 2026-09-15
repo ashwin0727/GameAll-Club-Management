@@ -19,6 +19,7 @@ import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
+import '../authentication/session_controller.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 import 'booking_status_presentation.dart';
@@ -117,7 +118,8 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _loading = false;

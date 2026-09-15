@@ -2,7 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../../features/dashboard/dashboard_calculator.dart';
 import '../models/dashboard.dart';
-import 'facility_repository.dart';
+import '../models/facility.dart';
 import 'operating_hours_repository.dart';
 import 'playing_area_repository.dart';
 import 'sports_repository.dart';
@@ -16,29 +16,26 @@ import 'sports_repository.dart';
 class DashboardRepository {
   DashboardRepository(
     this._client,
-    this._facilityRepo,
     this._sportsRepo,
     this._playingAreaRepo,
     this._operatingHoursRepo,
   );
 
   final SupabaseClient _client;
-  final FacilityRepository _facilityRepo;
   final SportsRepository _sportsRepo;
   final PlayingAreaRepository _playingAreaRepo;
   final OperatingHoursRepository _operatingHoursRepo;
 
+  /// Takes the already-resolved [facility] (not just its id) so the caller's
+  /// existing facility fetch (e.g. SessionController's cache) can be reused
+  /// instead of this repository fetching it again internally.
   Future<DashboardSummary> getDashboardSummary(
-    String facilityId, {
+    Facility facility, {
     String? facilitySportId,
     required DateRangePreset preset,
     int revenueMonthOffset = 0,
   }) async {
-    final facility = await _facilityRepo.getFacility();
-    if (facility == null || facility.id != facilityId) {
-      throw AppException(AppErrorCode.facilityNotFound);
-    }
-
+    final facilityId = facility.id;
     final now = DateTime.now();
     final period = DashboardCalculator.resolveDateRange(preset, now);
 

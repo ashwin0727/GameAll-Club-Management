@@ -117,9 +117,9 @@ export class SupabaseAuthService implements AuthService {
     if (error) throw toAuthError(error);
     if (!data.user) throw new AuthError("unknown", "Sign in failed. Please try again.");
 
-    const user = await this.getCurrentUser();
-    if (!user) throw new AuthError("unknown", "Sign in failed. Please try again.");
-    return user;
+    // signInWithPassword already returned the user — reuse it instead of
+    // paying for a second auth.getUser() round trip via getCurrentUser().
+    return this.buildAuthUser(data.user);
   }
 
   async logout(): Promise<void> {
@@ -132,7 +132,15 @@ export class SupabaseAuthService implements AuthService {
       data: { user },
     } = await this.supabase.auth.getUser();
     if (!user) return null;
+    return this.buildAuthUser(user);
+  }
 
+  private async buildAuthUser(user: {
+    id: string;
+    email?: string | null;
+    email_confirmed_at?: string | null;
+    user_metadata?: Record<string, unknown>;
+  }): Promise<AuthUser> {
     const { data: profile } = await this.supabase
       .from("profiles")
       .select("full_name, onboarding_completed")

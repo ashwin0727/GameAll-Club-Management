@@ -2,7 +2,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { getFacilityService } from "@/services/facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
@@ -22,8 +21,9 @@ import {
   type TimelineBooking,
 } from "@/features/dashboard/summary";
 import type { DashboardSummary } from "@/features/dashboard/types";
+import type { Facility } from "@/features/onboarding/types";
 import type { DashboardService, DashboardSummaryParams } from "@/services/dashboard/dashboard.service";
-import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
+import { mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 
 type BookingRow = {
@@ -53,27 +53,10 @@ export class SupabaseDashboardService implements DashboardService {
     this.supabase = client ?? createClient();
   }
 
-  async getDashboardSummary(facilityId: string, params: DashboardSummaryParams): Promise<DashboardSummary> {
-    const facility = await getFacilityService().getFacility();
-    if (!facility || facility.id !== facilityId) throw new ServiceError("FACILITY_NOT_FOUND");
-
+  async getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary> {
+    const facilityId = facility.id;
     const now = new Date();
     const { current, previous } = resolveDateRange(params.preset, now, params.custom);
-
-    const [facilitySportsAll, sports, playingAreasAll, schedule] = await Promise.all([
-      getSportsService().getFacilitySports(facilityId),
-      getSportsService().getActiveSports(),
-      getPlayingAreasService().getPlayingAreas(facilityId),
-      getOperatingHoursService().getFacilitySchedule(facilityId),
-    ]);
-
-    const facilitySports = params.facilitySportId
-      ? facilitySportsAll.filter((fs) => fs.id === params.facilitySportId)
-      : facilitySportsAll;
-    const playingAreas = params.facilitySportId
-      ? playingAreasAll.filter((a) => a.facilitySportId === params.facilitySportId)
-      : playingAreasAll;
-    const playingAreaIds = new Set(playingAreas.map((a) => a.id));
 
     const earliestFrom = previous ? previous.from : current.from;
 
@@ -82,7 +65,23 @@ export class SupabaseDashboardService implements DashboardService {
     const revWindowFrom = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset - 1, 1).toISOString();
     const revWindowTo = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset + 1, 1).toISOString();
 
-    const [bookingsRes, membershipsRes, paymentsRes, membershipSessionsRes, revenuePaymentsRes] = await Promise.all([
+    // None of these depend on one another's results, so they all fire together
+    // instead of as two sequential round trips.
+    const [
+      facilitySportsAll,
+      sports,
+      playingAreasAll,
+      schedule,
+      bookingsRes,
+      membershipsRes,
+      paymentsRes,
+      membershipSessionsRes,
+      revenuePaymentsRes,
+    ] = await Promise.all([
+      getSportsService().getFacilitySports(facilityId),
+      getSportsService().getActiveSports(),
+      getPlayingAreasService().getPlayingAreas(facilityId),
+      getOperatingHoursService().getFacilitySchedule(facilityId),
       this.supabase
         .from("bookings")
         .select("id, court_id, start_time, end_time, status, customer_type, guest_name, member_id, payment_status")
@@ -108,6 +107,14 @@ export class SupabaseDashboardService implements DashboardService {
         .gte("created_at", revWindowFrom)
         .lt("created_at", revWindowTo),
     ]);
+
+    const facilitySports = params.facilitySportId
+      ? facilitySportsAll.filter((fs) => fs.id === params.facilitySportId)
+      : facilitySportsAll;
+    const playingAreas = params.facilitySportId
+      ? playingAreasAll.filter((a) => a.facilitySportId === params.facilitySportId)
+      : playingAreasAll;
+    const playingAreaIds = new Set(playingAreas.map((a) => a.id));
 
     if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
     if (membershipsRes.error) throw mapSupabaseError(membershipsRes.error);
