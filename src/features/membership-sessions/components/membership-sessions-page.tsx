@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
@@ -57,7 +57,8 @@ function statusBadge(s: MembershipSessionStatus) {
 
 export function MembershipSessionsPage() {
   const router = useRouter();
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { data: facility } = useFacility();
+  const facilityId = facility?.id ?? null;
   const [summary, setSummary] = useState<MembershipSessionsSummary | null>(null);
   const [rows, setRows] = useState<MembershipSessionListRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -78,15 +79,13 @@ export function MembershipSessionsPage() {
   const openDetail = useCallback((batchId: string) => router.push(`/membership-sessions/${batchId}`), [router]);
 
   useEffect(() => {
+    if (!facilityId) return;
     let cancelled = false;
     (async () => {
-      const f = await getFacilityService().getFacility();
-      if (cancelled || !f) return;
-      setFacilityId(f.id);
       const [fs, allSports, pa] = await Promise.all([
-        getSportsService().getFacilitySports(f.id),
+        getSportsService().getFacilitySports(facilityId),
         getSportsService().getActiveSports(),
-        getPlayingAreasService().getPlayingAreas(f.id),
+        getPlayingAreasService().getPlayingAreas(facilityId),
       ]);
       if (cancelled) return;
       setFacilitySports(fs.filter((x) => x.enabled));
@@ -96,7 +95,7 @@ export function MembershipSessionsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facilityId]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);

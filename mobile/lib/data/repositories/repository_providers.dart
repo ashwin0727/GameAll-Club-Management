@@ -59,7 +59,6 @@ final onboardingRepositoryProvider = Provider<OnboardingRepository>((ref) {
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
   return DashboardRepository(
     ref.watch(supabaseClientProvider),
-    ref.watch(facilityRepositoryProvider),
     ref.watch(sportsRepositoryProvider),
     ref.watch(playingAreaRepositoryProvider),
     ref.watch(operatingHoursRepositoryProvider),

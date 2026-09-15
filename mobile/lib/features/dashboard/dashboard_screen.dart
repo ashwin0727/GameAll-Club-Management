@@ -13,6 +13,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/dashboard.dart';
+import '../../data/models/facility.dart';
 import '../../data/models/finance.dart'
     show
         LedgerEntry,
@@ -45,6 +46,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  Facility? _facility;
   String? _facilityId;
   String? _selectedSportId;
   DateRangePreset _preset = DateRangePreset.today;
@@ -65,12 +67,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Future<void> _init() async {
     final facility = ref.read(sessionControllerProvider).facility;
+    _facility = facility;
     _facilityId = facility?.id;
     await _load();
   }
 
   Future<void> _load() async {
-    if (_facilityId == null) {
+    if (_facility == null) {
       setState(() {
         _isLoading = false;
         _loadError = 'Unable to load your facility.';
@@ -83,7 +86,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
     try {
       final summary = await ref.read(dashboardRepositoryProvider).getDashboardSummary(
-        _facilityId!,
+        _facility!,
         facilitySportId: _selectedSportId,
         preset: _preset,
         revenueMonthOffset: _revenueMonthOffset,

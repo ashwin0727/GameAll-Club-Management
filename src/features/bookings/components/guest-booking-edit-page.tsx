@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
@@ -32,7 +32,8 @@ function dateInput(iso: string): string {
 export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
   const router = useRouter();
   const [booking, setBooking] = useState<Booking | null>(null);
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { data: facility, isLoading: facilityLoading } = useFacility();
+  const facilityId = facility?.id ?? null;
   const [areas, setAreas] = useState<PlayingArea[]>([]);
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
@@ -54,21 +55,28 @@ export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (facilityLoading) return;
+    if (!facility) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
     (async () => {
       try {
-        const [b, f] = await Promise.all([getBookingService().getBooking(bookingId), getFacilityService().getFacility()]);
-        if (!b || b.customerType !== "GUEST" || !f) {
+        const [b, fs, allSports, pa] = await Promise.all([
+          getBookingService().getBooking(bookingId),
+          getSportsService().getFacilitySports(facility.id),
+          getSportsService().getActiveSports(),
+          getPlayingAreasService().getPlayingAreas(facility.id),
+        ]);
+        if (cancelled) return;
+        if (!b || b.customerType !== "GUEST") {
           setNotFound(true);
           setLoading(false);
           return;
         }
-        const [fs, allSports, pa] = await Promise.all([
-          getSportsService().getFacilitySports(f.id),
-          getSportsService().getActiveSports(),
-          getPlayingAreasService().getPlayingAreas(f.id),
-        ]);
         setBooking(b);
-        setFacilityId(f.id);
         setFacilitySports(fs.filter((x) => x.enabled));
         setSports(allSports);
         setAreas(pa.filter((a) => !a.archived));
@@ -80,11 +88,16 @@ export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
         setDate(dateInput(b.startTime));
         setLoading(false);
       } catch {
-        setNotFound(true);
-        setLoading(false);
+        if (!cancelled) {
+          setNotFound(true);
+          setLoading(false);
+        }
       }
     })();
-  }, [bookingId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, facility, facilityLoading]);
 
   const court = areas.find((a) => a.id === courtId) ?? null;
   const sportName = useMemo(() => {

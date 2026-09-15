@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/features/pricing/money";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getRefundService } from "@/services/refunds";
 import type { Refund, RefundStatus, SettlementException } from "@/features/refunds/types";
 import type { PaymentSourceType } from "@/features/payments/types";
@@ -39,7 +39,8 @@ function formatDateTime(iso: string): string {
  * (the server always refunds the full captured amount for those).
  */
 export function RefundsPanel() {
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { data: facility, isLoading: facilityLoading } = useFacility();
+  const facilityId = facility?.id ?? null;
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
   const [exceptions, setExceptions] = useState<SettlementException[]>([]);
   const [refunds, setRefunds] = useState<Refund[]>([]);
@@ -60,25 +61,25 @@ export function RefundsPanel() {
   }
 
   useEffect(() => {
+    if (facilityLoading) return;
+    if (!facilityId) {
+      setLoadState("none");
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const facility = await getFacilityService().getFacility();
-      if (cancelled) return;
-      if (!facility) {
-        setLoadState("none");
-        return;
-      }
-      setFacilityId(facility.id);
-      await reload(facility.id);
+      await reload(facilityId);
       if (cancelled) return;
       setLoadState("ready");
-    })().catch(() => setLoadState("error"));
+    })().catch(() => {
+      if (!cancelled) setLoadState("error");
+    });
     return () => {
       cancelled = true;
     };
     // Filters intentionally excluded here — the below effect handles refetching on filter change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [facilityId, facilityLoading]);
 
   useEffect(() => {
     if (!facilityId || loadState !== "ready") return;

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCurrency, toMinorUnits } from "@/features/pricing/money";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getFinanceService } from "@/services/finance";
 import { AddExpenseDialog } from "@/features/finance/components/add-expense-dialog";
 import { MarkExpensePaidDialog } from "@/features/finance/components/mark-expense-paid-dialog";
@@ -45,7 +45,8 @@ function paymentLabel(status: ExpensePaymentStatus): string {
  * recorded (accrual); its payment status only tracks what has been settled.
  */
 export function ExpensesPage() {
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { data: facility, isLoading: facilityLoading, isError: facilityQueryError } = useFacility();
+  const facilityId = facility?.id ?? null;
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
   const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: "THIS_MONTH" });
   const [page, setPage] = useState(0);
@@ -73,16 +74,18 @@ export function ExpensesPage() {
   }, [search]);
 
   useEffect(() => {
+    if (facilityLoading) return;
+    if (facilityQueryError) {
+      setLoadState("error");
+      return;
+    }
+    if (!facility) {
+      setLoadState("none");
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
-        const facility = await getFacilityService().getFacility();
-        if (cancelled) return;
-        if (!facility) {
-          setLoadState("none");
-          return;
-        }
-        setFacilityId(facility.id);
         setLoadState("ready");
         const [cats, mths] = await Promise.all([
           getFinanceService().listExpenseCategories(facility.id),
@@ -98,7 +101,7 @@ export function ExpensesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facility, facilityLoading, facilityQueryError]);
 
   useEffect(() => setPage(0), [dateRange, debounced, categoryId, paymentStatus, paymentMethod, minAmount, maxAmount]);
 

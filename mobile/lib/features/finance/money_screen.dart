@@ -13,6 +13,7 @@ import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
+import '../authentication/session_controller.dart';
 
 /// The redesigned "Money" tab — a single glanceable view of the month: net
 /// with its trend, where the revenue came from, what's pending vs settled,
@@ -50,7 +51,8 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
       _error = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _loading = false;

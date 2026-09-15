@@ -19,6 +19,10 @@ export function useCurrentUser() {
   return useQuery<AuthUser | null>({
     queryKey: CURRENT_USER_KEY,
     queryFn: () => getAuthService().getCurrentUser(),
+    // The session rarely changes mid-visit, and every page that reads it
+    // (layouts, guards, forms) would otherwise trigger its own
+    // auth.getUser() + profiles round trip on every mount/refocus.
+    staleTime: 5 * 60_000,
   });
 }
 

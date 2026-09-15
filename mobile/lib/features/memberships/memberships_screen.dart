@@ -29,6 +29,7 @@ import 'membership_access_days_sheet.dart';
 import 'membership_list_presentation.dart';
 import 'membership_plans_sheet.dart';
 import 'slot_format.dart';
+import '../authentication/session_controller.dart';
 
 const _perPage = 10;
 
@@ -90,7 +91,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (!mounted) return;
       if (facility == null) {
         setState(() {
