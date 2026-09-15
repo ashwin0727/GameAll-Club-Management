@@ -61,6 +61,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
   MembershipSessionDetail? _detail;
   List<MembershipSessionMemberRow>? _members;
   List<MembershipSessionActivity>? _activity;
+  final Set<String> _removingMemberIds = {};
 
   @override
   void initState() {
@@ -171,11 +172,14 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
   }
 
   Future<void> _removeMember(String memberId) async {
+    setState(() => _removingMemberIds.add(memberId));
     try {
       await ref.read(membershipSessionRepositoryProvider).removeBatchMember(widget.batchId, memberId);
       await _load();
     } on AppException catch (e) {
       _toast(e.message);
+    } finally {
+      if (mounted) setState(() => _removingMemberIds.remove(memberId));
     }
   }
 
@@ -681,10 +685,18 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                     ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
-                      icon: Icon(Icons.close,
-                          size: 16, color: tokens.textSecondary),
+                      icon: _removingMemberIds.contains(members[i].memberId)
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(Icons.close,
+                              size: 16, color: tokens.textSecondary),
                       tooltip: 'Remove from session',
-                      onPressed: () => _removeMember(members[i].memberId),
+                      onPressed: _removingMemberIds.contains(members[i].memberId)
+                          ? null
+                          : () => _removeMember(members[i].memberId),
                     ),
                   ],
                 ),

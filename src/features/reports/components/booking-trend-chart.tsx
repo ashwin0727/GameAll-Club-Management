@@ -16,8 +16,12 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
     return <p className="py-8 text-center text-sm text-muted-foreground">No bookings in this period.</p>;
   }
 
+  // Keyed on the actual values so a filter change remounts the chart and
+  // re-plays its entrance animation instead of silently re-plotting.
+  const dataKey = points.map((p) => `${p.date}:${p.total}:${p.cancelled}`).join(",");
+
   return (
-    <div className="h-72 w-full" role="img" aria-label="Booking volume trend">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Booking volume trend">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>
@@ -73,6 +77,9 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
             name="total"
             dot={{ r: 3, fill: "#00F08A", strokeWidth: 0 }}
             activeDot={{ r: 5, fill: "#00F08A", stroke: "var(--background)", strokeWidth: 2 }}
+            isAnimationActive
+            animationDuration={700}
+            animationEasing="ease-out"
           />
           <Area
             type="monotone"
@@ -83,6 +90,9 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
             name="cancelled"
             dot={false}
             activeDot={{ r: 4, fill: "#FF4D67", stroke: "var(--background)", strokeWidth: 2 }}
+            isAnimationActive
+            animationDuration={700}
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>

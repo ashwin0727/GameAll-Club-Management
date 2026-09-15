@@ -4,6 +4,7 @@ import { AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartSkeleton } from "@/components/shared/chart-skeleton";
 
 export type ReportStatus = "loading" | "error" | "empty" | "ready";
 
@@ -52,8 +53,8 @@ export function ReportShell({
       {status === "loading" && (
         <div className="space-y-4" aria-busy>
           <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl" />
+          <ChartSkeleton className="h-64" />
+          <ChartSkeleton className="h-64" />
         </div>
       )}
 

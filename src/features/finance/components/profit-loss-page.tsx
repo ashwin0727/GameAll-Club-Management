@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartSkeleton } from "@/components/shared/chart-skeleton";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
@@ -127,7 +128,7 @@ export function ProfitLossPage() {
       </div>
 
       {pnl === null ? (
-        <Skeleton className="h-72 w-full rounded-xl" />
+        <ChartSkeleton className="h-72" />
       ) : pnl.totalRevenueMinor === 0 && pnl.totalExpenseMinor === 0 ? (
         <Card className="p-10 text-center">
           <p className="text-sm font-semibold">Not enough financial data</p>
@@ -139,7 +140,7 @@ export function ProfitLossPage() {
         <>
           <Card className="p-4">
             <h2 className="mb-2 text-sm font-semibold">Revenue vs expenses</h2>
-            {trend === null ? <Skeleton className="h-72 w-full" /> : <PnlTrendChart points={trend} />}
+            {trend === null ? <ChartSkeleton className="h-72" /> : <PnlTrendChart points={trend} />}
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">

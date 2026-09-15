@@ -57,7 +57,15 @@ class CountTrendChart extends StatelessWidget {
           SizedBox(
             height: 160,
             width: double.infinity,
-            child: CustomPaint(painter: _CountTrendPainter(points: points, peak: peak)),
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey(points.map((p) => '${p.date}:${p.value}').join(',')),
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, progress, _) => CustomPaint(
+                painter: _CountTrendPainter(points: points, peak: peak, progress: progress),
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Row(
@@ -75,10 +83,14 @@ class CountTrendChart extends StatelessWidget {
 }
 
 class _CountTrendPainter extends CustomPainter {
-  _CountTrendPainter({required this.points, required this.peak});
+  _CountTrendPainter({required this.points, required this.peak, required this.progress});
 
   final List<CountTrendPoint> points;
   final int peak;
+
+  /// 0 (flat baseline) → 1 (fully drawn) — animates the chart growing in
+  /// from the bottom instead of appearing instantly.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -94,14 +106,19 @@ class _CountTrendPainter extends CustomPainter {
 
     Offset offsetFor(int index) {
       final dx = points.length == 1 ? size.width / 2 : size.width * (index / (points.length - 1));
-      final dy = size.height - (size.height * (points[index].value / scaleMax));
+      final targetDy = size.height - (size.height * (points[index].value / scaleMax));
+      final dy = size.height - (size.height - targetDy) * progress;
       return Offset(dx, dy);
     }
 
     final linePoints = List.generate(points.length, offsetFor);
 
     if (linePoints.length == 1) {
-      canvas.drawCircle(linePoints.first, 4, Paint()..color = AppColors.primary);
+      canvas.drawCircle(
+        linePoints.first,
+        4,
+        Paint()..color = AppColors.primary.withValues(alpha: progress),
+      );
       return;
     }
 
@@ -140,5 +157,5 @@ class _CountTrendPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CountTrendPainter oldDelegate) =>
-      oldDelegate.points != points || oldDelegate.peak != peak;
+      oldDelegate.points != points || oldDelegate.peak != peak || oldDelegate.progress != progress;
 }
