@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartSkeleton } from "@/components/shared/chart-skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Donut, type DonutSegment } from "@/components/shared/donut";
 import { StatCard } from "@/components/shared/stat-card";
@@ -267,7 +268,7 @@ export function FinanceDashboard() {
             </Select>
           </div>
           {trend === null ? (
-            <Skeleton className="h-56 w-full rounded-lg" />
+            <ChartSkeleton className="h-56" />
           ) : trend.length === 0 ? (
             <EmptyPanel message="No revenue in this period yet." />
           ) : (
@@ -512,7 +513,7 @@ function DashboardSkeleton() {
           <Skeleton key={i} className="h-64 rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-56 w-full rounded-xl" />
+      <ChartSkeleton className="h-56" />
     </div>
   );
 }

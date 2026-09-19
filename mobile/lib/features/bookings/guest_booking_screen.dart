@@ -24,6 +24,7 @@ import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
+import '../authentication/session_controller.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 
@@ -187,7 +188,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
 
   Future<void> _load() async {
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _loading = false;

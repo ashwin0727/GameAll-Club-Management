@@ -104,16 +104,16 @@ export const getFacilityContext = cache(async (): Promise<FacilityContext | null
     (facilities ?? []).find((f) => f.owner_id === user.id) ?? facilities?.[0] ?? null;
   if (!facility) return null;
 
-  const { data: assignment } = await supabase
-    .from("facility_users")
-    .select("role")
-    .eq("facility_id", facility.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  const { data: permissions } = await supabase.rpc("my_facility_permissions", {
-    p_facility: facility.id,
-  });
+  // Neither call depends on the other's result, only on facility.id.
+  const [{ data: assignment }, { data: permissions }] = await Promise.all([
+    supabase
+      .from("facility_users")
+      .select("role")
+      .eq("facility_id", facility.id)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.rpc("my_facility_permissions", { p_facility: facility.id }),
+  ]);
 
   return {
     facilityId: facility.id,

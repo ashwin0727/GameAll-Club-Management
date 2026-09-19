@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
@@ -33,7 +33,8 @@ function isToday(d: Date): boolean {
 
 export function BookingOperationsView() {
   const router = useRouter();
-  const [facilityId, setFacilityId] = useState<string | null>(null);
+  const { data: facility, isLoading: facilityLoading, isError: facilityError } = useFacility();
+  const facilityId = facility?.id ?? null;
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
 
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
@@ -53,21 +54,23 @@ export function BookingOperationsView() {
   const [membershipSlotDialog, setMembershipSlotDialog] = useState<MembershipSessionSlot | null>(null);
 
   useEffect(() => {
+    if (facilityLoading) return;
+    if (facilityError) {
+      setLoadState("error");
+      return;
+    }
+    if (!facility) {
+      setLoadState("none");
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const facility = await getFacilityService().getFacility();
-      if (cancelled) return;
-      if (!facility) {
-        setLoadState("none");
-        return;
-      }
       const [fs, allSports, playingAreas] = await Promise.all([
         getSportsService().getFacilitySports(facility.id),
         getSportsService().getActiveSports(),
         getPlayingAreasService().getPlayingAreas(facility.id),
       ]);
       if (cancelled) return;
-      setFacilityId(facility.id);
       setFacilitySports(fs.filter((s) => s.enabled));
       setSports(allSports);
       setAreas(playingAreas.filter((a) => !a.archived && a.status === "ACTIVE" && a.bookingEnabled));
@@ -76,7 +79,7 @@ export function BookingOperationsView() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facility, facilityLoading, facilityError]);
 
   const reloadGrid = useMemo(
     () => async () => {

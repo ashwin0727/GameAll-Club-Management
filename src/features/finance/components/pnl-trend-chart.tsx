@@ -28,8 +28,12 @@ export function PnlTrendChart({ points }: { points: PnlTrendPoint[] }) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Not enough financial data to chart this period.</p>;
   }
 
+  // Keyed on the actual values so a filter change remounts the chart and
+  // re-plays its entrance animation instead of silently re-plotting.
+  const dataKey = points.map((p) => `${p.date}:${p.revenueMinor}:${p.expenseMinor}:${p.netMinor}`).join(",");
+
   return (
-    <div className="h-72 w-full" role="img" aria-label="Revenue versus expenses over time">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue versus expenses over time">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
@@ -62,9 +66,35 @@ export function PnlTrendChart({ points }: { points: PnlTrendPoint[] }) {
             formatter={(value: number, name: string) => [formatCurrency(value, "INR"), LABELS[name] ?? name]}
             labelFormatter={(label: string) => formatAxisDate(label)}
           />
-          <Bar dataKey="revenueMinor" fill="#00D084" radius={[3, 3, 0, 0]} name="revenueMinor" />
-          <Bar dataKey="expenseMinor" fill="#F59E0B" radius={[3, 3, 0, 0]} name="expenseMinor" />
-          <Line type="monotone" dataKey="netMinor" stroke="#6366F1" strokeWidth={2} dot={false} name="netMinor" />
+          <Bar
+            dataKey="revenueMinor"
+            fill="#00D084"
+            radius={[3, 3, 0, 0]}
+            name="revenueMinor"
+            isAnimationActive
+            animationDuration={600}
+            animationEasing="ease-out"
+          />
+          <Bar
+            dataKey="expenseMinor"
+            fill="#F59E0B"
+            radius={[3, 3, 0, 0]}
+            name="expenseMinor"
+            isAnimationActive
+            animationDuration={600}
+            animationEasing="ease-out"
+          />
+          <Line
+            type="monotone"
+            dataKey="netMinor"
+            stroke="#6366F1"
+            strokeWidth={2}
+            dot={false}
+            name="netMinor"
+            isAnimationActive
+            animationDuration={700}
+            animationEasing="ease-out"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

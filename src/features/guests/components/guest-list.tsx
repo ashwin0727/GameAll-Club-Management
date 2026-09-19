@@ -3,15 +3,22 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getGuestService } from "@/services/guests";
 import type { GuestPlayer } from "@/features/guests/types";
 import { GuestFormDialog } from "@/features/guests/components/guest-form-dialog";
 import { GuestProfileDialog } from "@/features/guests/components/guest-profile-dialog";
 
 export function GuestList() {
-  const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
+  const { data: facility, isLoading: facilityLoading, isError: facilityError } = useFacility();
+  const facilityId = facility?.id ?? null;
+  const loadState: "loading" | "ready" | "none" | "error" = facilityLoading
+    ? "loading"
+    : facilityError
+      ? "error"
+      : facility
+        ? "ready"
+        : "none";
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "">("ACTIVE");
@@ -20,23 +27,6 @@ export function GuestList() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<GuestPlayer | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const facility = await getFacilityService().getFacility();
-      if (cancelled) return;
-      if (!facility) {
-        setLoadState("none");
-        return;
-      }
-      setFacilityId(facility.id);
-      setLoadState("ready");
-    })().catch(() => setLoadState("error"));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!facilityId) return;

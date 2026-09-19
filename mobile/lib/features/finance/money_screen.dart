@@ -15,6 +15,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
+import '../authentication/session_controller.dart';
 
 /// The period choices the Payment filter sheet offers — a superset of
 /// [FinanceDateRangePreset] (adds trailing multi-month windows and an
@@ -243,7 +244,8 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
       _error = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _loading = false;

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChartPie, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard-summary";
 import { KpiCard } from "@/features/dashboard/components/kpi-card";
 import type { DateRangePreset, RevenueOverview as RevenueOverviewData, ScheduleBlockType, ScheduleTimeline } from "@/features/dashboard/types";
@@ -37,36 +37,21 @@ function greeting(): string {
 
 export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | null }) {
   const router = useRouter();
-  const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [facilityLoadState, setFacilityLoadState] = useState<"loading" | "ready" | "none">("loading");
+  const { data: facility, isLoading: facilityLoading } = useFacility();
   const [selectedSportId, setSelectedSportId] = useState<string | null>(null);
   const [preset, setPreset] = useState<DateRangePreset>("TODAY");
   const [revenueMonthOffset, setRevenueMonthOffset] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const facility = await getFacilityService().getFacility();
-      if (cancelled) return;
-      if (!facility) {
-        setFacilityLoadState("none");
-        return;
-      }
-      setFacilityId(facility.id);
-      setFacilityLoadState("ready");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const { data: summary, isLoading, isError, refetch } = useDashboardSummary(facilityId, {
+  // Passing the already-fetched facility through means the summary query
+  // doesn't need to look it up again itself, cutting a stage out of what was
+  // otherwise a facility-fetch -> summary-fetch waterfall.
+  const { data: summary, isLoading, isError, refetch } = useDashboardSummary(facility ?? null, {
     facilitySportId: selectedSportId,
     preset,
     revenueMonthOffset,
   });
 
-  if (facilityLoadState === "loading" || isLoading) {
+  if (facilityLoading || isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -80,7 +65,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
     );
   }
 
-  if (facilityLoadState === "none") {
+  if (!facility) {
     return (
       <div className="space-y-4 text-center">
         <p className="text-sm text-muted-foreground">Complete your facility setup to see your dashboard.</p>

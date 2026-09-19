@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
@@ -23,7 +23,6 @@ import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
-import type { Facility } from "@/features/onboarding/types";
 
 const STEPS = ["Select Court & Time", "Guest Details", "Review & Confirm", "Payment"] as const;
 
@@ -58,7 +57,7 @@ const selectCls =
 export function GuestBookingWizard() {
   const router = useRouter();
 
-  const [facility, setFacility] = useState<Facility | null>(null);
+  const { data: facility, isLoading: facilityLoading } = useFacility();
   const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [sports, setSports] = useState<Sport[]>([]);
   const [areas, setAreas] = useState<PlayingArea[]>([]);
@@ -89,20 +88,19 @@ export function GuestBookingWizard() {
   const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
 
   useEffect(() => {
+    if (facilityLoading) return;
+    if (!facility) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const f = await getFacilityService().getFacility();
-      if (cancelled || !f) {
-        setLoading(false);
-        return;
-      }
       const [fs, allSports, pa] = await Promise.all([
-        getSportsService().getFacilitySports(f.id),
+        getSportsService().getFacilitySports(facility.id),
         getSportsService().getActiveSports(),
-        getPlayingAreasService().getPlayingAreas(f.id),
+        getPlayingAreasService().getPlayingAreas(facility.id),
       ]);
       if (cancelled) return;
-      setFacility(f);
       const enabledSports = fs.filter((s) => s.enabled);
       setFacilitySports(enabledSports);
       setSports(allSports);
@@ -113,7 +111,7 @@ export function GuestBookingWizard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facility, facilityLoading]);
 
   const courtsForSport = useMemo(() => areas.filter((a) => a.facilitySportId === facilitySportId), [areas, facilitySportId]);
   const court = areas.find((a) => a.id === courtId) ?? null;

@@ -23,6 +23,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_batches_sheet.dart';
 import 'membership_session_detail_screen.dart';
+import '../authentication/session_controller.dart';
 
 const _perPage = 10;
 
@@ -106,7 +107,8 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _isLoading = false;

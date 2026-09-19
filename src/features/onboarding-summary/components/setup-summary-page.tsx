@@ -10,10 +10,11 @@ import { FormMessage } from "@/features/auth/components/form-message";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getOnboardingService } from "@/services/onboarding";
 import { formatCurrency, PRICING_UNIT_LABEL } from "@/features/pricing/money";
 import type { SetupSummary } from "@/features/onboarding-summary/types";
+import type { Facility } from "@/features/onboarding/types";
 
 const ErrorState = dynamic(() =>
   import("@/components/shared/error-state").then((mod) => mod.ErrorState),
@@ -24,26 +25,22 @@ type LoadState = "loading" | "ready" | "forbidden" | "error";
 export function SetupSummaryPage() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
+  const {
+    data: activeFacility,
+    isLoading: facilityLoading,
+    isError: facilityQueryError,
+    refetch: refetchFacility,
+  } = useFacility();
 
   const [summary, setSummary] = useState<SetupSummary | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  async function load() {
+  async function loadSummary(f: Facility) {
     setLoadState("loading");
     try {
-      const facility = await getFacilityService().getFacility();
-      if (!facility) {
-        router.replace("/onboarding/facility");
-        return;
-      }
-      if (!user || facility.ownerId !== user.id) {
-        setLoadState("forbidden");
-        return;
-      }
-
-      const result = await getOnboardingService().getSetupSummary(facility.id);
+      const result = await getOnboardingService().getSetupSummary(f.id);
       setSummary(result);
       setLoadState("ready");
     } catch {
@@ -51,15 +48,35 @@ export function SetupSummaryPage() {
     }
   }
 
+  function retry() {
+    if (activeFacility) {
+      loadSummary(activeFacility);
+    } else {
+      refetchFacility();
+    }
+  }
+
   useEffect(() => {
-    if (userLoading) return;
+    if (userLoading || facilityLoading) return;
     if (!user) {
       router.replace("/login");
       return;
     }
-    load();
+    if (facilityQueryError) {
+      setLoadState("error");
+      return;
+    }
+    if (!activeFacility) {
+      router.replace("/onboarding/facility");
+      return;
+    }
+    if (activeFacility.ownerId !== user.id) {
+      setLoadState("forbidden");
+      return;
+    }
+    loadSummary(activeFacility);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userLoading, router]);
+  }, [user, userLoading, activeFacility, facilityLoading, facilityQueryError, router]);
 
   // Landing here with a facility already COMPLETED means nothing left to
   // validate — but re-running the (idempotent) RPC is still worth doing as a
@@ -85,7 +102,7 @@ export function SetupSummaryPage() {
     }
   }
 
-  if (userLoading || loadState === "loading") {
+  if (userLoading || facilityLoading || loadState === "loading") {
     return (
       <div className="space-y-6">
         <Skeleton className="h-20 w-full rounded-xl" />
@@ -104,7 +121,7 @@ export function SetupSummaryPage() {
     return (
       <div className="space-y-4 text-center">
         <p className="text-sm text-muted-foreground">Unable to load your facility setup.</p>
-        <Button type="button" variant="outline" onClick={load}>
+        <Button type="button" variant="outline" onClick={retry}>
           Try Again
         </Button>
       </div>

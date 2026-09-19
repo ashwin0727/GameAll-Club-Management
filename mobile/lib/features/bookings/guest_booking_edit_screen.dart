@@ -17,6 +17,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'booking_slots.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../authentication/session_controller.dart';
 
 String _hm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime d) => Formatters.time12h(_hm(d));
@@ -72,7 +73,8 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
   Future<void> _load() async {
     try {
       final b = await ref.read(bookingRepositoryProvider).getBooking(widget.bookingId);
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (b == null || b.customerType != CustomerType.guest || facility == null) {
         setState(() {
           _notFound = true;

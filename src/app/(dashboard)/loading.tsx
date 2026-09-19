@@ -1,5 +1,5 @@
-import { LoadingSpinner } from "@/components/shared/loading-state";
+import { PageSkeleton } from "@/components/shared/page-skeleton";
 
 export default function DashboardLoading() {
-  return <LoadingSpinner className="min-h-[60vh]" />;
+  return <PageSkeleton />;
 }

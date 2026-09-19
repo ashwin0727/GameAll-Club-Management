@@ -41,6 +41,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
   MembershipDetail? _detail;
   bool _loading = true;
   String? _error;
+  bool _processing = false;
 
   @override
   void initState() {
@@ -110,6 +111,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       ),
     );
     if (ok != true) return;
+    setState(() => _processing = true);
     try {
       final repo = ref.read(membershipRepositoryProvider);
       if (isDelete) {
@@ -125,6 +127,8 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       _load();
     } on AppException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _processing = false);
     }
   }
 
@@ -150,10 +154,23 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         title: const Text('Membership Details'),
         actions: [
           if (d != null) ...[
+            if (_processing)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             if (d.displayStatus == MembershipListStatus.paymentIncomplete && d.membership.rawStatus != 'cancelled')
-              TextButton(onPressed: () => _confirm('record'), child: const Text('Record Payment')),
-            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Edit', onPressed: _edit),
+              TextButton(
+                onPressed: _processing ? null : () => _confirm('record'),
+                child: const Text('Record Payment'),
+              ),
+            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Edit', onPressed: _processing ? null : _edit),
             PopupMenuButton<String>(
+              enabled: !_processing,
               onSelected: _confirm,
               itemBuilder: (context) => [
                 if (d.displayStatus == MembershipListStatus.paymentIncomplete && d.membership.rawStatus != 'cancelled')

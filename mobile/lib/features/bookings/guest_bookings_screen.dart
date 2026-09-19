@@ -20,6 +20,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
+import '../authentication/session_controller.dart';
 import '../payments/payment_checkout_controller.dart';
 import '../payments/payment_status_panel.dart';
 import 'booking_status_presentation.dart';
@@ -92,6 +93,10 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   String _search = '';
   final Set<String> _statusSel = {};
   final Set<String> _paySel = {};
+
+  /// bookingIds with a cancel/delete/duplicate/receipt call in flight —
+  /// swaps that row's menu for a spinner so a double-tap can't refire it.
+  final Set<String> _busyBookingIds = {};
   late DateTime _from = DateTime.now().subtract(const Duration(days: 29));
   late DateTime _to = DateTime.now();
   int _page = 0;
@@ -118,7 +123,8 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         setState(() {
           _loading = false;
@@ -509,6 +515,16 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   }
 
   Widget _rowMenu(GuestBookingRow r) {
+    if (_busyBookingIds.contains(r.bookingId)) {
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.sm),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
     final actions = guestBookingActions(
       isSession: r.isSession,
       status: r.status,
@@ -609,11 +625,14 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
     )) {
       return;
     }
+    setState(() => _busyBookingIds.add(r.bookingId));
     try {
       await ref.read(bookingRepositoryProvider).deleteGuestBooking(r.bookingId);
       _reload();
     } on AppException catch (e) {
       _toast(e.message);
+    } finally {
+      if (mounted) setState(() => _busyBookingIds.remove(r.bookingId));
     }
   }
 
@@ -670,6 +689,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       ),
     );
     if (ok != true) return;
+    setState(() => _busyBookingIds.add(r.bookingId));
     try {
       if (r.paymentStatus == 'PAID') {
         final total = r.amountMinor ?? 0;
@@ -698,6 +718,8 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       _reload();
     } on AppException catch (e) {
       _toast(e.message);
+    } finally {
+      if (mounted) setState(() => _busyBookingIds.remove(r.bookingId));
     }
   }
 
@@ -732,6 +754,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       _toast('Enter a valid email address.');
       return;
     }
+    setState(() => _busyBookingIds.add(r.bookingId));
     try {
       await ref
           .read(bookingRepositoryProvider)
@@ -739,6 +762,8 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       _toast('Receipt sent to ${email.text.trim()}');
     } on AppException catch (e) {
       _toast(e.message);
+    } finally {
+      if (mounted) setState(() => _busyBookingIds.remove(r.bookingId));
     }
   }
 
@@ -801,6 +826,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       ),
     );
     if (go != true) return;
+    setState(() => _busyBookingIds.add(r.bookingId));
     try {
       final b = await ref
           .read(bookingRepositoryProvider)
@@ -817,6 +843,8 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       );
     } on AppException catch (e) {
       _toast(e.message);
+    } finally {
+      if (mounted) setState(() => _busyBookingIds.remove(r.bookingId));
     }
   }
 

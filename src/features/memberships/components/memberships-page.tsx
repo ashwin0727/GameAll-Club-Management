@@ -26,7 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
 import { ServiceError } from "@/services/shared/service-error";
-import { getFacilityService } from "@/services/facility";
+import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getMembershipService } from "@/services/memberships";
 import { useMembershipList, useMembershipSummary } from "@/features/memberships/hooks/use-memberships";
 import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
@@ -99,8 +99,9 @@ function isPastDate(iso: string): boolean {
 
 export function MembershipsPage() {
   const router = useRouter();
-  const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "none">("loading");
+  const { data: facility, isLoading: facilityLoading } = useFacility();
+  const facilityId = facility?.id ?? null;
+  const loadState: "loading" | "ready" | "none" = facilityLoading ? "loading" : facility ? "ready" : "none";
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -122,26 +123,17 @@ export function MembershipsPage() {
   const [payError, setPayError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!facility) return;
+    setAccessDays(facility.membershipAccessDays);
     let cancelled = false;
-    (async () => {
-      const facility = await getFacilityService().getFacility();
-      if (cancelled) return;
-      if (!facility) {
-        setLoadState("none");
-        return;
-      }
-      setFacilityId(facility.id);
-      setAccessDays(facility.membershipAccessDays);
-      setLoadState("ready");
-      getMembershipService()
-        .getFacilityPlans(facility.id)
-        .then((p) => !cancelled && setPlans(p))
-        .catch(() => undefined);
-    })();
+    getMembershipService()
+      .getFacilityPlans(facility.id)
+      .then((p) => !cancelled && setPlans(p))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [facility]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);

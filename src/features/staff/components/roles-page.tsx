@@ -137,7 +137,7 @@ export function RolesPage() {
                                     }
                                   }}
                                 >
-                                  Delete
+                                  {busy === r.id ? "Deleting…" : "Delete"}
                                 </Button>
                               )}
                             </div>

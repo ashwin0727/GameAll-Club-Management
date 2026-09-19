@@ -42,7 +42,8 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
       _error = null;
     });
     try {
-      var facility = await ref.read(facilityRepositoryProvider).getFacility();
+      var facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (facility == null) {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;

@@ -50,6 +50,7 @@ export function CourtsSetupForm() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ id: string; label: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   // Tracks which local playing-area ids have never made it to the service
   // yet (still a local-only draft, per spec §14). The id is client-generated
@@ -231,12 +232,15 @@ export function CourtsSetupForm() {
     if (!removeTarget) return;
     const { id } = removeTarget;
     clearTimeout(timeouts.current[id]);
+    setIsRemoving(true);
     try {
       await getPlayingAreasService().removePlayingArea(id);
       setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
       setRemoveTarget(null);
     } catch {
       setSaveError("Unable to remove this. Please try again.");
+    } finally {
+      setIsRemoving(false);
     }
   }
 
@@ -378,10 +382,11 @@ export function CourtsSetupForm() {
         <RemovePlayingAreaDialog
           open={Boolean(removeTarget)}
           onOpenChange={(open) => {
-            if (!open) setRemoveTarget(null);
+            if (!open && !isRemoving) setRemoveTarget(null);
           }}
           label={removeTarget.label}
           onConfirm={confirmRemove}
+          pending={isRemoving}
         />
       )}
     </div>

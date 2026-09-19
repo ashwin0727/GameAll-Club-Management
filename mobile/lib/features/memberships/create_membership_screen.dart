@@ -17,6 +17,7 @@ import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
+import '../authentication/session_controller.dart';
 import 'access_days.dart';
 import 'membership_charges.dart';
 import 'membership_slot.dart';
@@ -201,7 +202,8 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
 
   Future<void> _load() async {
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final facility = ref.read(sessionControllerProvider).facility ??
+          await ref.read(facilityRepositoryProvider).getFacility();
       if (!mounted) return;
       setState(() {
         _facilityId = facility?.id;
