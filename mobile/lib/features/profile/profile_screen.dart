@@ -15,6 +15,7 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 
 /// Profile & settings — the owner's home for everything that isn't day-to-day
@@ -69,6 +70,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  Future<void> _confirmSignOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text("You'll need to sign in again to access your facility."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: context.tokens.destructive),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      ref.read(sessionControllerProvider.notifier).signOut();
+    }
+  }
+
   static String _modeLabel(ThemeMode m) => switch (m) {
         ThemeMode.light => 'Light',
         ThemeMode.dark => 'Dark',
@@ -106,6 +130,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   : _titleCase(user!.role),
               facilityName: facility?.name ?? 'Your facility',
               facilitySub: _facilitySub(facility),
+              facilitySubLoading: _courts == null && _sports == null,
               logoUrl: facility?.logoUrl,
               onFacilityTap: _soon,
             ),
@@ -127,7 +152,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _NavRow(
                   icon: Icons.event_repeat_outlined,
                   label: 'Membership Sessions',
-                  onTap: () => context.push(AppRoutes.membershipSessions)),
+                  // The old standalone sessions dashboard is retired — this
+                  // now lands on the Members hub's own Sessions tab instead.
+                  onTap: () => context.push('${AppRoutes.memberships}?new=session')),
               _NavRow(
                   icon: Icons.card_membership_outlined,
                   label: 'Memberships',
@@ -171,6 +198,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   icon: Icons.sports_tennis_outlined,
                   label: 'Sports & courts',
                   trailing: _courts == null ? null : '$_courts',
+                  trailingLoading: _courts == null,
                   onTap: _soon),
               _NavRow(
                   icon: Icons.schedule_outlined,
@@ -181,6 +209,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: 'Pricing rules',
                   trailing:
                       _pricingRules == null ? null : '$_pricingRules active',
+                  trailingLoading: _pricingRules == null,
                   onTap: _soon),
               _NavRow(
                   icon: Icons.link_rounded,
@@ -263,9 +292,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ]),
             const SizedBox(height: AppSpacing.xxl),
 
-            _SignOutButton(
-                onTap: () =>
-                    ref.read(sessionControllerProvider.notifier).signOut()),
+            _SignOutButton(onTap: _confirmSignOut),
             const SizedBox(height: AppSpacing.xxl),
           ],
         ),
@@ -415,10 +442,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _joinLinkSheet(Facility? f) async {
-    final slug = f?.slug;
-    final link = slug == null || slug.isEmpty
-        ? 'https://gameall.in'
-        : 'https://gameall.in/join/$slug';
+    // `/join/[facilityId]` (web) is keyed by the facility's UUID id — its
+    // backing RPC (`get_public_membership_signup_info`) takes a `uuid`
+    // param and can't resolve the human-readable slug.
+    final id = f?.id;
+    final link = id == null || id.isEmpty
+        ? 'https://club.gameall.co'
+        : 'https://club.gameall.co/join/$id';
     final t = context.tokens;
     await showModalBottomSheet<void>(
       context: context,
@@ -518,6 +548,7 @@ class _HeaderCard extends StatelessWidget {
     required this.roleLabel,
     required this.facilityName,
     required this.facilitySub,
+    this.facilitySubLoading = false,
     required this.logoUrl,
     required this.onFacilityTap,
   });
@@ -527,6 +558,10 @@ class _HeaderCard extends StatelessWidget {
   final String roleLabel;
   final String facilityName;
   final String facilitySub;
+
+  /// True while the court/sport counts behind [facilitySub] are still
+  /// fetching — shows a short skeleton line instead of hiding the row.
+  final bool facilitySubLoading;
   final String? logoUrl;
   final VoidCallback onFacilityTap;
 
@@ -648,7 +683,10 @@ class _HeaderCard extends StatelessWidget {
                               style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800)),
-                          if (facilitySub.isNotEmpty) ...[
+                          if (facilitySubLoading) ...[
+                            const SizedBox(height: 3),
+                            const AppSkeleton(width: 60, height: 11),
+                          ] else if (facilitySub.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(facilitySub,
                                 maxLines: 1,
@@ -713,6 +751,7 @@ class _NavRow extends StatelessWidget {
     this.trailing,
     this.trailingTone,
     this.trailingDot = false,
+    this.trailingLoading = false,
   });
 
   final IconData icon;
@@ -721,6 +760,11 @@ class _NavRow extends StatelessWidget {
   final String? trailing;
   final Color? trailingTone;
   final bool trailingDot;
+
+  /// True while the count backing [trailing] hasn't resolved yet — shows a
+  /// short skeleton line instead of leaving the subtitle blank for that
+  /// first fetch cycle.
+  final bool trailingLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -739,7 +783,10 @@ class _NavRow extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w600)),
             ),
-            if (trailing != null) ...[
+            if (trailingLoading) ...[
+              const AppSkeleton(width: 60, height: 11),
+              const SizedBox(width: 4),
+            ] else if (trailing != null) ...[
               if (trailingDot) ...[
                 Container(
                   width: 6,

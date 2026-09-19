@@ -29,11 +29,13 @@ class AppColors {
   static const Color info = Color(0xFF7E93FF);
 
   // ── Surfaces (dark — the default) ─────────────────────────────────────
-  static const Color background = Color(0xFF0A0F17); // Surface 0 — near-black, faint blue
-  static const Color card = Color(0xFF131A24); // Surface 1 — cards
-  static const Color cardElevated = Color(0xFF1B2430); // Surface 2 — nav, chips, quiet tiles
-  static const Color surfaceModal = Color(0xFF222D3B); // Surface 3 — bottom sheets/dialogs
-  static const Color surfaceFloating = Color(0xFF2A3646); // Surface 4 — floating controls
+  // Neutral graphite near-black ground — no colour cast (tried a green
+  // tint to match the hero photography; it read as weird/off, reverted).
+  static const Color background = Color(0xFF0E0E10); // Surface 0 — near-black graphite
+  static const Color card = Color(0xFF17171A); // Surface 1 — cards
+  static const Color cardElevated = Color(0xFF1F1F23); // Surface 2 — nav, chips, quiet tiles
+  static const Color surfaceModal = Color(0xFF27272C); // Surface 3 — bottom sheets/dialogs
+  static const Color surfaceFloating = Color(0xFF313136); // Surface 4 — floating controls
 
   /// Legacy alias — most existing screens reach for `AppColors.mutedBackground`
   /// for a subtly-tinted input/chip fill; keep it pointed at the same
@@ -45,7 +47,7 @@ class AppColors {
   static const Color muted = Color(0xFF93A1B3); // Text Secondary Dark
 
   // ── Borders ────────────────────────────────────────────────────────────
-  static const Color border = Color(0xFF28323F); // Border Dark — a warm hairline
+  static const Color border = Color(0xFF2E2E33); // Border Dark — neutral graphite hairline
 }
 
 /// The theme-aware token set — everything [AppColors] can't express because
@@ -159,18 +161,19 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
       ? const Color(0xFF3D2C06)
       : const Color(0xFFFFFFFF);
 
-  /// Dark — the primary visual direction. Deeper, faintly-blue near-black
-  /// ground with clean surface steps; the brand green stays canonical.
+  /// Dark — the primary visual direction. Neutral graphite near-black
+  /// ground with clean surface steps — no colour cast — the brand green
+  /// stays canonical.
   static const dark = AppColorTokens(
     brightness: Brightness.dark,
-    surface0: Color(0xFF0A0F17),
-    surface1: Color(0xFF131A24),
-    surface2: Color(0xFF1B2430),
-    surface3: Color(0xFF222D3B),
-    surface4: Color(0xFF2A3646),
+    surface0: Color(0xFF0E0E10),
+    surface1: Color(0xFF17171A),
+    surface2: Color(0xFF1F1F23),
+    surface3: Color(0xFF27272C),
+    surface4: Color(0xFF313136),
     textPrimary: Color(0xFFF4F7FA),
     textSecondary: Color(0xFF93A1B3),
-    borderColor: Color(0xFF28323F),
+    borderColor: Color(0xFF2E2E33),
     primary: Color(0xFF00F08A),
     onPrimary: Color(0xFF06110B),
     success: Color(0xFF2ED993),

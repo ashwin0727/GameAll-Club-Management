@@ -11,6 +11,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -114,7 +115,7 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
       appBar: AppBar(title: const Text('Staff Details')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _StaffDetailsSkeleton()
             : _error != null || _detail == null
                 ? ErrorView(message: _error ?? 'Unable to load this staff member.', onRetry: _load)
                 : _body(session),
@@ -282,4 +283,69 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
           Flexible(child: Text(v, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600))),
         ]),
       );
+}
+
+class _StaffDetailsSkeleton extends StatelessWidget {
+  const _StaffDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        SkeletonCard(
+          child: Row(
+            children: const [
+              AppSkeleton(width: 56, height: 56, radius: 28),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppSkeleton(width: 140, height: 15),
+                    SizedBox(height: AppSpacing.sm),
+                    AppSkeleton(width: 90, height: 11),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppSpacing.sm),
+              AppSkeleton(width: 60, height: 20, radius: 10),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 2),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(
+              5,
+              (i) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: const [
+                    Expanded(child: AppSkeleton(height: 11)),
+                    SizedBox(width: AppSpacing.md),
+                    AppSkeleton(width: 70, height: 11),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 110, height: 13),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonListRow(trailing: false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

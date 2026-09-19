@@ -16,6 +16,7 @@ import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
@@ -340,7 +341,7 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                       if (_error != null)
                         _ErrorPanel(message: _error!, onRetry: _load)
                       else if (_obligations == null)
-                        const LoadingView(message: 'Loading pending payments…')
+                        const _ObligationsListSkeleton()
                       else if (_obligations!.isEmpty)
                         _AllCaughtUp(filtered: filtered)
                       else ...[
@@ -404,12 +405,14 @@ class _OutstandingHero extends StatelessWidget {
     final s = summary;
 
     Widget fig(String label, int? minor, {bool alert = false}) {
-      final text = minor == null ? '—' : financeAmount(minor);
+      final loading = s == null;
       return Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (alert && (minor ?? 0) > 0)
+            if (loading)
+              AppSkeleton(width: 48, height: 15, radius: AppRadius.sm)
+            else if (alert && (minor ?? 0) > 0)
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -417,7 +420,7 @@ class _OutstandingHero extends StatelessWidget {
                   color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(text,
+                child: Text(financeAmount(minor!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -426,7 +429,7 @@ class _OutstandingHero extends StatelessWidget {
                         color: tokens.destructive)),
               )
             else
-              Text(text,
+              Text(financeAmount(minor ?? 0),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -477,19 +480,24 @@ class _OutstandingHero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              s == null ? '—' : financeAmount(s.outstandingMinor),
-              style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  height: 1.1,
-                  color: onC),
-            ),
-          ),
+          s == null
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppSkeleton(width: 140, height: 30, radius: AppRadius.sm),
+                )
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    financeAmount(s.outstandingMinor),
+                    style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        height: 1.1,
+                        color: onC),
+                  ),
+                ),
           const SizedBox(height: AppSpacing.md),
           Divider(height: 1, color: onC.withValues(alpha: 0.22)),
           const SizedBox(height: AppSpacing.md),
@@ -848,6 +856,29 @@ class _AllCaughtUp extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the search+filter row and obligation
+/// list while [_PendingPaymentsScreenState._obligations] is still loading.
+class _ObligationsListSkeleton extends StatelessWidget {
+  const _ObligationsListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonChipRow(count: 3),
+        SizedBox(height: AppSpacing.md),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

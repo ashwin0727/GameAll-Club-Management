@@ -9,6 +9,7 @@ import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -86,7 +87,7 @@ class _VendorDetailScreenState extends ConsumerState<VendorDetailScreen> {
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _vendor == null
-                  ? const LoadingView(message: 'Loading vendor…')
+                  ? const _VendorDetailSkeleton()
                   : _content(_vendor!),
         ),
       ),
@@ -152,7 +153,10 @@ class _VendorDetailScreenState extends ConsumerState<VendorDetailScreen> {
     return v.suppliedItems
         .map((i) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/inventory/items/${i.id}'),
+              onTap: () async {
+                await context.push('/inventory/items/${i.id}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -178,7 +182,10 @@ class _VendorDetailScreenState extends ConsumerState<VendorDetailScreen> {
     return v.purchaseHistory
         .map((p) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/inventory/purchase-orders/${p.poId}'),
+              onTap: () async {
+                await context.push('/inventory/purchase-orders/${p.poId}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -261,4 +268,45 @@ class _VendorDetailScreenState extends ConsumerState<VendorDetailScreen> {
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder mirroring the loaded vendor detail: status
+/// badge, a 2x2 stat grid, tab bar, then tab-content rows.
+class _VendorDetailSkeleton extends StatelessWidget {
+  const _VendorDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        const AppSkeleton(width: 72, height: 24, radius: 999),
+        const SizedBox(height: AppSpacing.md),
+        GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacing.sm,
+            crossAxisSpacing: AppSpacing.sm,
+            childAspectRatio: 2.2,
+          ),
+          children: const [
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 5),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonListRow(trailing: false),
+      ],
+    );
+  }
 }

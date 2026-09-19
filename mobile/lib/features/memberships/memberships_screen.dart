@@ -23,6 +23,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_detail_screen.dart';
 import 'membership_access_days_sheet.dart';
@@ -408,7 +409,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading memberships…')
+            ? const _MembershipsScreenSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
                 : RefreshIndicator(
@@ -448,10 +449,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           if (_listLoading)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                              child: Center(child: CircularProgressIndicator()),
-                            )
+                            const _MembershipsListSkeleton()
                           else if (_list.rows.isEmpty)
                             EmptyStateView(
                               message: _search.isNotEmpty || _status != null
@@ -494,6 +492,75 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
               label: const Text('Create Membership'),
             ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.members),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the whole Memberships page while the
+/// facility, summary and first list page are loading — the 2x2 KPI grid,
+/// the search/filter row, and a handful of row-shaped list placeholders.
+class _MembershipsScreenSkeleton extends StatelessWidget {
+  const _MembershipsScreenSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Expanded(child: SkeletonStatTile()),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: SkeletonStatTile()),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Row(
+            children: [
+              Expanded(child: SkeletonStatTile()),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: SkeletonStatTile()),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              const Expanded(
+                  child: AppSkeleton(height: 44, radius: AppRadius.md)),
+              const SizedBox(width: AppSpacing.sm),
+              AppSkeleton(
+                  width: AppSpacing.minTouchTarget,
+                  height: AppSpacing.minTouchTarget,
+                  radius: AppRadius.md),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const _MembershipsListSkeleton(),
+        ],
+      ),
+    );
+  }
+}
+
+/// The list-region placeholder shown both on first load (inside
+/// [_MembershipsScreenSkeleton]) and while a filter/page refresh is in
+/// flight — a handful of member-row-shaped placeholders.
+class _MembershipsListSkeleton extends StatelessWidget {
+  const _MembershipsListSkeleton();
+
+  static const _itemCount = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < _itemCount; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: const SkeletonListRow(),
+          ),
+      ],
     );
   }
 }

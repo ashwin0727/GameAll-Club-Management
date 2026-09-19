@@ -11,6 +11,7 @@ import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -129,7 +130,7 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
               child: _error != null
                   ? ErrorView(message: _error!, onRetry: _load)
                   : _rows == null
-                      ? const LoadingView(message: 'Loading…')
+                      ? const _CoachingScheduleSkeleton()
                       : RefreshIndicator(
                           onRefresh: _load,
                           child: _rows!.isEmpty
@@ -148,7 +149,10 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
                                             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                                             child: AppCard(
                                               padding: const EdgeInsets.all(AppSpacing.md),
-                                              onTap: () => context.push('/coaching/sessions/${s.id}'),
+                                              onTap: () async {
+                                                await context.push('/coaching/sessions/${s.id}');
+                                                if (mounted) _load();
+                                              },
                                               child: Row(
                                                 children: [
                                                   Expanded(
@@ -176,6 +180,31 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the schedule day's session list — the
+/// date navigator above it is already a real widget, so this only covers
+/// the day's session rows.
+class _CoachingScheduleSkeleton extends StatelessWidget {
+  const _CoachingScheduleSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

@@ -8,7 +8,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 
@@ -106,7 +106,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
       appBar: AppBar(title: const Text('Add Coach')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _CoachFormSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -173,6 +173,34 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the add-coach form: the staff dropdown
+/// and each text field, ending with the submit button.
+class _CoachFormSkeleton extends StatelessWidget {
+  const _CoachFormSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 72),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeleton(height: 48),
+      ],
     );
   }
 }

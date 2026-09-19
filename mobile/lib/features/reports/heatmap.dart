@@ -28,6 +28,7 @@ class Heatmap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     if (cells.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
@@ -48,56 +49,85 @@ class Heatmap extends StatelessWidget {
             ? '${_days[dow]} ${hour.toString().padLeft(2, '0')}:00, closed'
             : '${_days[dow]} ${hour.toString().padLeft(2, '0')}:00, $pct% demand',
         child: Container(
-          width: 30,
-          height: 26,
-          margin: const EdgeInsets.all(1),
+          width: 26,
+          height: 22,
+          margin: const EdgeInsets.all(1.5),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: pct == null
-                ? AppColors.border.withValues(alpha: 0.4)
-                : AppColors.primary.withValues(alpha: 0.08 + (pct / 100) * 0.8),
-            borderRadius: BorderRadius.circular(4),
+                ? tokens.surface2
+                : Color.alphaBlend(
+                    tokens.primary.withValues(alpha: 0.06 + (pct / 100) * 0.82), tokens.surface1),
+            borderRadius: BorderRadius.circular(5),
           ),
-          child: Text(
-            pct?.toString() ?? '·',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: pct != null && pct >= 55 ? const Color(0xFF07101F) : null,
-            ),
-          ),
+          child: pct == null || pct == 0
+              ? null
+              : Text(
+                  pct.toString(),
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: pct >= 55 ? tokens.onAccent(tokens.primary) : tokens.textSecondary,
+                  ),
+                ),
         ),
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text('Lower demand', style: AppTypography.caption(context)),
+            const SizedBox(width: AppSpacing.sm),
+            for (var i = 0; i <= 4; i++)
+              Container(
+                width: 14,
+                height: 14,
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                decoration: BoxDecoration(
+                  color: Color.alphaBlend(
+                      tokens.primary.withValues(alpha: 0.1 + (i / 4) * 0.8), tokens.surface1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            const SizedBox(width: AppSpacing.sm),
+            Text('Higher demand', style: AppTypography.caption(context)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(width: 34),
-              for (final h in hours)
-                SizedBox(
-                  width: 32,
-                  child: Text(_hourShort(h),
-                      textAlign: TextAlign.center, style: AppTypography.caption(context)),
+              Row(
+                children: [
+                  const SizedBox(width: 32),
+                  for (final h in hours)
+                    SizedBox(
+                      width: 29,
+                      child: Text(_hourShort(h),
+                          textAlign: TextAlign.center, style: AppTypography.caption(context)),
+                    ),
+                ],
+              ),
+              for (var dow = 0; dow < _days.length; dow++)
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Text(_days[dow], style: AppTypography.caption(context)),
+                    ),
+                    for (final h in hours) cellBox(dow, h),
+                  ],
                 ),
             ],
           ),
-          for (var dow = 0; dow < _days.length; dow++)
-            Row(
-              children: [
-                SizedBox(
-                  width: 34,
-                  child: Text(_days[dow], style: AppTypography.caption(context)),
-                ),
-                for (final h in hours) cellBox(dow, h),
-              ],
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

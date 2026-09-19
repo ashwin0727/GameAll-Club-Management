@@ -31,6 +31,7 @@ class ReportShell extends ConsumerWidget {
     required this.body,
     this.emptyMessage = 'No data for this period.',
     this.errorMessage = 'Unable to load this report. Please try again.',
+    this.loadingSkeleton,
   });
 
   final String title;
@@ -42,12 +43,17 @@ class ReportShell extends ConsumerWidget {
   final String emptyMessage;
   final String errorMessage;
 
+  /// Shaped placeholder for [ReportStatus.loading], matching this report's
+  /// own KPI-grid/chart/card layout — falls back to the generic
+  /// [LoadingView] skeleton-list for a report that hasn't supplied one yet.
+  final Widget? loadingSkeleton;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final facility = ref.watch(sessionControllerProvider).facility;
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
       body: facility == null
           ? const EmptyStateView(message: 'No facility found for this account yet.')
           : RefreshIndicator(
@@ -63,9 +69,9 @@ class ReportShell extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     switch (status) {
-                      ReportStatus.loading => const Padding(
-                          padding: EdgeInsets.only(top: AppSpacing.xl),
-                          child: LoadingView(),
+                      ReportStatus.loading => Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xl),
+                          child: loadingSkeleton ?? const LoadingView(),
                         ),
                       ReportStatus.error => Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xxl),

@@ -12,6 +12,7 @@ import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -25,12 +26,14 @@ const _monthShort = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
-const _dayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /// The redesigned Members hub — Plans, People and Sessions in one place.
 class MembersScreen extends ConsumerStatefulWidget {
   const MembersScreen(
-      {super.key, this.openPlans = false, this.openNew = false});
+      {super.key,
+      this.openPlans = false,
+      this.openNew = false,
+      this.openSessions = false});
 
   /// When true (deep-linked from the "+" menu), the plan editor opens as soon
   /// as the screen has loaded.
@@ -38,6 +41,10 @@ class MembersScreen extends ConsumerStatefulWidget {
 
   /// When true, the "New membership" form opens as soon as the screen loads.
   final bool openNew;
+
+  /// When true (deep-linked from the "+" menu), the sessions sheet opens as
+  /// soon as the screen has loaded.
+  final bool openSessions;
 
   @override
   ConsumerState<MembersScreen> createState() => _MembersScreenState();
@@ -53,6 +60,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   int _tabIndex = 0;
   bool _autoOpenedPlans = false;
   bool _autoOpenedNew = false;
+  bool _autoOpenedSessions = false;
 
   List<MembershipPlan> _plans = const [];
   MembershipPageSummary? _summary;
@@ -122,6 +130,11 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         _tabs.animateTo(1); // land on People afterwards
         WidgetsBinding.instance
             .addPostFrameCallback((_) => _openNewMembership());
+      }
+      if (widget.openSessions && !_autoOpenedSessions && mounted) {
+        _autoOpenedSessions = true;
+        _tabs.animateTo(2); // land on Sessions afterwards
+        WidgetsBinding.instance.addPostFrameCallback((_) => _manageSessions());
       }
     } on AppException catch (e) {
       setState(() {
@@ -193,8 +206,11 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   }
 
   void _copyJoinLink() {
-    final slug = ref.read(sessionControllerProvider).facility?.slug;
-    final link = slug == null ? 'gameall.in' : 'gameall.in/join/$slug';
+    // `/join/[facilityId]` (web) is keyed by the facility's UUID id — its
+    // backing RPC (`get_public_membership_signup_info`) takes a `uuid`
+    // param and can't resolve the human-readable slug.
+    final id = ref.read(sessionControllerProvider).facility?.id;
+    final link = id == null ? 'club.gameall.co' : 'club.gameall.co/join/$id';
     Clipboard.setData(ClipboardData(text: 'https://$link'));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -309,7 +325,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _MembersScreenSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -515,38 +531,40 @@ class _RecurringRevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final series = revenue.length > 12
-        ? revenue.sublist(revenue.length - 12)
-        : revenue;
-    final values = series.map((b) => b.amountInr.toDouble()).toList();
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          color: tokens.accentSolid(tokens.violet),
-        ),
+      child: SizedBox(
+        height: 190,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // ── graph overlay, bleeding to the card edges ──────────────
-            if (values.length >= 2)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 96,
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _Sparkline(
-                      values: values,
-                      line: const Color(0xFFFFFFFF),
-                      fill: const Color(0x33FFFFFF),
-                    ),
-                  ),
+            // ── photo background, same treatment as the dashboard's hero
+            // cards — a dark gradient overlay keeps the white text legible.
+            Image.asset('assets/images/members_card.png', fit: BoxFit.cover),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.15),
+                  ],
                 ),
               ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.0),
+                    Colors.black.withValues(alpha: 0.45),
+                  ],
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
@@ -571,6 +589,15 @@ class _RecurringRevenueCard extends StatelessWidget {
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFFFFFFFF),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: 0.6,
+                    child: Container(
+                      height: 1,
+                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.5),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -603,72 +630,6 @@ class _RecurringRevenueCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// A soft area sparkline for the recurring-revenue card — smoothed line with
-/// a gradient fill that fades to nothing at the bottom.
-class _Sparkline extends CustomPainter {
-  _Sparkline({required this.values, required this.line, required this.fill});
-
-  final List<double> values;
-  final Color line;
-  final Color fill;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.length < 2) return;
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final range = (maxV - minV).abs() < 1e-6 ? 1.0 : (maxV - minV);
-    const pad = 6.0;
-    final h = size.height - pad;
-    final dx = size.width / (values.length - 1);
-
-    Offset pt(int i) => Offset(
-          i * dx,
-          pad + h - ((values[i] - minV) / range) * h,
-        );
-
-    final linePath = Path()..moveTo(pt(0).dx, pt(0).dy);
-    for (var i = 1; i < values.length; i++) {
-      final p0 = pt(i - 1);
-      final p1 = pt(i);
-      final cx = (p0.dx + p1.dx) / 2;
-      linePath.cubicTo(cx, p0.dy, cx, p1.dy, p1.dx, p1.dy);
-    }
-
-    final areaPath = Path.from(linePath)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      areaPath,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [fill, fill.withValues(alpha: 0)],
-        ).createShader(Offset.zero & size),
-    );
-    canvas.drawPath(
-      linePath,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = line,
-    );
-    // end dot
-    final last = pt(values.length - 1);
-    canvas.drawCircle(last, 3.5, Paint()..color = line);
-    canvas.drawCircle(
-        last, 6, Paint()..color = line.withValues(alpha: 0.25));
-  }
-
-  @override
-  bool shouldRepaint(_Sparkline old) => old.values != values;
 }
 
 class _MiniFig extends StatelessWidget {
@@ -815,75 +776,105 @@ class _PlanMembersSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(plan.name,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800)),
-                Text(
-                  '${rows.length} member${rows.length == 1 ? '' : 's'}',
-                  style:
-                      TextStyle(fontSize: 12, color: tokens.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          if (rows.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
-              child: Text('No one is on this plan yet.',
-                  style: TextStyle(color: tokens.textSecondary)),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
+    // Same full-bottom DraggableScrollableSheet other member/session sheets
+    // use (see BatchMembersSheet) — a fixed, generous starting height rather
+    // than shrink-wrapping to content, so an empty plan doesn't render as a
+    // tiny stub floating over a dark scrim.
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (context, scrollController) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-                itemCount: rows.length,
-                separatorBuilder: (_, i) =>
-                    Divider(height: 1, color: tokens.borderColor),
-                itemBuilder: (context, i) {
-                  final r = rows[i];
-                  final (label, color) = switch (r.status) {
-                    MembershipListStatus.active =>
-                      ('Active', tokens.primary),
-                    MembershipListStatus.paymentIncomplete =>
-                      ('Unpaid', tokens.warning),
-                    MembershipListStatus.inactive =>
-                      ('Inactive', tokens.textSecondary),
-                  };
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: AppAvatar(
-                        name: r.memberName, size: AppAvatarSize.small),
-                    title: Text(r.memberName,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('+91 ${r.memberPhone}',
-                        style: TextStyle(
-                            fontSize: 12, color: tokens.textSecondary)),
-                    trailing: Text(label,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: color)),
-                    onTap: () => onOpen(r),
-                  );
-                },
+                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(plan.name,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text(
+                      '${rows.length} member${rows.length == 1 ? '' : 's'}',
+                      style:
+                          TextStyle(fontSize: 12, color: tokens.textSecondary),
+                    ),
+                  ],
+                ),
               ),
-            ),
-        ],
-      ),
+              Expanded(
+                child: rows.isEmpty
+                    ? ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                        children: [
+                          const SizedBox(height: AppSpacing.xxl),
+                          Center(
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: tokens.surface2, shape: BoxShape.circle),
+                              child: Icon(Icons.group_outlined, size: 26, color: tokens.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text('No members yet',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 15, color: tokens.textPrimary)),
+                          const SizedBox(height: 4),
+                          Text('Members who join "${plan.name}" will show up here.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+                        ],
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                        itemCount: rows.length,
+                        separatorBuilder: (_, i) =>
+                            Divider(height: 1, color: tokens.borderColor),
+                        itemBuilder: (context, i) {
+                          final r = rows[i];
+                          final (label, color) = switch (r.status) {
+                            MembershipListStatus.active =>
+                              ('Active', tokens.primary),
+                            MembershipListStatus.paymentIncomplete =>
+                              ('Unpaid', tokens.warning),
+                            MembershipListStatus.inactive =>
+                              ('Inactive', tokens.textSecondary),
+                          };
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: AppAvatar(
+                                name: r.memberName, size: AppAvatarSize.small),
+                            title: Text(r.memberName,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: Text('+91 ${r.memberPhone}',
+                                style: TextStyle(
+                                    fontSize: 12, color: tokens.textSecondary)),
+                            trailing: Text(label,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: color)),
+                            onTap: () => onOpen(r),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1144,7 +1135,6 @@ class _BatchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final days = batch.daysOfWeek.map((d) => _dayShort[d % 7]).join(' ');
     final full = batch.enrolledCount >= batch.capacity;
     final fraction =
         batch.capacity == 0 ? 0.0 : batch.enrolledCount / batch.capacity;
@@ -1187,7 +1177,7 @@ class _BatchCard extends StatelessWidget {
                                 fontSize: 15, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
                         Text(
-                          '${batch.sportName} · $days · ${Formatters.time12h(batch.startTime)}–${Formatters.time12h(batch.endTime)}',
+                          '${batch.sportName} · ${Formatters.time12h(batch.startTime)}–${Formatters.time12h(batch.endTime)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1241,6 +1231,77 @@ class _BatchCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+
+/// Structure-shaped placeholder for the Members hub while its five
+/// parallel loads are in flight — mirrors the default Plans tab: a tall
+/// hero card (revenue + three mini figures) followed by a few plan-card
+/// shapes (title/price row, subtitle, progress bar + trailing count).
+class _MembersScreenSkeleton extends StatelessWidget {
+  const _MembersScreenSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      children: [
+        SkeletonCard(
+          child: SizedBox(
+            height: 190 - AppSpacing.lg * 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppSkeleton(width: 140, height: 13),
+                const SizedBox(height: AppSpacing.sm),
+                const AppSkeleton(width: 160, height: 26),
+                const Spacer(),
+                Row(
+                  children: const [
+                    AppSkeleton(width: 40, height: 28),
+                    SizedBox(width: AppSpacing.xl),
+                    AppSkeleton(width: 40, height: 28),
+                    SizedBox(width: AppSpacing.xl),
+                    AppSkeleton(width: 56, height: 28),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: SkeletonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Row(
+                    children: [
+                      Expanded(child: AppSkeleton(width: 120, height: 15)),
+                      SizedBox(width: AppSpacing.md),
+                      AppSkeleton(width: 50, height: 15),
+                    ],
+                  ),
+                  SizedBox(height: 6),
+                  AppSkeleton(width: 160, height: 11),
+                  SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: AppSkeleton(height: 6, radius: AppRadius.pill)),
+                      SizedBox(width: AppSpacing.md),
+                      AppSkeleton(width: 64, height: 11),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({

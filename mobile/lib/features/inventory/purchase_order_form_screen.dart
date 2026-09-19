@@ -10,7 +10,7 @@ import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'inventory_common.dart';
@@ -173,7 +173,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
       appBar: AppBar(title: const Text('New Purchase Order')),
       body: SafeArea(
         child: _loadingRefs
-            ? const LoadingView(message: 'Loading…')
+            ? const _PurchaseOrderFormSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -309,6 +309,56 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
         decoration: InputDecoration(labelText: label),
         child: Text(value == null ? (allowNull ? 'Not set' : '') : DateFormat('d MMM yyyy').format(value)),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded PO form: a field card
+/// (vendor/dates/reference), a couple of line-item rows, then a total card.
+class _PurchaseOrderFormSkeleton extends StatelessWidget {
+  const _PurchaseOrderFormSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(height: 56, radius: 8),
+              SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(child: AppSkeleton(height: 56, radius: 8)),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(child: AppSkeleton(height: 56, radius: 8)),
+                ],
+              ),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 56, radius: 8),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 100, height: 15),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              AppSkeleton(width: 60, height: 18),
+              AppSkeleton(width: 90, height: 18),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+      ],
     );
   }
 }

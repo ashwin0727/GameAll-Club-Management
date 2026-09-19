@@ -8,6 +8,7 @@ import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -104,7 +105,7 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _program == null
-                  ? const LoadingView(message: 'Loading program…')
+                  ? const _CoachingProgramDetailSkeleton()
                   : _content(_program!),
         ),
       ),
@@ -185,4 +186,75 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder for the program detail page: the status
+/// badge row, the 2-col KPI grid, then the details card.
+class _CoachingProgramDetailSkeleton extends StatelessWidget {
+  const _CoachingProgramDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        Row(
+          children: const [
+            AppSkeleton(width: 90, height: 24, radius: 12),
+            SizedBox(width: AppSpacing.sm),
+            AppSkeleton(width: 130, height: 24, radius: 12),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const AppSkeleton(width: 200, height: 12),
+        const SizedBox(height: AppSpacing.md),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 2.4,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkelKv extends StatelessWidget {
+  const _SkelKv();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 140, height: 11),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: AppSkeleton(height: 11)),
+      ],
+    );
+  }
 }

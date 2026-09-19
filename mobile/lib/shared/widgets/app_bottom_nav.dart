@@ -38,7 +38,7 @@ const _tabs = <({
     tab: AppTab.money,
     icon: Icons.account_balance_wallet_outlined,
     activeIcon: Icons.account_balance_wallet_rounded,
-    label: 'Money',
+    label: 'Finance',
     route: AppRoutes.finance,
   ),
   (
@@ -51,19 +51,23 @@ const _tabs = <({
 ];
 
 /// Everything that doesn't fit the bar, reached through the "+" button.
-/// Create actions for Plans / People / Sessions now live as a context-aware
-/// button on the Members hub itself, so they're intentionally not repeated here.
+///
+/// Deliberately short — this is a "things I do right now" menu, not a site
+/// map. Finance is dropped because it's the same screen as the Money tab,
+/// and the occasional/admin screens (Reports, Inventory, Users & Roles)
+/// live one tap away in Profile → Manage instead of crowding a menu meant
+/// to be scanned in a second — each still resolves to the ONE screen for
+/// that job, never a second copy of it. New Plan/Membership/Session deep-link
+/// into the Members hub's own create flows (same screens as its
+/// context-aware FAB) rather than duplicating them.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
   (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
-  (icon: Icons.groups_2_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
-  (icon: Icons.event_repeat_outlined, label: 'Membership Sessions', route: AppRoutes.membershipSessions, permission: null),
-  (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
-  (icon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
-  (icon: Icons.handyman_outlined, label: 'Maintenance', route: AppRoutes.maintenance, permission: null),
-  (icon: Icons.inventory_2_outlined, label: 'Inventory & Vendors', route: AppRoutes.inventory, permission: 'INVENTORY_VIEW'),
+  (icon: Icons.event_repeat_outlined, label: 'New Session', route: '${AppRoutes.memberships}?new=session', permission: null),
+  (icon: Icons.card_membership_outlined, label: 'New Membership', route: '${AppRoutes.memberships}?new=membership', permission: null),
+  (icon: Icons.add_card_outlined, label: 'New Plan', route: '${AppRoutes.memberships}?new=plan', permission: null),
+  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenanceTicketNew, permission: null),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
-  (icon: Icons.shield_outlined, label: 'Users & Roles', route: AppRoutes.usersRoles, permission: 'USERS_VIEW'),
-  (icon: Icons.person_outline, label: 'Profile', route: AppRoutes.profile, permission: null),
+  (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),
 ];
 
 /// Floating bottom navigation — a rounded, shadowed bar that hovers above
@@ -466,35 +470,50 @@ class _SpeedDialOverlay extends StatelessWidget {
           scale: 0.7 + 0.3 * t,
           alignment: Alignment.centerRight,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: GestureDetector(
               onTap: () => onSelect(d.route),
-              // Name only — no icon. A row of glowing green name pills
-              // reads faster than a column of icons the owner has to
-              // decode, and every destination here is a word, not a shape.
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg, vertical: 12),
-                decoration: BoxDecoration(
-                  color: tokens.accentSolid(tokens.primary),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tokens.primary.withValues(alpha: 0.45),
-                      blurRadius: 22,
-                      spreadRadius: -3,
-                      offset: const Offset(0, 6),
+              // Name floating on the backdrop, icon in its own glowing green
+              // box — same treatment as the main "+" button — so every
+              // item's icon box lands at the same fixed position along the
+              // screen's right edge, with the label growing leftward from
+              // it. No horizontal padding here — any inset would shift the
+              // box left of the "+" button's own right:20 position instead
+              // of stacking directly above it. Tapping the label or the
+              // icon both trigger [onSelect].
+              child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(d.label,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.1,
+                            color: Colors.white,
+                            decoration: TextDecoration.none)),
+                    const SizedBox(width: 12),
+                    // Exactly the "+" button's box: same size, radius,
+                    // shadow and icon size — not a scaled-down copy.
+                    Container(
+                      height: 48,
+                      width: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: tokens.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        boxShadow: [
+                          BoxShadow(
+                            color: tokens.primary.withValues(alpha: 0.5),
+                            blurRadius: 20,
+                            spreadRadius: -1,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(d.icon, size: 26, color: tokens.onPrimary),
                     ),
                   ],
                 ),
-                child: Text(d.label,
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.1,
-                        color: tokens.onAccent(tokens.primary),
-                        decoration: TextDecoration.none)),
-              ),
             ),
           ),
         ),

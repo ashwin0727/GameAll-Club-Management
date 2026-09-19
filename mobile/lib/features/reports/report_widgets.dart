@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../shared/widgets/app_card.dart';
@@ -21,6 +22,8 @@ class ReportKpi {
     this.pct,
     this.invert = false,
     this.onTap,
+    this.icon,
+    this.accent,
   });
 
   final String label;
@@ -30,6 +33,12 @@ class ReportKpi {
   /// For expenses / money owed, a rise is bad news — colour follows meaning.
   final bool invert;
   final VoidCallback? onTap;
+
+  /// Optional icon badge (with [accent] as its colour) — the same "each
+  /// metric gets its own accent" treatment used on the dashboard and the
+  /// Reports hub. Omit both to keep the plainer label-only card.
+  final IconData? icon;
+  final Color? accent;
 }
 
 /// A reflowing grid of [ReportKpi] cards — 1 or 2 columns by width, like the
@@ -64,6 +73,8 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final accent = kpi.accent;
     return AppCard(
       onTap: kpi.onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -73,8 +84,22 @@ class _KpiCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (kpi.icon != null && accent != null) ...[
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tokens.accentFill(accent),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(kpi.icon, size: 16, color: accent),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
               Expanded(child: Text(kpi.label, style: AppTypography.caption(context))),
-              if (kpi.onTap != null) const Icon(Icons.chevron_right, size: 16, color: AppColors.muted),
+              if (kpi.onTap != null)
+                Icon(Icons.chevron_right_rounded, size: 18, color: tokens.textSecondary),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -124,7 +149,7 @@ class _KpiDelta extends StatelessWidget {
 }
 
 class ReportBar {
-  const ReportBar({required this.label, required this.value, this.color, this.caption});
+  const ReportBar({required this.label, required this.value, this.color, this.caption, this.onTap});
 
   final String label;
   final num value;
@@ -132,6 +157,9 @@ class ReportBar {
 
   /// Shown in place of the raw value (e.g. "₹50,000 (50%)").
   final String? caption;
+
+  /// When set, the row drills down (e.g. into that court's own report).
+  final VoidCallback? onTap;
 }
 
 /// Labelled horizontal bars — the readable companion to a chart, and the
@@ -156,30 +184,41 @@ class ReportBarList extends StatelessWidget {
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(item.label, overflow: TextOverflow.ellipsis)),
-                    const SizedBox(width: AppSpacing.md),
-                    Text(
-                      item.caption ?? item.value.toString(),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: (item.value / peak).clamp(0, 1).toDouble(),
-                    minHeight: 8,
-                    backgroundColor: AppColors.border,
-                    valueColor: AlwaysStoppedAnimation(item.color ?? AppColors.primary),
+            child: InkWell(
+              onTap: item.onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                          child: Text(item.label,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600))),
+                      const SizedBox(width: AppSpacing.md),
+                      Text(
+                        item.caption ?? item.value.toString(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (item.onTap != null) ...[
+                        const SizedBox(width: 2),
+                        Icon(Icons.chevron_right_rounded, size: 18, color: context.tokens.textSecondary),
+                      ],
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: (item.value / peak).clamp(0, 1).toDouble(),
+                      minHeight: 8,
+                      backgroundColor: context.tokens.surface2,
+                      valueColor: AlwaysStoppedAnimation(item.color ?? context.tokens.primary),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
       ],
@@ -243,17 +282,27 @@ class ReportDataTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Semantics(
       label: caption,
       container: true,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          // Flutter's DataTable shows a leading checkbox column by default —
+          // every report table on the app had one, unintentionally, until
+          // this was set.
+          showCheckboxColumn: false,
           columnSpacing: AppSpacing.lg,
           horizontalMargin: 0,
           headingRowHeight: 36,
-          dataRowMinHeight: 40,
+          dataRowMinHeight: 44,
           dataRowMaxHeight: 52,
+          dividerThickness: 0.6,
+          headingRowColor: WidgetStatePropertyAll(tokens.surface2),
+          headingTextStyle: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: tokens.textSecondary),
+          dataTextStyle: TextStyle(fontSize: 13.5, color: tokens.textPrimary),
           columns: [
             for (final c in columns) DataColumn(label: Text(c.label), numeric: c.numeric),
           ],

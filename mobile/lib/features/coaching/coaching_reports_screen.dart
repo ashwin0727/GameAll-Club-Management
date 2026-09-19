@@ -8,6 +8,7 @@ import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -69,7 +70,7 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)
             : _data == null
-                ? const LoadingView(message: 'Loading reports…')
+                ? const _CoachingReportsSkeleton()
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(
@@ -209,6 +210,94 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
+      ],
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the reports page: the period-picker
+/// chip, the 2-col KPI grid, then the performance/utilization/growth cards.
+class _CoachingReportsSkeleton extends StatelessWidget {
+  const _CoachingReportsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        const AppSkeleton(width: 130, height: 34, radius: 17),
+        const SizedBox(height: AppSpacing.lg),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 2.0,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 160, height: 14),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 140, height: 14),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 120, height: 14),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelReportRow(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkelReportRow extends StatelessWidget {
+  const _SkelReportRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(child: AppSkeleton(width: 140, height: 11)),
+        SizedBox(width: AppSpacing.sm),
+        AppSkeleton(width: 60, height: 11),
       ],
     );
   }

@@ -7,6 +7,7 @@ import '../../data/models/maintenance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_format.dart';
@@ -67,7 +68,7 @@ class _MaintenanceTicketDetailScreenState extends ConsumerState<MaintenanceTicke
         child: _error != null && t == null
             ? ErrorView(message: _error!, onRetry: _load)
             : t == null
-                ? const LoadingView()
+                ? const _MaintenanceTicketDetailSkeleton()
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(
@@ -359,4 +360,98 @@ class _MaintenanceTicketDetailScreenState extends ConsumerState<MaintenanceTicke
 
   String _activityLabel(String eventType) =>
       eventType.toLowerCase().split('_').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+}
+
+/// Structure-shaped placeholder shown while a ticket's detail loads —
+/// mirrors the real body's title/priority row, status badge, and the
+/// "Issue Information" + "Schedule" + "Cost" key-value cards.
+class _MaintenanceTicketDetailSkeleton extends StatelessWidget {
+  const _MaintenanceTicketDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: const [
+        Row(
+          children: [
+            Expanded(child: AppSkeleton(width: 200, height: 20)),
+            SizedBox(width: AppSpacing.sm),
+            AppSkeleton(width: 56, height: 20, radius: 10),
+          ],
+        ),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(width: 180, height: 12),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(width: 90, height: 20, radius: 10),
+        SizedBox(height: AppSpacing.lg),
+
+        AppSkeleton(width: 140, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 70, height: 11),
+              SizedBox(height: 6),
+              AppSkeleton(height: 11),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.lg),
+
+        AppSkeleton(width: 90, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.lg),
+
+        AppSkeleton(width: 60, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _KeyValueLine(),
+              SizedBox(height: 8),
+              _KeyValueLine(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _KeyValueLine extends StatelessWidget {
+  const _KeyValueLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 110, height: 11),
+        SizedBox(width: AppSpacing.md),
+        Expanded(child: AppSkeleton(height: 12)),
+      ],
+    );
+  }
 }

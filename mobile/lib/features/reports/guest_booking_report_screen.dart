@@ -9,7 +9,8 @@ import '../../core/theme/app_typography.dart';
 import '../../data/models/analytics.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
+import 'report_section_header.dart';
 import '../authentication/session_controller.dart';
 import 'analytics_filter.dart';
 import 'report_shell.dart';
@@ -100,6 +101,7 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
       onRetry: _load,
       emptyMessage: 'No guest bookings for this period.',
       errorMessage: 'Unable to load the guest booking report. Please try again.',
+      loadingSkeleton: const _GuestBookingReportSkeleton(),
       body: a == null
           ? const SizedBox.shrink()
           : Column(
@@ -114,19 +116,19 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
                   ReportKpi(label: 'Collection Rate', value: '${a.collectionRatePct.toStringAsFixed(1)}%'),
                 ]),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Guest Bookings by Sport'),
+                ReportSectionHeader(title: 'Guest Bookings by Sport'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(child: _bySportBody()),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Guest Bookings by Court'),
+                ReportSectionHeader(title: 'Guest Bookings by Court'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(child: _byCourtBody()),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Peak Guest Hours'),
+                ReportSectionHeader(title: 'Peak Guest Hours'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(child: _peakBody()),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Payment Collection'),
+                ReportSectionHeader(title: 'Payment Collection'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(
                   child: Column(
@@ -233,6 +235,58 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
           columns: const [ReportColumn(label: 'Hour'), ReportColumn(label: 'Bookings', numeric: true)],
           rows: [for (final h in byHour) [formatHourLabel(h.hour), h.bookingCount.toString()]],
         ),
+      ],
+    );
+  }
+}
+
+/// Shaped placeholder for the loading branch — 6-tile KPI grid plus the
+/// four by-sport/by-court/peak-hours/payment-collection cards.
+class _GuestBookingReportSkeleton extends StatelessWidget {
+  const _GuestBookingReportSkeleton();
+
+  Widget _sectionCard() => const SkeletonCard(
+        child: Column(
+          children: [
+            AppSkeleton(height: 14),
+            SizedBox(height: AppSpacing.sm),
+            AppSkeleton(height: 14),
+            SizedBox(height: AppSpacing.sm),
+            AppSkeleton(height: 14),
+          ],
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: const [
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+          ],
+        ),
+        for (var i = 0; i < 4; i++) ...[
+          const SizedBox(height: AppSpacing.xl),
+          const AppSkeleton(width: 160, height: 15),
+          const SizedBox(height: AppSpacing.sm),
+          _sectionCard(),
+        ],
       ],
     );
   }

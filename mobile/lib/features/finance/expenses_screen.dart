@@ -5,15 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'add_expense_sheet.dart';
@@ -198,14 +199,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final totalPages = _totalCount == 0 ? 1 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Expenses'),
+        title: const Text('Expenses', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add_circle_outline_rounded, color: tokens.primary),
             tooltip: 'Add expense',
             onPressed: _isReady ? _addExpense : null,
           ),
@@ -222,45 +224,71 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     Text('Track facility expenses and operating costs.',
                         style: AppTypography.secondary(context)),
                     const SizedBox(height: AppSpacing.md),
-                    if (_summary != null) _SummaryGrid(summary: _summary!),
+                    if (_summary != null)
+                      _SummaryGrid(summary: _summary!)
+                    else
+                      const _SummaryGridSkeleton(),
                     const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        PickerChip(
-                          label: _categoryId == null
-                              ? 'All Categories'
-                              : _categories
-                                  .firstWhere((c) => c.id == _categoryId,
-                                      orElse: () => const ExpenseCategory(id: '', name: 'Category'))
-                                  .name,
-                          onSelect: _categories.isEmpty ? () {} : _pickCategory,
-                        ),
-                        PickerChip(
-                          label: _paymentStatus?.label ?? 'Any status',
-                          onSelect: _pickPaymentStatus,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinanceDateRangePicker(
-                      value: _range,
-                      onChanged: (next) => _applyFilterChange(() => _range = next),
+                    // One horizontally-scrolling filter strip — same pattern
+                    // as Transactions/Refunds/Reports — instead of a chip
+                    // Wrap plus a separate date-range row underneath.
+                    SizedBox(
+                      height: AppSpacing.minTouchTarget,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          PickerChip(
+                            label: _categoryId == null
+                                ? 'All Categories'
+                                : _categories
+                                    .firstWhere((c) => c.id == _categoryId,
+                                        orElse: () => const ExpenseCategory(id: '', name: 'Category'))
+                                    .name,
+                            onSelect: _categories.isEmpty ? () {} : _pickCategory,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          PickerChip(
+                            label: _paymentStatus?.label ?? 'Any status',
+                            onSelect: _pickPaymentStatus,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          IntrinsicWidth(
+                            child: FinanceDateRangePicker(
+                              value: _range,
+                              onChanged: (next) => _applyFilterChange(() => _range = next),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     if (_listError != null) ...[
-                      Text(_listError!, style: const TextStyle(color: AppColors.destructive)),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: tokens.destructive.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Text(_listError!,
+                            style: TextStyle(color: tokens.destructive, fontSize: 13)),
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                     ],
                     if (_range.preset == FinanceDateRangePreset.custom && !_range.isComplete)
-                      Text('Choose a start and end date to see expenses.',
-                          style: AppTypography.secondary(context))
+                      _EmptyRow(
+                        icon: Icons.date_range_outlined,
+                        color: tokens.textSecondary,
+                        message: 'Choose a start and end date to see expenses.',
+                      )
                     else if (_listLoading)
-                      const LoadingView(message: 'Loading expenses…')
+                      const _ExpensesListSkeleton()
                     else if (_expenses.isEmpty)
-                      Text('No expenses recorded for this period.',
-                          style: AppTypography.secondary(context))
+                      _EmptyRow(
+                        icon: Icons.receipt_long_outlined,
+                        color: tokens.textSecondary,
+                        message: 'No expenses recorded for this period.',
+                      )
                     else
                       ..._expenses.map(_buildExpenseRow),
                     if (_totalCount > 0 && !_listLoading) ...[
@@ -281,23 +309,57 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
+  Color _toneColor(BuildContext context, StatusTone tone) {
+    final tokens = context.tokens;
+    return switch (tone) {
+      StatusTone.success => tokens.success,
+      StatusTone.warning => tokens.warning,
+      StatusTone.danger => tokens.destructive,
+      StatusTone.info => tokens.info,
+      StatusTone.neutral => tokens.textSecondary,
+    };
+  }
+
   Widget _buildExpenseRow(ExpenseRow expense) {
+    final tokens = context.tokens;
+    final tone = expense.isVoid ? StatusTone.neutral : _tone(expense.paymentStatus);
+    final color = _toneColor(context, tone);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Opacity(
         opacity: expense.isVoid ? 0.5 : 1,
-        child: AppCard(
-          padding: EdgeInsets.zero,
+        child: Material(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => context.push('${AppRoutes.financeExpenses}/${expense.id}'),
-            child: Padding(
+            onTap: () async {
+              await context.push('${AppRoutes.financeExpenses}/${expense.id}');
+              if (mounted) _load();
+            },
+            child: Container(
               padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: tokens.borderColor),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: tokens.accentFill(color),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Icon(Icons.receipt_long_rounded, size: 17, color: color),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,18 +392,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     children: [
                       expense.isVoid
                           ? const StatusBadge(label: 'Void', tone: StatusTone.neutral)
-                          : StatusBadge(label: expense.paymentStatus.label, tone: _tone(expense.paymentStatus)),
+                          : StatusBadge(label: expense.paymentStatus.label, tone: tone),
                       const Spacer(),
                       if (!expense.isVoid && expense.paymentStatus != ExpensePaymentStatus.paid)
-                        OutlinedButton(
-                          onPressed: () => _markPaid(expense),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, AppSpacing.minTouchTarget),
-                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          child: const Text('Mark paid'),
-                        ),
+                        _MarkPaidButton(onPressed: () => _markPaid(expense)),
                     ],
                   ),
                 ],
@@ -354,6 +408,67 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 }
 
+/// Small solid-green pill CTA — matches Refunds' "Initiate Refund" button,
+/// rather than a flat outlined button that reads as a secondary action.
+class _MarkPaidButton extends StatelessWidget {
+  const _MarkPaidButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Material(
+      color: tokens.primary,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+          child: Text('Mark paid',
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: tokens.onAccent(tokens.primary))),
+        ),
+      ),
+    );
+  }
+}
+
+/// A quiet "nothing here" row — an icon + message instead of a bare line of
+/// grey text, matching the rest of the app's list screens.
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow({required this.icon, required this.color, required this.message});
+
+  final IconData icon;
+  final Color color;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SummaryGrid extends StatelessWidget {
   const _SummaryGrid({required this.summary});
 
@@ -361,16 +476,47 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tiles = <({String label, String value})>[
-      (label: 'Total (period)', value: financeAmount(summary.totalMinor)),
-      (label: 'This Month', value: financeAmount(summary.thisMonthMinor)),
-      (label: 'This Week', value: financeAmount(summary.thisWeekMinor)),
+    final tokens = context.tokens;
+    // Each tile gets its own accent, same as the dashboard's quick actions
+    // and the Reports hub — six tiles, six of the app's distinct colours, so
+    // the grid scans at a glance instead of reading as one grey block.
+    final tiles = <({String label, String value, IconData icon, Color accent})>[
+      (
+        label: 'Total (period)',
+        value: financeAmount(summary.totalMinor),
+        icon: Icons.account_balance_wallet_outlined,
+        accent: tokens.primary,
+      ),
+      (
+        label: 'This Month',
+        value: financeAmount(summary.thisMonthMinor),
+        icon: Icons.calendar_month_outlined,
+        accent: tokens.electricBlue,
+      ),
+      (
+        label: 'This Week',
+        value: financeAmount(summary.thisWeekMinor),
+        icon: Icons.date_range_outlined,
+        accent: tokens.violet,
+      ),
       (
         label: summary.pendingCount > 0 ? 'Unpaid (${summary.pendingCount})' : 'Unpaid',
         value: financeAmount(summary.pendingMinor),
+        icon: Icons.hourglass_empty_rounded,
+        accent: tokens.warning,
       ),
-      (label: 'Maintenance', value: financeAmount(summary.maintenanceMinor)),
-      (label: 'Other Operating', value: financeAmount(summary.otherMinor)),
+      (
+        label: 'Maintenance',
+        value: financeAmount(summary.maintenanceMinor),
+        icon: Icons.build_outlined,
+        accent: tokens.destructive,
+      ),
+      (
+        label: 'Other Operating',
+        value: financeAmount(summary.otherMinor),
+        icon: Icons.category_outlined,
+        accent: tokens.success,
+      ),
     ];
     return LayoutBuilder(builder: (context, constraints) {
       final cols = constraints.maxWidth > 520 ? 3 : 2;
@@ -382,14 +528,39 @@ class _SummaryGrid extends StatelessWidget {
           for (final t in tiles)
             SizedBox(
               width: width,
-              child: AppCard(
+              child: Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: tokens.borderColor),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t.label, style: AppTypography.caption(context)),
-                    const SizedBox(height: 2),
-                    Text(t.value, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: tokens.accentFill(t.accent),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(t.icon, size: 14, color: t.accent),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(t.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.caption(context)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(t.value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   ],
                 ),
               ),
@@ -397,6 +568,51 @@ class _SummaryGrid extends StatelessWidget {
         ],
       );
     });
+  }
+}
+
+/// Placeholder for [_SummaryGrid] while `_summary` is still loading — same
+/// six-tile responsive layout, so the KPI row never renders as a blank gap.
+class _SummaryGridSkeleton extends StatelessWidget {
+  const _SummaryGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final cols = constraints.maxWidth > 520 ? 3 : 2;
+      final width = (constraints.maxWidth - (cols - 1) * AppSpacing.sm) / cols;
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          for (var i = 0; i < 6; i++)
+            SizedBox(width: width, child: const SkeletonStatTile(height: 76)),
+        ],
+      );
+    });
+  }
+}
+
+/// Structure-shaped placeholder for the filter strip + expense list while
+/// [_ExpensesScreenState._listLoading] is true.
+class _ExpensesListSkeleton extends StatelessWidget {
+  const _ExpensesListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonChipRow(count: 3),
+        SizedBox(height: AppSpacing.md),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
+    );
   }
 }
 

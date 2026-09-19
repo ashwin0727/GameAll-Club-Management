@@ -11,6 +11,7 @@ import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -88,7 +89,7 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)
             : _data == null
-                ? const LoadingView(message: 'Loading overview…')
+                ? const _CoachingOverviewSkeleton()
                 : RefreshIndicator(onRefresh: _load, child: _body(_data!)),
       ),
     );
@@ -136,7 +137,10 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
               else
                 ...d.upcomingSessions.map(
                   (s) => InkWell(
-                    onTap: () => context.push('/coaching/sessions/${s.id}'),
+                    onTap: () async {
+                      await context.push('/coaching/sessions/${s.id}');
+                      if (mounted) _load();
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
@@ -181,7 +185,10 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
               else
                 ...d.programs.map(
                   (p) => InkWell(
-                    onTap: () => context.push('/coaching/programs/${p.id}'),
+                    onTap: () async {
+                      await context.push('/coaching/programs/${p.id}');
+                      if (mounted) _load();
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
@@ -242,7 +249,10 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
               else
                 ...d.recentEnrollments.map(
                   (e) => InkWell(
-                    onTap: () => context.push('/coaching/enrollments/${e.id}'),
+                    onTap: () async {
+                      await context.push('/coaching/enrollments/${e.id}');
+                      if (mounted) _load();
+                    },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
@@ -267,6 +277,76 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
           ),
         ),
         const SizedBox(height: AppSpacing.xl * 2),
+      ],
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the overview page: the 2-col KPI grid
+/// followed by the "Upcoming Sessions" card list.
+class _CoachingOverviewSkeleton extends StatelessWidget {
+  const _CoachingOverviewSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.8,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 140, height: 16),
+              SizedBox(height: AppSpacing.md),
+              _SkelSessionRow(),
+              SizedBox(height: AppSpacing.md),
+              _SkelSessionRow(),
+              SizedBox(height: AppSpacing.md),
+              _SkelSessionRow(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkelSessionRow extends StatelessWidget {
+  const _SkelSessionRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 150, height: 13),
+              SizedBox(height: 6),
+              AppSkeleton(width: 210, height: 11),
+            ],
+          ),
+        ),
+        SizedBox(width: AppSpacing.sm),
+        AppSkeleton(width: 60, height: 20, radius: 10),
       ],
     );
   }

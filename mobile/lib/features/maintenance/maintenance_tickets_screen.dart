@@ -8,6 +8,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/maintenance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_format.dart';
@@ -68,7 +69,10 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
     return Scaffold(
       appBar: AppBar(title: const Text('Maintenance Tickets')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.maintenanceTicketNew),
+        onPressed: () async {
+          await context.push(AppRoutes.maintenanceTicketNew);
+          if (mounted) _load();
+        },
         child: const Icon(Icons.add),
       ),
       body: SafeArea(
@@ -107,7 +111,7 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
               child: RefreshIndicator(
                 onRefresh: _load,
                 child: _loading
-                    ? const LoadingView()
+                    ? const _MaintenanceTicketsSkeleton()
                     : _error != null
                         ? ErrorView(message: _error!, onRetry: _load)
                         : (_tickets == null || _tickets!.isEmpty)
@@ -116,7 +120,10 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
                                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                                 itemCount: _tickets!.length,
                                 separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
-                                itemBuilder: (context, i) => _TicketCard(ticket: _tickets![i]),
+                                itemBuilder: (context, i) => _TicketCard(
+                                  ticket: _tickets![i],
+                                  onReturn: _load,
+                                ),
                               ),
               ),
             ),
@@ -129,6 +136,28 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
   void _applyStatus(String? status) {
     setState(() => _statusFilter = status);
     _load();
+  }
+}
+
+/// Structure-shaped placeholder shown while tickets load — mirrors the real
+/// body's status filter-chip strip + ticket list.
+class _MaintenanceTicketsSkeleton extends StatelessWidget {
+  const _MaintenanceTicketsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      children: const [
+        SkeletonChipRow(count: 5),
+        SizedBox(height: AppSpacing.sm),
+        Padding(padding: EdgeInsets.only(bottom: AppSpacing.sm), child: SkeletonListRow()),
+        Padding(padding: EdgeInsets.only(bottom: AppSpacing.sm), child: SkeletonListRow()),
+        Padding(padding: EdgeInsets.only(bottom: AppSpacing.sm), child: SkeletonListRow()),
+        Padding(padding: EdgeInsets.only(bottom: AppSpacing.sm), child: SkeletonListRow()),
+        SkeletonListRow(),
+      ],
+    );
   }
 }
 
@@ -145,13 +174,17 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket});
+  const _TicketCard({required this.ticket, required this.onReturn});
   final MaintenanceTicketListRow ticket;
+  final Future<void> Function() onReturn;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.push('${AppRoutes.maintenanceTickets}/${ticket.ticketId}'),
+      onTap: () async {
+        await context.push('${AppRoutes.maintenanceTickets}/${ticket.ticketId}');
+        onReturn();
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
