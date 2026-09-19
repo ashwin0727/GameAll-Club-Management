@@ -80,8 +80,11 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
   }
 
   String get _bookingLink {
-    final slug = _facility?.slug;
-    return slug == null ? 'gameall.in' : 'gameall.in/$slug';
+    // The public booking page (`src/app/book/[facilityId]` on the web) is
+    // keyed by the facility's UUID id, not its slug — and lives at
+    // `/book/:id`, not bare `/:slug` (which isn't a route at all).
+    final id = _facility?.id;
+    return id == null ? 'club.gameall.co' : 'club.gameall.co/book/$id';
   }
 
   Future<void> _copyLink() async {

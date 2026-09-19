@@ -162,7 +162,11 @@ class Facility {
   final String ownerId;
   final String name;
 
-  /// URL slug for the public booking page — `facilities.slug`.
+  /// A human-readable identifier (`facilities.slug`) stored for the
+  /// facility, but not currently wired into any public route — the actual
+  /// public booking/join pages (`/book/:id`, `/join/:id`) are keyed by
+  /// [id], since their backing RPCs take a `uuid` param. Don't build a
+  /// shareable link from this field.
   final String? slug;
   final FacilityType type;
   final String? customType;

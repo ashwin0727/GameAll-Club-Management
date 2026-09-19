@@ -11,7 +11,7 @@ import '../../data/models/staff.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -134,7 +134,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
       appBar: AppBar(title: const Text('Add Staff')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _AddStaffSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -341,6 +341,64 @@ class _Stepper extends StatelessWidget {
           Text(labels[i], style: TextStyle(fontSize: 12, fontWeight: i == step ? FontWeight.w700 : FontWeight.w400)),
           if (i < 2) const Expanded(child: Divider(indent: 8, endIndent: 8)),
         ],
+      ],
+    );
+  }
+}
+
+class _AddStaffSkeleton extends StatelessWidget {
+  const _AddStaffSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(width: 220, height: 13),
+        SizedBox(height: AppSpacing.md),
+        _StepperSkeleton(),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 140, height: 15),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 44, radius: 8),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 44, radius: 8),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 44, radius: 8),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StepperSkeleton extends StatelessWidget {
+  const _StepperSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 24, height: 24, radius: 12),
+        SizedBox(width: 6),
+        AppSkeleton(width: 60, height: 11),
+        SizedBox(width: 8),
+        Expanded(child: AppSkeleton(height: 1)),
+        SizedBox(width: 8),
+        AppSkeleton(width: 24, height: 24, radius: 12),
+        SizedBox(width: 6),
+        AppSkeleton(width: 70, height: 11),
+        SizedBox(width: 8),
+        Expanded(child: AppSkeleton(height: 1)),
+        SizedBox(width: 8),
+        AppSkeleton(width: 24, height: 24, radius: 12),
+        SizedBox(width: 6),
+        AppSkeleton(width: 50, height: 11),
       ],
     );
   }

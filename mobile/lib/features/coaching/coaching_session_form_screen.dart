@@ -9,7 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../maintenance/maintenance_court_options.dart';
 import '../staff/staff_common.dart';
@@ -162,7 +162,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
       appBar: AppBar(title: const Text('New Session')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _CoachingSessionFormSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -269,6 +269,40 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                 ],
               ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the new-session form: program/coach/
+/// court dropdowns, date/time row, capacity, then the submit button.
+class _CoachingSessionFormSkeleton extends StatelessWidget {
+  const _CoachingSessionFormSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(child: AppSkeleton(height: 56)),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: AppSkeleton(height: 56)),
+          ],
+        ),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 56),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeleton(height: 48),
+      ],
     );
   }
 }

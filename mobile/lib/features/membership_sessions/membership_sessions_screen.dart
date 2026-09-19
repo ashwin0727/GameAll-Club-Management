@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/routing/page_transitions.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -15,8 +15,11 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_batches_sheet.dart';
 import 'membership_session_detail_screen.dart';
@@ -210,21 +213,45 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Membership Sessions'),
+        title: const Text('Membership Sessions',
+            style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           if (_facilityId != null)
-            TextButton.icon(
-              onPressed: _openCreate,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Create'),
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.lg),
+              child: Material(
+                color: tokens.primary,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: _openCreate,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, size: 16, color: tokens.onAccent(tokens.primary)),
+                        const SizedBox(width: 4),
+                        Text('Create',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: tokens.onAccent(tokens.primary))),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading membership sessions…')
+            ? const _MembershipSessionsSkeleton()
             : _loadError != null && _rows == null
                 ? ErrorView(message: _loadError!, onRetry: _load)
                 : RefreshIndicator(
@@ -300,110 +327,125 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
+        AppSearchField(
           controller: _searchController,
+          hintText: 'Search sessions…',
           onChanged: _onSearchChanged,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Search sessions…',
-            isDense: true,
-          ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            _dropdown<String?>(
-              hint: 'All Sports',
-              value: _sportId,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Sports')),
-                ..._facilitySports.map((fs) => DropdownMenuItem(value: fs.id, child: Text(_sportName(fs)))),
-              ],
-              onChanged: (v) {
-                setState(() {
-                  _sportId = v;
-                  _courtId = null;
-                });
-                _resetPageAndReload();
-              },
-            ),
-            _dropdown<String?>(
-              hint: 'All Courts',
-              value: _courtId,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Courts')),
-                ..._areas
-                    .where((a) => _sportId == null || a.facilitySportId == _sportId)
-                    .map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))),
-              ],
-              onChanged: (v) {
-                setState(() => _courtId = v);
-                _resetPageAndReload();
-              },
-            ),
-            _dropdown<String?>(
-              hint: 'All Status',
-              value: _status,
-              items: const [
-                DropdownMenuItem(value: null, child: Text('All Status')),
-                DropdownMenuItem(value: 'active', child: Text('Active')),
-                DropdownMenuItem(value: 'paused', child: Text('Paused')),
-                DropdownMenuItem(value: 'full', child: Text('Full')),
-              ],
-              onChanged: (v) {
-                setState(() => _status = v);
-                _resetPageAndReload();
-              },
-            ),
-            _dropdown<int?>(
-              hint: 'All Days',
-              value: _day,
-              items: [
-                const DropdownMenuItem(value: null, child: Text('All Days')),
-                ..._dayOptions.map((d) => DropdownMenuItem(value: d.value, child: Text(d.label))),
-              ],
-              onChanged: (v) {
-                setState(() => _day = v);
-                _resetPageAndReload();
-              },
-            ),
-          ],
+        // One horizontally-scrolling filter strip — same pattern as
+        // Transactions/Refunds/Reports/Expenses — instead of native
+        // DropdownButtons wrapped in pills, which pop an anchored menu
+        // rather than the app's usual bottom sheet.
+        SizedBox(
+          height: AppSpacing.minTouchTarget,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              PickerChip(
+                label: _sportId == null
+                    ? 'All Sports'
+                    : _facilitySports
+                        .where((fs) => fs.id == _sportId)
+                        .map(_sportName)
+                        .firstOrNull ??
+                        'Sport',
+                onSelect: _pickSport,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              PickerChip(
+                label: _courtId == null
+                    ? 'All Courts'
+                    : _areas.where((a) => a.id == _courtId).map((a) => a.name).firstOrNull ??
+                        'Court',
+                onSelect: _pickCourt,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              PickerChip(
+                label: switch (_status) {
+                  'active' => 'Active',
+                  'paused' => 'Paused',
+                  'full' => 'Full',
+                  _ => 'All Status',
+                },
+                onSelect: _pickStatus,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              PickerChip(
+                label: _day == null
+                    ? 'All Days'
+                    : _dayOptions.where((d) => d.value == _day).map((d) => d.label).firstOrNull ??
+                        'Day',
+                onSelect: _pickDay,
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _dropdown<T>({
-    required String hint,
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    final t = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: t.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: t.borderColor),
-      ),
-      child: DropdownButton<T>(
-        value: value,
-        hint: Text(hint, style: TextStyle(color: t.textSecondary)),
-        underline: const SizedBox.shrink(),
-        isDense: true,
-        style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w700, color: t.textPrimary),
-        icon: Icon(Icons.expand_more_rounded,
-            size: 18, color: t.textSecondary),
-        dropdownColor: t.surface3,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        items: items,
-        onChanged: onChanged,
-      ),
+  Future<void> _pickSport() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _sportId ?? 'ALL',
+      options: [
+        (value: 'ALL', label: 'All Sports'),
+        ..._facilitySports.map((fs) => (value: fs.id, label: _sportName(fs))),
+      ],
     );
+    if (picked == null) return;
+    setState(() {
+      _sportId = picked == 'ALL' ? null : picked;
+      _courtId = null;
+    });
+    _resetPageAndReload();
+  }
+
+  Future<void> _pickCourt() async {
+    final visible =
+        _areas.where((a) => _sportId == null || a.facilitySportId == _sportId).toList();
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _courtId ?? 'ALL',
+      options: [
+        (value: 'ALL', label: 'All Courts'),
+        ...visible.map((a) => (value: a.id, label: a.name)),
+      ],
+    );
+    if (picked == null) return;
+    setState(() => _courtId = picked == 'ALL' ? null : picked);
+    _resetPageAndReload();
+  }
+
+  Future<void> _pickStatus() async {
+    final picked = await showPickerSheet<String>(
+      context: context,
+      selected: _status ?? 'ALL',
+      options: const [
+        (value: 'ALL', label: 'All Status'),
+        (value: 'active', label: 'Active'),
+        (value: 'paused', label: 'Paused'),
+        (value: 'full', label: 'Full'),
+      ],
+    );
+    if (picked == null) return;
+    setState(() => _status = picked == 'ALL' ? null : picked);
+    _resetPageAndReload();
+  }
+
+  Future<void> _pickDay() async {
+    final picked = await showPickerSheet<int>(
+      context: context,
+      selected: _day ?? -1,
+      options: [
+        (value: -1, label: 'All Days'),
+        ..._dayOptions.map((d) => (value: d.value, label: d.label)),
+      ],
+    );
+    if (picked == null) return;
+    setState(() => _day = picked == -1 ? null : picked);
+    _resetPageAndReload();
   }
 
   Widget _list() {
@@ -658,16 +700,76 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
               ],
             ),
           ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: onC),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: link));
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Link copied')));
-              }
-            },
-            child: const Text('Copy'),
+          Material(
+            color: onC.withValues(alpha: 0.16),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => SharePlus.instance.share(ShareParams(text: link)),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(Icons.ios_share_rounded, size: 18, color: onC),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the Membership Sessions dashboard —
+/// mirrors `_kpiGrid()`'s horizontally-scrolling KPI carousel, `_filters()`'s
+/// search + chip strip, `_list()`'s session-row list, and the guest-link
+/// card at the bottom.
+class _MembershipSessionsSkeleton extends StatelessWidget {
+  const _MembershipSessionsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+              itemBuilder: (_, _) =>
+                  const SizedBox(width: 130, child: SkeletonStatTile()),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const AppSkeleton(height: 44, radius: AppRadius.md),
+          const SizedBox(height: AppSpacing.sm),
+          const SkeletonChipRow(count: 4),
+          const SizedBox(height: AppSpacing.lg),
+          for (var i = 0; i < 4; i++)
+            const Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.sm),
+              child: SkeletonListRow(),
+            ),
+          const SizedBox(height: AppSpacing.lg),
+          SkeletonCard(
+            child: Row(
+              children: const [
+                AppSkeleton(width: 36, height: 36, radius: AppRadius.sm),
+                SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppSkeleton(width: 140, height: 13),
+                      SizedBox(height: 4),
+                      AppSkeleton(width: 180, height: 11),
+                    ],
+                  ),
+                ),
+                AppSkeleton(width: 36, height: 36, radius: 18),
+              ],
+            ),
           ),
         ],
       ),

@@ -12,6 +12,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -89,7 +90,7 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _coach == null
-                  ? const LoadingView(message: 'Loading coach…')
+                  ? const _CoachDetailSkeleton()
                   : _content(_coach!, canManage),
         ),
       ),
@@ -199,7 +200,10 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
     return c.todaySchedule
         .map((s) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/coaching/sessions/${s.id}'),
+              onTap: () async {
+                await context.push('/coaching/sessions/${s.id}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -225,7 +229,10 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
     return c.students
         .map((s) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/coaching/enrollments/${s.enrollmentId}'),
+              onTap: () async {
+                await context.push('/coaching/enrollments/${s.enrollmentId}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -534,6 +541,94 @@ class _EditCoachSheetState extends ConsumerState<_EditCoachSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the coach detail page: avatar header
+/// row, the 3-tile KPI grid, then the overview cards below the tabs.
+class _CoachDetailSkeleton extends StatelessWidget {
+  const _CoachDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        Row(
+          children: const [
+            AppSkeleton(width: 56, height: 56, radius: 28),
+            SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppSkeleton(width: 160, height: 16),
+                  SizedBox(height: 6),
+                  AppSkeleton(width: 100, height: 12),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.5,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 4),
+        const SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 100, height: 14),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 11),
+              SizedBox(height: 6),
+              AppSkeleton(width: 160, height: 11),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkelKv extends StatelessWidget {
+  const _SkelKv();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 120, height: 11),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: AppSkeleton(height: 11)),
+      ],
     );
   }
 }

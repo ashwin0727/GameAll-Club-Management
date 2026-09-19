@@ -11,6 +11,7 @@ import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -77,7 +78,7 @@ class _InventoryOverviewScreenState extends ConsumerState<InventoryOverviewScree
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)
             : _data == null
-                ? const LoadingView(message: 'Loading overview…')
+                ? const _InventoryOverviewSkeleton()
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: _body(_data!),
@@ -134,7 +135,10 @@ class _InventoryOverviewScreenState extends ConsumerState<InventoryOverviewScree
                   (i) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: InkWell(
-                      onTap: () => context.push('/inventory/items/${i.id}'),
+                      onTap: () async {
+                        await context.push('/inventory/items/${i.id}');
+                        if (mounted) _load();
+                      },
                       child: Row(
                         children: [
                           Expanded(child: Text(i.name, style: AppTypography.rowTitle(context))),
@@ -259,6 +263,75 @@ class _InventoryOverviewScreenState extends ConsumerState<InventoryOverviewScree
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring [InventoryOverviewScreen]'s loaded
+/// layout: KPI grid, stock-status chart card, then two list cards.
+class _InventoryOverviewSkeleton extends StatelessWidget {
+  const _InventoryOverviewSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 1.7,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 100, height: 15),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 100),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 130, height: 15),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonListRow(trailing: false),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonListRow(trailing: false),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 170, height: 15),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonListRow(trailing: false),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonListRow(trailing: false),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+      ],
     );
   }
 }

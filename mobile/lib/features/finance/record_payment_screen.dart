@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/finance.dart';
@@ -14,6 +15,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'finance_presentation.dart';
@@ -155,7 +157,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   Widget _body() {
     switch (_state) {
       case _LoadState.loading:
-        return const LoadingView(message: 'Loading…');
+        return const _RecordPaymentSkeleton();
       case _LoadState.error:
         return const ErrorView(message: 'Unable to load this record. Please try again.');
       case _LoadState.missing:
@@ -348,6 +350,61 @@ StatusTone _tone(ObligationStatus status) {
       return StatusTone.success;
     case ObligationStatus.pending:
       return StatusTone.warning;
+  }
+}
+
+/// Structure-shaped placeholder while the obligation loads — the detail
+/// card (key-value rows + badge) and the payment-form card (field rows +
+/// submit button).
+class _RecordPaymentSkeleton extends StatelessWidget {
+  const _RecordPaymentSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 140, height: 16),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.md),
+                AppSkeleton(width: 100, height: 22, radius: AppRadius.pill),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 170, height: 16),
+                SizedBox(height: AppSpacing.md),
+                AppSkeleton(height: 48, radius: AppRadius.md),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 48, radius: AppRadius.md),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 48, radius: AppRadius.md),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 48, radius: AppRadius.md),
+                SizedBox(height: AppSpacing.md),
+                AppSkeleton(height: 48, radius: AppRadius.md),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

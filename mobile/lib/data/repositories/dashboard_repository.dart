@@ -276,9 +276,9 @@ class DashboardRepository {
         now,
       );
 
-      // Guest-booking KPI: guest bookings that are booked (not cancelled) and
-      // paid, on the (sport-filtered) courts, within a given window.
-      List<({String customerType, String paymentStatus, String status})> guestBookingShapes(DateRange w) => bookingsRows
+      // Bookings KPI: every booking (member or guest) that isn't cancelled,
+      // on the (sport-filtered) courts, within a given window.
+      List<({String customerType, String paymentStatus, String status})> bookingShapes(DateRange w) => bookingsRows
           .cast<Map<String, dynamic>>()
           .where((b) => playingAreaIds.contains(b['court_id']))
           .where((b) {
@@ -382,11 +382,11 @@ class DashboardRepository {
             ),
             null,
           ),
-          guestBookings: DashboardCalculator.computeKpiValue(
-            DashboardCalculator.countPaidGuestBookings(guestBookingShapes(period.current)),
+          totalBookings: DashboardCalculator.computeKpiValue(
+            DashboardCalculator.countBookings(bookingShapes(period.current)),
             period.previous == null
                 ? null
-                : DashboardCalculator.countPaidGuestBookings(guestBookingShapes(period.previous!)),
+                : DashboardCalculator.countBookings(bookingShapes(period.previous!)),
           ),
           utilizationPercent: DashboardCalculator.computeKpiValue(
             currentUtilization.overallPercent,

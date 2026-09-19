@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
@@ -12,6 +13,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'edit_expense_sheet.dart';
 import 'finance_presentation.dart';
@@ -148,7 +150,7 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
       appBar: AppBar(title: const Text('Expense')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading expense…')
+            ? const _ExpenseDetailsSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : _expense == null
@@ -288,6 +290,60 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
           Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: tone)),
         ],
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder shown while the expense detail loads —
+/// header row + badge, a key-value detail card, then payment-history rows.
+class _ExpenseDetailsSkeleton extends StatelessWidget {
+  const _ExpenseDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppSkeleton(width: 160, height: 17),
+                  SizedBox(height: AppSpacing.sm),
+                  AppSkeleton(width: 120, height: 12),
+                ],
+              ),
+            ),
+            AppSkeleton(width: 56, height: 22, radius: AppRadius.pill),
+          ],
+        ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          padding: EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            children: [
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.lg),
+        AppSkeleton(width: 140, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+      ],
     );
   }
 }

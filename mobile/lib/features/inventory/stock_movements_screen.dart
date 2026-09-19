@@ -10,6 +10,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -104,7 +105,7 @@ class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
-                const LoadingView(message: 'Loading movements…')
+                const _StockMovementsSkeleton()
               else if (_rows!.isEmpty)
                 Text('No stock movements match this filter.', style: AppTypography.secondary(context))
               else ...[
@@ -134,7 +135,10 @@ class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
       child: AppCard(
         padding: EdgeInsets.zero,
         child: InkWell(
-          onTap: () => context.push('/inventory/items/${m.itemId}'),
+          onTap: () async {
+            await context.push('/inventory/items/${m.itemId}');
+            if (mounted) _load();
+          },
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
@@ -165,6 +169,32 @@ class _StockMovementsScreenState extends ConsumerState<StockMovementsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded movements list: type
+/// filter chip, then a stack of movement rows.
+class _StockMovementsSkeleton extends StatelessWidget {
+  const _StockMovementsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SkeletonChipRow(count: 1),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

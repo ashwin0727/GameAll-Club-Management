@@ -11,6 +11,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'create_membership_screen.dart';
@@ -193,7 +194,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
         ),
         body: SafeArea(
           child: _loading
-              ? const LoadingView(message: 'Loading…')
+              ? const _MemberDetailSkeleton()
               : _error != null || d == null
                   ? ErrorView(message: _error ?? 'Not found', onRetry: _load)
                   : RefreshIndicator(
@@ -478,5 +479,67 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       default:
         return 'Individual';
     }
+  }
+}
+
+/// Structure-shaped placeholder for the member detail page — a hero card
+/// (avatar + name + status pill) followed by a few key-value detail cards,
+/// mirroring `_hero` and the stacked `_contactCard`/`_membershipCard`/
+/// `_paymentCard`.
+class _MemberDetailSkeleton extends StatelessWidget {
+  const _MemberDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      children: [
+        SkeletonCard(
+          child: Row(
+            children: const [
+              AppSkeleton(width: 56, height: 56, radius: 28),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppSkeleton(width: 140, height: 17),
+                    SizedBox(height: 6),
+                    AppSkeleton(width: 100, height: 12),
+                  ],
+                ),
+              ),
+              AppSkeleton(width: 56, height: 20, radius: AppRadius.pill),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: SkeletonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppSkeleton(width: 100, height: 14),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (var j = 0; j < 3; j++)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      child: Row(
+                        children: const [
+                          AppSkeleton(width: 90, height: 11),
+                          Spacer(),
+                          AppSkeleton(width: 80, height: 11),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

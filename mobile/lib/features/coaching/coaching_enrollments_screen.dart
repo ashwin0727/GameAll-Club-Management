@@ -13,6 +13,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -203,7 +204,7 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
-                const LoadingView(message: 'Loading enrollments…')
+                const _CoachingEnrollmentsSkeleton()
               else if (_rows!.isEmpty)
                 Text('No enrollments match these filters.', style: AppTypography.secondary(context))
               else ...[
@@ -269,6 +270,31 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the enrollments row list — the search
+/// bar and filter chips above it are already real widgets, so this only
+/// covers the paginated rows.
+class _CoachingEnrollmentsSkeleton extends StatelessWidget {
+  const _CoachingEnrollmentsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

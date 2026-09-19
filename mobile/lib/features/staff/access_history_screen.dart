@@ -10,6 +10,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -97,7 +98,9 @@ class _AccessHistoryScreenState extends ConsumerState<AccessHistoryScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Access History')),
       body: SafeArea(
-        child: RefreshIndicator(
+        child: _events == null && _error == null
+            ? const _AccessHistorySkeleton()
+            : RefreshIndicator(
           onRefresh: _load,
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -162,6 +165,32 @@ class _AccessHistoryScreenState extends ConsumerState<AccessHistoryScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AccessHistorySkeleton extends StatelessWidget {
+  const _AccessHistorySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(width: 260, height: 13),
+        SizedBox(height: AppSpacing.md),
+        SkeletonChipRow(count: 1),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+      ],
     );
   }
 }

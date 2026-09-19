@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
@@ -10,11 +11,25 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
 
-/// The redesigned "Money" tab — a single glanceable view of the month: net
+/// The period choices the Payment filter sheet offers — a superset of
+/// [FinanceDateRangePreset] (adds trailing multi-month windows and an
+/// explicit single month), each resolved to a [FinanceDateRange] by
+/// [_MoneyScreenState._range].
+enum _MoneyRangeChoice {
+  thisMonth,
+  lastMonth,
+  last3Months,
+  last6Months,
+  thisYear,
+  specificMonth,
+}
+
+/// The redesigned "Finance" tab — a single glanceable view of the month: net
 /// with its trend, where the revenue came from, what's pending vs settled,
 /// and the latest ledger activity.
 class MoneyScreen extends ConsumerStatefulWidget {
@@ -25,7 +40,8 @@ class MoneyScreen extends ConsumerStatefulWidget {
 }
 
 class _MoneyScreenState extends ConsumerState<MoneyScreen> {
-  FinanceDateRangePreset _preset = FinanceDateRangePreset.thisMonth;
+  _MoneyRangeChoice _choice = _MoneyRangeChoice.thisMonth;
+  DateTime? _specificMonth;
   bool _loading = true;
   String? _error;
 
@@ -36,7 +52,184 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
   int _ledgerTotal = 0;
   List<PaymentMethodSlice> _methods = const [];
 
-  FinanceDateRange get _range => FinanceDateRange(preset: _preset);
+  static String _iso(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  static DateTime _firstOfMonth(DateTime d) => DateTime(d.year, d.month, 1);
+  static DateTime _lastOfMonth(DateTime d) => DateTime(d.year, d.month + 1, 0);
+  static DateTime _monthsAgo(DateTime from, int n) =>
+      DateTime(from.year, from.month - n, 1);
+
+  FinanceDateRange get _range {
+    final now = DateTime.now();
+    switch (_choice) {
+      case _MoneyRangeChoice.thisMonth:
+        return const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
+      case _MoneyRangeChoice.lastMonth:
+        return const FinanceDateRange(preset: FinanceDateRangePreset.lastMonth);
+      case _MoneyRangeChoice.last3Months:
+        return FinanceDateRange(
+          preset: FinanceDateRangePreset.custom,
+          startDate: _iso(_monthsAgo(now, 2)),
+          endDate: _iso(now),
+        );
+      case _MoneyRangeChoice.last6Months:
+        return FinanceDateRange(
+          preset: FinanceDateRangePreset.custom,
+          startDate: _iso(_monthsAgo(now, 5)),
+          endDate: _iso(now),
+        );
+      case _MoneyRangeChoice.thisYear:
+        return const FinanceDateRange(preset: FinanceDateRangePreset.thisYear);
+      case _MoneyRangeChoice.specificMonth:
+        final m = _specificMonth ?? now;
+        return FinanceDateRange(
+          preset: FinanceDateRangePreset.custom,
+          startDate: _iso(_firstOfMonth(m)),
+          endDate: _iso(_lastOfMonth(m)),
+        );
+    }
+  }
+
+  /// Short label for the filter chip itself.
+  String get _periodLabel {
+    switch (_choice) {
+      case _MoneyRangeChoice.thisMonth:
+        return 'This month';
+      case _MoneyRangeChoice.lastMonth:
+        return 'Last month';
+      case _MoneyRangeChoice.last3Months:
+        return 'Last 3 months';
+      case _MoneyRangeChoice.last6Months:
+        return 'Last 6 months';
+      case _MoneyRangeChoice.thisYear:
+        return 'This year';
+      case _MoneyRangeChoice.specificMonth:
+        return DateFormat('MMM yyyy').format(_specificMonth ?? DateTime.now());
+    }
+  }
+
+  /// "Net ___" for the headline card — lowercase for the worded presets,
+  /// title-case for an explicit month ("Net Aug 2026").
+  String get _netCardLabel => _choice == _MoneyRangeChoice.specificMonth
+      ? 'Net $_periodLabel'
+      : 'Net ${_periodLabel[0].toLowerCase()}${_periodLabel.substring(1)}';
+
+  Future<void> _openMoneyFilterSheet() async {
+    var staged = _choice;
+    var stagedMonth = _specificMonth;
+    final now = DateTime.now();
+    final months = [for (var i = 0; i < 12; i++) DateTime(now.year, now.month - i, 1)];
+
+    final result = await showModalBottomSheet<({_MoneyRangeChoice choice, DateTime? month})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final tokens = sheetContext.tokens;
+          Widget optionTile(String label, _MoneyRangeChoice value) {
+            final selected = staged == value;
+            return ListTile(
+              dense: true,
+              title: Text(label,
+                  style: TextStyle(
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
+              trailing: selected
+                  ? Icon(Icons.check_circle_rounded, color: tokens.primary)
+                  : null,
+              onTap: () => setSheetState(() {
+                staged = value;
+                stagedMonth = null;
+              }),
+            );
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Filter by period',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.textPrimary)),
+                  const SizedBox(height: AppSpacing.xs),
+                  optionTile('This month', _MoneyRangeChoice.thisMonth),
+                  optionTile('Last month', _MoneyRangeChoice.lastMonth),
+                  optionTile('Last 3 months', _MoneyRangeChoice.last3Months),
+                  optionTile('Last 6 months', _MoneyRangeChoice.last6Months),
+                  optionTile('This year', _MoneyRangeChoice.thisYear),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Or pick a month',
+                      style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    height: 38,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: months.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(width: AppSpacing.sm),
+                      itemBuilder: (_, i) {
+                        final m = months[i];
+                        final selected = staged == _MoneyRangeChoice.specificMonth &&
+                            stagedMonth?.year == m.year &&
+                            stagedMonth?.month == m.month;
+                        return GestureDetector(
+                          onTap: () => setSheetState(() {
+                            staged = _MoneyRangeChoice.specificMonth;
+                            stagedMonth = m;
+                          }),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: selected ? tokens.primary : tokens.surface2,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                  color:
+                                      selected ? tokens.primary : tokens.borderColor),
+                            ),
+                            child: Text(DateFormat('MMM yyyy').format(m),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: selected
+                                        ? tokens.onPrimary
+                                        : tokens.textPrimary)),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(
+                          sheetContext, (choice: staged, month: stagedMonth)),
+                      child: const Text('Show results'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (result == null) return;
+    setState(() {
+      _choice = result.choice;
+      _specificMonth = result.month;
+    });
+    _load();
+  }
 
   @override
   void initState() {
@@ -68,7 +261,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
           limit: 12,
         )),
         repo.getPaymentMethodBreakdown(facility.id, _range),
-        if (_preset == FinanceDateRangePreset.thisMonth)
+        if (_choice == _MoneyRangeChoice.thisMonth)
           repo.getSummary(
               facility.id,
               const FinanceDateRange(preset: FinanceDateRangePreset.lastMonth)),
@@ -119,22 +312,42 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
       child: Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
-        title: const Text('Money',
+        title: const Text('Finance',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
-          _MonthPill(
-            preset: _preset,
-            onChanged: (p) {
-              setState(() => _preset = p);
-              _load();
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
+            child: GestureDetector(
+              onTap: _openMoneyFilterSheet,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 7),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 14, color: tokens.primary),
+                    const SizedBox(width: 6),
+                    Text(_periodLabel,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 2),
+                    Icon(Icons.expand_more_rounded,
+                        size: 15, color: tokens.textSecondary),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _MoneySkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -147,9 +360,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                           summary: _summary!,
                           breakdown: _breakdown!,
                           trend: _trend,
-                          periodLabel: _preset == FinanceDateRangePreset.thisMonth
-                              ? 'Net this month'
-                              : 'Net last month',
+                          periodLabel: _netCardLabel,
                         ),
                         const SizedBox(height: AppSpacing.md),
                         Row(
@@ -161,8 +372,11 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                                 sub:
                                     '${_summary!.pendingPaymentCount} to collect',
                                 accent: tokens.warning,
-                                onTap: () =>
-                                    context.push(AppRoutes.financePendingPayments),
+                                onTap: () async {
+                                  await context
+                                      .push(AppRoutes.financePendingPayments);
+                                  if (mounted) _load();
+                                },
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
@@ -180,27 +394,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
-                          children: [
-                            _FinanceLink(
-                              icon: Icons.account_balance_wallet_outlined,
-                              label: 'Expenses',
-                              onTap: () => context.push(AppRoutes.financeExpenses),
-                            ),
-                            _FinanceLink(
-                              icon: Icons.point_of_sale_outlined,
-                              label: 'Daily Closing',
-                              onTap: () => context.push(AppRoutes.financeDailyClosing),
-                            ),
-                            _FinanceLink(
-                              icon: Icons.trending_up,
-                              label: 'P&L',
-                              onTap: () => context.push(AppRoutes.financeProfitLoss),
-                            ),
-                          ],
-                        ),
+                        const _FinanceLinkRow(),
                         const SizedBox(height: AppSpacing.xl),
                         Row(
                           children: [
@@ -211,8 +405,11 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                                       fontSize: 16)),
                             ),
                             GestureDetector(
-                              onTap: () =>
-                                  context.push(AppRoutes.financeTransactions),
+                              onTap: () async {
+                                await context
+                                    .push(AppRoutes.financeTransactions);
+                                if (mounted) _load();
+                              },
                               child: Text('Export',
                                   style: TextStyle(
                                       color: tokens.primary,
@@ -717,81 +914,132 @@ class _AttentionStrip extends StatelessWidget {
   }
 }
 
-class _MonthPill extends StatelessWidget {
-  const _MonthPill({required this.preset, required this.onChanged});
+/// Expenses / Daily Closing / P&L — three equal-width cards, same shape as
+/// the dashboard's quick-actions row, instead of a `Wrap` of pill chips that
+/// clipped its last item at narrow widths.
+class _FinanceLinkRow extends StatelessWidget {
+  const _FinanceLinkRow();
 
-  final FinanceDateRangePreset preset;
-  final ValueChanged<FinanceDateRangePreset> onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final links = <(IconData, String, String)>[
+      (Icons.account_balance_wallet_outlined, 'Expenses', AppRoutes.financeExpenses),
+      (Icons.point_of_sale_outlined, 'Daily Closing', AppRoutes.financeDailyClosing),
+      (Icons.trending_up_rounded, 'P&L', AppRoutes.financeProfitLoss),
+    ];
+    return Row(
+      children: [
+        for (var i = 0; i < links.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppSpacing.sm),
+          Expanded(child: _FinanceLink(icon: links[i].$1, label: links[i].$2, route: links[i].$3)),
+        ],
+      ],
+    );
+  }
+}
+
+class _FinanceLink extends StatelessWidget {
+  const _FinanceLink({required this.icon, required this.label, required this.route});
+
+  final IconData icon;
+  final String label;
+  final String route;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return PopupMenuButton<FinanceDateRangePreset>(
-      onSelected: onChanged,
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-            value: FinanceDateRangePreset.thisMonth, child: Text('This month')),
-        PopupMenuItem(
-            value: FinanceDateRangePreset.lastMonth, child: Text('Last month')),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: tokens.surface2,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: tokens.borderColor),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              preset == FinanceDateRangePreset.thisMonth
-                  ? 'This month'
-                  : 'Last month',
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 2),
-            Icon(Icons.keyboard_arrow_down_rounded,
-                size: 18, color: tokens.textSecondary),
-          ],
+    return Material(
+      color: tokens.surface1,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push(route),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: tokens.borderColor),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 19, color: tokens.primary),
+              const SizedBox(height: 5),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// A compact pill linking to a Finance sub-section from the Money landing.
-class _FinanceLink extends StatelessWidget {
-  const _FinanceLink({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+/// Structure-shaped placeholder while the Finance/Money page loads — the
+/// net hero card, the pending/settled mini-stats, and a few ledger rows plus
+/// a methods card.
+class _MoneySkeleton extends StatelessWidget {
+  const _MoneySkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: AppSpacing.minTouchTarget),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-        decoration: BoxDecoration(
-          color: tokens.surface2,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: tokens.borderColor),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      children: const [
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 100, height: 12),
+              SizedBox(height: 8),
+              AppSkeleton(width: 160, height: 30),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 9, radius: AppRadius.pill),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+            ],
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        SizedBox(height: AppSpacing.md),
+        Row(
           children: [
-            Icon(icon, size: 16, color: tokens.primary),
-            const SizedBox(width: AppSpacing.xs),
-            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.md),
+            Expanded(child: SkeletonStatTile()),
           ],
         ),
-      ),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeleton(width: 130, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.xl),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 140, height: 15),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: 5),
+              AppSkeleton(height: 6, radius: AppRadius.pill),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: 5),
+              AppSkeleton(height: 6, radius: AppRadius.pill),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

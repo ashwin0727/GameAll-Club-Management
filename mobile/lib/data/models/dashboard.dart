@@ -243,7 +243,7 @@ class DashboardKpis {
   const DashboardKpis({
     required this.revenueInr,
     required this.activeMemberships,
-    required this.guestBookings,
+    required this.totalBookings,
     required this.utilizationPercent,
   });
 
@@ -253,8 +253,9 @@ class DashboardKpis {
   /// Memberships active as of now; scoped to the selected sport via batch enrolment.
   final KpiValue activeMemberships;
 
-  /// Guest bookings booked and paid in the selected period; scoped to the sport by court.
-  final KpiValue guestBookings;
+  /// All bookings (member or guest, any payment status) in the selected
+  /// period; scoped to the sport by court.
+  final KpiValue totalBookings;
 
   final KpiValue utilizationPercent;
 }

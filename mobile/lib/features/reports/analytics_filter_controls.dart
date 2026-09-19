@@ -24,10 +24,13 @@ class _SportOption {
 }
 
 class _CourtOption {
-  const _CourtOption(this.id, this.name, this.facilitySportId);
+  const _CourtOption(this.id, this.name, this.facilitySportId, this.sportName);
   final String id;
   final String name;
   final String facilitySportId;
+  final String sportName;
+
+  String get label => '$sportName · $name';
 }
 
 class AnalyticsFilterControls extends ConsumerStatefulWidget {
@@ -36,11 +39,23 @@ class AnalyticsFilterControls extends ConsumerStatefulWidget {
     required this.facilityId,
     required this.filter,
     required this.onChanged,
+    this.showDate = true,
+    this.leadingIcons = false,
   });
 
   final String facilityId;
   final AnalyticsFilter filter;
   final ValueChanged<AnalyticsFilter> onChanged;
+
+  /// False lets a screen render its own date control elsewhere (e.g. a
+  /// header pill) instead of the inline date chip — sport/court still load
+  /// and behave exactly the same way.
+  final bool showDate;
+
+  /// A leading sport/grid glyph on the sport/court chips — the richer
+  /// "premium" look Court Utilization uses; off by default so every other
+  /// report screen's plain chips are unaffected.
+  final bool leadingIcons;
 
   @override
   ConsumerState<AnalyticsFilterControls> createState() => _AnalyticsFilterControlsState();
@@ -71,7 +86,14 @@ class _AnalyticsFilterControlsState extends ConsumerState<AnalyticsFilterControl
               : (catalog.where((c) => c.id == fs.sportId).map((c) => c.name).firstOrNull ?? 'Sport');
           return _SportOption(fs.id, name);
         }).toList();
-        _courts = areas.map((a) => _CourtOption(a.id, a.name, a.facilitySportId)).toList();
+        String sportNameFor(String facilitySportId) => _sports
+            .where((s) => s.id == facilitySportId)
+            .map((s) => s.name)
+            .firstOrNull ??
+            'Sport';
+        _courts = areas
+            .map((a) => _CourtOption(a.id, a.name, a.facilitySportId, sportNameFor(a.facilitySportId)))
+            .toList();
       });
     } catch (_) {
       // A failed option load leaves the chips showing "All" — the report
@@ -89,7 +111,7 @@ class _AnalyticsFilterControlsState extends ConsumerState<AnalyticsFilterControl
 
   String get _courtLabel => widget.filter.courtId == null
       ? 'All Courts'
-      : _courts.where((c) => c.id == widget.filter.courtId).map((c) => c.name).firstOrNull ?? 'Court';
+      : _courts.where((c) => c.id == widget.filter.courtId).map((c) => c.label).firstOrNull ?? 'Court';
 
   String get _dateLabel {
     final f = widget.filter;
@@ -171,7 +193,7 @@ class _AnalyticsFilterControlsState extends ConsumerState<AnalyticsFilterControl
           children: [
             ListTile(title: const Text('All Courts'), onTap: () => Navigator.pop(ctx, '')),
             for (final c in visible)
-              ListTile(title: Text(c.name), onTap: () => Navigator.pop(ctx, c.id)),
+              ListTile(title: Text(c.label), onTap: () => Navigator.pop(ctx, c.id)),
           ],
         ),
       ),
@@ -182,14 +204,31 @@ class _AnalyticsFilterControlsState extends ConsumerState<AnalyticsFilterControl
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      children: [
-        PickerChip(label: _dateLabel, onSelect: _pickPreset),
-        PickerChip(label: _sportLabel, onSelect: _pickSport),
-        PickerChip(label: _courtLabel, onSelect: _pickCourt),
-      ],
+    // One horizontally-scrolling strip, same as every other list screen's
+    // filter row (Transactions, Refunds) — compact instead of wrapping onto
+    // extra lines.
+    return SizedBox(
+      height: AppSpacing.minTouchTarget,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          if (widget.showDate) ...[
+            PickerChip(label: _dateLabel, onSelect: _pickPreset),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          PickerChip(
+            label: _sportLabel,
+            onSelect: _pickSport,
+            leading: widget.leadingIcons ? Icons.sports_tennis : null,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          PickerChip(
+            label: _courtLabel,
+            onSelect: _pickCourt,
+            leading: widget.leadingIcons ? Icons.grid_view_rounded : null,
+          ),
+        ],
+      ),
     );
   }
 }

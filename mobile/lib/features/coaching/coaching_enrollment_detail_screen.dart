@@ -10,6 +10,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -82,7 +83,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _e == null
-                  ? const LoadingView(message: 'Loading enrollment…')
+                  ? const _CoachingEnrollmentDetailSkeleton()
                   : _content(_e!, session),
         ),
       ),
@@ -131,7 +132,10 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
             children: [
               if (canRecordPayment && !e.isMembershipIncluded && e.outstandingMinor > 0)
                 OutlinedButton(
-                  onPressed: () => context.push('/finance/pending-payments/${e.id}/record'),
+                  onPressed: () async {
+                    await context.push('/finance/pending-payments/${e.id}/record');
+                    if (mounted) _load();
+                  },
                   child: const Text('Record Payment'),
                 ),
               if (canManage && e.status == EnrollmentStatus.active)
@@ -192,7 +196,10 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
     return e.sessions
         .map((s) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/coaching/sessions/${s.id}'),
+              onTap: () async {
+                await context.push('/coaching/sessions/${s.id}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -364,4 +371,74 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder for the enrollment detail page: the
+/// program/level header with status badge, the KPI grid, tabs, then the
+/// overview details card.
+class _CoachingEnrollmentDetailSkeleton extends StatelessWidget {
+  const _CoachingEnrollmentDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        Row(
+          children: const [
+            Expanded(child: AppSkeleton(width: 200, height: 15)),
+            SizedBox(width: AppSpacing.sm),
+            AppSkeleton(width: 70, height: 22, radius: 11),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppSpacing.sm,
+          crossAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 2.4,
+          children: const [
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+            SkeletonStatTile(),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 4),
+        const SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkelKv extends StatelessWidget {
+  const _SkelKv();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 110, height: 11),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: AppSkeleton(height: 11)),
+      ],
+    );
+  }
 }

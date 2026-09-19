@@ -8,6 +8,7 @@ import '../../core/config/app_config.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
@@ -16,6 +17,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'create_membership_screen.dart';
 import 'membership_list_presentation.dart';
@@ -169,7 +171,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _MembershipDetailSkeleton()
             : _error != null || d == null
                 ? ErrorView(message: _error ?? 'Membership not found.', onRetry: _load)
                 : ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: _content(context, d)),
@@ -335,7 +337,13 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                 .toList(),
       ),
       const SizedBox(height: AppSpacing.xl),
-      PrimaryButton(label: 'Create Membership', onPressed: () => context.push(AppRoutes.membershipsNew)),
+      PrimaryButton(
+        label: 'Create Membership',
+        onPressed: () async {
+          await context.push(AppRoutes.membershipsNew);
+          if (mounted) _load();
+        },
+      ),
       const SizedBox(height: AppSpacing.xl),
     ];
   }
@@ -393,5 +401,85 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder for the plan-centric membership detail
+/// page — the header card (avatar + name + status pill + a Wrap of six
+/// label/value stat pairs, mirroring `_content()`'s header) followed by a
+/// few generic section cards for the info/charges/notes cards below it.
+class _MembershipDetailSkeleton extends StatelessWidget {
+  const _MembershipDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  AppSkeleton(width: 48, height: 48, radius: 24),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppSkeleton(width: 140, height: 16),
+                        SizedBox(height: AppSpacing.xs),
+                        AppSkeleton(width: 64, height: 18, radius: AppRadius.pill),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const AppSkeleton(height: 11),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.lg,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (var i = 0; i < 6; i++)
+                    SizedBox(
+                      width: 150,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          AppSkeleton(width: 70, height: 10),
+                          SizedBox(height: 4),
+                          AppSkeleton(width: 90, height: 11),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: SkeletonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  AppSkeleton(width: 130, height: 14),
+                  SizedBox(height: AppSpacing.sm),
+                  AppSkeleton(height: 11),
+                  SizedBox(height: AppSpacing.xs),
+                  AppSkeleton(width: 200, height: 11),
+                  SizedBox(height: AppSpacing.xs),
+                  AppSkeleton(width: 160, height: 11),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 

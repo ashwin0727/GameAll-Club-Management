@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/staff.dart';
@@ -11,7 +12,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
-import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -154,7 +155,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
       appBar: AppBar(title: Text(widget.isEdit ? 'Edit Role' : 'Create Role')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _RoleEditorSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
@@ -279,6 +280,57 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                 ],
               ),
       ),
+    );
+  }
+}
+
+class _RoleEditorSkeleton extends StatelessWidget {
+  const _RoleEditorSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        const SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 100, height: 12),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 44, radius: 8),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 4),
+        const SizedBox(height: AppSpacing.sm),
+        for (var i = 0; i < 5; i++) ...[
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _permRow(),
+                const SizedBox(height: AppSpacing.sm),
+                _permRow(),
+                const SizedBox(height: AppSpacing.sm),
+                _permRow(),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ],
+    );
+  }
+
+  Widget _permRow() {
+    return const Row(
+      children: [
+        Expanded(child: AppSkeleton(height: 11)),
+        SizedBox(width: AppSpacing.sm),
+        AppSkeleton(width: 32, height: 18, radius: AppRadius.pill),
+      ],
     );
   }
 }

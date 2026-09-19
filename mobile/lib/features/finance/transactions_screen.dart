@@ -8,15 +8,17 @@ import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_search_field.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'add_expense_sheet.dart';
@@ -235,12 +237,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Widget build(BuildContext context) {
     final totalPages = _totalCount == 0 ? 1 : ((_totalCount + _pageSize - 1) ~/ _pageSize);
 
+    final tokens = context.tokens;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Transactions'),
+        title: const Text('Transactions', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: Icon(Icons.add_circle_outline_rounded, color: tokens.primary),
             tooltip: 'Add expense',
             onPressed: _isReady ? _addExpense : null,
           ),
@@ -255,54 +258,72 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      AppSearchField(
                         controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'Search',
-                          hintText: 'Transaction ID, description…',
-                        ),
+                        hintText: 'Transaction ID, description…',
                         onChanged: _onSearchChanged,
-                        onSubmitted: (value) => _applyFilterChange(() => _search = value),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.sm,
-                        children: [
-                          PickerChip(
-                            label: _txnType == null ? 'All Types' : _txnType!.label,
-                            onSelect: _pickType,
-                          ),
-                          PickerChip(
-                            label: _category ?? 'All Categories',
-                            onSelect: _pickCategory,
-                          ),
-                          PickerChip(
-                            label: _paymentMethod ?? 'All Payment Modes',
-                            onSelect: _methods.isEmpty ? () {} : _pickMethod,
-                          ),
-                        ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      FinanceDateRangePicker(
-                        value: _range,
-                        onChanged: (next) => _applyFilterChange(() => _range = next),
+                      // Every filter lives in one horizontally-scrolling
+                      // strip right under search — a compact row instead of
+                      // the old stack of separate wrapped lines.
+                      SizedBox(
+                        height: AppSpacing.minTouchTarget,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            PickerChip(
+                              label: _txnType == null ? 'All Types' : _txnType!.label,
+                              onSelect: _pickType,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            PickerChip(
+                              label: _category ?? 'All Categories',
+                              onSelect: _pickCategory,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            PickerChip(
+                              label: _paymentMethod ?? 'All Payment Modes',
+                              onSelect: _methods.isEmpty ? () {} : _pickMethod,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            IntrinsicWidth(
+                              child: FinanceDateRangePicker(
+                                value: _range,
+                                onChanged: (next) => _applyFilterChange(() => _range = next),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       if (_listError != null) ...[
-                        Text(_listError!, style: const TextStyle(color: AppColors.destructive)),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: tokens.destructive.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Text(_listError!,
+                              style: TextStyle(color: tokens.destructive, fontSize: 13)),
+                        ),
                         const SizedBox(height: AppSpacing.sm),
                       ],
                       if (_range.preset == FinanceDateRangePreset.custom && !_range.isComplete)
-                        Text('Choose a start and end date to see transactions.',
-                            style: AppTypography.secondary(context))
+                        _EmptyRow(
+                          icon: Icons.date_range_outlined,
+                          color: tokens.textSecondary,
+                          message: 'Choose a start and end date to see transactions.',
+                        )
                       else if (_listLoading)
-                        const LoadingView(message: 'Loading transactions…')
+                        const _TransactionsListSkeleton()
                       else if (_entries.isEmpty)
-                        Text('No transactions match these filters.',
-                            style: AppTypography.secondary(context))
+                        _EmptyRow(
+                          icon: Icons.receipt_long_outlined,
+                          color: tokens.textSecondary,
+                          message: 'No transactions match these filters.',
+                        )
                       else
                         ..._entries.map(_buildEntryCard),
                       if (_totalCount > 0 && !_listLoading) ...[
@@ -325,51 +346,117 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Widget _buildEntryCard(LedgerEntry entry) {
+    final tokens = context.tokens;
     // The sign follows what kind of money it is, from the server's txn_type —
     // never derived from the amount, which is always a positive magnitude.
-    final signed = '${entry.isIncome ? '' : '−'}${financeAmount(entry.amountMinor)}';
+    final signed = '${entry.isIncome ? '+' : '−'}${financeAmount(entry.amountMinor)}';
+    final amountColor = entry.isIncome ? tokens.success : tokens.destructive;
+    final (icon, iconColor) = switch (entry.txnType) {
+      LedgerTxnType.income => (Icons.arrow_downward_rounded, tokens.success),
+      LedgerTxnType.expense => (Icons.arrow_upward_rounded, tokens.destructive),
+      LedgerTxnType.refund => (Icons.replay_rounded, tokens.warning),
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        onTap: entry.isIncome
-            ? () => context.push('${AppRoutes.financeTransactions}/${entry.id}')
-            : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Material(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: entry.isIncome
+              ? () async {
+                  await context.push('${AppRoutes.financeTransactions}/${entry.id}');
+                  if (mounted) _load();
+                }
+              : null,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: tokens.borderColor),
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(entry.description, style: AppTypography.rowTitle(context)),
-                      Text(
-                        '${entry.reference} · ${Formatters.dateShort(entry.occurredAt.toLocal())}',
-                        style: AppTypography.caption(context),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: tokens.accentFill(iconColor),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                    ],
-                  ),
+                      child: Icon(icon, size: 17, color: iconColor),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.description, style: AppTypography.rowTitle(context)),
+                          Text(
+                            '${entry.reference} · ${Formatters.dateShort(entry.occurredAt.toLocal())}',
+                            style: AppTypography.caption(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(signed,
+                        style: TextStyle(fontWeight: FontWeight.w800, color: amountColor, fontSize: 14.5)),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(signed, style: const TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    _Tag(entry.category),
+                    if (entry.paymentMethod != null) _Tag(entry.paymentMethod!),
+                    StatusBadge(label: _statusLabel(entry.status), tone: _statusTone(entry.status)),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _Tag(entry.category),
-                if (entry.paymentMethod != null) _Tag(entry.paymentMethod!),
-                StatusBadge(label: _statusLabel(entry.status), tone: _statusTone(entry.status)),
-              ],
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// A quiet "nothing here" row for inline use — an icon + message instead of
+/// a bare line of grey text, matching the rest of the app's list screens.
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow({required this.icon, required this.color, required this.message});
+
+  final IconData icon;
+  final Color color;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          ),
+        ],
       ),
     );
   }
@@ -388,6 +475,31 @@ StatusTone _statusTone(String status) {
       return StatusTone.neutral;
     default:
       return StatusTone.warning;
+  }
+}
+
+/// Structure-shaped placeholder for the filter-chip strip and transaction
+/// list while [_TransactionsScreenState._listLoading] is true.
+class _TransactionsListSkeleton extends StatelessWidget {
+  const _TransactionsListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonChipRow(count: 4),
+        SizedBox(height: AppSpacing.md),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
+    );
   }
 }
 

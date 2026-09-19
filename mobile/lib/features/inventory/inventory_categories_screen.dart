@@ -9,6 +9,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -147,7 +148,7 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)
             : _rows == null
-                ? const LoadingView(message: 'Loading categories…')
+                ? const _InventoryCategoriesSkeleton()
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: _rows!.isEmpty
@@ -195,6 +196,36 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                                 .toList(),
                           ),
                   ),
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded categories list: a
+/// stack of category cards, each with a title line + two stat lines.
+class _InventoryCategoriesSkeleton extends StatelessWidget {
+  const _InventoryCategoriesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: List.generate(
+        5,
+        (i) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: SkeletonCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 140, height: 15),
+                SizedBox(height: 6),
+                AppSkeleton(width: 200, height: 11),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

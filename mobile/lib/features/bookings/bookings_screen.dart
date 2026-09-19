@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linked_scroll_controller/linked_scroll_controller.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -12,10 +14,10 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/booking.dart';
+import '../../data/models/finance.dart';
 import '../../data/models/guest.dart';
 import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
-import '../../data/models/payment.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/refund.dart';
@@ -27,10 +29,9 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/booking_slot_chip.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../membership_sessions/membership_slot_card.dart';
-import '../payments/payment_checkout_controller.dart';
-import '../payments/payment_status_panel.dart';
 import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
 import '../../shared/widgets/app_dropdown.dart';
@@ -125,6 +126,12 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         _isLoading = false;
         _loadError = e.message;
       });
+    } catch (e, stack) {
+      debugPrint('Bookings screen load failed: $e\n$stack');
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Unable to load bookings. Please try again.';
+      });
     }
   }
 
@@ -165,6 +172,16 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     } on AppException catch (e) {
       setState(() {
         _gridError = e.message;
+        _gridLoading = false;
+        _hasLoadedGridOnce = true;
+      });
+    } catch (e, stack) {
+      // Never leave the grid stuck on its skeleton forever — a parse
+      // failure (e.g. a row shaped differently than the model expects)
+      // isn't an AppException and must still resolve the loading state.
+      debugPrint('Court grid load failed: $e\n$stack');
+      setState(() {
+        _gridError = 'Unable to load the court schedule. Please try again.';
         _gridLoading = false;
         _hasLoadedGridOnce = true;
       });
@@ -326,8 +343,20 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   List<PlayingArea> get _visibleAreas =>
       _sportFilter == null ? _areas : _areas.where((a) => a.facilitySportId == _sportFilter).toList();
 
+  /// What the filter chip shows — the selected sport's name, or "All
+  /// sports" — so the current filter is visible without opening the sheet.
+  String get _sportFilterLabel {
+    if (_sportFilter == null) return 'All sports';
+    final fs = _facilitySports.where((f) => f.id == _sportFilter).firstOrNull;
+    if (fs == null) return 'All sports';
+    return fs.customSportName ??
+        _sports.where((s) => s.id == fs.sportId).firstOrNull?.name ??
+        'Sport';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return TabPopScope(
       tab: AppTab.courts,
       child: Scaffold(
@@ -345,21 +374,39 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               ),
               child: const Text('Today'),
             ),
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _sportFilter != null,
-              smallSize: 7,
-              child: const Icon(Icons.tune_rounded),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.lg),
+            child: GestureDetector(
+              onTap: _openFilterSheet,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: 7),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded, size: 14, color: tokens.primary),
+                    const SizedBox(width: 6),
+                    Text(_sportFilterLabel,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 2),
+                    Icon(Icons.expand_more_rounded,
+                        size: 15, color: tokens.textSecondary),
+                  ],
+                ),
+              ),
             ),
-            tooltip: 'Filter',
-            onPressed: _openFilterSheet,
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading bookings…')
+            ? const _BookingsSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
                 : Column(
@@ -529,7 +576,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   Widget _buildSchedule() {
     if (_gridLoading && !_hasLoadedGridOnce) {
-      return const Center(child: CircularProgressIndicator());
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        child: _ScheduleGridSkeleton(),
+      );
     }
     if (_gridError != null) {
       return Padding(
@@ -1610,7 +1660,8 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                       children: _slots.map((s) {
                         final selected = _slot?.startTime == s.startTime;
                         return BookingSlotChip(
-                          label: TimeOfDay.fromDateTime(s.startTime).format(context),
+                          label:
+                              '${TimeOfDay.fromDateTime(s.startTime).format(context)} – ${TimeOfDay.fromDateTime(s.endTime).format(context)}',
                           available: s.available,
                           selected: selected,
                           onTap: () => setState(() => _slot = s),
@@ -1795,8 +1846,6 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   bool _isWorking = false;
   String? _error;
   bool _isPaying = false;
-  bool _isCheckingAgain = false;
-  CheckoutResult? _paymentState;
 
   /// Set after a cancellation that created a refund — mirrors
   /// `booking-details-dialog.tsx`'s `cancelRefundNote`. Never silently
@@ -1814,54 +1863,49 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
 
   bool get _canPay => _booking.paymentStatus == PaymentStatus.pending;
 
+  /// Asks which method the guest/member actually paid with — no Razorpay
+  /// checkout here; this records a payment already collected offline (cash
+  /// handed over, a UPI transfer shown on their phone, etc.), the same
+  /// `record_obligation_payment` path Finance's own Record Payment screen
+  /// uses, which works identically for a guest or member booking.
   Future<void> _payNow() async {
+    final amount = _booking.amountMinor ?? 0;
+    final method = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PaymentMethodSheet(amountMinor: amount),
+    );
+    if (method == null || !mounted) return;
+
     setState(() {
       _isPaying = true;
       _error = null;
-      _paymentState = null;
     });
     try {
-      final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
-        CreatePaymentOrderInput(
-          facilityId: widget.facilityId,
-          sourceType: _booking.customerType == CustomerType.member
-              ? PaymentSourceType.memberBooking
-              : PaymentSourceType.guestBooking,
-          bookingId: _booking.id,
-        ),
-      );
+      await ref.read(financeRepositoryProvider).recordObligationPayment(
+            sourceType: _booking.customerType == CustomerType.guest
+                ? ObligationSource.guestBooking
+                : ObligationSource.booking,
+            sourceId: _booking.id,
+            amountMinor: amount,
+            method: method,
+            idempotencyKey: const Uuid().v4(),
+            paidOn: _isoDate(DateTime.now()),
+          );
+      // Re-fetch rather than assume "paid" locally — the server is the
+      // source of truth for status/payment_status after the RPC runs.
+      final refreshed = await ref.read(bookingRepositoryProvider).getBooking(_booking.id);
       if (!mounted) return;
-      setState(() => _paymentState = result is CheckoutCancelled ? null : result);
-      if (result is CheckoutSettled) _markSettled();
+      setState(() {
+        if (refreshed != null) _booking = refreshed;
+        _changed = true;
+      });
     } on AppException catch (e) {
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _isPaying = false);
     }
-  }
-
-  Future<void> _handleCheckAgain(String paymentOrderId) async {
-    setState(() => _isCheckingAgain = true);
-    try {
-      final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
-      if (!mounted) return;
-      setState(() => _paymentState = result);
-      if (result is CheckoutSettled) _markSettled();
-    } finally {
-      if (mounted) setState(() => _isCheckingAgain = false);
-    }
-  }
-
-  /// The server already flipped `bookings.status`/`payment_status` by the
-  /// time a checkout resolves "settled" (settle_payment, 0021_payment_
-  /// settlement.sql) — mirrors booking-details-dialog.tsx's
-  /// `onChanged({...booking, status: "confirmed", paymentStatus: "PAID"})`
-  /// optimistic update rather than waiting for a full grid refetch.
-  void _markSettled() {
-    setState(() {
-      _booking = _booking.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid);
-      _changed = true;
-    });
   }
 
   Future<void> _pickRescheduleDate() async {
@@ -2031,55 +2075,95 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Booking Details', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Booking Details',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: context.tokens.textPrimary)),
             const SizedBox(height: AppSpacing.md),
             // Who + when — visible in both modes, so the person you're
             // rescheduling never scrolls out of view while you pick a new time.
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.mutedBackground,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        b.customerType == CustomerType.guest ? Icons.person_outline_rounded : Icons.badge_outlined,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          b.customerType == CustomerType.guest ? (b.guestName ?? 'Guest') : 'Member',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                          overflow: TextOverflow.ellipsis,
+            Builder(builder: (context) {
+              final tokens = context.tokens;
+              final phone = b.customerType == CustomerType.guest ? b.guestPhone : null;
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface2,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: tokens.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(color: tokens.accentFill(tokens.primary), shape: BoxShape.circle),
+                          child: Icon(
+                            b.customerType == CustomerType.guest ? Icons.person_outline_rounded : Icons.badge_outlined,
+                            size: 16,
+                            color: tokens.primary,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            b.customerType == CustomerType.guest ? (b.guestName ?? 'Guest') : 'Member',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: tokens.textPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: tokens.surface1,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            border: Border.all(color: tokens.borderColor),
+                          ),
+                          child: Text('${widget.sportName} · ${widget.area.name}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: tokens.textSecondary)),
+                        ),
+                      ],
+                    ),
+                    if (phone != null && phone.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      InkWell(
+                        onTap: () => launchUrl(Uri(scheme: 'tel', path: phone)),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.call_rounded, size: 14, color: tokens.textSecondary),
+                            const SizedBox(width: 5),
+                            Text(phone,
+                                style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text('${widget.sportName} · ${widget.area.name}', style: TextStyle(fontSize: 12.5, color: AppColors.muted)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.schedule_rounded, size: 14, color: AppColors.muted),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${Formatters.dateShort(b.startTime)} · '
-                        '${TimeOfDay.fromDateTime(b.startTime).format(context)} – ${TimeOfDay.fromDateTime(b.endTime).format(context)}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 14, color: tokens.textSecondary),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${Formatters.dateShort(b.startTime)} · '
+                          '${TimeOfDay.fromDateTime(b.startTime).format(context)} – ${TimeOfDay.fromDateTime(b.endTime).format(context)}',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tokens.textPrimary),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
             const SizedBox(height: AppSpacing.md),
             if (!_rescheduling) ...[
               _DetailField(
@@ -2104,20 +2188,6 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   ),
                 ],
               ),
-              if (_paymentState != null || _isPaying) ...[
-                const SizedBox(height: AppSpacing.sm),
-                PaymentStatusPanel(
-                  state: _paymentState,
-                  isProcessing: _isPaying,
-                  isCheckingAgain: _isCheckingAgain,
-                  settledLabel: 'Booking Confirmed',
-                  resourceLabel: 'booking',
-                  onCheckAgain: _paymentState is CheckoutPending
-                      ? () => _handleCheckAgain((_paymentState as CheckoutPending).paymentOrderId)
-                      : null,
-                  onRetry: _paymentState is CheckoutFailed ? _payNow : null,
-                ),
-              ],
               if (_cancelRefundNote != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(_cancelRefundNote!, style: AppTypography.secondary(context)),
@@ -2128,11 +2198,14 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
               ],
               if (_canPay) ...[
                 const SizedBox(height: AppSpacing.lg),
-                PrimaryButton(
-                  label: 'Pay Now',
-                  loadingLabel: 'Starting payment…',
-                  isLoading: _isPaying,
-                  onPressed: _isWorking ? null : _payNow,
+                _GlowButton(
+                  color: context.tokens.primary,
+                  child: PrimaryButton(
+                    label: 'Pay Now',
+                    loadingLabel: 'Recording payment…',
+                    isLoading: _isPaying,
+                    onPressed: _isWorking ? null : _payNow,
+                  ),
                 ),
               ],
               if (_canModify) ...[
@@ -2147,10 +2220,13 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.destructive),
-                        onPressed: _isWorking ? null : _cancel,
-                        child: Text(_isWorking ? 'Cancelling…' : 'Cancel Booking'),
+                      child: _GlowButton(
+                        color: context.tokens.destructive,
+                        child: DangerButton(
+                          label: _isWorking ? 'Cancelling…' : 'Cancel Booking',
+                          isLoading: _isWorking,
+                          onPressed: _isWorking ? null : _cancel,
+                        ),
                       ),
                     ),
                   ],
@@ -2334,4 +2410,265 @@ class _DetailBadgeField extends StatelessWidget {
 
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+String _isoDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// Wraps a pill-shaped CTA in the same coloured drop-shadow "glow" the
+/// dashboard/maintenance FABs use, so a full-width button in a sheet reads
+/// with the same premium weight rather than the flat default elevation-0
+/// button style.
+class _GlowButton extends StatelessWidget {
+  const _GlowButton({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.45),
+            blurRadius: 20,
+            spreadRadius: -6,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+const _paymentMethodOptions = <(String label, IconData icon)>[
+  ('Cash', Icons.payments_rounded),
+  ('UPI', Icons.bolt_rounded),
+  ('Card', Icons.credit_card_rounded),
+  ('Bank Transfer', Icons.account_balance_rounded),
+];
+
+Color _paymentMethodAccent(AppColorTokens tokens, String method) => switch (method) {
+      'Cash' => tokens.success,
+      'UPI' => tokens.warning,
+      'Card' => tokens.violet,
+      'Bank Transfer' => tokens.electricBlue,
+      _ => tokens.primary,
+    };
+
+/// "How was this paid?" — replaces the Razorpay checkout on the Booking
+/// Details sheet's Pay Now button: the owner picks the method the guest/
+/// member actually paid with (cash handed over, a UPI transfer shown on
+/// their phone, …) and the booking is recorded as paid against that method,
+/// rather than opening a payment gateway for money already collected.
+class _PaymentMethodSheet extends StatefulWidget {
+  const _PaymentMethodSheet({required this.amountMinor});
+
+  final int amountMinor;
+
+  @override
+  State<_PaymentMethodSheet> createState() => _PaymentMethodSheetState();
+}
+
+class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
+  String _selected = 'Cash';
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xl),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(color: tokens.borderColor, borderRadius: BorderRadius.circular(999)),
+              ),
+            ),
+            Text('How was this paid?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
+            const SizedBox(height: 4),
+            Text(
+              '${Formatters.currencyInr((widget.amountMinor / 100).round())} · mark this booking as paid',
+              style: AppTypography.secondary(context),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            for (final opt in _paymentMethodOptions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _PaymentMethodTile(
+                  label: opt.$1,
+                  icon: opt.$2,
+                  accent: _paymentMethodAccent(tokens, opt.$1),
+                  selected: _selected == opt.$1,
+                  onTap: () => setState(() => _selected = opt.$1),
+                ),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+            _GlowButton(
+              color: tokens.primary,
+              child: PrimaryButton(
+                label: 'Mark as Paid',
+                onPressed: () => Navigator.of(context).pop(_selected),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentMethodTile extends StatelessWidget {
+  const _PaymentMethodTile({
+    required this.label,
+    required this.icon,
+    required this.accent,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color accent;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: selected ? tokens.accentFill(accent) : tokens.surface2,
+          border: Border.all(color: selected ? tokens.accentEdge(accent) : tokens.borderColor, width: selected ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: tokens.accentSolid(accent), shape: BoxShape.circle),
+              child: Icon(icon, size: 18, color: tokens.onAccent(accent)),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: tokens.textPrimary)),
+            ),
+            Icon(
+              selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+              color: selected ? accent : tokens.textSecondary,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the Courts page — the date strip and
+/// the per-court schedule lanes below it — shown while the initial facility
+/// data loads. Never a bare spinner.
+class _BookingsSkeleton extends StatelessWidget {
+  const _BookingsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 160, height: 18),
+          SizedBox(height: AppSpacing.xs),
+          SizedBox(
+            height: 68,
+            child: Row(
+              children: [
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+                SizedBox(width: AppSpacing.sm),
+                AppSkeleton(width: 54, height: 68, radius: AppRadius.lg),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          Expanded(child: SingleChildScrollView(child: _ScheduleGridSkeleton())),
+        ],
+      ),
+    );
+  }
+}
+
+/// The per-court "lane" grid alone — reused both for the full-page gate
+/// above and for the schedule region's own refresh spinner, so the shape
+/// never changes between the two loading moments.
+class _ScheduleGridSkeleton extends StatelessWidget {
+  const _ScheduleGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSkeleton(width: 90, height: 12),
+        SizedBox(height: AppSpacing.sm),
+        _LaneSkeleton(),
+        SizedBox(height: AppSpacing.md),
+        _LaneSkeleton(),
+        SizedBox(height: AppSpacing.md),
+        _LaneSkeleton(),
+        SizedBox(height: AppSpacing.md),
+        AppSkeleton(width: 90, height: 12),
+        SizedBox(height: AppSpacing.sm),
+        _LaneSkeleton(),
+      ],
+    );
+  }
+}
+
+class _LaneSkeleton extends StatelessWidget {
+  const _LaneSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSkeleton(width: 110, height: 13),
+        SizedBox(height: 5),
+        AppSkeleton(height: 68, radius: AppRadius.md),
+      ],
+    );
+  }
 }

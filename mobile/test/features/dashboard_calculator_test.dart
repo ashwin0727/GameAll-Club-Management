@@ -406,15 +406,15 @@ void main() {
       expect(DashboardCalculator.countActiveMemberships(memberships, {'m1', 'm3'}), 1);
     });
 
-    test('countPaidGuestBookings counts only paid, non-cancelled guest bookings', () {
+    test('countBookings counts every non-cancelled booking, member or guest, any payment status', () {
       expect(
-        DashboardCalculator.countPaidGuestBookings([
+        DashboardCalculator.countBookings([
           (customerType: 'GUEST', paymentStatus: 'PAID', status: 'confirmed'),
           (customerType: 'GUEST', paymentStatus: 'PENDING', status: 'confirmed'),
           (customerType: 'GUEST', paymentStatus: 'PAID', status: 'cancelled'),
           (customerType: 'MEMBER', paymentStatus: 'PAID', status: 'confirmed'),
         ]),
-        1,
+        3,
       );
     });
   });

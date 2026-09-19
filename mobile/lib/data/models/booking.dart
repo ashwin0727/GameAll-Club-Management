@@ -64,7 +64,7 @@ class Booking {
     this.notes,
     this.partySize = 1,
     this.paymentMethod,
-    required this.createdBy,
+    this.createdBy,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -88,7 +88,11 @@ class Booking {
   final String? notes;
   final int partySize;
   final String? paymentMethod;
-  final String createdBy;
+
+  /// Null for a self-registered public booking (`0043_session_guest_
+  /// bookings_in_admin.sql` dropped the NOT NULL — the guest never signs
+  /// in, so `auth.uid()` at write time is null).
+  final String? createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -118,7 +122,7 @@ class Booking {
       notes: json['notes'] as String?,
       partySize: (json['party_size'] as num?)?.toInt() ?? 1,
       paymentMethod: json['payment_method'] as String?,
-      createdBy: json['created_by'] as String,
+      createdBy: json['created_by'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );

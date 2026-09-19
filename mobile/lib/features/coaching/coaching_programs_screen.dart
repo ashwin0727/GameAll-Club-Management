@@ -14,6 +14,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -152,7 +153,7 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
-                const LoadingView(message: 'Loading programs…')
+                const _CoachingProgramsSkeleton()
               else if (_rows!.isEmpty)
                 Text('No coaching programs yet.', style: AppTypography.secondary(context))
               else ...[
@@ -214,6 +215,31 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the programs row list — the search bar
+/// and status chip above it are already real widgets, so this only covers
+/// the paginated rows.
+class _CoachingProgramsSkeleton extends StatelessWidget {
+  const _CoachingProgramsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -82,7 +83,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _s == null
-                  ? const LoadingView(message: 'Loading session…')
+                  ? const _CoachingSessionDetailSkeleton()
                   : _content(_s!, session),
         ),
       ),
@@ -180,7 +181,10 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
               children: [
                 Expanded(
                   child: InkWell(
-                    onTap: () => context.push('/coaching/enrollments/${st.enrollmentId}'),
+                    onTap: () async {
+                      await context.push('/coaching/enrollments/${st.enrollmentId}');
+                      if (mounted) _load();
+                    },
                     child: Text(st.name, style: AppTypography.rowTitle(context)),
                   ),
                 ),
@@ -481,6 +485,63 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder for the session detail page: the
+/// coach/court header with status badge, the details card, tabs, then a
+/// roster-shaped list for the default "Students" tab.
+class _CoachingSessionDetailSkeleton extends StatelessWidget {
+  const _CoachingSessionDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        Row(
+          children: [
+            Expanded(child: AppSkeleton(width: 200, height: 15)),
+            SizedBox(width: AppSpacing.sm),
+            AppSkeleton(width: 70, height: 22, radius: 11),
+          ],
+        ),
+        SizedBox(height: 6),
+        AppSkeleton(width: 140, height: 11),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SkelKv(),
+              SizedBox(height: AppSpacing.sm),
+              _SkelKv(),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonChipRow(count: 4),
+        SizedBox(height: AppSpacing.md),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+      ],
+    );
+  }
+}
+
+class _SkelKv extends StatelessWidget {
+  const _SkelKv();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        AppSkeleton(width: 90, height: 11),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(child: AppSkeleton(height: 11)),
+      ],
+    );
+  }
 }
 
 class _ProgressNoteSheet extends StatefulWidget {

@@ -4,16 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/payment.dart';
 import '../../data/models/refund.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../finance/finance_presentation.dart';
 
@@ -165,11 +166,14 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Scaffold(
-      appBar: AppBar(title: const Text('Refunds')),
+      appBar: AppBar(
+        title: const Text('Refunds', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading refunds…')
+            ? const _RefundsSkeleton()
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
             : RefreshIndicator(
@@ -184,23 +188,47 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       if (_actionError != null) ...[
-                        Text(_actionError!, style: const TextStyle(color: AppColors.destructive)),
-                        const SizedBox(height: AppSpacing.sm),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: tokens.destructive.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Text(_actionError!,
+                              style: TextStyle(color: tokens.destructive, fontSize: 13)),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                       ],
-                      Text('Payment Received, Not Confirmed', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: AppSpacing.sm),
-                      PickerChip(
-                        label: _exceptionStatusLabel(_exceptionStatus),
-                        onSelect: _pickExceptionStatus,
+                      _SectionHeader(
+                        title: 'Payment Received, Not Confirmed',
+                        color: tokens.warning,
+                        trailing: PickerChip(
+                          label: _exceptionStatusLabel(_exceptionStatus),
+                          onSelect: _pickExceptionStatus,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.md),
                       if (_exceptions.isEmpty)
-                        Text('No open settlement exceptions.', style: AppTypography.secondary(context))
+                        _EmptyRow(
+                          icon: Icons.check_circle_outline_rounded,
+                          color: tokens.success,
+                          message: 'No open settlement exceptions.',
+                        )
                       else
-                        ..._exceptions.map(_buildExceptionCard),
+                        for (final ex in _exceptions) _ExceptionCard(
+                          exception: ex,
+                          isWorking: _workingId == ex.id,
+                          sourceLabel: _sourceTypeLabel(ex.sourceType),
+                          reasonLabel: _exceptionReasonLabel(ex.reason),
+                          onInitiate: () => _initiateRefund(ex.id),
+                        ),
                       const SizedBox(height: AppSpacing.xl),
-                      Text('Refund History', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: AppSpacing.sm),
+                      _SectionHeader(
+                        title: 'Refund History',
+                        color: tokens.primary,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       Wrap(
                         spacing: AppSpacing.sm,
                         runSpacing: AppSpacing.sm,
@@ -215,11 +243,21 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.md),
                       if (_refunds.isEmpty)
-                        Text('No refunds yet.', style: AppTypography.secondary(context))
+                        _EmptyRow(
+                          icon: Icons.receipt_long_outlined,
+                          color: tokens.textSecondary,
+                          message: 'No refunds yet.',
+                        )
                       else
-                        ..._refunds.map(_buildRefundCard),
+                        for (final r in _refunds) _RefundCard(
+                          refund: r,
+                          titleLabel:
+                              '${_sourceTypeLabel(r.sourceType)} · ${Formatters.currencyInr((r.amountMinor / 100).round())}',
+                          subtitleLabel: '${_refundReasonLabel(r.reason)} · ${Formatters.dateShort(r.createdAt)}'
+                              '${r.policyPercentApplied != null ? ' · ${r.policyPercentApplied}% policy' : ''}',
+                        ),
                     ],
                   ),
                 ),
@@ -227,65 +265,233 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
       ),
     );
   }
+}
 
-  Widget _buildExceptionCard(SettlementException ex) {
-    final isWorking = _workingId == ex.id;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_sourceTypeLabel(ex.sourceType), style: Theme.of(context).textTheme.titleSmall),
-                  Text(
-                    '${_exceptionReasonLabel(ex.reason)} · ${Formatters.dateShort(ex.createdAt)}',
-                    style: AppTypography.caption(context),
-                  ),
-                ],
-              ),
-            ),
-            OutlinedButton(
-              onPressed: isWorking ? null : () => _initiateRefund(ex.id),
-              child: Text(isWorking ? 'Refunding…' : 'Initiate Refund'),
-            ),
-          ],
+/// A list-page section header — a coloured accent bar + bold title, the same
+/// motif the dashboard uses for "Free slots left today" etc, so this screen
+/// reads as part of the same app rather than a plainer, older one.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.color, this.trailing});
+
+  final String title;
+  final Color color;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 15,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
         ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(title,
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: context.tokens.textPrimary)),
+        ),
+        ?trailing,
+      ],
+    );
+  }
+}
+
+/// A quiet "nothing here" row for inline use between sections — lighter than
+/// the full-page [EmptyStateView], but still an icon + message instead of a
+/// bare line of grey text.
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow({required this.icon, required this.color, required this.message});
+
+  final IconData icon;
+  final Color color;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildRefundCard(Refund r) {
+class _ExceptionCard extends StatelessWidget {
+  const _ExceptionCard({
+    required this.exception,
+    required this.isWorking,
+    required this.sourceLabel,
+    required this.reasonLabel,
+    required this.onInitiate,
+  });
+
+  final SettlementException exception;
+  final bool isWorking;
+  final String sourceLabel;
+  final String reasonLabel;
+  final VoidCallback onInitiate;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: AppCard(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.borderColor),
+        ),
         child: Row(
           children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.accentFill(tokens.warning),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(Icons.error_outline_rounded, size: 18, color: tokens.warning),
+            ),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${_sourceTypeLabel(r.sourceType)} · ${Formatters.currencyInr((r.amountMinor / 100).round())}',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  Text(
-                    '${_refundReasonLabel(r.reason)} · ${Formatters.dateShort(r.createdAt)}'
-                    '${r.policyPercentApplied != null ? ' · ${r.policyPercentApplied}% policy' : ''}',
-                    style: AppTypography.caption(context),
-                  ),
+                  Text(sourceLabel,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text('$reasonLabel · ${Formatters.dateShort(exception.createdAt)}',
+                      style: TextStyle(fontSize: 11.5, color: tokens.textSecondary)),
                 ],
               ),
             ),
-            StatusBadge(label: _refundStatusLabel(r.status), tone: _refundStatusTone(r.status)),
+            const SizedBox(width: AppSpacing.sm),
+            _RefundButton(isWorking: isWorking, onPressed: onInitiate),
           ],
         ),
       ),
     );
   }
 }
+
+/// Small solid-green pill CTA — matches every other primary action in the
+/// app (an outlined button here would read as secondary, but resolving an
+/// exception is the whole point of this card).
+class _RefundButton extends StatelessWidget {
+  const _RefundButton({required this.isWorking, required this.onPressed});
+
+  final bool isWorking;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Material(
+      color: tokens.primary,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: isWorking ? null : onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+          child: isWorking
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: tokens.onAccent(tokens.primary)),
+                )
+              : Text('Initiate Refund',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: tokens.onAccent(tokens.primary))),
+        ),
+      ),
+    );
+  }
+}
+
+class _RefundCard extends StatelessWidget {
+  const _RefundCard({required this.refund, required this.titleLabel, required this.subtitleLabel});
+
+  final Refund refund;
+  final String titleLabel;
+  final String subtitleLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final tone = _refundStatusTone(refund.status);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.accentFill(_toneColor(tokens, tone)),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(Icons.currency_exchange_rounded, size: 17, color: _toneColor(tokens, tone)),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(titleLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(subtitleLabel, style: TextStyle(fontSize: 11.5, color: tokens.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            StatusBadge(label: _refundStatusLabel(refund.status), tone: tone),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Color _toneColor(AppColorTokens tokens, StatusTone tone) => switch (tone) {
+      StatusTone.success => tokens.success,
+      StatusTone.warning => tokens.warning,
+      StatusTone.danger => tokens.destructive,
+      StatusTone.info => tokens.info,
+      StatusTone.neutral => tokens.textSecondary,
+    };
 
 String _sourceTypeLabel(PaymentSourceType sourceType) => sourceType.toJson().replaceAll('_', ' ');
 
@@ -329,5 +535,37 @@ StatusTone _refundStatusTone(RefundStatus status) {
     case RefundStatus.processing:
     case RefundStatus.pending:
       return StatusTone.warning;
+  }
+}
+
+class _RefundsSkeleton extends StatelessWidget {
+  const _RefundsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          AppSkeleton(width: 260, height: 13),
+          SizedBox(height: AppSpacing.lg),
+          AppSkeleton(width: 220, height: 15),
+          SizedBox(height: AppSpacing.md),
+          SkeletonListRow(trailing: false),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(trailing: false),
+          SizedBox(height: AppSpacing.xl),
+          AppSkeleton(width: 140, height: 15),
+          SizedBox(height: AppSpacing.md),
+          SkeletonChipRow(count: 2),
+          SizedBox(height: AppSpacing.md),
+          SkeletonListRow(),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(),
+        ],
+      ),
+    );
   }
 }

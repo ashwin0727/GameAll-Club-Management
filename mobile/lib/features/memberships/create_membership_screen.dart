@@ -14,6 +14,7 @@ import '../../data/models/booking.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_text_field.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'access_days.dart';
@@ -548,7 +549,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _CreateMembershipSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
                 : _form(context),
@@ -1093,6 +1094,50 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the Create/Edit membership form while
+/// the facility, plans and (in edit mode) the existing membership are
+/// loading — mirrors `_form()`'s numbered sections, each a card with a
+/// title row and a few field-shaped bars.
+class _CreateMembershipSkeleton extends StatelessWidget {
+  const _CreateMembershipSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      children: [
+        const AppSkeleton(width: 220, height: 13),
+        const SizedBox(height: AppSpacing.lg),
+        for (var i = 0; i < 4; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: SkeletonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      AppSkeleton(width: 26, height: 26, radius: 8),
+                      SizedBox(width: AppSpacing.sm),
+                      AppSkeleton(width: 100, height: 16),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  for (var j = 0; j < 3; j++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: const AppSkeleton(height: 44, radius: AppRadius.md),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

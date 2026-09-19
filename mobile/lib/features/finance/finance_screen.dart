@@ -6,6 +6,7 @@ import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/finance.dart';
@@ -14,6 +15,7 @@ import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
@@ -153,8 +155,9 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     _loadRange();
   }
 
-  void _openTransaction(String transactionId) {
-    context.push('${AppRoutes.financeTransactions}/$transactionId');
+  Future<void> _openTransaction(String transactionId) async {
+    await context.push('${AppRoutes.financeTransactions}/$transactionId');
+    if (mounted) _refresh();
   }
 
   @override
@@ -163,7 +166,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       appBar: AppBar(title: const Text('Finance')),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading finance…')
+            ? const _FinanceSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _refresh)
                 : RefreshIndicator(
@@ -210,7 +213,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             AppCard(
                               child: _trend == null
-                                  ? const LoadingView(compact: true)
+                                  ? const _ChartSkeleton()
                                   : _trend!.isEmpty
                                       ? Text('No revenue in this period yet.',
                                           style: AppTypography.secondary(context))
@@ -221,7 +224,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             AppCard(
                               child: _breakdown == null
-                                  ? const LoadingView(compact: true)
+                                  ? const _LinesSkeleton()
                                   : _buildBreakdown(_breakdown!),
                             ),
                             const SizedBox(height: AppSpacing.xl),
@@ -229,7 +232,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             AppCard(
                               child: _methods == null
-                                  ? const LoadingView(compact: true)
+                                  ? const _LinesSkeleton()
                                   : _buildMethods(_methods!),
                             ),
                           ],
@@ -243,7 +246,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           if (_rangeLoading && _recent.isEmpty)
-                            const LoadingView(compact: true)
+                            const _RecentTransactionsSkeleton()
                           else if (_recent.isEmpty)
                             Text('No transactions found for this period.',
                                 style: AppTypography.secondary(context))
@@ -296,7 +299,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         value: s == null ? '—' : financeAmount(s.outstandingMinor),
         pct: (s == null) ? null : changePct(current: s.outstandingMinor, previous: p?.outstandingMinor ?? 0),
         invert: true,
-        onTap: () => context.push(AppRoutes.financePendingPayments),
+        onTap: () async {
+          await context.push(AppRoutes.financePendingPayments);
+          if (mounted) _refresh();
+        },
       ),
     ];
 
@@ -612,6 +618,117 @@ class _SettlementExceptionsCallout extends StatelessWidget {
           const Icon(Icons.chevron_right, color: AppColors.muted),
         ],
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the whole Finance Dashboard page load —
+/// facility row, nav strip, date picker, 4 stat cards, chart card, two
+/// breakdown cards, and a few recent-transaction rows.
+class _FinanceSkeleton extends StatelessWidget {
+  const _FinanceSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 160, height: 13),
+          SizedBox(height: AppSpacing.md),
+          SkeletonChipRow(count: 5),
+          SizedBox(height: AppSpacing.md),
+          AppSkeleton(height: 48, radius: AppRadius.md),
+          SizedBox(height: AppSpacing.lg),
+          _StatCardsSkeleton(),
+          SizedBox(height: AppSpacing.xl),
+          AppSkeleton(width: 140, height: 16),
+          SizedBox(height: AppSpacing.sm),
+          _ChartSkeleton(),
+          SizedBox(height: AppSpacing.xl),
+          AppSkeleton(width: 160, height: 16),
+          SizedBox(height: AppSpacing.sm),
+          _LinesSkeleton(),
+          SizedBox(height: AppSpacing.xl),
+          AppSkeleton(width: 160, height: 16),
+          SizedBox(height: AppSpacing.sm),
+          _LinesSkeleton(),
+          SizedBox(height: AppSpacing.xl),
+          AppSkeleton(width: 180, height: 16),
+          SizedBox(height: AppSpacing.sm),
+          _RecentTransactionsSkeleton(),
+        ],
+      ),
+    );
+  }
+}
+
+/// The 4-tile stat-card row placeholder, matching `_statCards`' responsive
+/// wrap.
+class _StatCardsSkeleton extends StatelessWidget {
+  const _StatCardsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / 170).floor().clamp(1, 2);
+        final width = (constraints.maxWidth - (AppSpacing.md * (columns - 1))) / columns;
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            for (var i = 0; i < 4; i++) SizedBox(width: width, child: const SkeletonStatTile()),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A tall block placeholder for the Revenue Trend chart card.
+class _ChartSkeleton extends StatelessWidget {
+  const _ChartSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppSkeleton(height: 140, radius: AppRadius.md);
+  }
+}
+
+/// A few text-line placeholders, for the breakdown / payment-methods cards.
+class _LinesSkeleton extends StatelessWidget {
+  const _LinesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppSkeleton(height: 13),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(height: 13),
+        SizedBox(height: AppSpacing.sm),
+        AppSkeleton(width: 160, height: 13),
+      ],
+    );
+  }
+}
+
+/// A few row placeholders for the Recent Transactions list.
+class _RecentTransactionsSkeleton extends StatelessWidget {
+  const _RecentTransactionsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

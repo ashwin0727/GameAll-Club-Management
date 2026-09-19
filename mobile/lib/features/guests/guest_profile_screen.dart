@@ -13,6 +13,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../bookings/booking_status_presentation.dart';
 import '../bookings/bookings_screen.dart';
@@ -113,7 +114,7 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
         appBar: AppBar(title: Text(_guest.name)),
         body: SafeArea(
           child: _isLoading
-              ? const LoadingView(message: 'Loading guest profile…')
+              ? const _GuestProfileSkeleton()
               : _loadError != null
               ? ErrorView(message: _loadError!, onRetry: _load)
               : ResponsivePage(
@@ -205,6 +206,44 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
         if (stats.sports.isNotEmpty)
           Text('Sports: ${stats.sports.map((s) => s.sportName).join(', ')}', style: AppTypography.secondary(context)),
       ],
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the profile's real layout —
+/// contact lines, the stat-tile row, then the booking history list.
+class _GuestProfileSkeleton extends StatelessWidget {
+  const _GuestProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 160, height: 13),
+          SizedBox(height: AppSpacing.xs),
+          AppSkeleton(width: 200, height: 13),
+          SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              Expanded(child: SkeletonStatTile()),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: SkeletonStatTile()),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: SkeletonStatTile()),
+            ],
+          ),
+          SizedBox(height: AppSpacing.lg),
+          AppSkeleton(width: 140, height: 17),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(trailing: false),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(trailing: false),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonListRow(trailing: false),
+        ],
+      ),
     );
   }
 }
