@@ -6,6 +6,14 @@
   /* Playo-style light theme.
      #FFFFFF bg/card · #00b562 primary · #3B4540 text · #758A80 muted */
   :root {
+    /* Light-theme palette. The HSL tokens below are these hexes. */
+    --light-page-bg: #F7FDF9;
+    --light-card-bg: #FFFFFF;
+    --light-surface-tint: #F1FBF7;
+    --light-border: #DDEFE7;
+    --hero-gradient-start: #E9F9F3;
+    --hero-gradient-end: #D6F5E9;
+
     --background: 0 0% 100%;
     --foreground: 150 8% 25%;
     --card: 0 0% 100%;
@@ -14,9 +22,9 @@
     --popover-foreground: 150 8% 25%;
     --primary: 152 100% 35%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 150 20% 97%;
+    --secondary: 156 56% 96%; /* --light-surface-tint */
     --secondary-foreground: 150 8% 25%;
-    --muted: 150 20% 97%;
+    --muted: 156 56% 96%; /* --light-surface-tint */
     --muted-foreground: 152 8% 50%;
     --accent: 152 60% 94%;
     --accent-foreground: 152 100% 25%;
@@ -26,8 +34,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 150 10% 90%;
-    --input: 150 10% 90%;
+    --border: 153 36% 90%; /* --light-border */
+    --input: 153 36% 90%;
     --ring: 152 100% 35%;
     --radius: 0.75rem;
   }

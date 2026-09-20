@@ -2,7 +2,7 @@ import type { DashboardSummary, DateRangePreset } from "@/features/dashboard/typ
 import type { Facility } from "@/features/onboarding/types";
 
 export interface DashboardSummaryParams {
-  /** null = All Sports (aggregate). */
+  /** The one sport shown. null = the facility's first sport (no all-sports aggregate). */
   facilitySportId: string | null;
   preset: DateRangePreset;
   custom?: { from: string; to: string };

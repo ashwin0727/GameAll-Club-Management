@@ -16,9 +16,13 @@ import {
   ChevronDown,
   Wrench,
   ShieldCheck,
+  Crown,
+  Dumbbell,
+  Trophy,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_ITEMS, type NavGroup, type NavItem } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
@@ -26,7 +30,7 @@ import type { PermissionKey } from "@/features/staff/types";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
-  "/memberships": BadgeIndianRupee,
+  "/memberships": Users,
   "/membership-sessions": CalendarCheck2,
   "/bookings": CalendarClock,
   "/guest-bookings": CalendarRange,
@@ -36,6 +40,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/maintenance": Wrench,
   "/users-roles/staff": ShieldCheck,
   "/inventory": Boxes,
+  "/coaching": Dumbbell,
+  "/tournaments": Trophy,
 };
 
 /**
@@ -45,6 +51,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+const GROUP_ORDER: NavGroup[] = ["main", "club", "operations", "finance"];
 
 export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
@@ -67,11 +75,11 @@ export function Sidebar({ role }: { role: Role }) {
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border/40 bg-[var(--light-page-bg)] transition-transform dark:bg-card lg:static lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-16 items-center gap-2.5 border-b border-border px-4">
+        <div className="flex h-16 items-center gap-2.5 border-b border-border/40 px-4">
           <Image
             src={APP_LOGO_SRC}
             alt=""
@@ -87,27 +95,57 @@ export function Sidebar({ role }: { role: Role }) {
           </span>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {items.map((item) =>
-            item.children?.length ? (
-              <NavSection
-                key={item.href}
-                item={item}
-                pathname={pathname}
-                onNavigate={() => setSidebarOpen(false)}
-              />
-            ) : (
-              <NavLink
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                icon={ICONS[item.href] ?? LayoutDashboard}
-                active={isActive(pathname, item.href)}
-                onNavigate={() => setSidebarOpen(false)}
-              />
-            ),
-          )}
+        <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+          {GROUP_ORDER.map((group) => {
+            const groupItems = items.filter((item) => item.group === group);
+            if (groupItems.length === 0) return null;
+            const heading = NAV_GROUP_LABELS[group];
+            return (
+              <div key={group} className="space-y-1">
+                {heading && (
+                  <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                    {heading}
+                  </p>
+                )}
+                {groupItems.map((item) =>
+                  item.children?.length ? (
+                    <NavSection
+                      key={item.href}
+                      item={item}
+                      pathname={pathname}
+                      onNavigate={() => setSidebarOpen(false)}
+                    />
+                  ) : (
+                    <NavLink
+                      key={item.href}
+                      href={item.href}
+                      label={item.label}
+                      icon={ICONS[item.href] ?? LayoutDashboard}
+                      active={isActive(pathname, item.href)}
+                      onNavigate={() => setSidebarOpen(false)}
+                    />
+                  ),
+                )}
+              </div>
+            );
+          })}
         </nav>
+
+        {/* Promo only — there is no billing/plans route to link to yet. */}
+        <div className="m-3 space-y-2 rounded-xl border border-border bg-secondary/40 p-3">
+          <Crown className="h-4 w-4 text-warning" aria-hidden />
+          <p className="text-xs font-semibold text-foreground">Upgrade Your Club</p>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Unlock advanced features and grow faster.
+          </p>
+          <button
+            type="button"
+            disabled
+            className="h-8 w-full rounded-md border border-border bg-card text-xs font-medium text-foreground opacity-80"
+          >
+            View Plans
+          </button>
+        </div>
       </aside>
     </>
   );

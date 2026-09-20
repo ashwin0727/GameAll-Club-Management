@@ -1,62 +1,506 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChartPie, Users, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeIndianRupee,
+  CalendarCheck2,
+  CalendarClock,
+  CalendarPlus,
+  ChevronRight,
+  Dumbbell,
+  Gauge,
+  GraduationCap,
+  Hourglass,
+  MoreHorizontal,
+  Receipt,
+  ShieldBan,
+  TriangleAlert,
+  Trophy,
+  UserPlus,
+  UserRoundCheck,
+  Users,
+  UserRoundX,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard-summary";
-import { KpiCard } from "@/features/dashboard/components/kpi-card";
-import type { DateRangePreset, RevenueOverview as RevenueOverviewData, ScheduleBlockType, ScheduleTimeline } from "@/features/dashboard/types";
+import type {
+  DashboardSummary,
+  DateRangePreset,
+  KpiValue,
+  RevenueOverview as RevenueOverviewData,
+  ScheduleBlock,
+  ScheduleBlockType,
+  ScheduleCourtRow,
+} from "@/features/dashboard/types";
+import { useUiStore } from "@/stores/ui-store";
 import { cn, formatCurrencyINR } from "@/lib/utils";
 
-const DATE_PRESETS: { value: DateRangePreset; label: string }[] = [
-  { value: "TODAY", label: "Today" },
-  { value: "YESTERDAY", label: "Yesterday" },
-  { value: "THIS_WEEK", label: "This Week" },
-  { value: "THIS_MONTH", label: "This Month" },
+/** The Home page always reports on today. */
+const PRESET: DateRangePreset = "TODAY";
+
+const COMPARE_LABEL: Record<DateRangePreset, string> = {
+  TODAY: "vs yesterday",
+  YESTERDAY: "vs day before",
+  THIS_WEEK: "vs last week",
+  THIS_MONTH: "vs last month",
+  CUSTOM: "",
+};
+
+/** Every quick action points at a route that already exists. */
+const QUICK_ACTIONS: { label: string; href: string; icon: LucideIcon }[] = [
+  { label: "Guest Booking", href: "/guest-bookings", icon: UserRound },
+  { label: "Add Member", href: "/memberships", icon: UserPlus },
+  { label: "Add Expense", href: "/finance/expenses", icon: Receipt },
+  { label: "Block Court", href: "/maintenance/court-schedule", icon: ShieldBan },
+  { label: "Create Coaching Session", href: "/coaching/sessions", icon: GraduationCap },
+  { label: "Open Tournament App", href: "/tournaments", icon: Trophy },
 ];
 
-const QUICK_ACTIONS: { label: string; href: string }[] = [
-  { label: "Add Booking", href: "/bookings" },
-  { label: "Add Member", href: "/memberships" },
-  { label: "Guest Slots", href: "/membership-sessions" },
-  { label: "Guest Players", href: "/guests" },
-  { label: "Finance", href: "/finance" },
-  { label: "Refunds", href: "/refunds" },
-];
+/** Same 3-up proportions the design uses for every content row. */
+const ROW_GRID = "grid grid-cols-1 gap-3 lg:grid-cols-[333fr_181fr_183fr]";
 
 function greeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatMinute(minute: number): string {
+  const m = ((minute % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60);
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${String(h12).padStart(2, "0")}:${String(m % 60).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+const TYPE_LABEL: Record<ScheduleBlockType, string> = {
+  MEMBER: "Member",
+  GUEST: "Guest",
+  SESSION: "Session",
+};
+
+const TYPE_TAG: Record<ScheduleBlockType, string> = {
+  MEMBER: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  GUEST: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  SESSION: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
+};
+
+function DashCard({
+  title,
+  action,
+  children,
+  className,
+  delay = 0,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <Card
+      className={cn("stat-enter flex min-w-0 flex-col p-4", className)}
+      style={{ "--stat-delay": `${delay}ms` } as React.CSSProperties}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function CardLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+      {children}
+      <ArrowRight className="h-3 w-3" aria-hidden />
+    </Link>
+  );
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return <p className="py-6 text-center text-xs text-muted-foreground">{children}</p>;
+}
+
+function DashKpi({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  sub,
+  subClass,
+  href,
+  children,
+  delay,
+}: {
+  icon: LucideIcon;
+  /** Tailwind classes for the icon chip (background + glyph colour). */
+  tone: string;
+  label: string;
+  value: string;
+  sub?: React.ReactNode;
+  subClass?: string;
+  href?: string;
+  children?: React.ReactNode;
+  delay: number;
+}) {
+  const body = (
+    <Card
+      className="stat-enter flex h-full min-w-0 items-center gap-3 p-4 transition-shadow hover:shadow-md"
+      style={{ "--stat-delay": `${delay}ms` } as React.CSSProperties}
+    >
+      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", tone)}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="truncate text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-xl font-semibold leading-tight tabular-nums text-foreground">{value}</p>
+        {sub && <p className={cn("truncate text-[11px]", subClass ?? "text-muted-foreground")}>{sub}</p>}
+        {children}
+      </div>
+      {href && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />}
+    </Card>
+  );
+  return href ? (
+    <Link href={href} className="block min-w-0">
+      {body}
+    </Link>
+  ) : (
+    body
+  );
+}
+
+function trendText(kpi: KpiValue, compare: string): { text: string; cls: string } | null {
+  if (kpi.changePercent === null) return null;
+  const up = kpi.changePercent > 0;
+  const down = kpi.changePercent < 0;
+  return {
+    text: `${up ? "↑" : down ? "↓" : "→"} ${Math.abs(kpi.changePercent).toFixed(1)}% ${compare}`.trim(),
+    cls: up ? "text-success" : down ? "text-destructive" : "text-muted-foreground",
+  };
+}
+
+type ActivityStatus = "live" | "next" | "booked" | "available";
+
+interface CourtNow {
+  court: ScheduleCourtRow;
+  block: ScheduleBlock | null;
+  status: ActivityStatus;
+  /** Until when a live court stays busy, in minutes from midnight. */
+  busyUntil: number | null;
+}
+
+/** Per court: what is on right now, else what is next, else it is free. */
+function courtsNow(courts: ScheduleCourtRow[], nowMinute: number, isToday: boolean): CourtNow[] {
+  let nextClaimed = false;
+  return courts.map((court) => {
+    const sorted = [...court.blocks].sort((a, b) => a.startMinute - b.startMinute);
+    const live = isToday ? sorted.find((b) => b.startMinute <= nowMinute && nowMinute < b.endMinute) : undefined;
+    if (live) return { court, block: live, status: "live", busyUntil: live.endMinute };
+    const upcoming = sorted.find((b) => b.startMinute > (isToday ? nowMinute : -1));
+    if (upcoming) {
+      const status: ActivityStatus = nextClaimed ? "booked" : "next";
+      nextClaimed = true;
+      return { court, block: upcoming, status, busyUntil: null };
+    }
+    return { court, block: null, status: "available", busyUntil: null };
+  });
+}
+
+const STATUS_DOT: Record<ActivityStatus, string> = {
+  live: "bg-success",
+  next: "bg-blue-500",
+  booked: "bg-blue-500",
+  available: "bg-success",
+};
+
+const STATUS_TEXT: Record<ActivityStatus, { label: string; cls: string }> = {
+  live: { label: "Live", cls: "text-success" },
+  next: { label: "Next", cls: "text-blue-600 dark:text-blue-400" },
+  booked: { label: "Booked", cls: "text-blue-600 dark:text-blue-400" },
+  available: { label: "Available", cls: "text-success" },
+};
+
+function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
+  return (
+    <DashCard
+      title="Today's Court Activity"
+      delay={delay}
+      action={<CardLink href="/bookings">View Calendar</CardLink>}
+    >
+      {rows.length === 0 ? (
+        <EmptyNote>No courts configured yet.</EmptyNote>
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {rows.slice(0, 6).map(({ court, block, status }) => (
+            <li
+              key={court.courtId}
+              className="grid grid-cols-[4.25rem_3.25rem_minmax(0,1fr)_auto_4.25rem] items-center gap-2 py-2 text-xs"
+            >
+              <span className="tabular-nums text-muted-foreground">{block ? formatMinute(block.startMinute) : "—"}</span>
+              <span className="truncate rounded-md bg-secondary px-1.5 py-0.5 text-center text-[11px] font-medium">
+                {court.courtName}
+              </span>
+              <span className="truncate text-foreground">{block?.label ?? "—"}</span>
+              {block ? (
+                <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", TYPE_TAG[block.type])}>
+                  {TYPE_LABEL[block.type]}
+                </span>
+              ) : (
+                <span />
+              )}
+              <span className={cn("flex items-center justify-end gap-1.5 text-[11px] font-medium", STATUS_TEXT[status].cls)}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[status])} />
+                {STATUS_TEXT[status].label}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </DashCard>
+  );
+}
+
+function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
+  return (
+    <DashCard title="Court Status" delay={delay} action={<CardLink href="/maintenance/court-schedule">View All</CardLink>}>
+      {rows.length === 0 ? (
+        <EmptyNote>No courts configured yet.</EmptyNote>
+      ) : (
+        <ul className="space-y-2.5">
+          {rows.slice(0, 7).map(({ court, status, busyUntil }) => {
+            const busy = status === "live";
+            return (
+              <li key={court.courtId} className="flex items-center justify-between gap-2 text-xs">
+                <span className="w-16 shrink-0 truncate font-medium">{court.courtName}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", busy ? "bg-destructive" : "bg-success")} />
+                  <span className={busy ? "text-destructive" : "text-success"}>{busy ? "Busy" : "Available"}</span>
+                </span>
+                {busy && busyUntil !== null && (
+                  <span className="shrink-0 text-[11px] text-muted-foreground">Until {formatMinute(busyUntil)}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </DashCard>
+  );
+}
+
+function QuickActionsCard({ onGo, delay }: { onGo: (href: string) => void; delay: number }) {
+  return (
+    <DashCard title="Quick Actions" delay={delay}>
+      <div className="space-y-2">
+        <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/bookings")}>
+          <span className="flex items-center gap-2">
+            <CalendarPlus className="h-4 w-4" aria-hidden />
+            New Booking
+          </span>
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
+            <button
+              key={href}
+              type="button"
+              onClick={() => onGo(href)}
+              className="flex min-h-[3.25rem] flex-col items-start justify-center gap-1 rounded-lg border border-border bg-secondary/40 px-2.5 py-2 text-left text-[11px] font-medium leading-tight transition-colors hover:bg-accent"
+            >
+              <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </DashCard>
+  );
+}
+
+function paymentChip(block: ScheduleBlock): { label: string; cls: string } | null {
+  switch (block.paymentStatus) {
+    case "PAID":
+      return { label: "Paid", cls: "bg-success/15 text-success" };
+    case "PENDING":
+      return { label: "Pending", cls: "bg-warning/15 text-warning" };
+    case "REFUNDED":
+      return { label: "Refunded", cls: "bg-secondary text-muted-foreground" };
+    default:
+      return null;
+  }
+}
+
+function statusChip(block: ScheduleBlock): { label: string; cls: string } {
+  switch (block.bookingStatus) {
+    case "pending":
+      return { label: "Pending", cls: "bg-warning/15 text-warning" };
+    case "completed":
+      return { label: "Completed", cls: "bg-secondary text-muted-foreground" };
+    default:
+      return { label: "Confirmed", cls: "bg-success/15 text-success" };
+  }
+}
+
+function TodaysBookingsCard({ blocks, delay }: { blocks: { block: ScheduleBlock; court: string }[]; delay: number }) {
+  return (
+    <DashCard title="Today's Bookings" delay={delay} action={<CardLink href="/bookings">View All</CardLink>}>
+      {blocks.length === 0 ? (
+        <EmptyNote>No bookings today.</EmptyNote>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[440px] text-left text-xs">
+            <thead>
+              <tr className="border-b border-border/60 text-[11px] text-muted-foreground">
+                {["Time", "Court", "Customer", "Type", "Payment", "Status", "Actions"].map((h) => (
+                  <th key={h} className="pb-2 pr-2 font-medium last:pr-0 last:text-right">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {blocks.slice(0, 5).map(({ block, court }) => {
+                const pay = paymentChip(block);
+                const status = statusChip(block);
+                return (
+                  <tr key={block.id}>
+                    <td className="py-2 pr-2 tabular-nums text-muted-foreground">{formatMinute(block.startMinute)}</td>
+                    <td className="py-2 pr-2">{court}</td>
+                    <td className="max-w-[7rem] truncate py-2 pr-2">{block.label}</td>
+                    <td className="py-2 pr-2">
+                      <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", TYPE_TAG[block.type])}>
+                        {TYPE_LABEL[block.type]}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-2">
+                      {pay ? (
+                        <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", pay.cls)}>{pay.label}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", status.cls)}>{status.label}</span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <Link
+                        href="/bookings"
+                        aria-label="Open bookings"
+                        className="inline-flex text-muted-foreground hover:text-foreground"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </DashCard>
+  );
+}
+
+function MembershipCard({ summary, delay }: { summary: DashboardSummary; delay: number }) {
+  const m = summary.memberships;
+  const rows: { icon: LucideIcon; tone: string; label: string; value: number }[] = [
+    { icon: UserRoundCheck, tone: "bg-success/15 text-success", label: "Active Members", value: m.active },
+    { icon: Hourglass, tone: "bg-warning/15 text-warning", label: "Expiring Soon", value: m.expiringSoon },
+    { icon: UserPlus, tone: "bg-blue-500/15 text-blue-600 dark:text-blue-400", label: "New This Month", value: m.newThisMonth },
+    { icon: UserRoundX, tone: "bg-destructive/15 text-destructive", label: "Expired", value: m.expired },
+  ];
+  return (
+    <DashCard title="Membership" delay={delay} action={<CardLink href="/memberships">View Members</CardLink>}>
+      <ul className="space-y-2.5">
+        {rows.map(({ icon: Icon, tone, label, value }) => (
+          <li key={label} className="flex items-center gap-2.5 text-xs">
+            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", tone)}>
+              <Icon className="h-4 w-4" aria-hidden />
+            </span>
+            <span className="flex-1 truncate text-muted-foreground">{label}</span>
+            <span className="text-sm font-semibold tabular-nums text-foreground">{value}</span>
+          </li>
+        ))}
+      </ul>
+    </DashCard>
+  );
+}
+
+function AttentionCard({ summary, onGo, delay }: { summary: DashboardSummary; onGo: (href: string) => void; delay: number }) {
+  const items = summary.attentionItems;
+  return (
+    <DashCard
+      title="Attention Required"
+      delay={delay}
+      action={
+        items.length > 0 ? (
+          <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-semibold text-white">{items.length}</span>
+        ) : undefined
+      }
+    >
+      {items.length === 0 ? (
+        <p className="py-4 text-xs text-success">You&apos;re all caught up. No immediate attention required.</p>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start gap-2 text-xs">
+              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="leading-snug text-foreground">{item.message}</p>
+                {item.actionHref && item.actionLabel && (
+                  <button
+                    type="button"
+                    onClick={() => onGo(item.actionHref!)}
+                    className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                  >
+                    {item.actionLabel}
+                    <ChevronRight className="h-3 w-3" aria-hidden />
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </DashCard>
+  );
 }
 
 export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | null }) {
   const router = useRouter();
   const { data: facility, isLoading: facilityLoading } = useFacility();
-  const [selectedSportId, setSelectedSportId] = useState<string | null>(null);
-  const [preset, setPreset] = useState<DateRangePreset>("TODAY");
+  const activeFacilitySportId = useUiStore((s) => s.activeFacilitySportId);
   const [revenueMonthOffset, setRevenueMonthOffset] = useState(0);
 
   // Passing the already-fetched facility through means the summary query
   // doesn't need to look it up again itself, cutting a stage out of what was
   // otherwise a facility-fetch -> summary-fetch waterfall.
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary(facility ?? null, {
-    facilitySportId: selectedSportId,
-    preset,
+    // null = the facility's first sport; the dashboard always shows exactly one.
+    facilitySportId: activeFacilitySportId,
+    preset: PRESET,
     revenueMonthOffset,
   });
 
   if (facilityLoading || isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-20 w-full rounded-xl" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+      <div className="space-y-3">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <div className="relative z-10 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
@@ -87,387 +531,170 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
     );
   }
 
-  const { memberships } = summary;
-  const memberTotal = memberships.active + memberships.expiringSoon + memberships.expired;
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">
-            {ownerFirstName ? `${greeting()}, ${ownerFirstName} 👋` : greeting()}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {summary.facility.name}
-            {summary.facility.city ? ` · ${summary.facility.city}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <select
-            aria-label="Sport"
-            value={selectedSportId ?? ""}
-            onChange={(e) => setSelectedSportId(e.target.value || null)}
-            className="h-11 min-w-[9rem] rounded-md border border-input bg-secondary/60 px-3 text-sm"
-          >
-            <option value="">All Sports</option>
-            {summary.sports.map((sport) => (
-              <option key={sport.facilitySportId} value={sport.facilitySportId}>
-                {sport.sportIcon} {sport.sportName}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Date range"
-            value={preset}
-            onChange={(e) => setPreset(e.target.value as DateRangePreset)}
-            className="h-11 min-w-[8rem] rounded-md border border-input bg-secondary/60 px-3 text-sm"
-          >
-            {DATE_PRESETS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard index={0} label="Revenue" kpi={summary.kpis.revenueInr} format={formatCurrencyINR} icon={Wallet} accentColor="#5B6CFF" />
-        <KpiCard index={1} label="Active Membership" kpi={summary.kpis.activeMemberships} format={(v) => String(v)} icon={Users} accentColor="#8B5CF6" />
-        <KpiCard index={2} label="Guest Bookings" kpi={summary.kpis.guestBookings} format={(v) => String(v)} icon={Users} accentColor="#FFB020" />
-        <KpiCard index={3} label="Utilization" kpi={summary.kpis.utilizationPercent} format={(v) => `${v}%`} icon={ChartPie} accentColor="#00F08A" />
-      </div>
-
-      {/* Expiring-membership alert — only when there's actually something to act on */}
-      {memberships.expiringSoon > 0 && (
-        <button
-          type="button"
-          onClick={() => router.push("/memberships")}
-          className="flex w-full items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-left transition-colors hover:bg-warning/15"
-        >
-          <span className="text-sm font-medium text-foreground">
-            {memberships.expiringSoon} membership{memberships.expiringSoon === 1 ? "" : "s"} expiring soon
-          </span>
-          <span className="text-sm text-muted-foreground">View members →</span>
-        </button>
-      )}
-
-      {/* Today's Schedule */}
-      <Card className="stat-enter space-y-3 overflow-hidden p-4 sm:p-5" style={{ "--stat-delay": "300ms" } as React.CSSProperties}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Today&apos;s Schedule</h3>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-0 text-xs"
-            onClick={() => router.push("/bookings")}
-          >
-            View All Bookings →
-          </Button>
-        </div>
-        <ScheduleTimelineView timeline={summary.scheduleTimeline} showNow={preset === "TODAY"} />
-      </Card>
-
-      {/* Revenue Overview */}
-      <Card className="stat-enter space-y-3 overflow-hidden p-4 sm:p-5" style={{ "--stat-delay": "360ms" } as React.CSSProperties}>
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Revenue Overview</h3>
-          <select
-            aria-label="Revenue month"
-            value={revenueMonthOffset}
-            onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
-            className="h-8 rounded-md border border-input bg-secondary/60 px-2 text-xs"
-          >
-            {MONTH_OPTIONS.map((opt) => (
-              <option key={opt.offset} value={opt.offset}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <RevenueOverviewPanel overview={summary.revenueOverview} />
-      </Card>
-
-      {/* Attention Required */}
-      <div className="grid grid-cols-1 gap-4">
-        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "420ms" } as React.CSSProperties}>
-          <h3 className="text-sm font-semibold">Attention Required</h3>
-          {summary.attentionItems.length === 0 ? (
-            <p className="text-sm text-success">You&apos;re all caught up. No immediate attention required.</p>
-          ) : (
-            <ul className="space-y-2">
-              {summary.attentionItems.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">{item.message}</span>
-                  {item.actionHref && item.actionLabel && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 shrink-0 px-2 text-xs"
-                      onClick={() => router.push(item.actionHref!)}
-                    >
-                      {item.actionLabel}
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      {/* Memberships | Utilization */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "480ms" } as React.CSSProperties}>
-          <h3 className="text-sm font-semibold">Memberships</h3>
-          <div>
-            <p className="text-2xl font-semibold text-foreground">{memberTotal}</p>
-            <p className="text-xs text-muted-foreground">Total members</p>
-          </div>
-          {memberTotal > 0 && (
-            <div className="bar-grow flex h-2 overflow-hidden rounded-full" style={{ "--bar-delay": "160ms" } as React.CSSProperties}>
-              <span className="bg-success" style={{ flexGrow: memberships.active }} />
-              <span className="bg-warning" style={{ flexGrow: memberships.expiringSoon }} />
-              <span className="bg-destructive" style={{ flexGrow: memberships.expired }} />
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {memberships.active} active · {memberships.expiringSoon} expiring · {memberships.expired} expired
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 px-0 text-xs"
-            onClick={() => router.push("/memberships")}
-          >
-            View Members →
-          </Button>
-        </Card>
-
-        <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "540ms" } as React.CSSProperties}>
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Court / Turf Utilization</h3>
-            <span className="text-sm font-medium text-foreground">{summary.utilization.overallPercent}%</span>
-          </div>
-          {summary.utilization.bySport.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sports configured yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {summary.utilization.bySport.map((sport, i) => (
-                <div key={sport.facilitySportId} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{sport.sportName}</span>
-                    <span className="font-medium text-foreground">{sport.utilizationPercent}%</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="bar-grow h-full rounded-full bg-primary"
-                      style={
-                        {
-                          width: `${Math.min(Math.max(sport.utilizationPercent, 0), 100)}%`,
-                          "--bar-delay": `${160 + i * 90}ms`,
-                        } as React.CSSProperties
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <Card className="stat-enter space-y-3 p-4 sm:p-5" style={{ "--stat-delay": "600ms" } as React.CSSProperties}>
-        <h3 className="text-sm font-semibold">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {QUICK_ACTIONS.map((action) => (
-            <Button
-              key={action.href}
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-11 justify-start"
-              onClick={() => router.push(action.href)}
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-const HOUR_WIDTH = 68;
-const LABEL_WIDTH = 116;
-const LANE_HEIGHT = 34;
-const TRACK_PADDING = 0;
-/** How long the hour ruler takes to settle before the court rows start. */
-const RULER_SETTLE_MS = 120;
-
-const BLOCK_STYLES: Record<ScheduleBlockType, string> = {
-  MEMBER: "border-emerald-500/70 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  GUEST: "border-blue-500/70 bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  SESSION: "border-purple-500/70 bg-purple-500/15 text-purple-700 dark:text-purple-300",
-};
-
-const LEGEND: { type: ScheduleBlockType; label: string; dot: string }[] = [
-  { type: "MEMBER", label: "Member", dot: "bg-emerald-500" },
-  { type: "GUEST", label: "Guest", dot: "bg-blue-500" },
-  { type: "SESSION", label: "Membership session", dot: "bg-purple-500" },
-];
-
-function formatHourTick(hour: number): string {
-  const h = hour % 24;
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12} ${h < 12 ? "AM" : "PM"}`;
-}
-
-function ScheduleTimelineView({ timeline, showNow }: { timeline: ScheduleTimeline; showNow: boolean }) {
-  const [sportFilter, setSportFilter] = useState<string | null>(null);
-  const hours = timeline.endHour - timeline.startHour;
-  if (timeline.courts.length === 0 || hours <= 0) {
-    return <p className="text-sm text-muted-foreground">No courts configured yet.</p>;
-  }
-
-  const sportNames = [...new Set(timeline.courts.map((c) => c.sportName))].sort((a, b) => a.localeCompare(b));
-  const activeSport = sportFilter && sportNames.includes(sportFilter) ? sportFilter : null;
-  const courts = activeSport ? timeline.courts.filter((c) => c.sportName === activeSport) : timeline.courts;
-
-  const trackWidth = hours * HOUR_WIDTH;
-  const windowMinutes = hours * 60;
-  const toX = (minute: number) => ((minute - timeline.startHour * 60) / windowMinutes) * trackWidth;
-
   const now = new Date();
   const nowMinute = now.getHours() * 60 + now.getMinutes();
-  const nowInWindow = showNow && nowMinute >= timeline.startHour * 60 && nowMinute <= timeline.endHour * 60;
+  const isToday = true;
+  const courts = summary.scheduleTimeline.courts;
+  const courtRows = courtsNow(courts, nowMinute, isToday);
+  const allBlocks = courts
+    .flatMap((court) => court.blocks.map((block) => ({ block, court: court.courtName })))
+    .sort((a, b) => a.block.startMinute - b.block.startMinute);
+  const bookingBlocks = allBlocks.filter(({ block }) => block.type !== "SESSION");
+  const upcomingCount = bookingBlocks.filter(({ block }) => block.startMinute > nowMinute).length;
+  const occupied = courtRows.filter((r) => r.status === "live").length;
+  const utilization = summary.kpis.utilizationPercent.value;
+
+  const compare = COMPARE_LABEL[PRESET];
+  const revenueTrend = trendText(summary.kpis.revenueInr, compare);
 
   return (
     <div className="space-y-3">
-      {sportNames.length > 1 && (
-        <div className="flex flex-wrap gap-1.5">
-          {[null, ...sportNames].map((name) => {
-            const selected = activeSport === name;
-            return (
-              <button
-                key={name ?? "__all"}
-                type="button"
-                onClick={() => setSportFilter(name)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                  selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-input bg-secondary/40 text-muted-foreground hover:bg-secondary",
-                )}
-              >
-                {name ?? "All Courts"}
-              </button>
-            );
-          })}
+      {/* Hero: no card, no border. The artwork bleeds to the page edges under the
+          top bar. The strip is 144px tall but the KPI row (z-10, pulled up by
+          the negative bottom margin) starts at 96px, so the lower 48px runs
+          behind the cards and only shows in the gaps, fading out. The 3:1
+          artwork is 144px tall and lifted 48px, so the athlete's head sits near
+          the top and her body disappears behind the cards, as in the design;
+          it is offset so she lands ~65% across (~75% into the image:
+          2.25 x 144px = 324px). One file per theme. */}
+      <div className="relative -mx-4 -mt-4 -mb-[3.75rem] h-36 lg:-mx-6 lg:-mt-6">
+        <div
+          aria-hidden
+          className="absolute inset-0 overflow-hidden bg-[linear-gradient(to_right,var(--light-page-bg)_0%,var(--light-page-bg)_45%,var(--hero-gradient-start)_72%,var(--hero-gradient-end)_100%)] [mask-image:linear-gradient(to_bottom,black_62%,transparent)] dark:bg-[linear-gradient(to_right,#020b1f,#020b1f,#031a1a)]"
+        >
+          <div
+            className="pointer-events-none absolute -top-12 hidden h-36 aspect-[3/1] bg-cover bg-center bg-no-repeat [mask-image:linear-gradient(to_right,transparent,black_30%,black_80%,transparent)] md:block dark:md:hidden"
+            style={{ backgroundImage: "url(/assets/Dashboard_Hero_Light_Mode.png)", left: "calc(65% - 324px)" }}
+          />
+          <div
+            className="pointer-events-none absolute -top-12 hidden h-36 aspect-[3/1] bg-cover bg-center bg-no-repeat [mask-image:linear-gradient(to_right,transparent,black_30%,black_80%,transparent)] dark:md:block"
+            style={{ backgroundImage: "url(/assets/Dashboard-Hero.png)", left: "calc(65% - 324px)" }}
+          />
         </div>
-      )}
-      {/* Keyed on the filter so switching sports replays the reveal rather
-          than snapping the new grid into place. */}
-      <div className="overflow-x-auto" key={activeSport ?? "__all"}>
-        <div style={{ width: LABEL_WIDTH + trackWidth }} className="min-w-full">
-          {/* Hour ruler */}
-          <div className="flex border-b border-border pb-1" style={{ paddingLeft: LABEL_WIDTH }}>
-            {Array.from({ length: hours }).map((_, i) => (
-              <div
-                key={i}
-                className="schedule-tick-enter shrink-0 text-xs text-muted-foreground"
-                style={{ width: HOUR_WIDTH, "--tick-delay": `${i * 18}ms` } as React.CSSProperties}
-              >
-                {formatHourTick(timeline.startHour + i)}
-              </div>
-            ))}
+        <div className="relative flex items-start justify-between gap-4 px-4 pt-5 lg:px-6">
+          <div className="min-w-0">
+            <h1 className="truncate text-[28px] font-semibold leading-tight text-foreground">
+              {ownerFirstName ? `${greeting()}, ${ownerFirstName} 👋` : greeting()}
+            </h1>
+            <p className="truncate text-sm text-muted-foreground">
+              Here&apos;s what&apos;s happening at {summary.facility.name || "your club"} today.
+            </p>
           </div>
-
-          {/* Court rows */}
-          <div className="relative">
-            {courts.map((court, rowIndex) => {
-              const rowHeight = court.laneCount * LANE_HEIGHT + TRACK_PADDING;
-              const rowDelay = RULER_SETTLE_MS + rowIndex * 55;
-              return (
-                <div
-                  key={court.courtId}
-                  className="schedule-row-enter flex border-b border-border/60 last:border-b-0"
-                  style={{ "--row-delay": `${rowDelay}ms` } as React.CSSProperties}
-                >
-                  <div className="shrink-0 py-2 pr-2" style={{ width: LABEL_WIDTH }}>
-                    <p className="text-xs font-medium text-foreground">{court.courtName}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{court.sportName}</p>
-                  </div>
-                  <div className="relative shrink-0" style={{ width: trackWidth, height: rowHeight }}>
-                    {/* Hour gridlines */}
-                    {Array.from({ length: hours }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute top-0 h-full border-l border-border/40"
-                        style={{ left: i * HOUR_WIDTH }}
-                      />
-                    ))}
-                    {court.blocks.map((block) => (
-                      <div
-                        key={block.id}
-                        title={`${block.label} · ${block.timeLabel}`}
-                        className={cn(
-                          "schedule-block-enter absolute flex flex-col justify-center overflow-hidden rounded-[2px] border px-1.5 transition-transform duration-150 hover:z-10 hover:scale-[1.02]",
-                          BLOCK_STYLES[block.type],
-                        )}
-                        style={
-                          {
-                            left: toX(block.startMinute),
-                            width: Math.max(toX(block.endMinute) - toX(block.startMinute), 6),
-                            top: block.lane * LANE_HEIGHT,
-                            height: LANE_HEIGHT,
-                            // Rows land first, then each booking wipes open in
-                            // the order it starts during the day.
-                            "--block-delay": `${rowDelay + 140 + (toX(block.startMinute) / Math.max(trackWidth, 1)) * 260}ms`,
-                          } as React.CSSProperties
-                        }
-                      >
-                        <p className="truncate text-[11px] font-semibold leading-tight">{block.label}</p>
-                        <p className="truncate text-[10px] leading-tight opacity-80">{block.timeLabel}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {nowInWindow && (
-              <div
-                className="schedule-now-enter pointer-events-none absolute top-0 z-10 h-full border-l-2 border-destructive"
-                style={
-                  {
-                    left: LABEL_WIDTH + toX(nowMinute),
-                    "--now-delay": `${RULER_SETTLE_MS + courts.length * 55 + 260}ms`,
-                  } as React.CSSProperties
-                }
-              >
-                <span className="absolute -left-6 -top-0.5 rounded bg-destructive px-1 text-[10px] font-semibold text-white">
-                  {formatHourTick(now.getHours())}
-                </span>
-              </div>
-            )}
+          <div className="hidden h-[4.5rem] w-[300px] shrink-0 flex-col justify-center lg:flex">
+            <p className="text-[15px] font-semibold leading-snug text-foreground">
+              Great clubs build
+              <br />
+              healthier communities.
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">More Play. More People. A Healthier Tomorrow.</p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {LEGEND.map((item) => (
-          <span key={item.type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={cn("h-2 w-2 rounded-full", item.dot)} />
-            {item.label}
-          </span>
-        ))}
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <DashKpi
+          delay={0}
+          icon={BadgeIndianRupee}
+          tone="bg-success/15 text-success"
+          label={isToday ? "Today's Revenue" : "Revenue"}
+          value={formatCurrencyINR(summary.kpis.revenueInr.value)}
+          sub={revenueTrend?.text}
+          subClass={revenueTrend?.cls}
+        />
+        <DashKpi
+          delay={60}
+          icon={CalendarClock}
+          tone="bg-blue-500/15 text-blue-600 dark:text-blue-400"
+          label="Total Bookings"
+          value={String(bookingBlocks.length)}
+          sub={isToday ? `${upcomingCount} upcoming` : undefined}
+          subClass="text-blue-600 dark:text-blue-400"
+          href="/bookings"
+        />
+        <DashKpi
+          delay={120}
+          icon={Gauge}
+          tone="bg-purple-500/15 text-purple-600 dark:text-purple-400"
+          label="Courts Occupied"
+          value={`${occupied} / ${courts.length}`}
+          sub={`${utilization}% utilization`}
+        >
+          <div className="h-1 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-purple-500"
+              style={{ width: `${Math.min(Math.max(utilization, 0), 100)}%` }}
+            />
+          </div>
+        </DashKpi>
+        <DashKpi
+          delay={180}
+          icon={Users}
+          tone="bg-success/15 text-success"
+          label="Active Members"
+          value={String(summary.kpis.activeMemberships.value)}
+          sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} expiring soon` : undefined}
+          subClass="text-warning"
+          href="/memberships"
+        />
+        <DashKpi
+          delay={240}
+          icon={Dumbbell}
+          tone="bg-warning/15 text-warning"
+          label="Coaching Sessions"
+          value="—"
+          sub="Open coaching"
+          subClass="text-warning"
+          href="/coaching/sessions"
+        />
+      </div>
+
+      {/* Court activity | Court status | Quick actions */}
+      <div className={ROW_GRID}>
+        <CourtActivityCard rows={courtRows} delay={300} />
+        <CourtStatusCard rows={courtRows} delay={340} />
+        <QuickActionsCard onGo={(href) => router.push(href)} delay={380} />
+      </div>
+
+      {/* Bookings | Membership | Attention */}
+      <div className={ROW_GRID}>
+        <TodaysBookingsCard blocks={allBlocks} delay={420} />
+        <MembershipCard summary={summary} delay={460} />
+        <AttentionCard summary={summary} onGo={(href) => router.push(href)} delay={500} />
+      </div>
+
+      {/* Revenue | Recent activity | Upcoming */}
+      <div className={ROW_GRID}>
+        <DashCard
+          title="Revenue Overview"
+          delay={540}
+          action={
+            <select
+              aria-label="Revenue month"
+              value={revenueMonthOffset}
+              onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
+              className="h-7 rounded-md border border-input bg-secondary/60 px-2 text-[11px]"
+            >
+              {MONTH_OPTIONS.map((opt) => (
+                <option key={opt.offset} value={opt.offset}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          }
+        >
+          <RevenueOverviewPanel overview={summary.revenueOverview} />
+        </DashCard>
+        <DashCard title="Recent Activity" delay={580}>
+          <EmptyNote>Activity feed isn&apos;t tracked yet.</EmptyNote>
+        </DashCard>
+        <DashCard title="Upcoming" delay={620}>
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <CalendarCheck2 className="h-5 w-5 text-muted-foreground" aria-hidden />
+            <p className="text-xs text-muted-foreground">No upcoming events yet.</p>
+            <CardLink href="/coaching/schedule">Coaching schedule</CardLink>
+          </div>
+        </DashCard>
       </div>
     </div>
   );
@@ -504,7 +731,7 @@ function compactInr(v: number): string {
 }
 
 function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"] }) {
-  const H = 150;
+  const H = 110;
   const values = points.map((p) => p.amountInr);
   const niceMax = niceCeil(Math.max(...values, 0));
   const yTicks = [1, 0.75, 0.5, 0.25, 0].map((f) => niceMax * f);
@@ -518,7 +745,7 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
     .join(" ");
   const areaPath = `${linePath} L${xPct(n - 1).toFixed(2)},${H} L${xPct(0).toFixed(2)},${H} Z`;
 
-  const xTickCount = Math.min(6, n);
+  const xTickCount = Math.min(4, n);
   const xTickIdx = Array.from({ length: xTickCount }, (_, k) =>
     xTickCount <= 1 ? 0 : Math.round((k / (xTickCount - 1)) * (n - 1)),
   );
@@ -526,7 +753,7 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
   return (
     <div className="space-y-1">
       <div className="flex gap-2">
-        <div className="flex w-12 shrink-0 flex-col justify-between py-0 text-right text-[10px] text-muted-foreground" style={{ height: H }}>
+        <div className="flex w-10 shrink-0 flex-col justify-between text-right text-[10px] text-muted-foreground" style={{ height: H }}>
           {yTicks.map((t, i) => (
             <span key={i}>{compactInr(t)}</span>
           ))}
@@ -569,7 +796,7 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
           </svg>
         </div>
       </div>
-      <div className="relative ml-14 h-4">
+      <div className="relative ml-12 h-4">
         {xTickIdx.map((idx) => {
           const parts = points[idx]!.date.split("-");
           const m = Number(parts[1] ?? 1);
@@ -593,32 +820,29 @@ function RevenueOverviewPanel({ overview }: { overview: RevenueOverviewData }) {
   const up = overview.changePercent !== null && overview.changePercent > 0;
   const down = overview.changePercent !== null && overview.changePercent < 0;
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-      <div className="min-w-0 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="text-2xl font-semibold text-foreground">{formatCurrencyINR(overview.totalInr)}</p>
-            <p className="text-xs text-muted-foreground">Total Revenue · {overview.monthLabel}</p>
-          </div>
-          {overview.changePercent !== null && (
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-medium",
-                up && "bg-success/15 text-success",
-                down && "bg-destructive/15 text-destructive",
-                !up && !down && "bg-secondary text-muted-foreground",
-              )}
-            >
-              {up ? "↑" : down ? "↓" : "→"} {Math.abs(overview.changePercent).toFixed(1)}% vs last month
-            </span>
-          )}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-2xl font-semibold leading-tight text-foreground">{formatCurrencyINR(overview.totalInr)}</p>
+          <p className="text-[11px] text-muted-foreground">Total Revenue · {overview.monthLabel}</p>
         </div>
+        {overview.changePercent !== null && (
+          <span
+            className={cn(
+              "text-[11px] font-medium",
+              up && "text-success",
+              down && "text-destructive",
+              !up && !down && "text-muted-foreground",
+            )}
+          >
+            {up ? "↑" : down ? "↓" : "→"} {Math.abs(overview.changePercent).toFixed(1)}% vs last month
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         {/* Keyed on the month so paging replays the draw-in. */}
         <RevenueOverviewChart key={overview.monthLabel} points={overview.points} />
-      </div>
-      <div className="min-w-0 border-t border-border pt-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-        <p className="mb-2 text-sm font-semibold">Revenue Breakdown</p>
-        <RevenueBreakdownChart key={overview.monthLabel} segments={overview.breakdown} total={overview.totalInr} />
+        <RevenueBreakdownList segments={overview.breakdown} total={overview.totalInr} />
       </div>
     </div>
   );
@@ -631,77 +855,30 @@ const BREAKDOWN_COLORS: Record<string, string> = {
   other: "#8B5CF6",
 };
 
-function RevenueBreakdownChart({
+function RevenueBreakdownList({
   segments,
   total,
 }: {
   segments: RevenueOverviewData["breakdown"];
   total: number;
 }) {
-  const R = 42;
-  const C = 2 * Math.PI * R;
-  const drawTotal = total > 0 ? total : 1;
-  let offset = 0;
-
   return (
-    <div className="flex items-center gap-4">
-      <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0 -rotate-90" role="img" aria-label="Revenue breakdown">
-        <circle cx="50" cy="50" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="14" />
-        {total > 0 &&
-          segments.map((seg, i) => {
-            if (seg.amountInr <= 0) return null;
-            const len = (seg.amountInr / drawTotal) * C;
-            const dash = `${len} ${C - len}`;
-            // Shifting the dash offset by the arc's own length hides it
-            // entirely, so animating back to -offset sweeps it open.
-            const el = (
-              <circle
-                key={seg.key}
-                className="donut-sweep"
-                cx="50"
-                cy="50"
-                r={R}
-                fill="none"
-                stroke={BREAKDOWN_COLORS[seg.key]}
-                strokeWidth="14"
-                strokeDasharray={dash}
-                strokeDashoffset={-offset}
-                style={
-                  {
-                    "--dash-from": -offset + len,
-                    "--dash-to": -offset,
-                    "--sweep-delay": `${120 + i * 110}ms`,
-                  } as React.CSSProperties
-                }
-              />
-            );
-            offset += len;
-            return el;
-          })}
-      </svg>
-      <ul className="min-w-0 flex-1 space-y-1.5">
-        {segments.map((seg) => {
-          const pct = total > 0 ? Math.round((seg.amountInr / total) * 100) : 0;
-          return (
-            <li key={seg.key} className="flex items-center justify-between gap-2 text-xs">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: BREAKDOWN_COLORS[seg.key] }}
-                />
-                <span className="truncate text-foreground">{seg.label}</span>
-                {seg.count !== null && <span className="text-muted-foreground">· {seg.count}</span>}
-              </span>
-              <span className="flex shrink-0 items-center gap-2">
-                <span className="text-muted-foreground">
-                  {seg.unavailable ? "—" : formatCurrencyINR(seg.amountInr)}
-                </span>
-                <span className="w-8 text-right font-medium text-foreground">{pct}%</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <ul className="min-w-0 space-y-2 self-center">
+      {segments.map((seg) => {
+        const pct = total > 0 ? Math.round((seg.amountInr / total) * 100) : 0;
+        return (
+          <li key={seg.key} className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: BREAKDOWN_COLORS[seg.key] }} />
+              <span className="truncate text-foreground">{seg.label}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="text-muted-foreground">{seg.unavailable ? "—" : formatCurrencyINR(seg.amountInr)}</span>
+              <span className="w-7 text-right font-medium text-foreground">{pct}%</span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

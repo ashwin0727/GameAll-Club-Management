@@ -20,7 +20,7 @@ export function AppShell({
       <Sidebar role={profile.role} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar profile={profile} />
-        <main className="min-w-0 flex-1 overflow-x-hidden bg-muted/20 p-4 lg:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden bg-[var(--light-page-bg)] p-4 dark:bg-muted/20 lg:p-6">{children}</main>
       </div>
     </div>
   );
