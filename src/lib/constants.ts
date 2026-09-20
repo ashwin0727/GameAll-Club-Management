@@ -28,8 +28,19 @@ export const PAYMENT_STATUSES = ["created", "paid", "failed", "refunded"] as con
 export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"] as const;
 export const INVENTORY_TXN_TYPES = ["checkout", "return", "restock", "damage"] as const;
 
+export type NavGroup = "main" | "club" | "operations" | "finance";
+
+export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
+  main: null,
+  club: "Club",
+  operations: "Operations",
+  finance: "Finance",
+};
+
 export interface NavItem {
   label: string;
+  /** Sidebar section the item is listed under. */
+  group: NavGroup;
   href: string;
   roles: Role[];
   /**
@@ -46,14 +57,15 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", roles: ["admin", "staff", "member"] },
-  { label: "Memberships", href: "/memberships", roles: ["admin", "staff"] },
-  { label: "Membership Sessions", href: "/membership-sessions", roles: ["admin", "staff"] },
-  { label: "Bookings", href: "/bookings", roles: ["admin", "staff", "member"] },
-  { label: "Guest Bookings", href: "/guest-bookings", roles: ["admin", "staff"] },
-  { label: "Guest Players", href: "/guests", roles: ["admin", "staff"] },
+  { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
+  { label: "Members", group: "club", href: "/memberships", roles: ["admin", "staff"] },
+  { label: "Membership Sessions", group: "club", href: "/membership-sessions", roles: ["admin", "staff"] },
+  { label: "Bookings", group: "main", href: "/bookings", roles: ["admin", "staff", "member"] },
+  { label: "Guest Bookings", group: "main", href: "/guest-bookings", roles: ["admin", "staff"] },
+  { label: "Guest Players", group: "club", href: "/guests", roles: ["admin", "staff"] },
   {
-    label: "Finance",
+    label: "Payments",
+    group: "finance",
     href: "/finance",
     roles: ["admin", "staff"],
     children: [
@@ -67,7 +79,8 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Reports",
+    label: "Reports & Analytics",
+    group: "finance",
     href: "/reports",
     roles: ["admin", "staff"],
     children: [
@@ -81,6 +94,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Maintenance",
+    group: "operations",
     href: "/maintenance",
     roles: ["admin", "staff"],
     children: [
@@ -91,7 +105,8 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Users & Roles",
+    label: "Staff",
+    group: "operations",
     href: "/users-roles/staff",
     roles: ["admin", "staff"],
     permission: "USERS_VIEW",
@@ -102,7 +117,8 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: "Inventory & Vendors",
+    label: "Inventory",
+    group: "operations",
     href: "/inventory",
     roles: ["admin", "staff"],
     permission: "INVENTORY_VIEW",
@@ -115,9 +131,10 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Categories", href: "/inventory/categories" },
     ],
   },
-  { label: "Tournament Management", href: "/tournaments", roles: ["admin", "staff"] },
+  { label: "Tournaments", group: "club", href: "/tournaments", roles: ["admin", "staff"] },
   {
     label: "Coaching",
+    group: "club",
     href: "/coaching",
     roles: ["admin", "staff"],
     permission: "COACHING_VIEW",

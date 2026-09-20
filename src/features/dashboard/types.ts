@@ -67,6 +67,10 @@ export interface ScheduleBlock {
   /** e.g. "5:00 – 6:00 PM". */
   timeLabel: string;
   type: ScheduleBlockType;
+  /** Booking status (confirmed / pending / …); unset for membership-session usage. */
+  bookingStatus?: string;
+  /** PAID / PENDING / …; unset for membership-session usage. */
+  paymentStatus?: string;
   /** Lane index for side-by-side stacking of overlapping blocks in the same court. */
   lane: number;
 }

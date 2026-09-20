@@ -284,6 +284,8 @@ export interface TimelineBooking {
   status: string;
   type: ScheduleBlockType;
   label: string;
+  /** PAID / PENDING / … — only set for real bookings, not membership-session usage. */
+  paymentStatus?: string;
 }
 
 /** Greedy lane assignment so overlapping blocks in one court sit side by side instead of hiding each other. */
@@ -347,7 +349,7 @@ export function buildScheduleTimeline(input: {
       const startMin = start.getHours() * 60 + start.getMinutes();
       let endMin = end.getHours() * 60 + end.getMinutes();
       if (endMin <= startMin) endMin += 24 * 60;
-      return { id: b.id, playingAreaId: b.playingAreaId, label: b.label, type: b.type, startMin, endMin };
+      return { id: b.id, playingAreaId: b.playingAreaId, label: b.label, type: b.type, status: b.status, paymentStatus: b.paymentStatus, startMin, endMin };
     })
     .filter((b): b is NonNullable<typeof b> => b !== null);
 
@@ -406,7 +408,7 @@ export function buildScheduleTimeline(input: {
           const startMinute = Math.max(b.startMin, winStartMin);
           const endMinute = Math.min(b.endMin, winEndMin);
           if (endMinute <= startMinute) return null;
-          return { id: b.id, label: b.label, type: b.type, startMinute, endMinute, timeLabel };
+          return { id: b.id, label: b.label, type: b.type, bookingStatus: b.status, paymentStatus: b.paymentStatus, startMinute, endMinute, timeLabel };
         })
         .filter((b): b is NonNullable<typeof b> => b !== null)
         .sort((a, b) => a.startMinute - b.startMinute);

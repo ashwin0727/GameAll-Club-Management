@@ -108,11 +108,19 @@ export class SupabaseDashboardService implements DashboardService {
         .lt("created_at", revWindowTo),
     ]);
 
-    const facilitySports = params.facilitySportId
-      ? facilitySportsAll.filter((fs) => fs.id === params.facilitySportId)
+    // One sport at a time: no explicit pick falls back to the facility's first sport.
+    const activeSportId =
+      (params.facilitySportId && facilitySportsAll.some((fs) => fs.id === params.facilitySportId)
+        ? params.facilitySportId
+        : null) ??
+      facilitySportsAll[0]?.id ??
+      null;
+
+    const facilitySports = activeSportId
+      ? facilitySportsAll.filter((fs) => fs.id === activeSportId)
       : facilitySportsAll;
-    const playingAreas = params.facilitySportId
-      ? playingAreasAll.filter((a) => a.facilitySportId === params.facilitySportId)
+    const playingAreas = activeSportId
+      ? playingAreasAll.filter((a) => a.facilitySportId === activeSportId)
       : playingAreasAll;
     const playingAreaIds = new Set(playingAreas.map((a) => a.id));
 
@@ -204,6 +212,7 @@ export class SupabaseDashboardService implements DashboardService {
         startTime: b.start_time,
         endTime: b.end_time,
         status: b.status,
+        paymentStatus: b.payment_status,
         type: (b.customer_type === "GUEST" ? "GUEST" : "MEMBER") as TimelineBooking["type"],
         label:
           b.customer_type === "GUEST"
@@ -237,7 +246,7 @@ export class SupabaseDashboardService implements DashboardService {
     // in that sport's batches; Active Membership to those same memberships.
     let sportScope: { bookingIds: Set<string>; membershipIds: Set<string> } | null = null;
     let sportMembershipIds: Set<string> | null = null;
-    if (params.facilitySportId) {
+    if (activeSportId) {
       const [batchesRes, batchMembersRes] = await Promise.all([
         this.supabase.from("membership_batches").select("id, facility_sport_id").eq("facility_id", facilityId),
         this.supabase.from("membership_batch_members").select("membership_id, batch_id"),
@@ -247,7 +256,7 @@ export class SupabaseDashboardService implements DashboardService {
       const batchSport = new Map((batchesRes.data ?? []).map((b) => [b.id, b.facility_sport_id] as const));
       sportMembershipIds = new Set(
         (batchMembersRes.data ?? [])
-          .filter((m) => m.membership_id != null && batchSport.get(m.batch_id) === params.facilitySportId)
+          .filter((m) => m.membership_id != null && batchSport.get(m.batch_id) === activeSportId)
           .map((m) => m.membership_id as string),
       );
       sportScope = { bookingIds: new Set(bookingRows.map((b) => b.id)), membershipIds: sportMembershipIds };
@@ -284,7 +293,7 @@ export class SupabaseDashboardService implements DashboardService {
         const sport = sports.find((s) => s.id === fs.sportId);
         return { facilitySportId: fs.id, sportName: fs.customSportName || sport?.name || "Sport", sportIcon: sport?.icon ?? "🏅" };
       }),
-      selectedFacilitySportId: params.facilitySportId,
+      selectedFacilitySportId: activeSportId,
       period: current,
       kpis: {
         revenueInr: computeKpiValue(
