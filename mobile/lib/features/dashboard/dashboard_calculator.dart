@@ -550,12 +550,13 @@ class DashboardCalculator {
 
   /// Guest bookings that are both booked (not cancelled) and paid. Caller
   /// pre-filters by court and period.
-  static int countPaidGuestBookings(
+  /// Every booking (member or guest, paid or not) in the window — the
+  /// homepage's "bookings" figure counts what was actually booked, not just
+  /// the paid-guest subset.
+  static int countBookings(
     List<({String customerType, String paymentStatus, String status})> bookings,
   ) {
-    return bookings
-        .where((b) => b.customerType == 'GUEST' && b.paymentStatus == 'PAID' && b.status != 'cancelled')
-        .length;
+    return bookings.where((b) => b.status != 'cancelled').length;
   }
 
   static PaymentSummary summarizePayments(List<({String status, int amountInr})> payments) {

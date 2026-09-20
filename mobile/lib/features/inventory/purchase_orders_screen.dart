@@ -12,6 +12,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -122,7 +123,7 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
-                const LoadingView(message: 'Loading purchase orders…')
+                const _PurchaseOrdersSkeleton()
               else if (_rows!.isEmpty)
                 Text('No purchase orders match this filter.', style: AppTypography.secondary(context))
               else ...[
@@ -189,6 +190,34 @@ class _PurchaseOrdersScreenState extends ConsumerState<PurchaseOrdersScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded PO list: intro text,
+/// status filter chip, then a stack of PO rows.
+class _PurchaseOrdersSkeleton extends StatelessWidget {
+  const _PurchaseOrdersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSkeleton(width: 260, height: 13),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonChipRow(count: 1),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

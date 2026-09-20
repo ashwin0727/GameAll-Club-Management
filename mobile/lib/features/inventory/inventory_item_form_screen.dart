@@ -8,6 +8,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 
@@ -45,6 +46,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
   String? _preferredVendorId;
 
   bool _saving = false;
+  bool _loadingRefs = true;
   String? _error;
 
   bool get _isEdit => widget.existing != null;
@@ -68,7 +70,10 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
 
   Future<void> _loadRefs() async {
     final fid = ref.read(sessionControllerProvider).facility?.id;
-    if (fid == null) return;
+    if (fid == null) {
+      if (mounted) setState(() => _loadingRefs = false);
+      return;
+    }
     try {
       final repo = ref.read(inventoryRepositoryProvider);
       final cats = await repo.listCategories(fid);
@@ -77,10 +82,12 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
         setState(() {
           _categories = cats;
           _vendors = vendors.vendors;
+          _loadingRefs = false;
         });
       }
     } on AppException {
       // The form still works without the reference lists.
+      if (mounted) setState(() => _loadingRefs = false);
     }
   }
 
@@ -168,25 +175,31 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             if (!_isEdit) _field(_opening, 'Opening stock', number: true),
             _field(_cost, 'Default unit cost (₹, optional)', decimal: true),
             const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<String?>(
-              initialValue: _categoryId,
-              decoration: const InputDecoration(labelText: 'Category (optional)'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
-                ..._categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
-              ],
-              onChanged: (v) => setState(() => _categoryId = v),
-            ),
+            if (_loadingRefs)
+              const AppSkeleton(height: 56, radius: 8)
+            else
+              DropdownButtonFormField<String?>(
+                initialValue: _categoryId,
+                decoration: const InputDecoration(labelText: 'Category (optional)'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('None')),
+                  ..._categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                ],
+                onChanged: (v) => setState(() => _categoryId = v),
+              ),
             const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<String?>(
-              initialValue: _preferredVendorId,
-              decoration: const InputDecoration(labelText: 'Preferred vendor (optional)'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('None')),
-                ..._vendors.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))),
-              ],
-              onChanged: (v) => setState(() => _preferredVendorId = v),
-            ),
+            if (_loadingRefs)
+              const AppSkeleton(height: 56, radius: 8)
+            else
+              DropdownButtonFormField<String?>(
+                initialValue: _preferredVendorId,
+                decoration: const InputDecoration(labelText: 'Preferred vendor (optional)'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('None')),
+                  ..._vendors.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))),
+                ],
+                onChanged: (v) => setState(() => _preferredVendorId = v),
+              ),
             if (_isEdit) ...[
               const SizedBox(height: AppSpacing.sm),
               DropdownButtonFormField<ItemStatus>(

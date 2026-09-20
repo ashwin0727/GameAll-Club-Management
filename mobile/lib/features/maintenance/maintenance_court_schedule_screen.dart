@@ -5,6 +5,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/services/supabase_provider.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_court_options.dart';
@@ -124,7 +125,7 @@ class _State extends ConsumerState<MaintenanceCourtScheduleScreen> {
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView()
+            ? const _MaintenanceCourtScheduleSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -172,5 +173,66 @@ class _State extends ConsumerState<MaintenanceCourtScheduleScreen> {
     final local = d.toLocal();
     final h = local.hour % 12 == 0 ? 12 : local.hour % 12;
     return '$h:${local.minute.toString().padLeft(2, '0')} ${local.hour < 12 ? 'AM' : 'PM'}';
+  }
+}
+
+/// Structure-shaped placeholder shown while the day's schedule loads —
+/// mirrors the real body's repeated "court heading + timeline card" sections.
+class _MaintenanceCourtScheduleSkeleton extends StatelessWidget {
+  const _MaintenanceCourtScheduleSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: const [
+        _CourtSection(),
+        SizedBox(height: AppSpacing.md),
+        _CourtSection(),
+        SizedBox(height: AppSpacing.md),
+        _CourtSection(),
+      ],
+    );
+  }
+}
+
+class _CourtSection extends StatelessWidget {
+  const _CourtSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSkeleton(width: 140, height: 16),
+        const SizedBox(height: AppSpacing.xs),
+        SkeletonCard(
+          child: Column(
+            children: [
+              for (var i = 0; i < 3; i++)
+                Padding(
+                  padding: EdgeInsets.only(bottom: i == 2 ? 0 : AppSpacing.sm),
+                  child: Row(
+                    children: const [
+                      AppSkeleton(width: 24, height: 24, radius: 12),
+                      SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppSkeleton(width: 110, height: 13),
+                            SizedBox(height: 6),
+                            AppSkeleton(width: 90, height: 11),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

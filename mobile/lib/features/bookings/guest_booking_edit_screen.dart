@@ -13,6 +13,7 @@ import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'booking_slots.dart';
 import '../../shared/widgets/app_dropdown.dart';
@@ -194,7 +195,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
       appBar: AppBar(title: const Text('Edit Guest Booking')),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _GuestBookingEditSkeleton()
             : _notFound || _booking == null
                 ? const ErrorView(message: 'This booking could not be found.')
                 : ResponsivePage(
@@ -309,6 +310,56 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                       ],
                     ),
                   ),
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the two stacked cards ("Guest"
+/// and "Court & time") this screen renders once the booking loads.
+class _GuestBookingEditSkeleton extends StatelessWidget {
+  const _GuestBookingEditSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 60, height: 15),
+                SizedBox(height: AppSpacing.md),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.sm),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 110, height: 15),
+                SizedBox(height: AppSpacing.xs),
+                AppSkeleton(width: 220, height: 12),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                SkeletonChipRow(count: 4),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

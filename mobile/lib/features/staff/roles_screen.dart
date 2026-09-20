@@ -12,6 +12,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -79,11 +80,20 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
         title: const Text('Roles & Permissions'),
         actions: [
           if (canManage)
-            IconButton(icon: const Icon(Icons.add), tooltip: 'Create role', onPressed: () => context.push(AppRoutes.roleNew)),
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Create role',
+              onPressed: () async {
+                await context.push(AppRoutes.roleNew);
+                if (mounted) _load();
+              },
+            ),
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
+        child: _roles == null && _error == null
+            ? const _RolesSkeleton()
+            : RefreshIndicator(
           onRefresh: _load,
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -119,7 +129,10 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
                           runSpacing: AppSpacing.sm,
                           children: _templates
                               .map((t) => OutlinedButton(
-                                    onPressed: () => context.push('${AppRoutes.roleNew}?template=${t.id}'),
+                                    onPressed: () async {
+                                      await context.push('${AppRoutes.roleNew}?template=${t.id}');
+                                      if (mounted) _load();
+                                    },
                                     child: Text(t.name),
                                   ))
                               .toList(),
@@ -192,7 +205,10 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
               children: [
                 SecondaryButton(
                   label: canManage ? 'Edit' : 'View',
-                  onPressed: () => context.push('/users-roles/roles/${r.id}/edit'),
+                  onPressed: () async {
+                    await context.push('/users-roles/roles/${r.id}/edit');
+                    if (mounted) _load();
+                  },
                 ),
                 if (canManage && r.isCustom && r.staffCount == 0) ...[
                   const SizedBox(width: AppSpacing.sm),
@@ -220,6 +236,50 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RolesSkeleton extends StatelessWidget {
+  const _RolesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        const AppSkeleton(width: 240, height: 13),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 2),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < 4; i++) ...[
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                AppSkeleton(width: 130, height: 14),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(width: 180, height: 11),
+                SizedBox(height: 4),
+                AppSkeleton(width: 100, height: 11),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AppSkeleton(width: 150, height: 14),
+              SizedBox(height: 4),
+              AppSkeleton(width: 220, height: 11),
+              SizedBox(height: AppSpacing.sm),
+              SkeletonChipRow(count: 2),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

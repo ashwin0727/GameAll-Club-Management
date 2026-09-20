@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
@@ -95,10 +96,12 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profit & Loss')),
+      appBar: AppBar(
+        title: const Text('Profit & Loss', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Calculating…')
+            ? const _ProfitLossSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -124,6 +127,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
   }
 
   List<Widget> _content(ProfitAndLoss p) {
+    final tokens = context.tokens;
     if (p.totalRevenueMinor == 0 && p.totalExpenseMinor == 0) {
       return const [
         EmptyStateView(
@@ -140,18 +144,23 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
       (label: 'Other revenue', value: p.otherRevenueMinor),
     ].where((r) => r.value != 0).toList();
 
+    final profitColor = p.netProfitMinor < 0 ? tokens.destructive : tokens.success;
+
     return [
       _kpiGrid(p),
       const SizedBox(height: AppSpacing.md),
-      _card('Revenue vs expenses', _TrendBars(points: _trend)),
+      _card('Revenue vs expenses', Icons.stacked_line_chart_rounded, tokens.electricBlue,
+          _TrendBars(points: _trend)),
       const SizedBox(height: AppSpacing.md),
       _card(
         'Revenue',
+        Icons.payments_outlined,
+        tokens.primary,
         Column(
           children: [
             for (final r in revenueRows) _line(r.label, r.value),
             if (p.refundsMinor > 0) _line('Less: refunds', -p.refundsMinor),
-            const Divider(),
+            Divider(color: tokens.borderColor),
             _line('Total revenue', p.totalRevenueMinor, bold: true),
           ],
         ),
@@ -159,30 +168,57 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
       const SizedBox(height: AppSpacing.md),
       _card(
         'Expenses by category',
+        Icons.receipt_long_outlined,
+        tokens.destructive,
         Column(
           children: [
             if (p.expenseByCategory.isEmpty)
-              Text('No expenses recorded in this period.', style: AppTypography.secondary(context))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Text('No expenses recorded in this period.',
+                    style: AppTypography.secondary(context)),
+              )
             else
               for (final c in p.expenseByCategory) _line(c.category, c.amountMinor),
-            const Divider(),
+            Divider(color: tokens.borderColor),
             _line('Total expenses', p.totalExpenseMinor, bold: true),
           ],
         ),
       ),
       const SizedBox(height: AppSpacing.md),
-      AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: tokens.accentFill(profitColor),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.accentEdge(profitColor)),
+        ),
         child: Row(
           children: [
-            Expanded(child: Text('Net operating profit / loss', style: AppTypography.rowTitle(context))),
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: profitColor.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                  p.netProfitMinor < 0
+                      ? Icons.trending_down_rounded
+                      : Icons.trending_up_rounded,
+                  size: 18,
+                  color: profitColor),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text('Net operating profit / loss',
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
+            ),
             Text(
               financeAmount(p.netProfitMinor),
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                color: p.netProfitMinor < 0 ? AppColors.destructive : AppColors.success,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: profitColor),
             ),
           ],
         ),
@@ -191,15 +227,33 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
   }
 
   Widget _kpiGrid(ProfitAndLoss p) {
-    final tiles = <({String label, String value, Color? tone})>[
-      (label: 'Total Revenue', value: financeAmount(p.totalRevenueMinor), tone: null),
-      (label: 'Total Expenses', value: financeAmount(p.totalExpenseMinor), tone: null),
+    final tokens = context.tokens;
+    final profitColor = p.netProfitMinor < 0 ? tokens.destructive : tokens.success;
+    final tiles = <({String label, String value, Color accent, IconData icon})>[
+      (
+        label: 'Total Revenue',
+        value: financeAmount(p.totalRevenueMinor),
+        accent: tokens.primary,
+        icon: Icons.payments_outlined,
+      ),
+      (
+        label: 'Total Expenses',
+        value: financeAmount(p.totalExpenseMinor),
+        accent: tokens.destructive,
+        icon: Icons.receipt_long_outlined,
+      ),
       (
         label: 'Net Profit',
         value: financeAmount(p.netProfitMinor),
-        tone: p.netProfitMinor < 0 ? AppColors.destructive : AppColors.success,
+        accent: profitColor,
+        icon: p.netProfitMinor < 0 ? Icons.trending_down_rounded : Icons.trending_up_rounded,
       ),
-      (label: 'Profit Margin', value: '${p.profitMarginPct.toStringAsFixed(1)}%', tone: null),
+      (
+        label: 'Profit Margin',
+        value: '${p.profitMarginPct.toStringAsFixed(1)}%',
+        accent: tokens.electricBlue,
+        icon: Icons.donut_small_outlined,
+      ),
     ];
     return LayoutBuilder(builder: (context, constraints) {
       final width = (constraints.maxWidth - AppSpacing.sm) / 2;
@@ -210,14 +264,41 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
           for (final t in tiles)
             SizedBox(
               width: width,
-              child: AppCard(
+              child: Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: tokens.borderColor),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t.label, style: AppTypography.caption(context)),
-                    const SizedBox(height: 2),
-                    Text(t.value, style: TextStyle(fontWeight: FontWeight.w800, color: t.tone)),
+                    Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: tokens.accentFill(t.accent),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(t.icon, size: 14, color: t.accent),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(t.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.caption(context)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(t.value,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14, color: t.accent)),
                   ],
                 ),
               ),
@@ -227,14 +308,39 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
     });
   }
 
-  Widget _card(String title, Widget child) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+  Widget _card(String title, IconData icon, Color accent, Widget child) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.borderColor),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTypography.rowTitle(context)),
-          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tokens.accentFill(accent),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(icon, size: 16, color: accent),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(title,
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
           child,
         ],
       ),
@@ -269,6 +375,7 @@ class _TrendBars extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     if (points.isEmpty) {
       return Text('Not enough financial data to chart this period.',
           style: AppTypography.secondary(context));
@@ -287,42 +394,133 @@ class _TrendBars extends StatelessWidget {
               children: [
                 Text(Formatters.dateShort(DateTime.parse(p.date)),
                     style: AppTypography.caption(context)),
-                const SizedBox(height: 2),
-                _bar(p.revenueMinor / max, AppColors.success),
-                const SizedBox(height: 2),
-                _bar(p.expenseMinor / max, AppColors.warning),
+                const SizedBox(height: 3),
+                _bar(context, p.revenueMinor / max, tokens.success),
+                const SizedBox(height: 3),
+                _bar(context, p.expenseMinor / max, tokens.warning),
               ],
             ),
           ),
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            _legend(AppColors.success, 'Revenue'),
+            _legend(tokens.success, 'Revenue'),
             const SizedBox(width: AppSpacing.md),
-            _legend(AppColors.warning, 'Expenses'),
+            _legend(tokens.warning, 'Expenses'),
           ],
         ),
       ],
     );
   }
 
-  Widget _bar(double fraction, Color color) {
+  Widget _bar(BuildContext context, double fraction, Color color) {
+    final tokens = context.tokens;
     return LayoutBuilder(builder: (context, c) {
-      return Container(
-        height: 8,
-        width: (c.maxWidth * fraction.clamp(0.0, 1.0)).clamp(2.0, c.maxWidth),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+      return Stack(
+        children: [
+          Container(
+            height: 8,
+            width: double.infinity,
+            decoration: BoxDecoration(color: tokens.surface2, borderRadius: BorderRadius.circular(4)),
+          ),
+          Container(
+            height: 8,
+            width: (c.maxWidth * fraction.clamp(0.0, 1.0)).clamp(2.0, c.maxWidth),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+          ),
+        ],
       );
     });
   }
 
   Widget _legend(Color color, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
       ],
     );
+  }
+}
+
+/// Structure-shaped placeholder shown while the P&L and its trend load —
+/// date picker, the 4-tile KPI grid, a chart block, two line-item cards, and
+/// the net-profit banner.
+class _ProfitLossSkeleton extends StatelessWidget {
+  const _ProfitLossSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(height: 48, radius: AppRadius.md),
+        SizedBox(height: AppSpacing.lg),
+        _KpiGridSkeleton(),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 180, height: 16),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 100, radius: AppRadius.sm),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 100, height: 16),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 140, height: 13),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 180, height: 16),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 140, height: 13),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.md),
+        AppSkeleton(height: 68, radius: AppRadius.lg),
+      ],
+    );
+  }
+}
+
+/// The 4-tile KPI-grid placeholder for `_kpiGrid`.
+class _KpiGridSkeleton extends StatelessWidget {
+  const _KpiGridSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = (constraints.maxWidth - AppSpacing.sm) / 2;
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          for (var i = 0; i < 4; i++)
+            SizedBox(width: width, child: const SkeletonStatTile(height: 76)),
+        ],
+      );
+    });
   }
 }

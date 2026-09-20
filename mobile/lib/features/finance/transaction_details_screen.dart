@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
@@ -15,6 +16,7 @@ import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
 
@@ -108,7 +110,7 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
   Widget _body() {
     switch (_state) {
       case _State.loading:
-        return const LoadingView(message: 'Loading…');
+        return const _TransactionDetailsSkeleton();
       case _State.error:
         return const ErrorView(
           message: "We couldn't find that transaction. It may have been removed, "
@@ -253,6 +255,68 @@ class _Row extends StatelessWidget {
                     child: StatusBadge(label: value, tone: tone!),
                   )
                 : Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder while the transaction details load — three
+/// cards mirroring "Transaction Information", "Related Information", and
+/// "Payment History".
+class _TransactionDetailsSkeleton extends StatelessWidget {
+  const _TransactionDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsivePage(
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 190, height: 16),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 160, height: 16),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 13),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 140, height: 16),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 40, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.xs),
+                AppSkeleton(height: 40, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(width: 130, height: 13),
+              ],
+            ),
           ),
         ],
       ),

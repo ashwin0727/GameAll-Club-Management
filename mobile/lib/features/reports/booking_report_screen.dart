@@ -9,7 +9,8 @@ import '../../core/theme/app_typography.dart';
 import '../../data/models/analytics.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
+import 'report_section_header.dart';
 import '../authentication/session_controller.dart';
 import 'analytics_filter.dart';
 import 'count_trend_chart.dart';
@@ -119,6 +120,7 @@ class _BookingReportScreenState extends ConsumerState<BookingReportScreen> {
       onRetry: _load,
       emptyMessage: 'No booking data for this period.',
       errorMessage: 'Unable to load the booking report. Please try again.',
+      loadingSkeleton: const _BookingReportSkeleton(),
       body: a == null
           ? const SizedBox.shrink()
           : Column(
@@ -146,7 +148,7 @@ class _BookingReportScreenState extends ConsumerState<BookingReportScreen> {
                   ReportKpi(label: 'Avg Guest Booking', value: analyticsAmount(a.avgGuestBookingValueMinor)),
                 ]),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Bookings Over Time'),
+                ReportSectionHeader(title: 'Bookings Over Time'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(
                   child: Column(
@@ -181,11 +183,11 @@ class _BookingReportScreenState extends ConsumerState<BookingReportScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Bookings by Sport'),
+                ReportSectionHeader(title: 'Bookings by Sport'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(child: _bySportBody()),
                 const SizedBox(height: AppSpacing.xl),
-                SectionHeader(title: 'Booking Source'),
+                ReportSectionHeader(title: 'Booking Source'),
                 const SizedBox(height: AppSpacing.sm),
                 AppCard(child: _sourceBody()),
                 const SizedBox(height: AppSpacing.xl),
@@ -222,6 +224,70 @@ class _BookingReportScreenState extends ConsumerState<BookingReportScreen> {
       items: [
         for (final r in _sourceSplit)
           ReportBar(label: r.source == 'GUEST' ? 'Guest' : 'Member', value: r.bookingCount),
+      ],
+    );
+  }
+}
+
+/// Shaped placeholder for the loading branch — mirrors the real body's
+/// 6-tile KPI grid, trend-chart card and two by-sport/source cards.
+class _BookingReportSkeleton extends StatelessWidget {
+  const _BookingReportSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: const [
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: SkeletonStatTile()),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const AppSkeleton(width: 160, height: 15),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonCard(child: AppSkeleton(height: 140)),
+        const SizedBox(height: AppSpacing.xl),
+        const AppSkeleton(width: 140, height: 15),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonCard(
+          child: Column(
+            children: [
+              AppSkeleton(height: 14),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 14),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 14),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        const AppSkeleton(width: 130, height: 15),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonCard(
+          child: Column(
+            children: [
+              AppSkeleton(height: 14),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 14),
+            ],
+          ),
+        ),
       ],
     );
   }

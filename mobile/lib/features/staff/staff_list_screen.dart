@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/staff.dart';
@@ -15,6 +16,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/states.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 
@@ -160,12 +162,17 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: 'Add staff',
-              onPressed: () => context.push(AppRoutes.staffAdd),
+              onPressed: () async {
+                await context.push(AppRoutes.staffAdd);
+                if (mounted) _load();
+              },
             ),
         ],
       ),
       body: SafeArea(
-        child: RefreshIndicator(
+        child: _staff == null && _error == null
+            ? const _StaffListSkeleton()
+            : RefreshIndicator(
           onRefresh: _load,
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -228,7 +235,10 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
       child: AppCard(
         padding: EdgeInsets.zero,
         child: InkWell(
-          onTap: () => context.push('/users-roles/staff/${s.userId}'),
+          onTap: () async {
+            await context.push('/users-roles/staff/${s.userId}');
+            if (mounted) _load();
+          },
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
@@ -252,6 +262,32 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StaffListSkeleton extends StatelessWidget {
+  const _StaffListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(height: 48, radius: AppRadius.md),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonChipRow(count: 2),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

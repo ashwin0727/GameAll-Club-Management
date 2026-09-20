@@ -14,6 +14,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -240,7 +241,7 @@ class _InventoryItemsScreenState extends ConsumerState<InventoryItemsScreen> {
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_items == null)
-                const LoadingView(message: 'Loading items…')
+                const _InventoryItemsSkeleton()
               else if (_items!.isEmpty)
                 Text('No items match these filters.', style: AppTypography.secondary(context))
               else ...[
@@ -318,6 +319,34 @@ class _InventoryItemsScreenState extends ConsumerState<InventoryItemsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded items list: search
+/// field, filter-chip row, then a stack of item rows.
+class _InventoryItemsSkeleton extends StatelessWidget {
+  const _InventoryItemsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSkeleton(height: 48, radius: 8),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonChipRow(count: 3),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

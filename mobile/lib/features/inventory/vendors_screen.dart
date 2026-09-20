@@ -13,6 +13,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/pagination_bar.dart';
 import '../../shared/widgets/picker_chip.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -155,7 +156,7 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
-                const LoadingView(message: 'Loading vendors…')
+                const _VendorsSkeleton()
               else if (_rows!.isEmpty)
                 Text('No vendors match these filters.', style: AppTypography.secondary(context))
               else ...[
@@ -213,6 +214,34 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded vendors list: search
+/// field, status filter chip, then a stack of vendor rows.
+class _VendorsSkeleton extends StatelessWidget {
+  const _VendorsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSkeleton(height: 48, radius: 8),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonChipRow(count: 1),
+        SizedBox(height: AppSpacing.lg),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
     );
   }
 }

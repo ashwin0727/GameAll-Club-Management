@@ -89,23 +89,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         curve: Curves.easeOut,
         child: ready
             ? Center(
-                // Medium size, and the bottom ~18% clipped so the corner
-                // watermark is never shown — biased up a touch so the mark
-                // stays centred in what's left.
+                // The corner watermark is cropped out of assets/splash.mp4
+                // itself (bottom ~110px of the source clip removed), so no
+                // extra runtime clipping is needed here.
                 child: SizedBox(
-                  width: MediaQuery.of(context).size.shortestSide * 0.62,
+                  width: MediaQuery.of(context).size.shortestSide * 0.48,
                   child: AspectRatio(
-                    aspectRatio: c.value.aspectRatio / 0.82,
-                    child: ClipRect(
-                      child: Align(
-                        alignment: const Alignment(0, -0.35),
-                        heightFactor: 0.82,
-                        child: AspectRatio(
-                          aspectRatio: c.value.aspectRatio,
-                          child: VideoPlayer(c),
-                        ),
-                      ),
-                    ),
+                    aspectRatio: c.value.aspectRatio,
+                    child: VideoPlayer(c),
                   ),
                 ),
               )

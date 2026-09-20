@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking.dart';
+import '../../data/models/guest.dart';
 import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
 import '../../data/models/payment.dart';
@@ -18,6 +21,7 @@ import '../../data/models/sport.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
@@ -113,6 +117,52 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   String _paymentMethod = 'Cash';
   String _payMode = 'offline'; // offline | online
 
+  // Same-phone-number guest recognition: as soon as the number looks
+  // complete, we check it against this facility's guest directory instead
+  // of silently filing another free-text row for someone who has already
+  // booked. A match reuses their guest_player_id (so visit history, name
+  // and stats stay on ONE record); no match means one gets created for
+  // them automatically on submit via find_or_create_guest — there is no
+  // separate "add them to Guest Players first" step.
+  Timer? _phoneDebounce;
+  GuestPlayer? _matchedGuest;
+  bool _checkingPhone = false;
+  String? _lastCheckedPhone;
+
+  void _onPhoneChanged(String value) {
+    setState(() {
+      _matchedGuest = null;
+    });
+    _phoneDebounce?.cancel();
+    final digits = value.trim();
+    if (digits.length < 10 || _facilityId == null) return;
+    _phoneDebounce = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted || _facilityId == null) return;
+      setState(() => _checkingPhone = true);
+      try {
+        final results = await ref
+            .read(guestRepositoryProvider)
+            .searchGuests(_facilityId!, digits);
+        if (!mounted) return;
+        // searchGuests does a partial ilike match — keep only an exact
+        // phone match so a shorter number that happens to be a substring
+        // of someone else's doesn't get silently attached to them.
+        final exact =
+            results.where((g) => g.phone?.trim() == digits).firstOrNull;
+        setState(() {
+          _checkingPhone = false;
+          _lastCheckedPhone = digits;
+          _matchedGuest = exact;
+          if (exact != null && _name.text.trim().isEmpty) {
+            _name.text = exact.name;
+          }
+        });
+      } on AppException catch (_) {
+        if (mounted) setState(() => _checkingPhone = false);
+      }
+    });
+  }
+
   bool _submitting = false;
   String? _error;
   List<Booking> _booked = [];
@@ -129,6 +179,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
 
   @override
   void dispose() {
+    _phoneDebounce?.cancel();
     for (final c in [_name, _phone, _email, _players, _notes]) {
       c.dispose();
     }
@@ -299,6 +350,24 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       final notes = [_notes.text.trim(), extra].where((s) => s.isNotEmpty).join(' · ');
       final startAt = _combine(_startTime!);
       final endAt = _combine(_endTime!);
+
+      // Resolve ONE guest_player for this phone number before writing any
+      // booking — an existing match is reused as-is; a new number gets a
+      // guest profile created for it via the same find_or_create_guest RPC
+      // the Guest Players screen's own "Add guest" uses, so nobody has to
+      // separately re-enter someone who just booked. Phone number is the
+      // identity here, same as the banner above told the owner it would be.
+      final phone = _phone.text.trim();
+      final guestPlayerId = _matchedGuest?.id ??
+          (await ref.read(guestRepositoryProvider).findOrCreateGuest(
+                GuestInput(
+                  facilityId: _facilityId!,
+                  name: _name.text.trim(),
+                  phone: phone.isEmpty ? null : phone,
+                  email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+                ),
+              )).id;
+
       final created = <Booking>[];
       for (final courtId in _selectedCourtIds) {
         final b = await ref.read(bookingRepositoryProvider).createBooking(
@@ -308,8 +377,9 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                 startTime: startAt,
                 endTime: endAt,
                 customerType: CustomerType.guest,
+                guestPlayerId: guestPlayerId,
                 guestName: _name.text.trim(),
-                guestPhone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+                guestPhone: phone.isEmpty ? null : phone,
                 notes: notes.isEmpty ? null : notes,
                 paymentStatus: PaymentStatus.pending,
                 partySize: int.tryParse(_players.text.trim()) ?? 1,
@@ -428,7 +498,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _GuestBookingSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
                 : _wizard(),
@@ -1016,7 +1086,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _phone,
-          onChanged: (_) => setState(() {}),
+          onChanged: (v) {
+            setState(() {});
+            _onPhoneChanged(v);
+          },
           keyboardType: TextInputType.phone,
           decoration: InputDecoration(
             labelText: 'Phone number *',
@@ -1031,8 +1104,26 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             ),
             prefixIconConstraints:
                 const BoxConstraints(minWidth: 0, minHeight: 0),
+            suffixIcon: _checkingPhone
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : null,
           ),
         ),
+        if (_matchedGuest != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          _ExistingGuestBanner(guest: _matchedGuest!),
+        ] else if (!_checkingPhone &&
+            _lastCheckedPhone != null &&
+            _lastCheckedPhone == _phone.text.trim()) ...[
+          const SizedBox(height: AppSpacing.sm),
+          _NewGuestBanner(),
+        ],
         const SizedBox(height: AppSpacing.md),
         TextField(
             controller: _email,
@@ -1412,6 +1503,71 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
 }
 
 /// Outlined pill used for the secondary (Cancel / Back) action.
+/// This phone number already belongs to someone in the guest directory —
+/// booking under it reuses their record instead of forking a new one, so
+/// their visit history and totals stay on one profile.
+class _ExistingGuestBanner extends StatelessWidget {
+  const _ExistingGuestBanner({required this.guest});
+  final GuestPlayer guest;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final onC = t.onAccent(t.primary);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.accentSolid(t.primary),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.verified_rounded, size: 16, color: onC),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Welcome back, ${guest.name} — same phone, same guest.',
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: onC)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// No guest directory match for this number — a profile will be created
+/// for them automatically when the booking is confirmed, no separate
+/// "add guest" step required.
+class _NewGuestBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: 10),
+      decoration: BoxDecoration(
+        color: t.surface2,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: t.borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.person_add_alt_1_rounded,
+              size: 16, color: t.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('New guest — they\'ll be added to Guest Players automatically.',
+                style: TextStyle(fontSize: 12.5, color: t.textSecondary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GhostButton extends StatelessWidget {
   const _GhostButton({required this.label, required this.onTap});
 
@@ -1568,6 +1724,67 @@ class _BookingConfirmedSheet extends StatelessWidget {
                     fontSize: strong ? 15 : 13,
                     fontWeight: strong ? FontWeight.w800 : FontWeight.w700,
                     color: strong ? t.primary : t.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the wizard's first step (Sport &
+/// Location, Select Court(s), Select Time) — the only step visible right
+/// after the loading gate lifts.
+class _GuestBookingSkeleton extends StatelessWidget {
+  const _GuestBookingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ResponsivePage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 220, height: 13),
+          SizedBox(height: AppSpacing.lg),
+          SkeletonChipRow(count: 3),
+          SizedBox(height: AppSpacing.xl),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 140, height: 15),
+                SizedBox(height: AppSpacing.md),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+                SizedBox(height: AppSpacing.sm),
+                AppSkeleton(height: 44, radius: AppRadius.sm),
+              ],
+            ),
+          ),
+          SizedBox(height: AppSpacing.md),
+          SkeletonCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 120, height: 15),
+                SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(child: AppSkeleton(height: 62, radius: AppRadius.md)),
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(child: AppSkeleton(height: 62, radius: AppRadius.md)),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(child: AppSkeleton(height: 62, radius: AppRadius.md)),
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(child: AppSkeleton(height: 62, radius: AppRadius.md)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

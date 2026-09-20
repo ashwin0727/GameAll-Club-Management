@@ -10,6 +10,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -84,7 +85,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _po == null
-                  ? const LoadingView(message: 'Loading purchase order…')
+                  ? const _PurchaseOrderDetailSkeleton()
                   : _content(_po!, session),
         ),
       ),
@@ -422,5 +423,53 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
       return;
     }
     await _run(() => ref.read(inventoryRepositoryProvider).cancelPurchaseOrder(po.id, reason));
+  }
+}
+
+/// Structure-shaped placeholder mirroring the loaded PO detail: vendor/date
+/// title lines, status badges, action buttons, line items, then a total.
+class _PurchaseOrderDetailSkeleton extends StatelessWidget {
+  const _PurchaseOrderDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(width: 180, height: 16),
+        SizedBox(height: 6),
+        AppSkeleton(width: 130, height: 12),
+        SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.xs,
+          children: [
+            AppSkeleton(width: 72, height: 24, radius: 999),
+            AppSkeleton(width: 96, height: 24, radius: 999),
+          ],
+        ),
+        SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            AppSkeleton(width: 108, height: 36, radius: 8),
+            AppSkeleton(width: 120, height: 36, radius: 8),
+            AppSkeleton(width: 96, height: 36, radius: 8),
+            AppSkeleton(width: 72, height: 36, radius: 8),
+          ],
+        ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonChipRow(count: 2),
+        SizedBox(height: AppSpacing.md),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(trailing: false),
+        SizedBox(height: AppSpacing.md),
+        AppSkeleton(width: 160, height: 15),
+      ],
+    );
   }
 }

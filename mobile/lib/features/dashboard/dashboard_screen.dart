@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
@@ -135,6 +135,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _isLoading = false;
         _loadError = e.message;
       });
+    } catch (e, stack) {
+      // Never leave the dashboard stuck on its skeleton forever — a parse
+      // failure (e.g. a row shaped differently than expected) isn't an
+      // AppException and must still resolve the loading state.
+      debugPrint('Dashboard load failed: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Unable to load your dashboard. Please try again.';
+      });
     }
   }
 
@@ -176,7 +186,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () => context.push(AppRoutes.refunds),
+            onPressed: () async {
+              await context.push(AppRoutes.refunds);
+              if (mounted) _load();
+            },
             icon: Icon(Icons.notifications_none_rounded,
                 color: context.tokens.textSecondary),
           ),
@@ -211,8 +224,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     needs: _needs,
                     needsCount: _needsCount,
                     outstandingInr: _outstandingInr,
-                    facilitySlug:
-                        ref.watch(sessionControllerProvider).facility?.slug,
+                    facilityId:
+                        ref.watch(sessionControllerProvider).facility?.id,
                     selectedSportId: _selectedSportId,
                     preset: _preset,
                     onOpenFilter: _openCommonFilter,
@@ -224,6 +237,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         _load();
                       }
                     },
+                    onReturn: _load,
                   ),
                 ),
               ),
@@ -356,21 +370,99 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  /// Same "Filter by period" sheet design as the Finance/Payment screen's
+  /// filter — quick options with a check, a horizontal month strip, and a
+  /// "Show results" button that applies the staged pick — adapted for a
+  /// single month instead of a date range.
   Future<int?> _showRevenueMonthPicker(BuildContext context, int current) {
+    var staged = current;
     return showModalBottomSheet<int>(
       context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (var offset = 0; offset < 12; offset++)
-              ListTile(
-                title: Text(revenueMonthLabel(offset)),
-                selected: offset == current,
-                onTap: () => Navigator.pop(context, offset),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final tokens = sheetContext.tokens;
+          Widget optionTile(String label, int offset) {
+            final selected = staged == offset;
+            return ListTile(
+              dense: true,
+              title: Text(label,
+                  style: TextStyle(
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500)),
+              trailing: selected
+                  ? Icon(Icons.check_circle_rounded, color: tokens.primary)
+                  : null,
+              onTap: () => setSheetState(() => staged = offset),
+            );
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Filter by period',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.textPrimary)),
+                  const SizedBox(height: AppSpacing.xs),
+                  optionTile('This month', 0),
+                  optionTile('Last month', 1),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Or pick a month',
+                      style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    height: 38,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 12,
+                      separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
+                      itemBuilder: (_, offset) {
+                        final selected = staged == offset;
+                        return GestureDetector(
+                          onTap: () => setSheetState(() => staged = offset),
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: selected ? tokens.primary : tokens.surface2,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                  color:
+                                      selected ? tokens.primary : tokens.borderColor),
+                            ),
+                            child: Text(revenueMonthLabel(offset),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: selected
+                                        ? tokens.onPrimary
+                                        : tokens.textPrimary)),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(sheetContext, staged),
+                      child: const Text('Show results'),
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -399,12 +491,13 @@ class _DashboardBody extends StatelessWidget {
     required this.needs,
     required this.needsCount,
     required this.outstandingInr,
-    required this.facilitySlug,
+    required this.facilityId,
     required this.selectedSportId,
     required this.preset,
     required this.onOpenFilter,
     required this.revenueMonthOffset,
     required this.onPickRevenueMonth,
+    required this.onReturn,
   });
 
   final DashboardSummary summary;
@@ -418,12 +511,13 @@ class _DashboardBody extends StatelessWidget {
   /// Authoritative "owed right now", or null while the finance RPC is still
   /// in flight / failed — the summary's own figure is the fallback.
   final int? outstandingInr;
-  final String? facilitySlug;
+  final String? facilityId;
   final String? selectedSportId;
   final DateRangePreset preset;
   final VoidCallback onOpenFilter;
   final int revenueMonthOffset;
   final VoidCallback onPickRevenueMonth;
+  final Future<void> Function() onReturn;
 
   bool get _isToday => preset == DateRangePreset.today;
 
@@ -460,10 +554,6 @@ class _DashboardBody extends StatelessWidget {
         }
       }
     }
-    final busyCourtIds = liveBlocks.map((e) => e.$1.id).toSet();
-    final totalCourts = tl.courts.length;
-    final busyCount = busyCourtIds.length;
-
     final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,17 +615,12 @@ class _DashboardBody extends StatelessWidget {
         // ── LIVE NOW ──────────────────────────────────────────────
         _LiveNowCard(
           isToday: _isToday,
-          now: now,
-          busyCount: busyCount,
-          totalCourts: totalCourts,
           courts: orderedCourts,
-          busyCourtIds: busyCourtIds,
-          liveBlocks: liveBlocks,
         ),
         const SizedBox(height: AppSpacing.md),
 
         // ── quick top actions ─────────────────────────────────────
-        _TopActionsRow(slug: facilitySlug),
+        _TopActionsRow(onReturn: onReturn),
         const SizedBox(height: AppSpacing.md),
 
         // ── money row ─────────────────────────────────────────────
@@ -544,8 +629,9 @@ class _DashboardBody extends StatelessWidget {
           collectedChange: summary.kpis.revenueInr.changePercent,
           periodLabel: _presetLabels[preset]!,
           toCollectInr: outstandingInr ?? summary.payments.pendingInr,
-          bookings: summary.kpis.guestBookings.value.round(),
+          bookings: summary.kpis.totalBookings.value.round(),
           weekPoints: summary.revenueOverview.points,
+          onReturn: onReturn,
         ),
 
         if (summary.memberships.expiringSoon > 0) ...[
@@ -559,7 +645,8 @@ class _DashboardBody extends StatelessWidget {
           _NeedsYouSection(
               obligations: needs,
               count: needsCount,
-              attention: summary.attentionItems),
+              attention: summary.attentionItems,
+              onReturn: onReturn),
         ],
 
         // ── ON COURT NOW ──────────────────────────────────────────
@@ -580,13 +667,15 @@ class _DashboardBody extends StatelessWidget {
           }),
         ],
 
-        // ── MEMBERS ───────────────────────────────────────────────
+        // ── PROMO BANNER ──────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        _MembersCard(
-          memberships: summary.memberships,
-          monthlyRevenueInr: _membershipRevenue(),
-          monthLabel: summary.revenueOverview.monthLabel,
-        ),
+        const _MoreThanBookingsCard(),
+
+        // ── RECENT ACTIVITY ───────────────────────────────────────
+        if (recent.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _RecentActivitySection(entries: recent),
+        ],
 
         // ── THIS WEEK ─────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
@@ -594,12 +683,6 @@ class _DashboardBody extends StatelessWidget {
           title: 'This week',
           child: _WeekBarsCard(points: summary.revenueOverview.points),
         ),
-
-        // ── RECENT ACTIVITY ───────────────────────────────────────
-        if (recent.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.xl),
-          _RecentActivitySection(entries: recent),
-        ],
 
         // ── REVENUE ───────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
@@ -614,26 +697,19 @@ class _DashboardBody extends StatelessWidget {
 
         // ── SHARE LINK ────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
-        _ShareLinkCard(slug: facilitySlug),
+        _ShareLinkCard(facilityId: facilityId),
 
-        // ── QUICK ACTIONS (kept, restyled) ────────────────────────
-        const SizedBox(height: AppSpacing.xl),
-        _DashSection(
-          title: 'Quick Actions',
-          child: const _QuickActionGrid(),
-        ),
+        // ── QUICK ACTIONS ──────────────────────────────────────────
+        // Hidden for now per request — the widget is kept intact below so
+        // it's a one-line change to bring back if it's needed again.
+        // const SizedBox(height: AppSpacing.xl),
+        // _DashSection(
+        //   title: 'Quick Actions',
+        //   child: const _QuickActionGrid(),
+        // ),
         const SizedBox(height: AppSpacing.xxl),
       ],
     );
-  }
-
-  int _membershipRevenue() {
-    for (final s in summary.revenueOverview.breakdown) {
-      if (s.key == RevenueBreakdownKey.memberships && !s.unavailable) {
-        return s.amountInr;
-      }
-    }
-    return 0;
   }
 
   /// Free windows on each court from now until close — the biggest per court.
@@ -660,7 +736,7 @@ class _DashboardBody extends StatelessWidget {
       }
     }
     gaps.sort((a, b) => a.startMin.compareTo(b.startMin));
-    return gaps.take(3).toList();
+    return gaps;
   }
 }
 
@@ -714,277 +790,340 @@ Color _blockTypeColor(BuildContext context, ScheduleBlockType t) {
 
 // ───────────────────────────────────────────────────── LIVE NOW ──
 
-class _LiveNowCard extends StatelessWidget {
-  const _LiveNowCard({
-    required this.isToday,
-    required this.now,
-    required this.busyCount,
-    required this.totalCourts,
-    required this.courts,
-    required this.busyCourtIds,
-    required this.liveBlocks,
-  });
+/// The dashboard's hero card — a photo-backed "what's happening right now"
+/// summary. Self-ticking (its own clock + free-court cycle timers) so it
+/// stays accurate for as long as the dashboard stays open on screen, rather
+/// than freezing at whatever time the page happened to load.
+class _LiveNowCard extends StatefulWidget {
+  const _LiveNowCard({required this.isToday, required this.courts});
 
   final bool isToday;
-  final DateTime now;
-  final int busyCount;
-  final int totalCourts;
   final List<ScheduleCourtRow> courts;
-  final Set<String> busyCourtIds;
-  final List<(_ScheduleCourtRef, ScheduleBlock)> liveBlocks;
+
+  @override
+  State<_LiveNowCard> createState() => _LiveNowCardState();
+}
+
+class _LiveNowCardState extends State<_LiveNowCard> {
+  DateTime _now = DateTime.now();
+  Timer? _clockTimer;
+  Timer? _cycleTimer;
+  int _cycleIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+    // Fades to the next free/soon-free court every few seconds, so a
+    // multi-court facility isn't stuck only ever showing the first one.
+    _cycleTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) setState(() => _cycleIndex++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer?.cancel();
+    _cycleTimer?.cancel();
+    super.dispose();
+  }
+
+  static String _headline(int busy, int total) {
+    if (total == 0) return 'No courts\nset up yet';
+    if (busy == 0) return 'All courts\nready for action';
+    if (busy == total) return 'All courts\nin play right now';
+    return '$busy of $total courts\nin play right now';
+  }
+
+  /// One court's live status as a message + colour: green when it's free,
+  /// orange once its current booking is within 10 minutes of ending, red
+  /// while it's occupied with longer to go.
+  static ({String message, Color dotColor}) _courtStatusEntry(
+    AppColorTokens tokens,
+    ScheduleCourtRow c,
+    int nowMin,
+    bool busy,
+    int? endMinute,
+  ) {
+    if (!busy || endMinute == null) {
+      return (
+        message: '${c.sportName} · ${c.courtName} is free now',
+        dotColor: tokens.primary,
+      );
+    }
+    final remaining = endMinute - nowMin;
+    if (remaining <= 10) {
+      return (
+        message: '${c.sportName} · ${c.courtName} wraps up in $remaining min',
+        dotColor: tokens.warning,
+      );
+    }
+    return (
+      message:
+          '${c.sportName} · ${c.courtName} in play · ends ${_time12(endMinute)}',
+      dotColor: tokens.destructive,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    // Solid green "hero" card — reads like a filled button, not a tint.
-    final card = tokens.accentSolid(tokens.primary);
-    final onCard = tokens.onAccent(card);
-    final onCardDim = onCard.withValues(alpha: 0.72);
-    final nowMin = now.hour * 60 + now.minute;
-    final pct = totalCourts == 0 ? 0 : (busyCount / totalCourts * 100).round();
-    // Courts whose current booking wraps up within 15 minutes.
-    final endingSoon = <String>{
-      for (final (c, b) in liveBlocks)
-        if (b.endMinute - nowMin <= 15) c.id,
-    };
+    final nowMin = _now.hour * 60 + _now.minute;
+    final total = widget.courts.length;
 
-    // "Next free": a court open right now, else the soonest to free up.
-    String? nextFreeLabel;
-    final freeCourt =
-        courts.where((c) => !busyCourtIds.contains(c.courtId)).firstOrNull;
-    if (freeCourt != null) {
-      nextFreeLabel = '${freeCourt.courtName} free now';
-    } else if (liveBlocks.isNotEmpty) {
-      final soonest =
-          liveBlocks.reduce((a, b) => a.$2.endMinute <= b.$2.endMinute ? a : b);
-      nextFreeLabel =
-          '${soonest.$1.name} at ${_time12(soonest.$2.endMinute)}';
+    final busyIds = <String>{};
+    final endingBy = <String, int>{}; // courtId → its live block's end minute
+    for (final c in widget.courts) {
+      for (final b in c.blocks) {
+        if (b.startMinute <= nowMin && nowMin < b.endMinute) {
+          busyIds.add(c.courtId);
+          endingBy[c.courtId] = b.endMinute;
+        }
+      }
     }
+    final busy = busyIds.length;
+    final free = total - busy;
+
+    // One status entry per court — free (green), wrapping up within 10
+    // minutes (orange), or occupied with time to go (red) — cycled one at a
+    // time so every court gets its turn instead of only ever showing one.
+    final entries = <({String message, Color dotColor})>[
+      for (final c in widget.courts)
+        _courtStatusEntry(
+            tokens, c, nowMin, busyIds.contains(c.courtId), endingBy[c.courtId]),
+    ];
+    final entry = entries.isEmpty ? null : entries[_cycleIndex % entries.length];
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => context.push(AppRoutes.bookings),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        color: card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (isToday)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: SizedBox(
+            height: 208,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/images/live_court_hero.png',
+                    fit: BoxFit.cover),
+                DecoratedBox(
                   decoration: BoxDecoration(
-                    color: onCard.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(999),
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.45),
+                        Colors.black.withValues(alpha: 0.05),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                              color: onCard, shape: BoxShape.circle)),
-                      const SizedBox(width: 5),
-                      Text('Live now',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: onCard)),
-                    ],
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.0),
+                        Colors.black.withValues(alpha: 0.5),
+                      ],
+                    ),
                   ),
-                )
-              else
-                Text('Snapshot',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: onCardDim)),
-              const Spacer(),
-              Text(
-                  '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
-                  style: TextStyle(fontSize: 12, color: onCardDim)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('$busyCount',
-                  style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                      color: onCard)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('of $totalCourts courts busy',
-                    style: TextStyle(fontSize: 13, color: onCardDim)),
-              ),
-              Text('$pct%',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: onCard)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              for (final c in courts.take(9)) ...[
-                Expanded(
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Builder(builder: (context) {
-                        final busy = busyCourtIds.contains(c.courtId);
-                        final soon = endingSoon.contains(c.courtId);
-                        final fill = !busy
-                            ? onCard.withValues(alpha: 0.14)
-                            : soon
-                                ? tokens.accentSolid(tokens.warning)
-                                : onCard;
-                        return Container(
-                          height: 28,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: fill,
-                            borderRadius: BorderRadius.circular(6),
-                            border: busy
-                                ? null
-                                : Border.all(
-                                    color: onCard.withValues(alpha: 0.4)),
-                          ),
-                          child: Icon(
-                            !busy
-                                ? Icons.check_rounded
-                                : soon
-                                    ? Icons.timelapse_rounded
-                                    : Icons.lock_rounded,
-                            size: 11,
-                            color: busy
-                                ? (soon
-                                    ? tokens.onAccent(tokens.warning)
-                                    : card)
-                                : onCard,
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          if (widget.isToday)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                          color: tokens.primary,
+                                          shape: BoxShape.circle)),
+                                  const SizedBox(width: 5),
+                                  const Text('Live now',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white)),
+                                ],
+                              ),
+                            )
+                          else
+                            Text('Snapshot',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white.withValues(alpha: 0.7))),
+                          const Spacer(),
+                          Text(_time12(nowMin),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.7))),
+                        ],
+                      ),
+                      const Spacer(),
                       Text(
-                        _courtCode(c.sportName, c.courtName),
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: onCardDim),
+                        _headline(busy, total),
+                        style: const TextStyle(
+                            fontSize: 23,
+                            fontWeight: FontWeight.w800,
+                            height: 1.18,
+                            color: Colors.white),
+                      ),
+                      const SizedBox(height: 6),
+                      Text('$busy busy · $free available',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.75))),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          if (entry != null) ...[
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: entry.dotColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: entry.dotColor.withValues(alpha: 0.6),
+                                    blurRadius: 6,
+                                    spreadRadius: 0.5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: entry == null
+                                ? const SizedBox.shrink()
+                                : ClipRect(
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 420),
+                                      switchInCurve: Curves.easeOut,
+                                      switchOutCurve: Curves.easeIn,
+                                      // Default layoutBuilder centers children in
+                                      // a Stack sized to the Expanded's full
+                                      // width — that's the gap between the dot
+                                      // and the text. Left-align instead.
+                                      layoutBuilder: (currentChild, previousChildren) =>
+                                          Stack(
+                                        alignment: Alignment.centerLeft,
+                                        children: [
+                                          ...previousChildren,
+                                          ?currentChild,
+                                        ],
+                                      ),
+                                      transitionBuilder: (child, anim) {
+                                        final entering =
+                                            child.key == ValueKey(entry.message);
+                                        final offset = Tween<Offset>(
+                                          begin: entering
+                                              ? const Offset(0, 0.7)
+                                              : const Offset(0, -0.7),
+                                          end: Offset.zero,
+                                        ).animate(anim);
+                                        return ClipRect(
+                                          child: SlideTransition(
+                                            position: offset,
+                                            child: FadeTransition(
+                                                opacity: anim, child: child),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        entry.message,
+                                        key: ValueKey(entry.message),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                            fontSize: 12.5,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.85)),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                                color: tokens.primary, shape: BoxShape.circle),
+                            child: Icon(Icons.arrow_forward_rounded,
+                                size: 18, color: tokens.onAccent(tokens.primary)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 5),
-              ],
-            ],
-          ),
-          if (liveBlocks.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            for (final (c, b) in liveBlocks.take(3))
-              Padding(
-                padding: const EdgeInsets.only(top: 3),
-                child: Row(
-                  children: [
-                    Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                            color: onCard, shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                          '${_courtCode(c.sport, c.name)} · ${b.label}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: onCard)),
-                    ),
-                    Text('ends ${_time12(b.endMinute)}',
-                        style: TextStyle(fontSize: 10.5, color: onCardDim)),
-                  ],
-                ),
-              ),
-          ],
-          if (nextFreeLabel != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            Divider(height: 1, color: onCard.withValues(alpha: 0.2)),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Next free · $nextFreeLabel',
-                      style: TextStyle(fontSize: 12, color: onCardDim)),
-                ),
-                GestureDetector(
-                  onTap: () => context.push(AppRoutes.bookings),
-                  child: Text('Fill it',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: onCard)),
-                ),
               ],
             ),
-          ],
-        ],
-      ),
+          ),
         ),
       ),
     );
   }
-
 }
 
 // ─────────────────────────────────────────────── TOP ACTIONS ──
 
 class _TopActionsRow extends StatelessWidget {
-  const _TopActionsRow({required this.slug});
-  final String? slug;
+  const _TopActionsRow({required this.onReturn});
+
+  final Future<void> Function() onReturn;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    void copyLink() {
-      final link = (slug == null || slug!.isEmpty)
-          ? 'https://gameall.in'
-          : 'https://gameall.in/join/$slug';
-      Clipboard.setData(ClipboardData(text: link));
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Booking link copied')));
-    }
 
     final actions = <(IconData, String, VoidCallback)>[
       (Icons.add_rounded, 'Book', () => context.push(AppRoutes.bookings)),
       (
         Icons.account_balance_wallet_outlined,
         'Collect',
-        () => context.push(AppRoutes.financePendingPayments)
+        () async {
+          await context.push(AppRoutes.financePendingPayments);
+          onReturn();
+        }
       ),
-      (Icons.link_rounded, 'Share link', copyLink),
       (
-        Icons.event_busy_outlined,
-        'Block',
-        () => context.push(AppRoutes.bookings)
+        Icons.build_outlined,
+        'Maintenance',
+        () async {
+          await context.push(AppRoutes.maintenanceTicketNew);
+          onReturn();
+        }
+      ),
+      (
+        Icons.currency_exchange_rounded,
+        'Refund',
+        () async {
+          await context.push(AppRoutes.refunds);
+          onReturn();
+        }
       ),
     ];
     return Row(
@@ -1025,6 +1164,83 @@ class _TopActionsRow extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────── PROMO BANNER ──
+
+/// Photo-backed promo banner — the same dark-court photography treatment as
+/// the "Live Now" hero card, with a gradient overlay so the text (already
+/// sitting over the image's own dark left side) stays legible in either
+/// theme.
+class _MoreThanBookingsCard extends StatelessWidget {
+  const _MoreThanBookingsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: SizedBox(
+        height: 160,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset('assets/images/more_than_bookings.png', fit: BoxFit.cover),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.10),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('More Than\nJust Bookings',
+                            style: TextStyle(
+                                fontSize: 20,
+                                height: 1.15,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                        const SizedBox(height: 6),
+                        Text('Build a thriving sports community with GameAll.',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.3,
+                                color: Colors.white.withValues(alpha: 0.85))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────── MONEY ROW ──
 
 class _MoneyRow extends StatelessWidget {
@@ -1035,6 +1251,7 @@ class _MoneyRow extends StatelessWidget {
     required this.toCollectInr,
     required this.bookings,
     required this.weekPoints,
+    required this.onReturn,
   });
 
   final int collectedInr;
@@ -1043,6 +1260,7 @@ class _MoneyRow extends StatelessWidget {
   final int toCollectInr;
   final int bookings;
   final List<RevenueTrendPoint> weekPoints;
+  final Future<void> Function() onReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -1076,9 +1294,17 @@ class _MoneyRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Collected · $periodLabel',
-                          style: TextStyle(
-                              fontSize: 11, color: tokens.textSecondary)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text('Collected · $periodLabel',
+                                style: TextStyle(
+                                    fontSize: 11, color: tokens.textSecondary)),
+                          ),
+                          Icon(Icons.show_chart_rounded,
+                              size: 20, color: tokens.primary),
+                        ],
+                      ),
                       const SizedBox(height: 3),
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -1174,8 +1400,10 @@ class _MoneyRow extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () =>
-                          context.push(AppRoutes.financePendingPayments),
+                      onTap: () async {
+                        await context.push(AppRoutes.financePendingPayments);
+                        onReturn();
+                      },
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       child: Container(
                         width: double.infinity,
@@ -1184,25 +1412,35 @@ class _MoneyRow extends StatelessWidget {
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                           color: tokens.accentSolid(tokens.warning),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Stack(
                           children: [
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                  Formatters.currencyInr(toCollectInr),
-                                  style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      color: tokens.onAccent(tokens.warning))),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                      Formatters.currencyInr(toCollectInr),
+                                      style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color: tokens.onAccent(tokens.warning))),
+                                ),
+                                Text('to collect',
+                                    style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: tokens.onAccent(tokens.warning)
+                                            .withValues(alpha: 0.75))),
+                              ],
                             ),
-                            Text('to collect',
-                                style: TextStyle(
-                                    fontSize: 10.5,
-                                    color: tokens.onAccent(tokens.warning)
-                                        .withValues(alpha: 0.75))),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: Icon(Icons.account_balance_wallet_rounded,
+                                  size: 32, color: tokens.onAccent(tokens.warning)),
+                            ),
                           ],
                         ),
                       ),
@@ -1219,17 +1457,27 @@ class _MoneyRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       border: Border.all(color: tokens.borderColor),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Stack(
                       children: [
-                        Text('$bookings',
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w800)),
-                        Text('bookings',
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                color: tokens.textSecondary)),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('$bookings',
+                                style: const TextStyle(
+                                    fontSize: 17, fontWeight: FontWeight.w800)),
+                            Text('bookings',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: tokens.textSecondary)),
+                          ],
+                        ),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Icon(Icons.calendar_month_rounded,
+                              size: 32, color: tokens.textPrimary),
+                        ),
                       ],
                     ),
                   ),
@@ -1250,11 +1498,13 @@ class _NeedsYouSection extends StatelessWidget {
     required this.obligations,
     required this.count,
     required this.attention,
+    required this.onReturn,
   });
 
   final List<PaymentObligation> obligations;
   final int count;
   final List<AttentionItem> attention;
+  final Future<void> Function() onReturn;
 
   @override
   Widget build(BuildContext context) {
@@ -1278,7 +1528,10 @@ class _NeedsYouSection extends StatelessWidget {
                 trailing: Formatters.currencyInr(
                     (o.outstandingMinor / 100).round()),
                 trailingTone: tokens.warning,
-                onTap: () => context.push(AppRoutes.financePendingPayments),
+                onTap: () async {
+                  await context.push(AppRoutes.financePendingPayments);
+                  onReturn();
+                },
               ),
             ),
           for (final a in attention.take(3))
@@ -1546,87 +1799,6 @@ class _EmptySlotsSection extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────── MEMBERS ──
-
-class _MembersCard extends StatelessWidget {
-  const _MembersCard({
-    required this.memberships,
-    required this.monthlyRevenueInr,
-    required this.monthLabel,
-  });
-
-  final MembershipSummary memberships;
-  final int monthlyRevenueInr;
-  final String monthLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final onC = tokens.onAccent(tokens.violet);
-    final onCDim = onC.withValues(alpha: 0.75);
-    return _DashSection(
-      title: 'Members',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.push(AppRoutes.memberships),
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              color: tokens.accentSolid(tokens.violet),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Membership revenue · $monthLabel',
-                    style: TextStyle(fontSize: 12, color: onCDim)),
-                const SizedBox(height: 4),
-                Text(Formatters.currencyInr(monthlyRevenueInr),
-                    style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: onC)),
-                const SizedBox(height: AppSpacing.md),
-                Divider(height: 1, color: onC.withValues(alpha: 0.2)),
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  children: [
-                    _stat(context, '${memberships.active}', 'active', onC),
-                    const SizedBox(width: AppSpacing.xl),
-                    _stat(context, '${memberships.expiringSoon}', 'expiring',
-                        onC),
-                    const SizedBox(width: AppSpacing.xl),
-                    _stat(context, '+${memberships.newThisMonth}', 'new', onC),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _stat(BuildContext context, String value, String label, Color c) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w800, color: c)),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: context.tokens
-                    .onAccent(context.tokens.violet)
-                    .withValues(alpha: 0.75))),
-      ],
-    );
-  }
-}
-
 /// 'YYYY-MM-DD' — matches the key `buildRevenueTrend` writes.
 String _dayKeyOf(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-'
@@ -1661,7 +1833,16 @@ class _WeekBarsCard extends StatelessWidget {
     final tokens = context.tokens;
     final last7 = _trailingWeek(points);
     if (last7.isEmpty) {
-      return _card(context, const SizedBox(height: 40));
+      return _card(
+        context,
+        SizedBox(
+          height: 74,
+          child: Center(
+            child: Text('No revenue data for this week yet.',
+                style: TextStyle(fontSize: 12.5, color: tokens.textSecondary)),
+          ),
+        ),
+      );
     }
     final maxV =
         last7.map((p) => p.amountInr).reduce(math.max).clamp(1, 1 << 30);
@@ -1672,19 +1853,32 @@ class _WeekBarsCard extends StatelessWidget {
     final todayIdx =
         last7.indexWhere((p) => p.date == _dayKeyOf(DateTime.now()));
 
+    final total = last7.map((p) => p.amountInr).reduce((a, b) => a + b);
     return _card(
       context,
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text('avg ${_RevenueOverviewCard._compactInr(avg)}',
-                style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+          Row(
+            children: [
+              Icon(Icons.show_chart_rounded, size: 16, color: tokens.primary),
+              const SizedBox(width: 6),
+              Text(_RevenueOverviewCard._compactInr(total),
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: tokens.textPrimary)),
+              const Spacer(),
+              Text('avg ${_RevenueOverviewCard._compactInr(avg)}/day',
+                  style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           SizedBox(
-            height: 74,
+            // Bar (max 58) + gap (5) + weekday label — 74 clipped the label
+            // by a few px once the app's actual font metrics were measured;
+            // sized with headroom instead of shaving the bar/gap further.
+            height: 84,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1786,45 +1980,59 @@ class _RecentActivitySection extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 color: tokens.primary)),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-        decoration: BoxDecoration(
-          color: tokens.surface1,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: tokens.borderColor),
-        ),
-        child: Column(
-          children: [
-            for (final e in entries.take(4))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Column(
+        children: [
+          for (final e in entries.take(4))
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: tokens.surface1,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: tokens.borderColor),
+                ),
                 child: Row(
                   children: [
-                    Text(
-                      '${e.occurredAt.hour.toString().padLeft(2, '0')}:${e.occurredAt.minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                          fontSize: 11, color: tokens.textSecondary),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
                     Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                            color: _dot(context, e),
-                            shape: BoxShape.circle)),
-                    const SizedBox(width: AppSpacing.sm),
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: tokens.accentFill(_dot(context, e)),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Icon(
+                          e.isIncome
+                              ? Icons.arrow_downward_rounded
+                              : Icons.arrow_upward_rounded,
+                          size: 16,
+                          color: _dot(context, e)),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
-                      child: Text(e.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12.5)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(e.description,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${e.occurredAt.hour.toString().padLeft(2, '0')}:${e.occurredAt.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                                fontSize: 11, color: tokens.textSecondary),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       '${e.isIncome ? '+' : '−'}${Formatters.currencyInr((e.amountMinor / 100).round())}',
                       style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: e.isIncome
                               ? tokens.success
@@ -1833,8 +2041,8 @@ class _RecentActivitySection extends StatelessWidget {
                   ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -1850,16 +2058,20 @@ class _RecentActivitySection extends StatelessWidget {
 // ─────────────────────────────────────────────────── SHARE LINK ──
 
 class _ShareLinkCard extends StatelessWidget {
-  const _ShareLinkCard({required this.slug});
-  final String? slug;
+  const _ShareLinkCard({required this.facilityId});
+
+  /// The public booking page (`src/app/book/[facilityId]` on the web) is
+  /// keyed by the facility's UUID id, never its human-readable slug — the
+  /// backing lookup RPCs take a `uuid` param and can't resolve a slug.
+  final String? facilityId;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final onC = tokens.onAccent(tokens.violet);
-    final display = (slug == null || slug!.isEmpty)
-        ? 'gameall.in'
-        : 'gameall.in/join/$slug';
+    final display = (facilityId == null || facilityId!.isEmpty)
+        ? 'club.gameall.co'
+        : 'club.gameall.co/book/$facilityId';
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1897,16 +2109,19 @@ class _ShareLinkCard extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: 'https://$display'));
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                    const SnackBar(content: Text('Link copied')));
-            },
-            style: TextButton.styleFrom(foregroundColor: onC),
-            child: const Text('Copy'),
+          Material(
+            color: onC.withValues(alpha: 0.16),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => SharePlus.instance.share(
+                ShareParams(text: 'https://$display'),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Icon(Icons.ios_share_rounded, size: 18, color: onC),
+              ),
+            ),
           ),
         ],
       ),
@@ -2483,6 +2698,9 @@ class _DonutPainter extends CustomPainter {
 
 /// Real, currently-navigable destinations as a 3-up grid of vertical tiles —
 /// each with its own accent, so the row scans quickly (spec §"Owner Home").
+/// Currently unused — hidden from the dashboard per request, kept for a
+/// quick return if it's wanted again.
+// ignore: unused_element
 class _QuickActionGrid extends StatelessWidget {
   const _QuickActionGrid();
 
@@ -2496,7 +2714,11 @@ class _QuickActionGrid extends StatelessWidget {
           AppRoutes.memberships, tokens.violet),
       _QuickActionData(Icons.event_available_rounded, 'Guest booking',
           AppRoutes.guestBookings, tokens.electricBlue),
-      _QuickActionData(Icons.groups_rounded, 'Add guest', AppRoutes.guests,
+      // Guest Players has no "add" of its own anymore — a guest player is
+      // created automatically the moment someone books (see Guest
+      // Booking's phone-number check), so this tile just opens the
+      // directory rather than promising to add one.
+      _QuickActionData(Icons.groups_rounded, 'Guest players', AppRoutes.guests,
           tokens.warning),
       _QuickActionData(Icons.account_balance_wallet_rounded, 'Finance',
           AppRoutes.finance, tokens.primary),

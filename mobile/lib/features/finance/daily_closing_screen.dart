@@ -5,16 +5,19 @@ import 'package:intl/intl.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/states.dart';
+import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
+import '../reports/report_section_header.dart';
+import '../../shared/widgets/skeleton.dart';
 import 'finance_presentation.dart';
 
 /// Finance → Daily Closing — mirrors
@@ -162,11 +165,14 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Scaffold(
-      appBar: AppBar(title: const Text('Daily Closing')),
+      appBar: AppBar(
+        title: const Text('Daily Closing', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
       body: SafeArea(
         child: _loading
-            ? const LoadingView(message: 'Loading…')
+            ? const _DailyClosingSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -174,21 +180,43 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                     child: ListView(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       children: [
-                        InkWell(
-                          onTap: _pickDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(labelText: 'Business date'),
-                            child: Text(Formatters.dateShort(_date)),
+                        _labeled(
+                          'Business date',
+                          child: InkWell(
+                            onTap: _pickDate,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.lg, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: tokens.surface2,
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                border: Border.all(color: tokens.borderColor),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(Formatters.dateShort(_date),
+                                        style: TextStyle(color: tokens.textPrimary)),
+                                  ),
+                                  Icon(Icons.calendar_today_outlined,
+                                      size: 18, color: tokens.textSecondary),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.md),
                         if (_summary != null) ..._sections(_summary!),
                         const SizedBox(height: AppSpacing.xl),
-                        Text('Recent closings', style: AppTypography.rowTitle(context)),
+                        const ReportSectionHeader(title: 'Recent closings'),
                         const SizedBox(height: AppSpacing.sm),
                         if (_history.isEmpty)
-                          Text('No closings recorded this month.',
-                              style: AppTypography.secondary(context))
+                          _EmptyRow(
+                            icon: Icons.event_note_outlined,
+                            color: tokens.textSecondary,
+                            message: 'No closings recorded this month.',
+                          )
                         else
                           ..._history.map(_historyRow),
                         const SizedBox(height: AppSpacing.xl),
@@ -199,20 +227,73 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
     );
   }
 
+  Widget _labeled(String label, {required Widget child}) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: tokens.textSecondary)),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+
+  Widget _sectionCard({required Widget child}) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _sectionHeading(String title, IconData icon, Color accent, {Widget? trailing}) {
+    final tokens = context.tokens;
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: tokens.accentFill(accent),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Icon(icon, size: 16, color: accent),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(title,
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
+        ),
+        ?trailing,
+      ],
+    );
+  }
+
   List<Widget> _sections(DailyClosingSummary s) {
+    final tokens = context.tokens;
     final notStarted = s.status == DailyClosingStatus.notStarted;
     final closed = s.status == DailyClosingStatus.closed;
     final previewActual = num.tryParse(_actualController.text.trim());
     final previewVariance =
         previewActual != null ? (previewActual * 100).round() - s.expectedCashMinor : null;
+    final statusColor = _toneColor(context, _tone(s.status));
 
     return [
-      AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      _sectionCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Today's collections", style: AppTypography.rowTitle(context)),
+            _sectionHeading("Today's collections", Icons.payments_outlined, tokens.primary),
             const SizedBox(height: AppSpacing.sm),
             _amountRow('Cash', s.cashCollectedMinor),
             _amountRow('UPI', s.upiCollectedMinor),
@@ -220,14 +301,14 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
             _amountRow('Online', s.onlineCollectedMinor),
             _amountRow('Bank transfer', s.bankTransferCollectedMinor),
             _amountRow('Other', s.otherCollectedMinor),
-            const Divider(),
+            Divider(color: tokens.borderColor),
             _amountRow('Total collected', s.totalCollectedMinor, bold: true),
-            const SizedBox(height: AppSpacing.md),
-            Text("Today's expenses", style: AppTypography.rowTitle(context)),
+            const SizedBox(height: AppSpacing.lg),
+            _sectionHeading("Today's expenses", Icons.receipt_long_outlined, tokens.destructive),
             const SizedBox(height: AppSpacing.sm),
             _amountRow('Cash expenses', s.cashExpenseMinor),
             _amountRow('Other expenses', s.otherExpenseMinor),
-            const Divider(),
+            Divider(color: tokens.borderColor),
             _amountRow('Total expenses', s.totalExpenseMinor, bold: true),
             if (s.pendingPaymentCount > 0) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -238,22 +319,17 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
         ),
       ),
       const SizedBox(height: AppSpacing.md),
-      AppCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      _sectionCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(child: Text('Cash reconciliation', style: AppTypography.rowTitle(context))),
-                StatusBadge(label: s.status.name, tone: _tone(s.status)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
+            _sectionHeading('Cash reconciliation', Icons.point_of_sale_outlined, statusColor,
+                trailing: StatusBadge(label: s.status.name, tone: _tone(s.status))),
+            const SizedBox(height: AppSpacing.md),
             if (notStarted) ...[
               Text('The day for ${Formatters.dateShort(DateTime.parse(s.closingDate))} has not been opened yet.',
                   style: AppTypography.secondary(context)),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: _openingController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -263,9 +339,10 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                   hintText: (s.openingCashMinor / 100).toStringAsFixed(2),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              PrimaryButton(
+              const SizedBox(height: AppSpacing.md),
+              AuthGradientButton(
                 label: 'Open day',
+                loadingLabel: 'Opening…',
                 isLoading: _busy,
                 onPressed: _busy
                     ? null
@@ -282,9 +359,9 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
               _amountRow('Opening cash', s.openingCashMinor),
               _amountRow('Cash collections', s.cashCollectedMinor),
               _amountRow('Cash expenses', -s.cashExpenseMinor),
-              const Divider(),
+              Divider(color: tokens.borderColor),
               _amountRow('Expected cash', s.expectedCashMinor, bold: true),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: _actualController,
                 enabled: !closed,
@@ -300,8 +377,8 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                   previewVariance ?? s.varianceMinor ?? 0,
                   bold: true,
                   tone: (previewVariance ?? s.varianceMinor ?? 0) < 0
-                      ? AppColors.destructive
-                      : ((previewVariance ?? s.varianceMinor ?? 0) > 0 ? AppColors.warning : null),
+                      ? tokens.destructive
+                      : ((previewVariance ?? s.varianceMinor ?? 0) > 0 ? tokens.warning : null),
                 ),
               if (!closed && previewVariance != null && previewVariance != 0) ...[
                 const SizedBox(height: AppSpacing.sm),
@@ -324,8 +401,9 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                   onPressed: _busy ? null : () => _reopenDialog(s.closingId!),
                 ),
               ] else
-                PrimaryButton(
+                AuthGradientButton(
                   label: 'Complete closing',
+                  loadingLabel: 'Closing…',
                   isLoading: _busy,
                   onPressed: (_busy || _actualController.text.trim().isEmpty)
                       ? null
@@ -363,47 +441,168 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
     );
   }
 
+  Color _toneColor(BuildContext context, StatusTone tone) {
+    final tokens = context.tokens;
+    return switch (tone) {
+      StatusTone.success => tokens.success,
+      StatusTone.warning => tokens.warning,
+      StatusTone.danger => tokens.destructive,
+      StatusTone.info => tokens.info,
+      StatusTone.neutral => tokens.textSecondary,
+    };
+  }
+
   Widget _historyRow(DailyClosingRow h) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () {
-          setState(() => _date = DateTime.parse(h.closingDate));
-          _load();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final tokens = context.tokens;
+    final color = _toneColor(context, _tone(h.status));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Material(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            setState(() => _date = DateTime.parse(h.closingDate));
+            _load();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: tokens.borderColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tokens.accentFill(color),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(Icons.point_of_sale_outlined, size: 17, color: color),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(Formatters.dateShort(DateTime.parse(h.closingDate)),
+                          style: AppTypography.rowTitle(context)),
+                      Text(
+                        'Expected ${h.expectedCashMinor != null ? financeAmount(h.expectedCashMinor!) : '—'} · '
+                        'Actual ${h.actualCashMinor != null ? financeAmount(h.actualCashMinor!) : '—'}',
+                        style: AppTypography.caption(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(Formatters.dateShort(DateTime.parse(h.closingDate)),
-                        style: AppTypography.rowTitle(context)),
-                    Text(
-                      'Expected ${h.expectedCashMinor != null ? financeAmount(h.expectedCashMinor!) : '—'} · '
-                      'Actual ${h.actualCashMinor != null ? financeAmount(h.actualCashMinor!) : '—'}',
-                      style: AppTypography.caption(context),
-                    ),
+                    StatusBadge(label: h.status.name, tone: _tone(h.status)),
+                    if (h.varianceMinor != null && h.varianceMinor != 0)
+                      Text(financeAmount(h.varianceMinor!),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: h.varianceMinor! < 0 ? tokens.destructive : tokens.warning,
+                          )),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge(label: h.status.name, tone: _tone(h.status)),
-                  if (h.varianceMinor != null && h.varianceMinor != 0)
-                    Text(financeAmount(h.varianceMinor!),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: h.varianceMinor! < 0 ? AppColors.destructive : AppColors.warning,
-                        )),
-                ],
-              ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder shown while the closing summary and recent
+/// closings load — mirrors the business-date field, the two section cards,
+/// and the recent-closings list.
+class _DailyClosingSkeleton extends StatelessWidget {
+  const _DailyClosingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: const [
+        AppSkeleton(height: 48, radius: AppRadius.md),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 160, height: 16),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 120, height: 13),
             ],
           ),
         ),
+        SizedBox(height: AppSpacing.md),
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeleton(width: 180, height: 16),
+              SizedBox(height: AppSpacing.md),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(height: 13),
+              SizedBox(height: AppSpacing.sm),
+              AppSkeleton(width: 140, height: 13),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.xl),
+        AppSkeleton(width: 140, height: 16),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+        SizedBox(height: AppSpacing.sm),
+        SkeletonListRow(),
+      ],
+    );
+  }
+}
+
+/// A quiet "nothing here" row — an icon + message instead of a bare line of
+/// grey text, matching the rest of the app's list screens.
+class _EmptyRow extends StatelessWidget {
+  const _EmptyRow({required this.icon, required this.color, required this.message});
+
+  final IconData icon;
+  final Color color;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: tokens.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: tokens.borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message, style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
+          ),
+        ],
       ),
     );
   }

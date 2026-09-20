@@ -7,6 +7,7 @@ import '../../data/models/maintenance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 
@@ -67,7 +68,7 @@ class _State extends ConsumerState<MaintenanceIssueCategoriesScreen> {
         child: _error != null && _items == null
             ? ErrorView(message: _error!, onRetry: _load)
             : _items == null
-                ? const LoadingView()
+                ? const _MaintenanceIssueCategoriesSkeleton()
                 : _items!.isEmpty
                     ? const EmptyStateView(message: 'No issue categories yet.')
                     : RefreshIndicator(
@@ -188,5 +189,31 @@ class _State extends ConsumerState<MaintenanceIssueCategoriesScreen> {
     }
     name.dispose();
     description.dispose();
+  }
+}
+
+/// Structure-shaped placeholder shown while categories load — a lean single-
+/// line row (icon + name) matching the real list's simpler rows, not the
+/// fuller two-line [SkeletonListRow].
+class _MaintenanceIssueCategoriesSkeleton extends StatelessWidget {
+  const _MaintenanceIssueCategoriesSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      itemCount: 5,
+      separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, i) => SkeletonCard(
+        child: Row(
+          children: const [
+            AppSkeleton(width: 24, height: 24, radius: 12),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: AppSkeleton(width: 140, height: 13)),
+            AppSkeleton(width: 60, height: 18, radius: 9),
+          ],
+        ),
+      ),
+    );
   }
 }

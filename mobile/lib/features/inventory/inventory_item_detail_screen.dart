@@ -9,6 +9,7 @@ import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
@@ -104,7 +105,7 @@ class _InventoryItemDetailScreenState extends ConsumerState<InventoryItemDetailS
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
               : _item == null
-                  ? const LoadingView(message: 'Loading item…')
+                  ? const _InventoryItemDetailSkeleton()
                   : _content(_item!, session),
         ),
       ),
@@ -222,7 +223,10 @@ class _InventoryItemDetailScreenState extends ConsumerState<InventoryItemDetailS
     return d.purchases
         .map((p) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
-              onTap: () => context.push('/inventory/purchase-orders/${p.poId}'),
+              onTap: () async {
+                await context.push('/inventory/purchase-orders/${p.poId}');
+                if (mounted) _load();
+              },
               child: Row(
                 children: [
                   Expanded(
@@ -267,4 +271,62 @@ class _InventoryItemDetailScreenState extends ConsumerState<InventoryItemDetailS
           ],
         ),
       );
+}
+
+/// Structure-shaped placeholder mirroring the loaded item detail: status
+/// badges, a 2x2 stat grid, action buttons, tab bar, then tab-content rows.
+class _InventoryItemDetailSkeleton extends StatelessWidget {
+  const _InventoryItemDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        const Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            AppSkeleton(width: 72, height: 24, radius: 999),
+            AppSkeleton(width: 64, height: 24, radius: 999),
+            AppSkeleton(width: 88, height: 24, radius: 999),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacing.sm,
+            crossAxisSpacing: AppSpacing.sm,
+            childAspectRatio: 2.2,
+          ),
+          children: const [
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+            SkeletonStatTile(height: 72),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const Wrap(
+          spacing: AppSpacing.sm,
+          children: [
+            AppSkeleton(width: 92, height: 36, radius: 8),
+            AppSkeleton(width: 96, height: 36, radius: 8),
+            AppSkeleton(width: 72, height: 36, radius: 8),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonChipRow(count: 3),
+        const SizedBox(height: AppSpacing.md),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonListRow(trailing: false),
+        const SizedBox(height: AppSpacing.sm),
+        const SkeletonListRow(trailing: false),
+      ],
+    );
+  }
 }

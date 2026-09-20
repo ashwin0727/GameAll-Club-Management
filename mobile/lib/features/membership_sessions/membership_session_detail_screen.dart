@@ -12,6 +12,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/membership_session_dashboard.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
+import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'batch_members_sheet.dart';
@@ -256,7 +257,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
       ),
       body: SafeArea(
         child: _isLoading
-            ? const LoadingView(message: 'Loading session…')
+            ? const _MembershipSessionDetailSkeleton()
             : _error != null && d == null
                 ? ErrorView(message: _error!, onRetry: _load)
                 : RefreshIndicator(
@@ -956,6 +957,67 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
               ),
         ],
       ),
+    );
+  }
+}
+
+/// Structure-shaped placeholder for the long session-detail scroll — a
+/// hero card (icon + title + status pill + a chip row for the schedule
+/// facts) followed by a repeated generic card shape standing in for the
+/// capacity/schedule/members/guest-slots/notes/link/info/activity cards.
+class _MembershipSessionDetailSkeleton extends StatelessWidget {
+  const _MembershipSessionDetailSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      children: [
+        SkeletonCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  AppSkeleton(width: 44, height: 44, radius: AppRadius.md),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppSkeleton(width: 150, height: 17),
+                        SizedBox(height: 4),
+                        AppSkeleton(width: 110, height: 12),
+                      ],
+                    ),
+                  ),
+                  AppSkeleton(width: 60, height: 20, radius: AppRadius.pill),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const SkeletonChipRow(count: 3),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (var i = 0; i < 5; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: SkeletonCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  AppSkeleton(width: 110, height: 14),
+                  SizedBox(height: AppSpacing.sm),
+                  AppSkeleton(height: 11),
+                  SizedBox(height: AppSpacing.xs),
+                  AppSkeleton(width: 180, height: 11),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

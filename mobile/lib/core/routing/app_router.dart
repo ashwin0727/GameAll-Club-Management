@@ -237,6 +237,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           MembersScreen(
             openPlans: state.uri.queryParameters['new'] == 'plan',
             openNew: state.uri.queryParameters['new'] == 'membership',
+            openSessions: state.uri.queryParameters['new'] == 'session',
           ),
         ),
       ),
