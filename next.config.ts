@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // The guest booking page lives under Guest Bookings now. Listed first: these are more specific
+      // than the wildcard below, which would otherwise send /bookings/new to a page that no longer exists.
+      { source: "/calendar/new", destination: "/guest-bookings/new", permanent: false },
+      { source: "/bookings/new", destination: "/guest-bookings/new", permanent: false },
+      // The Bookings page is now Calendar. Not permanent, so it can be repointed later.
+      { source: "/bookings/:path*", destination: "/calendar/:path*", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

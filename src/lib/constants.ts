@@ -60,7 +60,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Members", group: "club", href: "/memberships", roles: ["admin", "staff"] },
   { label: "Membership Sessions", group: "club", href: "/membership-sessions", roles: ["admin", "staff"] },
-  { label: "Bookings", group: "main", href: "/bookings", roles: ["admin", "staff", "member"] },
+  { label: "Calendar", group: "main", href: "/calendar", roles: ["admin", "staff", "member"] },
   { label: "Guest Bookings", group: "main", href: "/guest-bookings", roles: ["admin", "staff"] },
   { label: "Guest Players", group: "club", href: "/guests", roles: ["admin", "staff"] },
   {

@@ -28,8 +28,8 @@ describe("routeAction — public booking and membership links", () => {
   });
 
   it("does not treat a lookalike prefix as public", () => {
-    expect(routeAction("/bookings", SIGNED_OUT)).toBe("to-login");
-    expect(routeAction("/bookings/new", SIGNED_OUT)).toBe("to-login");
+    expect(routeAction("/calendar", SIGNED_OUT)).toBe("to-login");
+    expect(routeAction("/guest-bookings/new", SIGNED_OUT)).toBe("to-login");
   });
 });
 

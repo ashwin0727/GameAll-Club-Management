@@ -10,6 +10,7 @@ import {
   CalendarClock,
   CalendarPlus,
   ChevronRight,
+  Loader2,
   Dumbbell,
   Gauge,
   GraduationCap,
@@ -38,9 +39,9 @@ import type {
   RevenueOverview as RevenueOverviewData,
   ScheduleBlock,
   ScheduleBlockType,
-  ScheduleCourtRow,
 } from "@/features/dashboard/types";
 import { useUiStore } from "@/stores/ui-store";
+import { courtsNow, type ActivityStatus, type CourtNow } from "@/features/dashboard/court-activity";
 import { cn, formatCurrencyINR } from "@/lib/utils";
 
 /** The Home page always reports on today. */
@@ -99,16 +100,20 @@ function DashCard({
   children,
   className,
   delay = 0,
+  loading = false,
 }: {
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  /** Dims the card and shows a spinner over it while just this card reloads. */
+  loading?: boolean;
 }) {
   return (
     <Card
-      className={cn("stat-enter flex min-w-0 flex-col p-4", className)}
+      aria-busy={loading || undefined}
+      className={cn("stat-enter relative flex min-w-0 flex-col p-4", className)}
       style={{ "--stat-delay": `${delay}ms` } as React.CSSProperties}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -116,6 +121,11 @@ function DashCard({
         {action}
       </div>
       {children}
+      {loading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-card/60 backdrop-blur-[1px]">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" aria-label="Loading" />
+        </div>
+      )}
     </Card>
   );
 }
@@ -191,43 +201,14 @@ function trendText(kpi: KpiValue, compare: string): { text: string; cls: string 
   };
 }
 
-type ActivityStatus = "live" | "next" | "booked" | "available";
-
-interface CourtNow {
-  court: ScheduleCourtRow;
-  block: ScheduleBlock | null;
-  status: ActivityStatus;
-  /** Until when a live court stays busy, in minutes from midnight. */
-  busyUntil: number | null;
-}
-
-/** Per court: what is on right now, else what is next, else it is free. */
-function courtsNow(courts: ScheduleCourtRow[], nowMinute: number, isToday: boolean): CourtNow[] {
-  let nextClaimed = false;
-  return courts.map((court) => {
-    const sorted = [...court.blocks].sort((a, b) => a.startMinute - b.startMinute);
-    const live = isToday ? sorted.find((b) => b.startMinute <= nowMinute && nowMinute < b.endMinute) : undefined;
-    if (live) return { court, block: live, status: "live", busyUntil: live.endMinute };
-    const upcoming = sorted.find((b) => b.startMinute > (isToday ? nowMinute : -1));
-    if (upcoming) {
-      const status: ActivityStatus = nextClaimed ? "booked" : "next";
-      nextClaimed = true;
-      return { court, block: upcoming, status, busyUntil: null };
-    }
-    return { court, block: null, status: "available", busyUntil: null };
-  });
-}
-
 const STATUS_DOT: Record<ActivityStatus, string> = {
   live: "bg-success",
-  next: "bg-blue-500",
   booked: "bg-blue-500",
   available: "bg-success",
 };
 
 const STATUS_TEXT: Record<ActivityStatus, { label: string; cls: string }> = {
   live: { label: "Live", cls: "text-success" },
-  next: { label: "Next", cls: "text-blue-600 dark:text-blue-400" },
   booked: { label: "Booked", cls: "text-blue-600 dark:text-blue-400" },
   available: { label: "Available", cls: "text-success" },
 };
@@ -237,7 +218,7 @@ function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number })
     <DashCard
       title="Today's Court Activity"
       delay={delay}
-      action={<CardLink href="/bookings">View Calendar</CardLink>}
+      action={<CardLink href="/calendar">View Calendar</CardLink>}
     >
       {rows.length === 0 ? (
         <EmptyNote>No courts configured yet.</EmptyNote>
@@ -304,7 +285,7 @@ function QuickActionsCard({ onGo, delay }: { onGo: (href: string) => void; delay
   return (
     <DashCard title="Quick Actions" delay={delay}>
       <div className="space-y-2">
-        <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/bookings")}>
+        <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/calendar")}>
           <span className="flex items-center gap-2">
             <CalendarPlus className="h-4 w-4" aria-hidden />
             New Booking
@@ -355,7 +336,7 @@ function statusChip(block: ScheduleBlock): { label: string; cls: string } {
 
 function TodaysBookingsCard({ blocks, delay }: { blocks: { block: ScheduleBlock; court: string }[]; delay: number }) {
   return (
-    <DashCard title="Today's Bookings" delay={delay} action={<CardLink href="/bookings">View All</CardLink>}>
+    <DashCard title="Today's Bookings" delay={delay} action={<CardLink href="/calendar">View All</CardLink>}>
       {blocks.length === 0 ? (
         <EmptyNote>No bookings today.</EmptyNote>
       ) : (
@@ -396,7 +377,7 @@ function TodaysBookingsCard({ blocks, delay }: { blocks: { block: ScheduleBlock;
                     </td>
                     <td className="py-2 text-right">
                       <Link
-                        href="/bookings"
+                        href="/calendar"
                         aria-label="Open bookings"
                         className="inline-flex text-muted-foreground hover:text-foreground"
                       >
@@ -488,14 +469,23 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
   // Passing the already-fetched facility through means the summary query
   // doesn't need to look it up again itself, cutting a stage out of what was
   // otherwise a facility-fetch -> summary-fetch waterfall.
-  const { data: summary, isLoading, isError, refetch } = useDashboardSummary(facility ?? null, {
+  const { data: summary, isLoading, isError, isPlaceholderData, refetch } = useDashboardSummary(facility ?? null, {
     // null = the facility's first sport; the dashboard always shows exactly one.
     facilitySportId: activeFacilitySportId,
     preset: PRESET,
     revenueMonthOffset,
   });
 
-  if (facilityLoading || isLoading) {
+  // Only a month change keeps the page up (see the hook); switching sport is a
+  // different dataset, so it still gets the full skeleton rather than briefly
+  // showing the previous sport's numbers.
+  const sportChanging =
+    isPlaceholderData &&
+    activeFacilitySportId !== null &&
+    summary?.selectedFacilitySportId !== activeFacilitySportId;
+  const revenueLoading = isPlaceholderData && !sportChanging;
+
+  if (facilityLoading || isLoading || sportChanging) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-24 w-full rounded-xl" />
@@ -610,7 +600,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           value={String(bookingBlocks.length)}
           sub={isToday ? `${upcomingCount} upcoming` : undefined}
           subClass="text-blue-600 dark:text-blue-400"
-          href="/bookings"
+          href="/calendar"
         />
         <DashKpi
           delay={120}
@@ -668,10 +658,12 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
         <DashCard
           title="Revenue Overview"
           delay={540}
+          loading={revenueLoading}
           action={
             <select
               aria-label="Revenue month"
               value={revenueMonthOffset}
+              disabled={revenueLoading}
               onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
               className="h-7 rounded-md border border-input bg-secondary/60 px-2 text-[11px]"
             >

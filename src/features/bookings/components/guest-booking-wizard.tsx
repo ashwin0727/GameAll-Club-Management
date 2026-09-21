@@ -283,8 +283,8 @@ export function GuestBookingWizard() {
             : "Payment is to be collected offline at the venue."}
         </p>
         <div className="flex justify-center gap-2">
-          <Button type="button" variant="outline" onClick={() => router.push("/bookings")}>
-            Back to Bookings
+          <Button type="button" variant="outline" onClick={() => router.push("/calendar")}>
+            Back to Calendar
           </Button>
           <Button
             type="button"
@@ -312,10 +312,10 @@ export function GuestBookingWizard() {
       <div>
         <button
           type="button"
-          onClick={() => router.push("/bookings")}
+          onClick={() => router.push("/calendar")}
           className="mb-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Bookings
+          <ArrowLeft className="h-4 w-4" /> Calendar
         </button>
         <h1 className="text-2xl font-semibold">Guest Booking</h1>
         <p className="text-sm text-muted-foreground">Book your favorite court in a few simple steps</p>
@@ -651,7 +651,7 @@ export function GuestBookingWizard() {
       {/* Footer nav */}
       <div className="flex items-center justify-between">
         {step === 0 ? (
-          <Button type="button" variant="outline" onClick={() => router.push("/bookings")}>
+          <Button type="button" variant="outline" onClick={() => router.push("/calendar")}>
             Cancel
           </Button>
         ) : (
@@ -664,8 +664,8 @@ export function GuestBookingWizard() {
             Next: {STEPS[step + 1]} <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : paymentState ? (
-          <Button type="button" variant="outline" onClick={() => router.push("/bookings")}>
-            Go to Bookings
+          <Button type="button" variant="outline" onClick={() => router.push("/calendar")}>
+            Go to Calendar
           </Button>
         ) : (
           <Button type="button" onClick={confirm} disabled={submitting || isPaying}>

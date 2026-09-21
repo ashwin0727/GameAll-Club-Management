@@ -38,11 +38,20 @@ export function DateRangePicker({
   to,
   onChange,
   className,
+  triggerClassName,
+  align = "right",
+  fullLabel = false,
 }: {
   from: string;
   to: string;
   onChange: (from: string, to: string) => void;
   className?: string;
+  /** Replaces the default trigger look (height, border, fill). */
+  triggerClassName?: string;
+  /** Which edge the calendar popover hangs from. */
+  align?: "left" | "right";
+  /** "14 Sep 2026 – 20 Sep 2026" instead of "14 Sep – 20 Sep 2026". */
+  fullLabel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => startOfMonth(parseISO(from)));
@@ -100,14 +109,14 @@ export function DateRangePicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex h-9 items-center gap-2 rounded-md border border-input bg-secondary/60 px-3 text-sm"
+        className={triggerClassName ?? "flex h-9 items-center gap-2 rounded-md border border-input bg-secondary/60 px-3 text-sm"}
       >
         <CalendarDays className="h-4 w-4 text-muted-foreground" />
-        {format(fromDate, "dd MMM")} – {format(toDate, "dd MMM yyyy")}
+        {format(fromDate, fullLabel ? "dd MMM yyyy" : "dd MMM")} – {format(toDate, "dd MMM yyyy")}
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-1 w-[280px] rounded-lg border border-border bg-popover p-3 shadow-lg">
+        <div className={cn("absolute z-50 mt-1 w-[280px] rounded-lg border border-border bg-popover p-3 shadow-lg", align === "left" ? "left-0" : "right-0")}>
           <div className="mb-2 flex items-center justify-between">
             <button type="button" onClick={() => setMonth((m) => addMonths(m, -1))} className="rounded p-1 hover:bg-accent">
               ‹

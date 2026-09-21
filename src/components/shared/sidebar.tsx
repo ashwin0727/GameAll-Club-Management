@@ -32,7 +32,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
   "/memberships": Users,
   "/membership-sessions": CalendarCheck2,
-  "/bookings": CalendarClock,
+  "/calendar": CalendarClock,
   "/guest-bookings": CalendarRange,
   "/guests": UserRound,
   "/finance": BadgeIndianRupee,
@@ -46,7 +46,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 
 /**
  * Match the exact path or a real sub-path ("/memberships/new"), never a bare
- * string prefix of a sibling route — "/book" must not light up "/bookings".
+ * string prefix of a sibling route — "/book" must not light up "/bookings" or "/calendar".
  */
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);

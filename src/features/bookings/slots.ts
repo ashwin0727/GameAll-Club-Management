@@ -30,13 +30,13 @@ export function computeAvailableSlots(
   return slots;
 }
 
-interface Window {
+export interface MinuteWindow {
   startMin: number;
   endMin: number;
 }
 
 /** Windows are capped at end-of-day (1440) — bookings may not cross a local calendar day (see 0007_bookings.sql). */
-function windowsForDay(day: OperatingDay): Window[] {
+export function windowsForDay(day: OperatingDay): MinuteWindow[] {
   if (day.isClosed) return [];
   if (day.is24Hours) return [{ startMin: 0, endMin: 1440 }];
 

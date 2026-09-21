@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getBookingService } from "@/services/bookings";
@@ -26,6 +26,7 @@ export function BookingDetailsDialog({
   sportName,
   facilityId,
   onChanged,
+  initialMode = "view",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,8 +35,13 @@ export function BookingDetailsDialog({
   sportName: string;
   facilityId: string;
   onChanged: (booking: Booking) => void;
+  /** Which screen to open on. The bookings list menu opens Reschedule directly. */
+  initialMode?: "view" | "reschedule";
 }) {
-  const [mode, setMode] = useState<"view" | "reschedule">("view");
+  const [mode, setMode] = useState<"view" | "reschedule">(initialMode);
+  useEffect(() => {
+    if (open) setMode(initialMode);
+  }, [open, initialMode]);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -168,7 +174,7 @@ export function BookingDetailsDialog({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <p className="text-xs text-muted-foreground">Customer</p>
-                <p>{booking.customerType === "GUEST" ? `${booking.guestName} (Guest)` : "Member"}</p>
+                <p>{booking.customerType === "GUEST" ? `${booking.guestName} (Guest)` : "Guest booking (existing member)"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Amount</p>
