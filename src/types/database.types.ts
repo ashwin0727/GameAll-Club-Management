@@ -393,8 +393,14 @@ export interface Database {
           id: string;
           facility_id: string;
           name: string;
+          description: string | null;
+          category: string | null;
+          plan_type: "TIME_BASED" | "RECURRING";
           price_inr: number;
           duration_days: number;
+          joining_fee_inr: number | null;
+          security_deposit_inr: number | null;
+          badge_text: string | null;
           features: string[];
           is_active: boolean;
           created_at: string;
@@ -403,8 +409,14 @@ export interface Database {
           id?: string;
           facility_id: string;
           name: string;
+          description?: string | null;
+          category?: string | null;
+          plan_type?: "TIME_BASED" | "RECURRING";
           price_inr: number;
           duration_days: number;
+          joining_fee_inr?: number | null;
+          security_deposit_inr?: number | null;
+          badge_text?: string | null;
           features?: string[];
           is_active?: boolean;
           created_at?: string;
@@ -2543,6 +2555,25 @@ export interface Database {
           spare: number;
         }[];
       };
+      list_member_schedules: {
+        Args: { p_facility_id: string };
+        Returns: {
+          member_id: string;
+          full_name: string;
+          phone: string;
+          status: string;
+          membership_id: string | null;
+          batch_id: string;
+          batch_name: string;
+          court_id: string;
+          court_name: string;
+          facility_sport_id: string;
+          sport_name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+        }[];
+      };
       get_public_signup_batches: {
         Args: { p_facility_id: string; p_plan_id: string };
         Returns: {
@@ -4556,6 +4587,7 @@ export interface Database {
       role: Role;
       facility_role: FacilityRole;
       membership_status: MembershipStatus;
+      membership_plan_type: "TIME_BASED" | "RECURRING";
       payment_status: PaymentStatus;
       booking_status: BookingStatus;
       inventory_txn_type: InventoryTxnType;

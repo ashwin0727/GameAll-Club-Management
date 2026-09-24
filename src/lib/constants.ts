@@ -59,6 +59,18 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Members", group: "club", href: "/memberships", roles: ["admin", "staff"] },
+  {
+    label: "Memberships",
+    group: "club",
+    href: "/memberships/v1",
+    roles: ["admin", "staff"],
+    // "Overview" shares the section's own href — clicking the parent row only expands/collapses
+    // it (see NavSection), so this child is what actually links back to the dashboard itself.
+    children: [
+      { label: "Overview", href: "/memberships/v1" },
+      { label: "Membership Schedule", href: "/memberships/v1/schedule" },
+    ],
+  },
   { label: "Membership Sessions", group: "club", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Calendar", group: "main", href: "/calendar", roles: ["admin", "staff", "member"] },
   { label: "Guest Bookings", group: "main", href: "/guest-bookings", roles: ["admin", "staff"] },

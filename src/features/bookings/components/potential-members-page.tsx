@@ -6,7 +6,7 @@ import { PageHero } from "@/components/shared/page-hero";
 import { GuestProfileDialog } from "@/features/guests/components/guest-profile-dialog";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { SELECT } from "@/features/bookings/components/booking-toolbar";
 import { PaginationControls } from "@/features/bookings/components/pagination-controls";
 import {

@@ -24,6 +24,7 @@ export function SelectField({
   ariaLabel,
   className,
   wrapperClassName,
+  placement = "bottom",
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -32,6 +33,11 @@ export function SelectField({
   /** Classes for the closed field (height, border, padding, text). */
   className?: string;
   wrapperClassName?: string;
+  /**
+   * Which way the list opens. Use "top" where the field sits at the bottom edge of a container
+   * that clips its overflow, since a list opening downward would be cut off there.
+   */
+  placement?: "bottom" | "top";
 }) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -107,7 +113,10 @@ export function SelectField({
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 max-h-64 w-max min-w-full max-w-[320px] overflow-auto rounded-[10px] border border-border bg-white p-1 shadow-lg dark:bg-popover"
+          className={cn(
+            "absolute left-0 z-50 max-h-64 w-max min-w-full max-w-[320px] overflow-auto rounded-[10px] border border-border bg-white p-1 shadow-lg dark:bg-popover",
+            placement === "top" ? "bottom-full mb-1" : "top-full mt-1",
+          )}
         >
           {options.map((o, i) => (
             <li

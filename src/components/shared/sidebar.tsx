@@ -20,6 +20,7 @@ import {
   Dumbbell,
   Trophy,
   Users,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_ITEMS, type NavGroup, type NavItem } from "@/lib/constants";
@@ -31,6 +32,8 @@ import type { PermissionKey } from "@/features/staff/types";
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
   "/memberships": Users,
+  "/memberships/v1": Crown,
+  "/memberships/v1/schedule": CalendarDays,
   "/membership-sessions": CalendarCheck2,
   "/calendar": CalendarClock,
   "/guest-bookings": CalendarRange,
@@ -47,8 +50,15 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 /**
  * Match the exact path or a real sub-path ("/memberships/new"), never a bare
  * string prefix of a sibling route — "/book" must not light up "/bookings" or "/calendar".
+ *
+ * "/memberships/v1" (the Membership Dashboard) is carved out of "/memberships" (the Members
+ * list) the same way: both are top-level nav items sharing a prefix, so only the more specific
+ * one should light up. "Member Schedule" (/memberships/v1/schedule) is carved out of
+ * "/memberships/v1" the same way, so visiting it doesn't also light up "Memberships".
  */
 function isActive(pathname: string, href: string): boolean {
+  if (href === "/memberships" && pathname.startsWith("/memberships/v1")) return false;
+  if (href === "/memberships/v1" && pathname.startsWith("/memberships/v1/")) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

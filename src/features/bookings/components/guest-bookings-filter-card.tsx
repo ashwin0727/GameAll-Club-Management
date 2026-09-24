@@ -3,7 +3,7 @@
 import { Download, Search, X } from "lucide-react";
 import type { BookingStatus } from "@/features/bookings/types";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { SELECT } from "@/features/bookings/components/booking-toolbar";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, Filter, Lightbulb, Mail, Target } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { SELECT } from "@/features/bookings/components/booking-toolbar";
 import type { LastBookingFilter, PotentialFilters } from "@/features/bookings/potential-members";
 import { cn } from "@/lib/utils";

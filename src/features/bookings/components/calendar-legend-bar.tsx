@@ -5,7 +5,7 @@ import {
   EVENT_SHORT_LABEL,
   EVENT_TOGGLE_STYLE,
 } from "@/features/bookings/components/booking-event-style";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { ToggleSwitch } from "@/features/bookings/components/toggle-switch";
 import { SELECT } from "@/features/bookings/components/booking-toolbar";
 import { cn } from "@/lib/utils";

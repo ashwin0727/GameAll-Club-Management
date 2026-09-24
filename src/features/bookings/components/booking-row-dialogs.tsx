@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { formatClock } from "@/features/bookings/components/booking-event-style";
 import { formatCurrency, fromMinorUnits, toMinorUnits } from "@/features/pricing/money";
 import type { Booking } from "@/features/bookings/types";

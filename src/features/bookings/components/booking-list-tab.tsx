@@ -23,7 +23,7 @@ import { parseLocalDate } from "@/features/bookings/list-sources";
 import type { OperatingSchedule } from "@/features/operating-hours/types";
 import { useBookingsList } from "@/features/bookings/hooks/use-bookings-list";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { BookingRowActions } from "@/features/bookings/components/booking-row-actions";
 import {
   BookingTable,

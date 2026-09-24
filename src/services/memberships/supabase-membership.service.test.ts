@@ -375,6 +375,51 @@ describe("SupabaseMembershipService", () => {
       expect(summary).not.toHaveProperty("inactiveMembers");
     });
 
+    it("listMemberSchedules maps the list_member_schedules RPC rows to camelCase", async () => {
+      const rpc = vi.fn(async () => ({
+        error: null,
+        data: [
+          {
+            member_id: "member-1",
+            full_name: "Arun Kumar",
+            phone: "9999999999",
+            status: "ACTIVE",
+            membership_id: "membership-1",
+            batch_id: "batch-1",
+            batch_name: "Batch 3",
+            court_id: "court-1",
+            court_name: "Court 01",
+            facility_sport_id: "sport-1",
+            sport_name: "Badminton",
+            days_of_week: [1, 2, 3, 4, 5],
+            start_time: "07:00:00",
+            end_time: "08:00:00",
+          },
+        ],
+      }));
+      const service = new SupabaseMembershipService({ rpc } as never);
+      const rows = await service.listMemberSchedules("facility-1");
+      expect(rpc).toHaveBeenCalledWith("list_member_schedules", { p_facility_id: "facility-1" });
+      expect(rows).toEqual([
+        {
+          memberId: "member-1",
+          fullName: "Arun Kumar",
+          phone: "9999999999",
+          status: "ACTIVE",
+          membershipId: "membership-1",
+          batchId: "batch-1",
+          batchName: "Batch 3",
+          courtId: "court-1",
+          courtName: "Court 01",
+          facilitySportId: "sport-1",
+          sportName: "Badminton",
+          daysOfWeek: [1, 2, 3, 4, 5],
+          startTime: "07:00:00",
+          endTime: "08:00:00",
+        },
+      ]);
+    });
+
     it("recordMembershipPayment calls the record_membership_payment RPC", async () => {
       const rpc = vi.fn(async () => ({ error: null }));
       const service = new SupabaseMembershipService({ rpc } as never);

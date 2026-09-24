@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { percentDelta, pointsDelta, type StatDelta } from "@/features/bookings/booking-stats";
 import { DateRangePicker } from "@/features/bookings/components/date-range-picker";
-import { SelectField } from "@/features/bookings/components/select-field";
+import { SelectField } from "@/components/shared/select-field";
 import { computeInsights, periodRange, type InsightPeriod } from "@/features/bookings/guest-insights";
 import type { GuestBookingRow } from "@/features/bookings/types";
 import { formatCurrency } from "@/features/pricing/money";
