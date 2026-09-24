@@ -1,11 +1,31 @@
 import type { MembershipStatus, PaymentStatus } from "@/types/database.types";
 
+/**
+ * TIME_BASED — fixed duration, one-time payment; `durationDays` is the membership's length.
+ * RECURRING — auto-renewing; `durationDays` is instead the billing interval (the same number
+ * `create-membership-subscription`'s billingCycle() already turns into a Razorpay plan period).
+ */
+export type MembershipPlanType = "TIME_BASED" | "RECURRING";
+
 export interface MembershipPlan {
   id: string;
   facilityId: string;
   name: string;
+  description: string | null;
+  category: string | null;
+  planType: MembershipPlanType;
   priceInr: number;
   durationDays: number;
+  /** The plan's default one-time joining fee — carried over as a new membership's starting
+   *  registration fee (still editable per member); null when the plan doesn't set one. */
+  joiningFeeInr: number | null;
+  /** The plan's default refundable security deposit; informational only — no dedicated
+   *  membership-level column exists yet to actually collect/track it per member. */
+  securityDepositInr: number | null;
+  /** An owner-set label ("Popular", "Best Deal", ...) shown on the plan card; null when the
+   *  wizard's "Show badge" toggle was off. Takes priority over the computed Most Popular/Best
+   *  Value badges in `planBadges()`. */
+  badgeText: string | null;
   features: string[];
   isActive: boolean;
   createdAt: string;
@@ -14,6 +34,12 @@ export interface MembershipPlan {
 export interface MembershipPlanInput {
   facilityId: string;
   name: string;
+  description?: string;
+  category?: string;
+  planType?: MembershipPlanType;
+  joiningFeeInr?: number | null;
+  securityDepositInr?: number | null;
+  badgeText?: string | null;
   priceInr: number;
   durationDays: number;
   features?: string[];
@@ -144,6 +170,30 @@ export interface AssignableBatch {
   capacity: number;
   enrolledCount: number;
   spare: number;
+}
+
+/**
+ * One (member, batch) pairing from `list_member_schedules` — the Manage Member Schedule page's
+ * source data. A member enrolled in two non-adjacent time ranges (two batches) gets two rows;
+ * the page groups these by memberId.
+ */
+export interface MemberScheduleRow {
+  memberId: string;
+  fullName: string;
+  phone: string;
+  status: string;
+  /** The membership this batch assignment was made under — null for an older assignment made
+   *  before memberships were linked to batch enrolment. Used to deep-link "Edit Schedule". */
+  membershipId: string | null;
+  batchId: string;
+  batchName: string;
+  courtId: string;
+  courtName: string;
+  facilitySportId: string;
+  sportName: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
 }
 
 export interface PublicSignupBatch {

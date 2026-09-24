@@ -15,6 +15,7 @@ import type {
   MembershipPlanInput,
   MembershipRevenuePoint,
   MembershipSubscriptionInfo,
+  MemberScheduleRow,
   MemberStats,
   RevenueGranularity,
 } from "@/features/memberships/types";
@@ -58,6 +59,10 @@ export interface MembershipService {
   getMembershipDetail(membershipId: string): Promise<MembershipDetail>;
   /** Starts (or reuses) a Razorpay Subscription for recurring UPI AutoPay on this membership. */
   createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo>;
+  /** Cancels this membership's Razorpay Subscription (if any) so its payment link/mandate stops
+   *  working — used when the member ends up paying a different way after a link was generated.
+   *  A no-op, not an error, when there's no subscription or it's already cancelled. */
+  cancelMembershipSubscription(membershipId: string): Promise<void>;
   /** Membership revenue actually received, bucketed by day / month / year. */
   getMembershipRevenueTimeseries(
     facilityId: string,
@@ -66,6 +71,9 @@ export interface MembershipService {
   ): Promise<MembershipRevenuePoint[]>;
   /** Time-slot batches with current roster counts, for assigning a membership to a per-hour slot. */
   listAssignableBatches(facilityId: string, planId?: string): Promise<AssignableBatch[]>;
+  /** Every member with a dedicated court slot, one row per (member, batch) — the Manage Member
+   *  Schedule page's source data. */
+  listMemberSchedules(facilityId: string): Promise<MemberScheduleRow[]>;
   /** Places a member into a batch (per-hour slot); throws when the slot is full. */
   assignMembershipToBatch(batchId: string, memberId: string, membershipId: string): Promise<void>;
   cancelMembership(membershipId: string): Promise<Membership>;

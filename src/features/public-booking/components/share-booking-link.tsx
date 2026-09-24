@@ -22,7 +22,7 @@ import {
  * shown are always correct for whatever host this is served from — local,
  * staging or production.
  */
-export function ShareBookingLink({ facilityId }: { facilityId: string }) {
+export function ShareBookingLink({ facilityId, triggerClassName }: { facilityId: string; triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<"link" | "embed" | null>(null);
 
@@ -42,7 +42,7 @@ export function ShareBookingLink({ facilityId }: { facilityId: string }) {
 
   return (
     <>
-      <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
+      <Button type="button" size="sm" variant="outline" className={triggerClassName} onClick={() => setOpen(true)}>
         <Share2 className="mr-1.5 h-4 w-4" /> Share booking page
       </Button>
 

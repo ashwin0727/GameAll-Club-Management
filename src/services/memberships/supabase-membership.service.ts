@@ -20,6 +20,7 @@ import type {
   MembershipPlanInput,
   MembershipRevenuePoint,
   MembershipSubscriptionInfo,
+  MemberScheduleRow,
   MemberStats,
   RevenueGranularity,
 } from "@/features/memberships/types";
@@ -63,8 +64,14 @@ function toPlan(row: PlanRow): MembershipPlan {
     id: row.id,
     facilityId: row.facility_id,
     name: row.name,
+    description: row.description ?? null,
+    category: row.category ?? null,
+    planType: (row.plan_type ?? "TIME_BASED") as MembershipPlan["planType"],
     priceInr: row.price_inr,
     durationDays: row.duration_days,
+    joiningFeeInr: row.joining_fee_inr ?? null,
+    securityDepositInr: row.security_deposit_inr ?? null,
+    badgeText: row.badge_text ?? null,
     features: row.features ?? [],
     isActive: row.is_active,
     createdAt: row.created_at,
@@ -205,8 +212,14 @@ export class SupabaseMembershipService implements MembershipService {
       .insert({
         facility_id: input.facilityId,
         name: input.name,
+        description: input.description ?? null,
+        category: input.category ?? null,
+        plan_type: input.planType ?? "TIME_BASED",
         price_inr: input.priceInr,
         duration_days: input.durationDays,
+        joining_fee_inr: input.joiningFeeInr ?? null,
+        security_deposit_inr: input.securityDepositInr ?? null,
+        badge_text: input.badgeText ?? null,
         features: input.features ?? [],
       })
       .select("*")
@@ -223,6 +236,12 @@ export class SupabaseMembershipService implements MembershipService {
   ): Promise<MembershipPlan> {
     const update: Database["public"]["Tables"]["membership_plans"]["Update"] = {};
     if (patch.name !== undefined) update.name = patch.name;
+    if (patch.description !== undefined) update.description = patch.description;
+    if (patch.category !== undefined) update.category = patch.category;
+    if (patch.planType !== undefined) update.plan_type = patch.planType;
+    if (patch.joiningFeeInr !== undefined) update.joining_fee_inr = patch.joiningFeeInr;
+    if (patch.securityDepositInr !== undefined) update.security_deposit_inr = patch.securityDepositInr;
+    if (patch.badgeText !== undefined) update.badge_text = patch.badgeText;
     if (patch.priceInr !== undefined) update.price_inr = patch.priceInr;
     if (patch.durationDays !== undefined) update.duration_days = patch.durationDays;
     if (patch.features !== undefined) update.features = patch.features;
@@ -366,6 +385,15 @@ export class SupabaseMembershipService implements MembershipService {
     return { subscriptionId: data.subscriptionId, shortUrl: data.shortUrl, keyId: data.keyId };
   }
 
+  async cancelMembershipSubscription(membershipId: string): Promise<void> {
+    const { data, error } = await this.supabase.functions.invoke<{ cancelled: boolean } | { error: string }>(
+      "cancel-membership-subscription",
+      { body: { membershipId } },
+    );
+    if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+    if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+  }
+
   async getMembershipRevenueTimeseries(
     facilityId: string,
     granularity: RevenueGranularity,
@@ -479,6 +507,27 @@ export class SupabaseMembershipService implements MembershipService {
       capacity: row.capacity,
       enrolledCount: row.enrolled_count,
       spare: row.spare,
+    }));
+  }
+
+  async listMemberSchedules(facilityId: string): Promise<MemberScheduleRow[]> {
+    const { data, error } = await this.supabase.rpc("list_member_schedules", { p_facility_id: facilityId });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((row) => ({
+      memberId: row.member_id,
+      fullName: row.full_name,
+      phone: row.phone,
+      status: row.status,
+      membershipId: row.membership_id,
+      batchId: row.batch_id,
+      batchName: row.batch_name,
+      courtId: row.court_id,
+      courtName: row.court_name,
+      facilitySportId: row.facility_sport_id,
+      sportName: row.sport_name,
+      daysOfWeek: row.days_of_week,
+      startTime: row.start_time,
+      endTime: row.end_time,
     }));
   }
 
