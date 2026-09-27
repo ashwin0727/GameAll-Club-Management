@@ -1283,12 +1283,22 @@ export interface Database {
           hourly_rate_minor: number | null;
           status: "ACTIVE" | "INACTIVE" | "ON_LEAVE";
           joined_on: string | null;
+          expertise_levels: string[];
+          default_session_duration_minutes: number | null;
+          date_of_birth: string | null;
+          rating: number | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: { facility_id: string; user_id: string };
         Update: Partial<Database["public"]["Tables"]["coaches"]["Insert"]>;
+        Relationships: [];
+      };
+      coach_sports: {
+        Row: { coach_id: string; facility_id: string; facility_sport_id: string; created_at: string };
+        Insert: { coach_id: string; facility_id: string; facility_sport_id: string };
+        Update: Partial<Database["public"]["Tables"]["coach_sports"]["Insert"]>;
         Relationships: [];
       };
       coach_availability: {
@@ -1336,7 +1346,26 @@ export interface Database {
           session_count: number | null;
           default_price_minor: number | null;
           is_membership_included: boolean;
-          status: "ACTIVE" | "INACTIVE";
+          status: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" | "INACTIVE";
+          image_url: string | null;
+          program_type: "GROUP" | "ONE_ON_ONE" | "TRIAL";
+          min_capacity: number | null;
+          program_structure: string[];
+          session_format: string | null;
+          sessions_per_week: number | null;
+          start_date: string | null;
+          end_date: string | null;
+          payment_mode: "OFFLINE" | "ONLINE" | "BOTH";
+          early_bird_discount_minor: number | null;
+          discount_valid_till: string | null;
+          tax_percent: number | null;
+          payment_notes: string | null;
+          allow_waitlist: boolean;
+          allow_trial_session: boolean;
+          auto_enroll_next_batch: boolean;
+          send_notifications: boolean;
+          visible_in_booking: boolean;
+          enrollment_deadline: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -1345,11 +1374,41 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["coaching_programs"]["Insert"]>;
         Relationships: [];
       };
-      coaching_sessions: {
+      coaching_program_batches: {
         Row: {
           id: string;
           facility_id: string;
           program_id: string;
+          court_id: string;
+          coach_id: string | null;
+          name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          status: "ACTIVE" | "INACTIVE";
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          facility_id: string;
+          program_id: string;
+          court_id: string;
+          name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["coaching_program_batches"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_sessions: {
+        Row: {
+          id: string;
+          facility_id: string;
+          program_id: string | null;
           coach_id: string;
           court_id: string;
           start_at: string;
@@ -1366,6 +1425,15 @@ export interface Database {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          title: string | null;
+          description: string | null;
+          level: string | null;
+          facility_sport_id: string | null;
+          session_type: "GROUP" | "ONE_ON_ONE" | "TRIAL";
+          price_per_student_minor: number | null;
+          visible_for_booking: boolean;
+          send_notification: boolean;
+          allow_waitlist: boolean;
         };
         Insert: {
           facility_id: string;
@@ -1411,6 +1479,7 @@ export interface Database {
           updated_at: string;
           cancelled_at: string | null;
           cancel_reason: string | null;
+          batch_id: string | null;
         };
         Insert: { facility_id: string; member_id: string; program_id: string };
         Update: Partial<Database["public"]["Tables"]["coaching_enrollments"]["Insert"]>;
@@ -2246,7 +2315,15 @@ export interface Database {
         Returns: undefined;
       };
       update_staff_profile: {
-        Args: { p_facility_id: string; p_user_id: string; p_title?: string | null; p_notes?: string | null };
+        Args: {
+          p_facility_id: string;
+          p_user_id: string;
+          p_title?: string | null;
+          p_notes?: string | null;
+          p_full_name?: string | null;
+          p_phone?: string | null;
+          p_avatar_url?: string | null;
+        };
         Returns: undefined;
       };
       add_facility_access: {
@@ -4274,6 +4351,10 @@ export interface Database {
           p_hourly_rate_minor?: number | null;
           p_status?: string;
           p_joined_on?: string | null;
+          p_sport_ids?: string[] | null;
+          p_expertise_levels?: string[] | null;
+          p_default_session_duration_minutes?: number | null;
+          p_date_of_birth?: string | null;
         };
         Returns: Database["public"]["Tables"]["coaches"]["Row"];
       };
@@ -4287,6 +4368,11 @@ export interface Database {
           p_hourly_rate_minor?: number | null;
           p_status?: string | null;
           p_joined_on?: string | null;
+          p_sport_ids?: string[] | null;
+          p_expertise_levels?: string[] | null;
+          p_default_session_duration_minutes?: number | null;
+          p_date_of_birth?: string | null;
+          p_rating?: number | null;
         };
         Returns: Database["public"]["Tables"]["coaches"]["Row"];
       };
@@ -4318,6 +4404,64 @@ export interface Database {
           p_session_count?: number | null;
           p_default_price_minor?: number | null;
           p_is_membership_included?: boolean;
+          p_image_url?: string | null;
+          p_program_type?: string;
+          p_min_capacity?: number | null;
+          p_program_structure?: string[];
+          p_session_format?: string | null;
+          p_sessions_per_week?: number | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_payment_mode?: string;
+          p_early_bird_discount_minor?: number | null;
+          p_discount_valid_till?: string | null;
+          p_tax_percent?: number | null;
+          p_payment_notes?: string | null;
+          p_allow_waitlist?: boolean;
+          p_allow_trial_session?: boolean;
+          p_auto_enroll_next_batch?: boolean;
+          p_send_notifications?: boolean;
+          p_visible_in_booking?: boolean;
+          p_enrollment_deadline?: string | null;
+          p_status?: string;
+        };
+        Returns: Database["public"]["Tables"]["coaching_programs"]["Row"];
+      };
+      create_coaching_program_full: {
+        Args: {
+          p_facility_id: string;
+          p_name: string;
+          p_level?: string;
+          p_age_group?: string;
+          p_category?: string;
+          p_description?: string | null;
+          p_facility_sport_id?: string | null;
+          p_default_duration_minutes?: number;
+          p_default_capacity?: number;
+          p_session_count?: number | null;
+          p_default_price_minor?: number | null;
+          p_is_membership_included?: boolean;
+          p_image_url?: string | null;
+          p_program_type?: string;
+          p_min_capacity?: number | null;
+          p_program_structure?: string[];
+          p_session_format?: string | null;
+          p_sessions_per_week?: number | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_payment_mode?: string;
+          p_early_bird_discount_minor?: number | null;
+          p_discount_valid_till?: string | null;
+          p_tax_percent?: number | null;
+          p_payment_notes?: string | null;
+          p_allow_waitlist?: boolean;
+          p_allow_trial_session?: boolean;
+          p_auto_enroll_next_batch?: boolean;
+          p_send_notifications?: boolean;
+          p_visible_in_booking?: boolean;
+          p_enrollment_deadline?: string | null;
+          p_status?: string;
+          p_batches?: unknown;
         };
         Returns: Database["public"]["Tables"]["coaching_programs"]["Row"];
       };
@@ -4336,13 +4480,93 @@ export interface Database {
           p_default_price_minor?: number | null;
           p_is_membership_included?: boolean | null;
           p_status?: string | null;
+          p_image_url?: string | null;
+          p_program_type?: string | null;
+          p_min_capacity?: number | null;
+          p_program_structure?: string[] | null;
+          p_session_format?: string | null;
+          p_sessions_per_week?: number | null;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_payment_mode?: string | null;
+          p_early_bird_discount_minor?: number | null;
+          p_discount_valid_till?: string | null;
+          p_tax_percent?: number | null;
+          p_payment_notes?: string | null;
+          p_allow_waitlist?: boolean | null;
+          p_allow_trial_session?: boolean | null;
+          p_auto_enroll_next_batch?: boolean | null;
+          p_send_notifications?: boolean | null;
+          p_visible_in_booking?: boolean | null;
+          p_enrollment_deadline?: string | null;
         };
         Returns: Database["public"]["Tables"]["coaching_programs"]["Row"];
+      };
+      create_coaching_program_batch: {
+        Args: {
+          p_program_id: string;
+          p_court_id: string;
+          p_name: string;
+          p_days_of_week: number[];
+          p_start_time: string;
+          p_end_time: string;
+          p_capacity: number;
+          p_coach_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_program_batches"]["Row"];
+      };
+      update_coaching_program_batch: {
+        Args: {
+          p_batch_id: string;
+          p_name?: string | null;
+          p_court_id?: string | null;
+          p_coach_id?: string | null;
+          p_days_of_week?: number[] | null;
+          p_start_time?: string | null;
+          p_end_time?: string | null;
+          p_capacity?: number | null;
+          p_status?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["coaching_program_batches"]["Row"];
+      };
+      delete_coaching_program_batch: { Args: { p_batch_id: string }; Returns: undefined };
+      list_coaching_program_batches: {
+        Args: { p_program_id: string };
+        Returns: {
+          id: string;
+          court_id: string;
+          court_name: string;
+          coach_id: string | null;
+          coach_name: string | null;
+          name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          enrolled_count: number;
+          status: string;
+        }[];
+      };
+      list_active_coaching_batches_with_students: {
+        Args: { p_facility_id: string };
+        Returns: {
+          id: string;
+          program_id: string;
+          program_name: string;
+          batch_name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          court_name: string;
+          coach_name: string | null;
+          enrolled_count: number;
+          capacity: number;
+        }[];
       };
       create_coaching_session: {
         Args: {
           p_facility_id: string;
-          p_program_id: string;
+          p_program_id?: string | null;
           p_coach_id: string;
           p_court_id: string;
           p_start_at: string;
@@ -4352,6 +4576,15 @@ export interface Database {
           p_objective?: string | null;
           p_status?: string;
           p_auto_enroll?: boolean;
+          p_title?: string | null;
+          p_description?: string | null;
+          p_level?: string | null;
+          p_facility_sport_id?: string | null;
+          p_session_type?: string;
+          p_price_per_student_minor?: number | null;
+          p_visible_for_booking?: boolean;
+          p_send_notification?: boolean;
+          p_allow_waitlist?: boolean;
         };
         Returns: Database["public"]["Tables"]["coaching_sessions"]["Row"];
       };
@@ -4397,6 +4630,7 @@ export interface Database {
           p_price_minor?: number | null;
           p_pricing_type?: string | null;
           p_notes?: string | null;
+          p_batch_id?: string | null;
         };
         Returns: Database["public"]["Tables"]["coaching_enrollments"]["Row"];
       };
@@ -4437,6 +4671,7 @@ export interface Database {
       };
       delete_progress_note: { Args: { p_note_id: string }; Returns: undefined };
       get_coaching_overview: { Args: { p_facility_id: string }; Returns: Record<string, unknown> };
+      get_coaching_insights: { Args: { p_facility_id: string; p_days?: number }; Returns: Record<string, unknown> };
       list_coaches: {
         Args: {
           p_facility_id: string;
@@ -4445,6 +4680,8 @@ export interface Database {
           p_specialization?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_sport_id?: string | null;
+          p_sort?: string;
         };
         Returns: {
           id: string;
@@ -4456,6 +4693,9 @@ export interface Database {
           specialization: string | null;
           experience_years: number | null;
           status: "ACTIVE" | "INACTIVE" | "ON_LEAVE";
+          expertise_levels: string[];
+          rating: number | null;
+          sports: { id: string; name: string }[];
           program_count: number;
           session_count: number;
           student_count: number;
@@ -4465,7 +4705,14 @@ export interface Database {
       get_coach: { Args: { p_coach_id: string }; Returns: Record<string, unknown> };
       list_coach_candidates: {
         Args: { p_facility_id: string };
-        Returns: { user_id: string; full_name: string; email: string | null; title: string | null }[];
+        Returns: {
+          user_id: string;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          avatar_url: string | null;
+          title: string | null;
+        }[];
       };
       list_coach_options: {
         Args: { p_facility_id: string };
@@ -4478,6 +4725,9 @@ export interface Database {
           p_status?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_facility_sport_id?: string | null;
+          p_program_type?: string | null;
+          p_level?: string | null;
         };
         Returns: {
           id: string;
@@ -4490,12 +4740,20 @@ export interface Database {
           session_count: number | null;
           default_price_minor: number | null;
           is_membership_included: boolean;
-          status: "ACTIVE" | "INACTIVE";
+          status: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" | "INACTIVE";
+          image_url: string | null;
+          program_type: "GROUP" | "ONE_ON_ONE" | "TRIAL";
+          sports_per_week: number | null;
           student_count: number;
           scheduled_session_count: number;
+          batch_count: number;
+          facility_sport_id: string | null;
+          start_date: string | null;
+          end_date: string | null;
           total_count: number;
         }[];
       };
+      get_program_insights: { Args: { p_facility_id: string }; Returns: Record<string, unknown> };
       get_coaching_program: { Args: { p_program_id: string }; Returns: Record<string, unknown> };
       list_coaching_program_options: {
         Args: { p_facility_id: string };
@@ -4523,7 +4781,7 @@ export interface Database {
         };
         Returns: {
           id: string;
-          program_id: string;
+          program_id: string | null;
           program_name: string;
           coach_id: string;
           coach_name: string;
@@ -4534,6 +4792,7 @@ export interface Database {
           capacity: number;
           enrolled_count: number;
           status: "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+          session_type: "GROUP" | "ONE_ON_ONE" | "TRIAL";
           total_count: number;
         }[];
       };
@@ -4546,15 +4805,21 @@ export interface Database {
           p_status?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_coach_id?: string | null;
+          p_level?: string | null;
         };
         Returns: {
           id: string;
           member_id: string;
           student_name: string;
           student_phone: string | null;
+          student_age: number | null;
           program_id: string;
           program_name: string;
+          program_level: string;
+          coach_id: string | null;
           coach_name: string | null;
+          coach_avatar_url: string | null;
           start_date: string;
           end_date: string | null;
           sessions_total: number | null;
@@ -4562,6 +4827,8 @@ export interface Database {
           paid_minor: number;
           status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
           payment_status: "INCLUDED" | "PAID" | "PARTIAL" | "PENDING";
+          batch_id: string | null;
+          batch_name: string | null;
           total_count: number;
         }[];
       };

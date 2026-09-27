@@ -81,4 +81,33 @@ describe("SupabaseStaffService", () => {
     const rpc = vi.fn(async () => ({ data: null, error: { message: "boom" } }));
     await expect(new SupabaseStaffService({ rpc } as never).listRoles("f1")).rejects.toThrow(ServiceError);
   });
+
+  it("uploadAvatar uploads to the caller's own folder and returns the public URL", async () => {
+    const upload = vi.fn(async () => ({ error: null }));
+    const getPublicUrl = vi.fn(() => ({ data: { publicUrl: "https://cdn.example/avatars/owner-1/x-photo.png" } }));
+    const from = vi.fn(() => ({ upload, getPublicUrl }));
+    const getUser = vi.fn(async () => ({ data: { user: { id: "owner-1" } } }));
+    const service = new SupabaseStaffService({ storage: { from }, auth: { getUser } } as never);
+
+    const file = new File(["bytes"], "photo.png", { type: "image/png" });
+    const url = await service.uploadAvatar(file);
+
+    expect(from).toHaveBeenCalledWith("avatars");
+    expect(upload).toHaveBeenCalledWith(expect.stringMatching(/^owner-1\/.+-photo\.png$/), file, { contentType: "image/png" });
+    expect(url).toBe("https://cdn.example/avatars/owner-1/x-photo.png");
+  });
+
+  it("uploadAvatar throws a ServiceError when there is no signed-in user", async () => {
+    const getUser = vi.fn(async () => ({ data: { user: null } }));
+    const service = new SupabaseStaffService({ auth: { getUser } } as never);
+    await expect(service.uploadAvatar(new File(["x"], "a.png"))).rejects.toThrow(ServiceError);
+  });
+
+  it("uploadAvatar throws a ServiceError when the storage upload fails", async () => {
+    const upload = vi.fn(async () => ({ error: { message: "denied" } }));
+    const from = vi.fn(() => ({ upload }));
+    const getUser = vi.fn(async () => ({ data: { user: { id: "owner-1" } } }));
+    const service = new SupabaseStaffService({ storage: { from }, auth: { getUser } } as never);
+    await expect(service.uploadAvatar(new File(["x"], "a.png"))).rejects.toThrow(ServiceError);
+  });
 });

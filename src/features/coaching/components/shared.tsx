@@ -1,5 +1,7 @@
 "use client";
 
+import type { WheelEvent } from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -255,4 +257,35 @@ export function isoToLocal(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** A pill toggle — filled + removable-X when selected, outline when not. Used anywhere a small,
+ *  fixed set of options is toggled all at once instead of behind a dropdown (Add Coach's
+ *  Sports/Expertise, the program wizard's Highlights/Structure/Days). */
+export function Chip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+        selected
+          ? "border-success/40 bg-success/15 text-success"
+          : "border-input text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+      )}
+    >
+      {selected ? <X className="h-3.5 w-3.5" aria-hidden /> : null}
+      {label}
+    </button>
+  );
+}
+
+/** No spinner arrows on a number input, e.g. digit counts nobody increments one click at a time. */
+export const NO_SPINNER_INPUT = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
+/** Blurs on wheel so scrolling the page over a focused number input doesn't change its value
+ *  (browsers do this regardless of hidden spinner arrows; `preventDefault` doesn't work since
+ *  wheel listeners are passive by default). */
+export function blurOnWheel(e: WheelEvent<HTMLInputElement>) {
+  e.currentTarget.blur();
 }

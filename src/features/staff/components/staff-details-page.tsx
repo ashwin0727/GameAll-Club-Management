@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Power, ShieldCheck, UserCog } from "lucide-react";
+import { Camera, ChevronRight, Pencil, Power, ShieldCheck, UserCog } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 import { fmtDate, initials, statusBadge } from "@/features/staff/components/staff-page";
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from "@/features/coaching/components/use-add-coach-form";
 import type { Permission, RoleRow, StaffDetail } from "@/features/staff/types";
 
 const TABS = ["Overview", "Access & Permissions", "Activity", "Notes"] as const;
@@ -43,6 +45,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
   const [changeRole, setChangeRole] = useState(false);
   const [nextRoleId, setNextRoleId] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -146,6 +149,9 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
       </Card>
 
       <div className="flex flex-wrap gap-3">
+        {perms.can("USERS_EDIT") && (
+          <QuickAction icon={Pencil} label="Edit Profile" onClick={() => setEditingProfile(true)} />
+        )}
         {canManageRoles && (
           <QuickAction icon={UserCog} label="Change Role" onClick={() => (setNextRoleId(a?.roleId ?? roles.find((r) => r.key === a?.baseRole)?.id ?? ""), setChangeRole(true))} />
         )}
@@ -329,7 +335,131 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {editingProfile && (
+        <EditProfileDialog
+          facilityId={facilityId!}
+          detail={detail}
+          onClose={() => setEditingProfile(false)}
+          onSaved={() => {
+            setEditingProfile(false);
+            void load();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Full Name / Phone / Photo only — email is the Supabase Auth login credential and isn't
+ *  editable from a plain profile patch. */
+function EditProfileDialog({
+  facilityId,
+  detail,
+  onClose,
+  onSaved,
+}: {
+  facilityId: string;
+  detail: StaffDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [fullName, setFullName] = useState(detail.fullName);
+  const [phone, setPhone] = useState(detail.phone ?? "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(detail.avatarUrl);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function pickAvatar(file: File | undefined) {
+    if (!file) return;
+    setAvatarError(null);
+    if (!AVATAR_ACCEPT.includes(file.type)) {
+      setAvatarError("Please choose a JPG, PNG or WEBP image.");
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      setAvatarError("That photo is larger than 2MB.");
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview((prev) => {
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        setUploadingAvatar(true);
+        try {
+          avatarUrl = await getStaffService().uploadAvatar(avatarFile);
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+      await getStaffService().updateProfile(facilityId, detail.userId, {
+        fullName: fullName.trim() || null,
+        phone: phone.trim() || null,
+        avatarUrl,
+      });
+      onSaved();
+    } catch (e) {
+      setError(e instanceof ServiceError ? e.message : "Could not save changes.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit profile</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-14 w-14">
+              {avatarPreview && <AvatarImage src={avatarPreview} alt="" />}
+              <AvatarFallback>
+                <Camera className="h-5 w-5 text-muted-foreground" aria-hidden />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <input ref={avatarInputRef} type="file" accept={AVATAR_ACCEPT.join(",")} className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0])} />
+              <Button type="button" size="sm" variant="outline" onClick={() => avatarInputRef.current?.click()}>
+                Change Photo
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">JPG, PNG (Max 2MB)</p>
+              {avatarError && <p className="mt-1 text-xs text-destructive">{avatarError}</p>}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Full Name</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Phone</Label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={busy} onClick={() => void save()}>
+            {busy ? (uploadingAvatar ? "Uploading photo…" : "Saving…") : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

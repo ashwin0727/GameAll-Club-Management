@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,10 +19,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
-import type { CoachAvailabilityWindow, CoachDetail, CoachStatus } from "@/features/coaching/types";
+import { CoachAvailabilityEditor, validateAvailabilityWindows } from "@/features/coaching/components/coach-availability-editor";
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES, DURATION_OPTIONS } from "@/features/coaching/components/use-add-coach-form";
+import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
+import { COACH_EXPERTISE_LEVELS, type CoachAvailabilityWindow, type CoachDetail, type CoachStatus } from "@/features/coaching/types";
 import {
-  DAY_LABELS,
+  Chip,
   ErrorState,
   PageHeader,
   TableSkeleton,
@@ -31,9 +36,6 @@ import {
   fmtDate,
   fmtDateTime,
   initials,
-  minorToRupees,
-  money,
-  rupeesToMinor,
   sessionStatusBadge,
 } from "@/features/coaching/components/shared";
 
@@ -129,11 +131,16 @@ export function CoachDetailsPage({ coachId }: { coachId: string }) {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="p-4">
             <h3 className="text-sm font-semibold">About</h3>
+            {/* Only what the Add Coach wizard actually collects — a field it never asks for
+             *  (e.g. specialization, hourly rate) has nothing real to show and stays hidden
+             *  rather than rendering as a permanent "—". */}
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <Row label="Specialization" value={c.specialization ?? "—"} />
-              <Row label="Experience" value={c.experienceYears != null ? `${c.experienceYears} years` : "—"} />
-              <Row label="Certifications" value={c.certifications ?? "—"} />
-              <Row label="Hourly rate" value={c.hourlyRateMinor != null ? `${money(c.hourlyRateMinor)} / hour` : "—"} />
+              {c.sports.length > 0 && <Row label="Sports" value={c.sports.map((s) => s.name).join(", ")} />}
+              {c.expertiseLevels.length > 0 && <Row label="Expertise Level" value={c.expertiseLevels.join(", ")} />}
+              {c.experienceYears != null && <Row label="Experience" value={`${c.experienceYears} years`} />}
+              {c.defaultSessionDurationMinutes != null && <Row label="Default Session Duration" value={`${c.defaultSessionDurationMinutes} minutes`} />}
+              {c.certifications && <Row label="Certifications" value={c.certifications} />}
+              {c.dateOfBirth && <Row label="Date of Birth" value={fmtDate(c.dateOfBirth)} />}
               <Row label="Joined" value={fmtDate(c.joinedOn)} />
             </dl>
           </Card>
@@ -269,14 +276,13 @@ function AvailabilityTab({
   async function save() {
     setBusy(true);
     setError(null);
+    const validation = validateAvailabilityWindows(windows);
+    if (validation) {
+      setError(validation);
+      setBusy(false);
+      return;
+    }
     try {
-      for (const w of windows) {
-        if (w.endTime <= w.startTime) {
-          setError("Every window's end time must be after its start time.");
-          setBusy(false);
-          return;
-        }
-      }
       await getCoachingService().setCoachAvailability(coach.id, windows);
       setDirty(false);
       onSaved();
@@ -294,56 +300,12 @@ function AvailabilityTab({
         Sessions can only be scheduled inside these windows, in the facility&apos;s timezone.
       </p>
 
-      <div className="mt-3 space-y-2">
-        {windows.length === 0 && <p className="text-sm text-muted-foreground">No availability set.</p>}
-        {windows.map((w, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-2">
-            <Select
-              value={String(w.dayOfWeek)}
-              onValueChange={(v) => set(windows.map((x, j) => (j === i ? { ...x, dayOfWeek: Number(v) } : x)))}
-            >
-              <SelectTrigger className="w-[7rem]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DAY_LABELS.map((d, di) => (
-                  <SelectItem key={di} value={String(di)}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="time"
-              className="w-[8rem]"
-              value={w.startTime.slice(0, 5)}
-              onChange={(e) => set(windows.map((x, j) => (j === i ? { ...x, startTime: e.target.value } : x)))}
-            />
-            <span className="text-muted-foreground">–</span>
-            <Input
-              type="time"
-              className="w-[8rem]"
-              value={w.endTime.slice(0, 5)}
-              onChange={(e) => set(windows.map((x, j) => (j === i ? { ...x, endTime: e.target.value } : x)))}
-            />
-            {canManage && (
-              <Button variant="ghost" size="sm" onClick={() => set(windows.filter((_, j) => j !== i))}>
-                Remove
-              </Button>
-            )}
-          </div>
-        ))}
+      <div className="mt-3">
+        <CoachAvailabilityEditor windows={windows} onChange={set} readOnly={!canManage} />
       </div>
 
       {canManage && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => set([...windows, { dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }])}
-          >
-            Add window
-          </Button>
           <Button size="sm" disabled={busy || !dirty} onClick={() => void save()}>
             {busy ? "Saving…" : "Save availability"}
           </Button>
@@ -372,6 +334,9 @@ function AvailabilityTab({
   );
 }
 
+/** Mirrors the Add Coach wizard's own field set exactly — this dialog edits the same attributes
+ *  it collects (sports, expertise, experience, session duration, certifications, bio, date of
+ *  birth, status), not the old free-text specialization/hourly-rate fields that wizard dropped. */
 function EditCoachDialog({
   coach,
   onClose,
@@ -381,25 +346,79 @@ function EditCoachDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [specialization, setSpecialization] = useState(coach.specialization ?? "");
+  const perms = usePermissionContext();
+  const sportsQuery = useFacilitySportOptions(perms?.facilityId ?? undefined);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const [fullName, setFullName] = useState(coach.fullName);
+  const [phone, setPhone] = useState(coach.phone ?? "");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(coach.avatarUrl);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const [sportIds, setSportIds] = useState<string[]>(coach.sports.map((s) => s.id));
+  const [expertiseLevels, setExpertiseLevels] = useState<string[]>(coach.expertiseLevels);
   const [experience, setExperience] = useState(coach.experienceYears != null ? String(coach.experienceYears) : "");
+  const isPreset = coach.defaultSessionDurationMinutes != null && DURATION_OPTIONS.some((d) => d.value === String(coach.defaultSessionDurationMinutes));
+  const [duration, setDuration] = useState(coach.defaultSessionDurationMinutes == null ? "60" : isPreset ? String(coach.defaultSessionDurationMinutes) : "custom");
+  const [customDuration, setCustomDuration] = useState(!isPreset && coach.defaultSessionDurationMinutes != null ? String(coach.defaultSessionDurationMinutes) : "");
   const [certifications, setCertifications] = useState(coach.certifications ?? "");
   const [bio, setBio] = useState(coach.bio ?? "");
-  const [hourlyRate, setHourlyRate] = useState(minorToRupees(coach.hourlyRateMinor));
+  const [dateOfBirth, setDateOfBirth] = useState(coach.dateOfBirth ?? "");
   const [status, setStatus] = useState<CoachStatus>(coach.status);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function toggle(list: string[], setList: (v: string[]) => void, value: string) {
+    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  function pickAvatar(file: File | undefined) {
+    if (!file) return;
+    setAvatarError(null);
+    if (!AVATAR_ACCEPT.includes(file.type)) {
+      setAvatarError("Please choose a JPG, PNG or WEBP image.");
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      setAvatarError("That photo is larger than 2MB.");
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview((prev) => {
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
   async function save() {
+    if (!perms?.facilityId) return;
     setBusy(true);
     setError(null);
     try {
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        setUploadingAvatar(true);
+        try {
+          avatarUrl = await getStaffService().uploadAvatar(avatarFile);
+        } finally {
+          setUploadingAvatar(false);
+        }
+      }
+      await getStaffService().updateProfile(perms.facilityId, coach.userId, {
+        fullName: fullName.trim() || null,
+        phone: phone.trim() || null,
+        avatarUrl,
+      });
       await getCoachingService().updateCoach(coach.id, {
-        specialization: specialization.trim() || null,
+        sportIds,
+        expertiseLevels,
         experienceYears: experience.trim() ? Number(experience) : null,
+        defaultSessionDurationMinutes: duration === "custom" ? Number(customDuration) || null : Number(duration),
         certifications: certifications.trim() || null,
         bio: bio.trim() || null,
-        hourlyRateMinor: hourlyRate.trim() ? rupeesToMinor(hourlyRate) : null,
+        dateOfBirth: dateOfBirth.trim() || null,
         status,
       });
       onSaved();
@@ -416,15 +435,64 @@ function EditCoachDialog({
           <DialogTitle>Edit coach</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <F label="Specialization">
-            <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} />
+          <div className="flex items-center gap-3">
+            <Avatar className="h-14 w-14">
+              {avatarPreview && <AvatarImage src={avatarPreview} alt="" />}
+              <AvatarFallback>
+                <Camera className="h-5 w-5 text-muted-foreground" aria-hidden />
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <input ref={avatarInputRef} type="file" accept={AVATAR_ACCEPT.join(",")} className="hidden" onChange={(e) => pickAvatar(e.target.files?.[0])} />
+              <Button type="button" size="sm" variant="outline" onClick={() => avatarInputRef.current?.click()}>
+                Change Photo
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">JPG, PNG (Max 2MB)</p>
+              {avatarError && <p className="mt-1 text-xs text-destructive">{avatarError}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Full Name">
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </F>
+            <F label="Phone">
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </F>
+          </div>
+          <F label="Sports">
+            <div className="flex flex-wrap gap-2">
+              {(sportsQuery.data ?? []).map((s) => (
+                <Chip key={s.facilitySportId} label={s.name} selected={sportIds.includes(s.facilitySportId)} onToggle={() => toggle(sportIds, setSportIds, s.facilitySportId)} />
+              ))}
+            </div>
+          </F>
+          <F label="Expertise Level">
+            <div className="flex flex-wrap gap-2">
+              {COACH_EXPERTISE_LEVELS.map((l) => (
+                <Chip key={l} label={l} selected={expertiseLevels.includes(l)} onToggle={() => toggle(expertiseLevels, setExpertiseLevels, l)} />
+              ))}
+            </div>
           </F>
           <div className="grid grid-cols-2 gap-3">
             <F label="Experience (years)">
               <Input type="number" min="0" step="0.5" value={experience} onChange={(e) => setExperience(e.target.value)} />
             </F>
-            <F label="Hourly rate (₹)">
-              <Input type="number" min="0" step="1" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+            <F label="Default Session Duration">
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DURATION_OPTIONS.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {duration === "custom" && (
+                <Input type="number" min="1" className="mt-2" placeholder="Minutes" value={customDuration} onChange={(e) => setCustomDuration(e.target.value)} />
+              )}
             </F>
           </div>
           <F label="Certifications">
@@ -432,6 +500,9 @@ function EditCoachDialog({
           </F>
           <F label="Bio">
             <Textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
+          </F>
+          <F label="Date of Birth">
+            <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
           </F>
           <F label="Status">
             <Select value={status} onValueChange={(v) => setStatus(v as CoachStatus)}>
@@ -452,7 +523,7 @@ function EditCoachDialog({
             Cancel
           </Button>
           <Button disabled={busy} onClick={() => void save()}>
-            {busy ? "Saving…" : "Save"}
+            {busy ? (uploadingAvatar ? "Uploading photo…" : "Saving…") : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

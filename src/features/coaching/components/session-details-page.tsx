@@ -505,6 +505,9 @@ function AddStudentDialog({
   const onRoster = new Set(session.students.map((s) => s.enrollmentId));
 
   useEffect(() => {
+    // A program-less (Coach Scheduler) session has no enrollment-based roster to draw from —
+    // its students would be direct member bookings instead, not `coaching_enrollments` rows.
+    if (!session.programId) return;
     getCoachingService()
       .listEnrollments({
         facilityId: session.facilityId,

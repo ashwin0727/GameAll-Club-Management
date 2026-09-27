@@ -83,6 +83,19 @@ export class SupabaseStaffService {
     return data as unknown as StaffDetail;
   }
 
+  /** Uploads a profile photo to the shared `avatars` bucket (0096) and returns its public URL —
+   *  used by the Add Coach wizard's "+ New person" path before calling createStaff, since the
+   *  new person's own user id doesn't exist yet to scope the upload to. */
+  async uploadAvatar(file: File): Promise<string> {
+    const { data: auth } = await this.supabase.auth.getUser();
+    const uid = auth.user?.id;
+    if (!uid) throw new ServiceError("STAFF_DATA_ERROR", "You must be signed in to upload a photo.");
+    const path = `${uid}/${crypto.randomUUID()}-${file.name}`;
+    const { error } = await this.supabase.storage.from("avatars").upload(path, file, { contentType: file.type });
+    if (error) throw new ServiceError("STAFF_DATA_ERROR", "Could not upload this photo. Please try again.");
+    return this.supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  }
+
   async createStaff(input: CreateStaffInput): Promise<CreateStaffResult> {
     const { data, error } = await this.supabase.functions.invoke("create-staff", {
       body: {
@@ -128,12 +141,25 @@ export class SupabaseStaffService {
     if (error) throw mapError(error);
   }
 
-  async updateProfile(facilityId: string, userId: string, patch: { title?: string | null; notes?: string | null }): Promise<void> {
+  /**
+   * A key present in `patch` is touched (a `null` value clears it); a key left out entirely is
+   * left alone. `title`/`notes` support clearing this way; `fullName`/`phone`/`avatarUrl` don't
+   * (there's no legitimate reason to blank out someone's name from here) — passing any value
+   * (including null) for those simply leaves the existing value in place.
+   */
+  async updateProfile(
+    facilityId: string,
+    userId: string,
+    patch: { title?: string | null; notes?: string | null; fullName?: string | null; phone?: string | null; avatarUrl?: string | null },
+  ): Promise<void> {
     const { error } = await this.supabase.rpc("update_staff_profile", {
       p_facility_id: facilityId,
       p_user_id: userId,
-      p_title: patch.title ?? null,
-      p_notes: patch.notes ?? null,
+      p_title: "title" in patch ? patch.title || "" : null,
+      p_notes: "notes" in patch ? patch.notes || "" : null,
+      p_full_name: patch.fullName ?? null,
+      p_phone: patch.phone ?? null,
+      p_avatar_url: patch.avatarUrl ?? null,
     });
     if (error) throw mapError(error);
   }

@@ -111,7 +111,7 @@ export function useBookingsList(facilityId: string | null, from: string, to: str
       const schedules = new Map<string, ProgramSchedule>();
       for (const p of programs) schedules.set(p.id, { sessionMinutes: p.defaultDurationMinutes, days: [], courtIds: [] });
       for (const s of sessions) {
-        if (s.status === "CANCELLED") continue;
+        if (s.status === "CANCELLED" || !s.programId) continue;
         const sched = schedules.get(s.programId) ?? { sessionMinutes: null, days: [], courtIds: [] };
         const day = new Date(s.startAt).getDay();
         if (!sched.days.includes(day)) sched.days.push(day);

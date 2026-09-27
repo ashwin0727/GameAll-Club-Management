@@ -26,6 +26,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SelectField } from "@/components/shared/select-field";
 import { ToggleSwitch } from "@/features/bookings/components/toggle-switch";
 import { PlanWizardStepper } from "@/features/memberships/components/plan-wizard-stepper";
@@ -298,7 +299,7 @@ function ReviewChip({ icon: Icon, iconClass, label }: { icon: React.ComponentTyp
  */
 export function CreatePlanWizardPage() {
   const router = useRouter();
-  const { data: facility } = useFacility();
+  const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
 
   const [step, setStep] = useState<PlanWizardStep>(1);
@@ -423,6 +424,18 @@ export function CreatePlanWizardPage() {
       );
       setSaving(false);
     }
+  }
+
+  if (facilityLoading) {
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-[120px] w-full rounded-2xl" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+          <Skeleton className="h-96 w-full rounded-xl" />
+          <Skeleton className="h-96 w-full rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   return (

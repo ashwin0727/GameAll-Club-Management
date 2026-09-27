@@ -28,13 +28,17 @@ export function MembershipDashboardHero({
   tagline,
   taglineSub,
   onAddMember,
+  buttonLabel = "Add New Member",
 }: {
   title: string;
   subtitle: string;
   tagline: string;
   taglineSub: string;
-  /** Omit to render the hero without the "Add New Member" button — used on pages where it doesn't apply. */
+  /** Omit to render the hero without the button — used on pages where it doesn't apply. */
   onAddMember?: () => void;
+  /** The button's text — defaults to "Add New Member" so every existing caller is unaffected;
+   *  other v1-style pages (Coaching) reusing this same hero pass their own action's label. */
+  buttonLabel?: string;
 }) {
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border-r border-border/60 bg-card lg:h-[100px] lg:flex-row lg:items-stretch">
@@ -78,7 +82,7 @@ export function MembershipDashboardHero({
             className="relative z-10 flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0B7A55] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Add New Member
+            {buttonLabel}
           </button>
         )}
       </div>
@@ -91,7 +95,7 @@ export function MembershipDashboardHero({
             className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#0B7A55] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Add New Member
+            {buttonLabel}
           </button>
         </div>
       )}
