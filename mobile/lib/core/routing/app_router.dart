@@ -81,6 +81,7 @@ import '../../features/coaching/coaching_session_detail_screen.dart';
 import '../../features/coaching/coaching_enrollments_screen.dart';
 import '../../features/coaching/coaching_enrollment_detail_screen.dart';
 import '../../features/coaching/coaching_reports_screen.dart';
+import '../../features/coaching/coaching_students_screen.dart';
 import '../../features/tournaments/tournament_app_config.dart';
 import '../../features/tournaments/tournament_management_screen.dart';
 import 'app_routes.dart';
@@ -476,6 +477,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             slideOver(state, CoachingEnrollmentDetailScreen(enrollmentId: state.pathParameters['enrollmentId']!)),
       ),
       GoRoute(path: AppRoutes.coachingReports, builder: (context, state) => const CoachingReportsScreen()),
+      GoRoute(path: AppRoutes.coachingStudents, builder: (context, state) => const CoachingStudentsScreen()),
 
       // ── Tournament Management (separate app — handoff screen only) ──────
       GoRoute(

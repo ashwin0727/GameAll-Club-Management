@@ -65,11 +65,8 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
             icon: const Icon(Icons.menu_open),
             onSelected: (r) => context.push(r),
             itemBuilder: (_) => const [
-              PopupMenuItem(value: AppRoutes.coachingCoaches, child: Text('Coaches')),
-              PopupMenuItem(value: AppRoutes.coachingPrograms, child: Text('Programs')),
-              PopupMenuItem(value: AppRoutes.coachingSchedule, child: Text('Schedule')),
-              PopupMenuItem(value: AppRoutes.coachingSessions, child: Text('Sessions')),
-              PopupMenuItem(value: AppRoutes.coachingEnrollments, child: Text('Enrollments')),
+              PopupMenuItem(value: AppRoutes.coachingPrograms, child: Text('Manage Program')),
+              PopupMenuItem(value: AppRoutes.coachingStudents, child: Text('Manage Students')),
               PopupMenuItem(value: AppRoutes.coachingReports, child: Text('Reports')),
             ],
           ),

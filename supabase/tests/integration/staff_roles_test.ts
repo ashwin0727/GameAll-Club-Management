@@ -258,3 +258,47 @@ Deno.test("system-role permissions are configurable per facility (copy-on-write)
   );
   await closeAll(su, c, mc);
 });
+
+Deno.test("list_roles returns the three system tiers plus any custom roles, each exactly once", async () => {
+  // Regression test for two bugs found in production, both in the same query:
+  //
+  // 0097: `returns table (id uuid, ...)` turns those names into plpgsql variables, and the
+  // `all_roles` CTE previously selected `id, key, name, ...` unqualified from
+  // `resolved`/`customs`, which Postgres rejected as an ambiguous column reference the moment
+  // this query actually ran (0075 shipped with the bug untested).
+  //
+  // 0098: `create_role` always inserts a custom role with `base_role = 'staff', key = null`
+  // (0076) — the `resolved` CTE's join only checked `base_role = t.tier`, so it wrongly matched
+  // ANY custom role as if it were the facility's own override of the Staff tier, both stealing
+  // that slot (the real "Staff" system row never appeared) and duplicating the custom role (it
+  // also independently matched `customs`' plain facility/not-system/not-template filter) — a
+  // custom role named "Coaching" showed up twice, both marked selected, real Staff missing.
+  const su = await superuser();
+  const { owner, facilityId } = await seed(su);
+  const c = await authed(owner);
+
+  const customRoleId = await c.queryObject<{ id: string }>({
+    text: `select create_role($1, 'Coaching', null, array['BOOKINGS_VIEW']) as id`,
+    args: [facilityId],
+  });
+  const roleId = customRoleId.rows[0].id;
+
+  const rows = await c.queryObject<{ key: string | null; id: string; is_custom: boolean }>({
+    text: `select key, id, is_custom from list_roles($1)`,
+    args: [facilityId],
+  });
+
+  const keys = rows.rows.map((r) => r.key);
+  assert(keys.includes("owner"));
+  assert(keys.includes("manager"));
+  assert(keys.includes("staff"), "the real Staff tier row must still appear");
+
+  const customMatches = rows.rows.filter((r) => r.id === roleId);
+  assertEquals(customMatches.length, 1, "the custom role must appear exactly once, not once per matching CTE");
+  assert(customMatches[0].is_custom);
+
+  const ids = rows.rows.map((r) => r.id);
+  assertEquals(ids.length, new Set(ids).size, "no role id should repeat in the list");
+
+  await closeAll(su, c);
+});

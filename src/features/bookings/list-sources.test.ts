@@ -35,6 +35,8 @@ function enrollment(over: Partial<EnrollmentRow> = {}): EnrollmentRow {
     programId: "pr1",
     programName: "Junior Camp",
     coachName: "Arjun",
+    batchId: null,
+    batchName: null,
     startDate: "2026-09-01",
     endDate: "2026-10-31",
     sessionsTotal: 12,

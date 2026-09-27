@@ -82,13 +82,13 @@ export function SessionsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Coaching Sessions"
+        title="Coach Scheduler"
         subtitle="Every scheduled, completed and cancelled coaching session."
         action={
           canCreate && (
             <Button asChild size="sm">
               <Link href="/coaching/sessions/new">
-                <Plus className="h-4 w-4" aria-hidden /> New Session
+                <Plus className="h-4 w-4" aria-hidden /> Schedule Session
               </Link>
             </Button>
           )

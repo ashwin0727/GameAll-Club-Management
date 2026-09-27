@@ -988,3 +988,244 @@ Deno.test("progress: an unauthorized user cannot add a note or read notes", asyn
   );
   await closeAll(su, c, vc);
 });
+
+// ── Add Coach wizard v1: sports + expertise levels (coach_sports, migration 0095) ──
+Deno.test("add_coach / update_coach: sync coach_sports and expertise_levels", async () => {
+  const su = await superuser();
+  const { owner, facilityId } = await seed(su);
+  const c = await authed(owner);
+  const u = await makeUser(su);
+  await addStaff(su, facilityId, u, "staff");
+
+  const sportId = (await su.queryObject<{ id: string }>(
+    "select id from sports where key = 'badminton'",
+  )).rows[0].id;
+  const fsBadminton = (await su.queryObject<{ id: string }>({
+    text:
+      `insert into facility_sports (facility_id, sport_id) values ($1, $2)
+       on conflict (facility_id, sport_id) do update set sport_id = excluded.sport_id
+       returning id`,
+    args: [facilityId, sportId],
+  })).rows[0].id;
+
+  const tennisId = (await su.queryObject<{ id: string }>(
+    "select id from sports where key = 'tennis'",
+  )).rows[0].id;
+  const fsTennis = (await su.queryObject<{ id: string }>({
+    text:
+      `insert into facility_sports (facility_id, sport_id) values ($1, $2)
+       on conflict (facility_id, sport_id) do update set sport_id = excluded.sport_id
+       returning id`,
+    args: [facilityId, tennisId],
+  })).rows[0].id;
+
+  const coachId = (
+    await c.queryObject<{ id: string }>({
+      text:
+        `select (add_coach($1, $2, null, 5, null, null, null, 'ACTIVE', null, $3::uuid[], $4::text[], 60)).id as id`,
+      args: [facilityId, u, [fsBadminton, fsTennis], ["Beginner", "Intermediate"]],
+    })
+  ).rows[0].id;
+
+  const afterAdd = await c.queryObject<{ id: string; expertise_levels: string[]; default_session_duration_minutes: number }>({
+    text:
+      `select expertise_levels, default_session_duration_minutes from coaches where id = $1`,
+    args: [coachId],
+  });
+  assertEquals(afterAdd.rows[0].expertise_levels, ["Beginner", "Intermediate"]);
+  assertEquals(afterAdd.rows[0].default_session_duration_minutes, 60);
+
+  const sportsAfterAdd = await c.queryObject<{ facility_sport_id: string }>({
+    text: `select facility_sport_id from coach_sports where coach_id = $1 order by facility_sport_id`,
+    args: [coachId],
+  });
+  assertEquals(sportsAfterAdd.rows.length, 2, "both sports should be linked");
+
+  // update_coach with a single-sport array replaces the whole set (drops tennis).
+  await c.queryArray({
+    text: `select update_coach($1, null, null, null, null, null, null, null, $2::uuid[])`,
+    args: [coachId, [fsBadminton]],
+  });
+  const sportsAfterUpdate = await c.queryObject<{ facility_sport_id: string }>({
+    text: `select facility_sport_id from coach_sports where coach_id = $1`,
+    args: [coachId],
+  });
+  assertEquals(sportsAfterUpdate.rows.length, 1);
+  assertEquals(sportsAfterUpdate.rows[0].facility_sport_id, fsBadminton);
+
+  // Passing null for p_sport_ids leaves the set untouched.
+  await c.queryArray({
+    text: `select update_coach($1, 'Updated bio holder')`,
+    args: [coachId],
+  });
+  const sportsUnchanged = await c.queryObject<{ n: bigint }>({
+    text: `select count(*)::bigint n from coach_sports where coach_id = $1`,
+    args: [coachId],
+  });
+  assertEquals(Number(sportsUnchanged.rows[0].n), 1, "omitting p_sport_ids must not clear it");
+
+  // list_coaches / get_coach surface the synced data.
+  const listed = await c.queryObject<{ sports: unknown; expertise_levels: string[] }>({
+    text: `select sports, expertise_levels from list_coaches($1) where id = $2`,
+    args: [facilityId, coachId],
+  });
+  assertEquals(listed.rows[0].expertise_levels, ["Beginner", "Intermediate"]);
+  assertEquals((listed.rows[0].sports as { id: string }[]).length, 1);
+
+  const detail = await c.queryObject<{ get_coach: { sports: { id: string }[]; expertiseLevels: string[]; defaultSessionDurationMinutes: number } }>({
+    text: `select get_coach($1)`,
+    args: [coachId],
+  });
+  assertEquals(detail.rows[0].get_coach.sports.length, 1);
+  assertEquals(detail.rows[0].get_coach.expertiseLevels, ["Beginner", "Intermediate"]);
+  assertEquals(detail.rows[0].get_coach.defaultSessionDurationMinutes, 60);
+
+  await closeAll(su, c);
+});
+
+Deno.test("RLS: a facility-B user cannot read facility-A coach_sports rows", async () => {
+  const su = await superuser();
+  const { owner: ownerA, facilityId: fA } = await seed(su);
+  const cA = await authed(ownerA);
+  const uA = await makeUser(su);
+  await addStaff(su, fA, uA, "staff");
+  const coachId = await coach(cA, fA, uA);
+
+  const sportId = (await su.queryObject<{ id: string }>(
+    "select id from sports where key = 'badminton'",
+  )).rows[0].id;
+  const fsA = (await su.queryObject<{ id: string }>({
+    text: `select id from facility_sports where facility_id = $1 and sport_id = $2`,
+    args: [fA, sportId],
+  })).rows[0].id;
+  await cA.queryArray({
+    text: `select update_coach($1, null, null, null, null, null, null, null, $2::uuid[])`,
+    args: [coachId, [fsA]],
+  });
+
+  const ownerB = await makeUser(su);
+  await makeFacility(su, ownerB);
+  const cB = await authed(ownerB);
+
+  const seen = await cB.queryObject<{ n: bigint }>({
+    text: `select count(*)::bigint n from coach_sports where coach_id = $1`,
+    args: [coachId],
+  });
+  assertEquals(Number(seen.rows[0].n), 0, "facility B must not see facility A's coach_sports rows");
+
+  await closeAll(su, cA, cB);
+});
+
+// ── Add Coach wizard v1: brand-new ("+ New person") staff can become a coach ──
+Deno.test("add_coach accepts a newly-invited (not yet ACTIVE) staff member — the wizard's '+ New person' path", async () => {
+  // Regression test for migration 0099: create-staff (the edge function) gives a genuinely new
+  // person facility_users.status = 'INVITED' (they haven't signed in / reset their one-time
+  // password yet), not 'ACTIVE'. add_coach previously required status = 'ACTIVE' specifically,
+  // so the Add Coach wizard's own "create the staff account, then make them a coach" flow failed
+  // on every brand-new person with "That person is not an active staff member of this facility."
+  const su = await superuser();
+  const { owner, facilityId } = await seed(su);
+  const c = await authed(owner);
+  const invitedUser = await makeUser(su);
+  await su.queryArray({
+    text: `insert into facility_users (facility_id, user_id, role, status, is_primary, invited_at)
+           values ($1, $2, 'staff', 'INVITED', false, now())`,
+    args: [facilityId, invitedUser],
+  });
+
+  const coachId = (
+    await c.queryObject<{ id: string }>({
+      text: `select (add_coach($1, $2)).id as id`,
+      args: [facilityId, invitedUser],
+    })
+  ).rows[0].id;
+  assert(coachId);
+
+  const candidates = await c.queryObject<{ user_id: string }>({
+    text: `select user_id from list_coach_candidates($1)`,
+    args: [facilityId],
+  });
+  // Already a coach now, so no longer a candidate — but wasn't excluded for being INVITED.
+  assert(!candidates.rows.some((r) => r.user_id === invitedUser));
+
+  await closeAll(su, c);
+});
+
+Deno.test("add_coach still rejects an INACTIVE (removed) staff member", async () => {
+  const su = await superuser();
+  const { owner, facilityId } = await seed(su);
+  const c = await authed(owner);
+  const removedUser = await makeUser(su);
+  await su.queryArray({
+    text: `insert into facility_users (facility_id, user_id, role, status, is_primary)
+           values ($1, $2, 'staff', 'INACTIVE', false)`,
+    args: [facilityId, removedUser],
+  });
+
+  await assertRejects(
+    () => c.queryArray({ text: `select add_coach($1, $2)`, args: [facilityId, removedUser] }),
+    Error,
+    "not a staff member",
+  );
+
+  await closeAll(su, c);
+});
+
+Deno.test("active-coach aggregates stop counting a coach once their staff membership is removed", async () => {
+  // Regression test for migration 0104: coaches.status stays 'ACTIVE' forever unless someone
+  // edits the Coach Profile by hand, even after that person is removed as staff elsewhere
+  // (facility_users.status set to 'INACTIVE'). get_coaching_overview's Active Coaches KPI,
+  // get_coaching_insights'/get_program_insights' Average Rating, and the list_coach_options
+  // picker used to still count/offer that coach — the same class of bug 0103 fixed for batches
+  // under a deactivated program.
+  const su = await superuser();
+  const { owner, facilityId } = await seed(su);
+  const c = await authed(owner);
+  const staffUser = await makeUser(su);
+  await addStaff(su, facilityId, staffUser, "staff");
+  const coachId = await coach(c, facilityId, staffUser);
+  await c.queryArray({
+    text: `select update_coach(p_coach_id => $1, p_rating => $2)`,
+    args: [coachId, 4.5],
+  });
+
+  const before = await c.queryObject<{ get_coaching_overview: { kpis: { activeCoaches: number } } }>({
+    text: `select get_coaching_overview($1)`,
+    args: [facilityId],
+  });
+  assertEquals(before.rows[0].get_coaching_overview.kpis.activeCoaches, 1);
+  const optionsBefore = await c.queryObject<{ id: string }>({
+    text: `select id from list_coach_options($1)`,
+    args: [facilityId],
+  });
+  assert(optionsBefore.rows.some((r) => r.id === coachId));
+  const insightsBefore = await c.queryObject<{ get_coaching_insights: { averageRating: number } }>({
+    text: `select get_coaching_insights($1)`,
+    args: [facilityId],
+  });
+  assertEquals(insightsBefore.rows[0].get_coaching_insights.averageRating, 4.5);
+
+  // The person is removed as staff — coaches.status is untouched, still 'ACTIVE'.
+  await su.queryArray({
+    text: `update facility_users set status = 'INACTIVE' where facility_id = $1 and user_id = $2`,
+    args: [facilityId, staffUser],
+  });
+
+  const after = await c.queryObject<{ get_coaching_overview: { kpis: { activeCoaches: number } } }>({
+    text: `select get_coaching_overview($1)`,
+    args: [facilityId],
+  });
+  assertEquals(after.rows[0].get_coaching_overview.kpis.activeCoaches, 0, "removed staff must not count as an active coach");
+  const optionsAfter = await c.queryObject<{ id: string }>({
+    text: `select id from list_coach_options($1)`,
+    args: [facilityId],
+  });
+  assert(!optionsAfter.rows.some((r) => r.id === coachId), "removed staff must not be offered as an assignable coach");
+  const insightsAfter = await c.queryObject<{ get_coaching_insights: { averageRating: number | null } }>({
+    text: `select get_coaching_insights($1)`,
+    args: [facilityId],
+  });
+  assertEquals(insightsAfter.rows[0].get_coaching_insights.averageRating, null, "a removed staff member's rating must not skew the average");
+
+  await closeAll(su, c);
+});

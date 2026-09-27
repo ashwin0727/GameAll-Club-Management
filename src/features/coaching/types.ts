@@ -9,7 +9,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type CoachStatus = "ACTIVE" | "INACTIVE" | "ON_LEAVE";
-export type ProgramStatus = "ACTIVE" | "INACTIVE";
+export type ProgramStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" | "INACTIVE";
+export type ProgramType = "GROUP" | "ONE_ON_ONE" | "TRIAL";
+export type ProgramPaymentMode = "OFFLINE" | "ONLINE" | "BOTH";
 export type SessionStatus = "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type EnrollmentStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
 export type EnrollmentPaymentStatus = "INCLUDED" | "PAID" | "PARTIAL" | "PENDING";
@@ -57,6 +59,16 @@ export interface CoachingOverview {
   }[];
 }
 
+/** A coach's teachable sport, from `coach_sports` joined to `facility_sports`. */
+export interface CoachSport {
+  id: string; // facility_sport_id
+  name: string;
+}
+
+/** The fixed expertise-level vocabulary — same list `program-wizard-page.tsx`'s LEVELS uses. */
+export const COACH_EXPERTISE_LEVELS = ["Beginner", "Intermediate", "Advanced", "All Levels"] as const;
+export type CoachExpertiseLevel = (typeof COACH_EXPERTISE_LEVELS)[number];
+
 // ── Coaches ────────────────────────────────────────────────────────────────
 export interface CoachRow {
   id: string;
@@ -68,6 +80,10 @@ export interface CoachRow {
   specialization: string | null;
   experienceYears: number | null;
   status: CoachStatus;
+  expertiseLevels: string[];
+  /** A manual, facility-set rating out of 5 — null until staff sets one on the Coach Profile. */
+  rating: number | null;
+  sports: CoachSport[];
   programCount: number;
   sessionCount: number;
   studentCount: number;
@@ -78,10 +94,13 @@ export interface CoachPage {
   totalCount: number;
 }
 
+export type CoachSort = "name_asc" | "name_desc" | "experience_desc" | "sessions_desc";
+
 export interface CoachFilters {
   search?: string | null;
   status?: CoachStatus | null;
   specialization?: string | null;
+  sportId?: string | null;
 }
 
 export interface CoachAvailabilityWindow {
@@ -115,6 +134,11 @@ export interface CoachDetail {
   status: CoachStatus;
   joinedOn: string | null;
   title: string | null;
+  expertiseLevels: string[];
+  sports: CoachSport[];
+  defaultSessionDurationMinutes: number | null;
+  dateOfBirth: string | null;
+  rating: number | null;
   stats: { sessionsThisMonth: number; activeStudents: number; programs: number };
   todaySchedule: {
     id: string;
@@ -138,12 +162,34 @@ export interface CoachInput {
   hourlyRateMinor?: number | null;
   status?: CoachStatus | null;
   joinedOn?: string | null;
+  /** `undefined` = don't touch; an array (possibly empty) replaces the coach's whole set. */
+  sportIds?: string[];
+  expertiseLevels?: string[];
+  defaultSessionDurationMinutes?: number | null;
+  dateOfBirth?: string | null;
+  /** Manual, facility-set rating out of 5 — set from the Coach Profile, never during onboarding. */
+  rating?: number | null;
+}
+
+/** The Coaching landing page's "Coaching Insights" panel, for the Last 30/60/90 Days dropdown. */
+export interface CoachingInsights {
+  windowDays: 30 | 60 | 90;
+  totalStudents: number;
+  /** Completed ÷ concluded (completed + cancelled) sessions in the window, as a percentage — a
+   *  proxy for per-student attendance, which no check-in system exists to track. Null when no
+   *  session in the window has concluded yet. */
+  sessionAttendancePct: number | null;
+  coachingRevenueMinor: number;
+  /** Average of every active coach's manual `rating`; null until at least one is set. */
+  averageRating: number | null;
 }
 
 export interface CoachCandidate {
   userId: string;
   fullName: string;
   email: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
   title: string | null;
 }
 
@@ -166,13 +212,64 @@ export interface ProgramRow {
   defaultPriceMinor: number | null;
   isMembershipIncluded: boolean;
   status: ProgramStatus;
+  imageUrl: string | null;
+  programType: ProgramType;
+  sessionsPerWeek: number | null;
   studentCount: number;
   scheduledSessionCount: number;
+  batchCount: number;
+  facilitySportId: string | null;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export interface ProgramPage {
   programs: ProgramRow[];
   totalCount: number;
+}
+
+/** The Coaching Programs list page's KPI row, Featured Program card and Program Insights panel. */
+export interface ProgramInsights {
+  totalPrograms: number;
+  newProgramsThisMonth: number;
+  enrolledStudents: number;
+  /** Null when there were no enrollments in the prior 30-day period to compare against. */
+  enrolledStudentsPctChange: number | null;
+  /** Average (active enrollments / capacity) across active programs, as a percentage. */
+  avgCompletionPct: number | null;
+  averageRating: number | null;
+  activeBatches: number;
+  featuredProgram: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    level: string;
+    ageGroup: string;
+    defaultCapacity: number;
+    studentCount: number;
+    defaultPriceMinor: number | null;
+    isMembershipIncluded: boolean;
+    durationWeeks: number | null;
+  } | null;
+}
+
+/** One recurring weekly time slot under a program — court/coach/days/time/capacity, its own
+ *  independent schedule (a program can have several). */
+export interface ProgramBatch {
+  id: string;
+  name: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  status: "ACTIVE" | "INACTIVE";
+  courtId: string;
+  courtName: string;
+  coachId: string | null;
+  coachName: string | null;
+  /** Only populated by list_coaching_program_batches; get_coaching_program's embedded batches
+   *  don't carry this (it's the program-wide count, not per-batch). */
+  enrolledCount?: number;
 }
 
 export interface ProgramDetail {
@@ -190,6 +287,26 @@ export interface ProgramDetail {
   defaultPriceMinor: number | null;
   isMembershipIncluded: boolean;
   status: ProgramStatus;
+  imageUrl: string | null;
+  programType: ProgramType;
+  minCapacity: number | null;
+  programStructure: string[];
+  sessionFormat: string | null;
+  sessionsPerWeek: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  paymentMode: ProgramPaymentMode;
+  earlyBirdDiscountMinor: number | null;
+  discountValidTill: string | null;
+  taxPercent: number | null;
+  paymentNotes: string | null;
+  allowWaitlist: boolean;
+  allowTrialSession: boolean;
+  autoEnrollNextBatch: boolean;
+  sendNotifications: boolean;
+  visibleInBooking: boolean;
+  enrollmentDeadline: string | null;
+  batches: ProgramBatch[];
   createdAt: string;
   stats: {
     activeStudents: number;
@@ -197,6 +314,19 @@ export interface ProgramDetail {
     scheduledSessions: number;
     completedSessions: number;
   };
+}
+
+/** A batch as drafted client-side, before the program (and therefore a real programId) exists —
+ *  sent as part of CreateProgramInput's `batches` and turned into real rows atomically by
+ *  create_coaching_program_full. */
+export interface DraftProgramBatch {
+  name: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  courtId: string;
+  coachId?: string | null;
 }
 
 export interface CreateProgramInput {
@@ -212,9 +342,31 @@ export interface CreateProgramInput {
   sessionCount?: number | null;
   defaultPriceMinor?: number | null;
   isMembershipIncluded?: boolean;
+  imageUrl?: string | null;
+  programType?: ProgramType;
+  minCapacity?: number | null;
+  programStructure?: string[];
+  sessionFormat?: string | null;
+  sessionsPerWeek?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  paymentMode?: ProgramPaymentMode;
+  earlyBirdDiscountMinor?: number | null;
+  discountValidTill?: string | null;
+  taxPercent?: number | null;
+  paymentNotes?: string | null;
+  allowWaitlist?: boolean;
+  allowTrialSession?: boolean;
+  autoEnrollNextBatch?: boolean;
+  sendNotifications?: boolean;
+  visibleInBooking?: boolean;
+  enrollmentDeadline?: string | null;
+  status?: ProgramStatus;
+  /** Only accepted by createProgramFull — ignored by plain createProgram. */
+  batches?: DraftProgramBatch[];
 }
 
-export interface UpdateProgramInput extends Partial<Omit<CreateProgramInput, "facilityId">> {
+export interface UpdateProgramInput extends Partial<Omit<CreateProgramInput, "facilityId" | "batches" | "status">> {
   programId: string;
   status?: ProgramStatus | null;
 }
@@ -232,7 +384,8 @@ export interface ProgramOption {
 // ── Sessions ───────────────────────────────────────────────────────────────
 export interface SessionRow {
   id: string;
-  programId: string;
+  programId: string | null;
+  /** The program's name, or the session's own `title` for a program-less (Coach Scheduler) session. */
   programName: string;
   coachId: string;
   coachName: string;
@@ -243,6 +396,7 @@ export interface SessionRow {
   capacity: number;
   enrolledCount: number;
   status: SessionStatus;
+  sessionType: ProgramType;
 }
 
 export interface SessionPage {
@@ -271,7 +425,7 @@ export interface SessionStudent {
 export interface SessionDetail {
   id: string;
   facilityId: string;
-  programId: string;
+  programId: string | null;
   programName: string;
   programLevel: string;
   coachId: string;
@@ -287,6 +441,14 @@ export interface SessionDetail {
   objectiveResult: string | null;
   completedAt: string | null;
   cancelReason: string | null;
+  title: string | null;
+  description: string | null;
+  sessionType: ProgramType;
+  facilitySportId: string | null;
+  pricePerStudentMinor: number | null;
+  visibleForBooking: boolean;
+  sendNotification: boolean;
+  allowWaitlist: boolean;
   enrolledCount: number;
   students: SessionStudent[];
   progressNotes:
@@ -304,7 +466,8 @@ export interface SessionDetail {
 
 export interface CreateSessionInput {
   facilityId: string;
-  programId: string;
+  /** Omitted for a standalone Coach Scheduler session — no coaching program owns it. */
+  programId?: string | null;
   coachId: string;
   courtId: string;
   startAt: string;
@@ -314,6 +477,15 @@ export interface CreateSessionInput {
   objective?: string | null;
   status?: "SCHEDULED" | "CONFIRMED";
   autoEnroll?: boolean;
+  title?: string | null;
+  description?: string | null;
+  level?: string | null;
+  facilitySportId?: string | null;
+  sessionType?: ProgramType;
+  pricePerStudentMinor?: number | null;
+  visibleForBooking?: boolean;
+  sendNotification?: boolean;
+  allowWaitlist?: boolean;
 }
 
 export interface RescheduleSessionInput {
@@ -336,6 +508,8 @@ export interface EnrollmentRow {
   programId: string;
   programName: string;
   coachName: string | null;
+  batchId: string | null;
+  batchName: string | null;
   startDate: string;
   endDate: string | null;
   sessionsTotal: number | null;
@@ -368,6 +542,8 @@ export interface EnrollmentDetail {
   programLevel: string;
   coachId: string | null;
   coachName: string | null;
+  batchId: string | null;
+  batchName: string | null;
   startDate: string;
   endDate: string | null;
   sessionsTotal: number | null;
@@ -406,6 +582,7 @@ export interface CreateEnrollmentInput {
   memberId: string;
   programId: string;
   coachId?: string | null;
+  batchId?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   sessionsTotal?: number | null;

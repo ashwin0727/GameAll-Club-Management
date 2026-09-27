@@ -1,149 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { ServiceError } from "@/services/shared/service-error";
-import { getCoachingService } from "@/services/coaching";
-import { rupeesToMinor } from "@/features/coaching/components/shared";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 import { PageHeader } from "@/features/coaching/components/shared";
-import type { CoachCandidate, CoachStatus } from "@/features/coaching/types";
+import { AddCoachFormFields, submitButtonLabel } from "@/features/coaching/components/add-coach-form-fields";
+import { useAddCoachForm } from "@/features/coaching/components/use-add-coach-form";
+import { CoachAddedContent } from "@/features/coaching/components/coach-added-content";
 
+/**
+ * Add Coach, as a standalone page (direct link / bookmark / browser back-forward). The in-app
+ * entry points (Coaching landing page hero, Coaches list, Quick Actions) open `AddCoachSheet`
+ * instead — the reference design's actual "Add Coach" is a right-side slide-over, not a page
+ * navigation — but this route stays as a working fallback, sharing the same form logic via
+ * `useAddCoachForm`/`AddCoachFormFields` rather than a second implementation.
+ */
 export function AddCoachPage() {
   const perms = usePermissionContext();
   const router = useRouter();
   const facilityId = perms?.facilityId ?? null;
-
-  const [candidates, setCandidates] = useState<CoachCandidate[]>([]);
-  const [userId, setUserId] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [experience, setExperience] = useState("");
-  const [certifications, setCertifications] = useState("");
-  const [bio, setBio] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [status, setStatus] = useState<CoachStatus>("ACTIVE");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!facilityId) return;
-    getCoachingService()
-      .listCoachCandidates(facilityId)
-      .then(setCandidates)
-      .catch(() => setCandidates([]));
-  }, [facilityId]);
+  const form = useAddCoachForm(facilityId);
+  const [created, setCreated] = useState<{ id: string; name: string } | null>(null);
 
   if (!perms?.can("COACHING_MANAGE_COACHES")) {
     return <PermissionDenied message="You don't have permission to manage coaches." />;
   }
 
-  async function submit() {
-    if (!facilityId) return;
-    if (!userId) {
-      setError("Select the staff member to make a coach.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
+  async function handleSubmit() {
     try {
-      const id = await getCoachingService().addCoach(facilityId, userId, {
-        specialization: specialization.trim() || null,
-        experienceYears: experience.trim() ? Number(experience) : null,
-        certifications: certifications.trim() || null,
-        bio: bio.trim() || null,
-        hourlyRateMinor: hourlyRate.trim() ? rupeesToMinor(hourlyRate) : null,
-        status,
-      });
-      router.push(`/coaching/coaches/${id}`);
-    } catch (e) {
-      setError(e instanceof ServiceError ? e.message : "Could not add the coach.");
-      setBusy(false);
+      const { coachId, name } = await form.submit();
+      setCreated({ id: coachId, name });
+    } catch {
+      // form.error already carries the user-facing message; nothing else to do here.
     }
   }
 
+  if (created) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Card className="p-6">
+          <CoachAddedContent coachId={created.id} name={created.name} onNavigate={(href) => router.push(href)} />
+          <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+            <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+              Add Another Coach
+            </Button>
+            <Button onClick={() => router.push("/coaching/coaches")}>Go to Coaches List</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-xl space-y-4">
-      <PageHeader title="Add Coach" subtitle="Give an existing staff member a coaching profile." />
+    <div className="space-y-4">
+      <PageHeader
+        title="Add Coach"
+        subtitle="Add a new coach to your club. They will be able to take coaching sessions and manage their schedule."
+      />
 
-      <Card className="space-y-4 p-5">
-        <div className="space-y-1.5">
-          <Label htmlFor="coach-user">Staff member</Label>
-          <Select value={userId} onValueChange={setUserId}>
-            <SelectTrigger id="coach-user">
-              <SelectValue placeholder="Select a staff member" />
-            </SelectTrigger>
-            <SelectContent>
-              {candidates.length === 0 ? (
-                <SelectItem value="__none" disabled>
-                  Every staff member is already a coach
-                </SelectItem>
-              ) : (
-                candidates.map((c) => (
-                  <SelectItem key={c.userId} value={c.userId}>
-                    {c.fullName}
-                    {c.title ? ` · ${c.title}` : ""}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            A coach must already be a staff member — this never creates a new account.
-          </p>
-        </div>
+      <Card className="p-6">
+        <AddCoachFormFields facilityId={facilityId} form={form} />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="coach-spec">Specialization</Label>
-          <Input id="coach-spec" value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="Beginner, Advanced, Kids…" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="coach-exp">Experience (years)</Label>
-            <Input id="coach-exp" type="number" min="0" step="0.5" value={experience} onChange={(e) => setExperience(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="coach-rate">Hourly rate (₹, optional)</Label>
-            <Input id="coach-rate" type="number" min="0" step="1" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="coach-cert">Certifications</Label>
-          <Input id="coach-cert" value={certifications} onChange={(e) => setCertifications(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="coach-bio">Bio</Label>
-          <Textarea id="coach-bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="coach-status">Status</Label>
-          <Select value={status} onValueChange={(v) => setStatus(v as CoachStatus)}>
-            <SelectTrigger id="coach-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ACTIVE">Active</SelectItem>
-              <SelectItem value="ON_LEAVE">On Leave</SelectItem>
-              <SelectItem value="INACTIVE">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <Button asChild variant="outline">
-            <Link href="/coaching/coaches">Cancel</Link>
+        <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+          <Button type="button" variant="outline" onClick={() => router.push("/coaching/coaches")}>
+            Cancel
           </Button>
-          <Button onClick={() => void submit()} disabled={busy}>
-            {busy ? "Adding…" : "Add Coach"}
+          <Button onClick={() => void handleSubmit()} disabled={form.busy || !form.canSubmit}>
+            {submitButtonLabel(form)}
           </Button>
         </div>
       </Card>

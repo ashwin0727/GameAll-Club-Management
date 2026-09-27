@@ -148,6 +148,9 @@ class AppRoutes {
   static const coachingEnrollmentDetail = '/coaching/enrollments/:enrollmentId';
   static const coachingReports = '/coaching/reports';
 
+  /// Placeholder — "Manage Students" is a nav destination only; the screen isn't built yet.
+  static const coachingStudents = '/coaching/students';
+
   /// Tournament Management is a SEPARATE app — this route is a handoff/bridge
   /// screen that explains it and opens or links to it. No tournament features
   /// live in this app.
