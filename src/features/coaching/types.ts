@@ -272,6 +272,24 @@ export interface ProgramBatch {
   enrolledCount?: number;
 }
 
+/** A facility-wide, active batch that has at least one enrolled student — the raw material for
+ *  Manage Students' "Upcoming Coaching Sessions" card, which projects each one's next weekly
+ *  occurrence client-side (there's no per-occurrence session row for the ordinary recurring
+ *  schedule, only for the separate Coach Scheduler ad-hoc flow). */
+export interface ActiveBatchWithStudents {
+  id: string;
+  programId: string;
+  programName: string;
+  batchName: string;
+  daysOfWeek: number[];
+  startTime: string;
+  endTime: string;
+  courtName: string;
+  coachName: string | null;
+  enrolledCount: number;
+  capacity: number;
+}
+
 export interface ProgramDetail {
   id: string;
   facilityId: string;
@@ -505,9 +523,13 @@ export interface EnrollmentRow {
   memberId: string;
   studentName: string;
   studentPhone: string | null;
+  studentAge: number | null;
   programId: string;
   programName: string;
+  programLevel: string;
+  coachId: string | null;
   coachName: string | null;
+  coachAvatarUrl: string | null;
   batchId: string | null;
   batchName: string | null;
   startDate: string;
@@ -527,7 +549,10 @@ export interface EnrollmentPage {
 export interface EnrollmentFilters {
   search?: string | null;
   programId?: string | null;
-  status?: EnrollmentStatus | null;
+  /** `"NOT_ACTIVE"` groups every non-ACTIVE status — the "Inactive" tab. */
+  status?: EnrollmentStatus | "NOT_ACTIVE" | null;
+  coachId?: string | null;
+  level?: string | null;
 }
 
 export interface EnrollmentDetail {

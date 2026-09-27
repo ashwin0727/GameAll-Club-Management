@@ -4547,6 +4547,22 @@ export interface Database {
           status: string;
         }[];
       };
+      list_active_coaching_batches_with_students: {
+        Args: { p_facility_id: string };
+        Returns: {
+          id: string;
+          program_id: string;
+          program_name: string;
+          batch_name: string;
+          days_of_week: number[];
+          start_time: string;
+          end_time: string;
+          court_name: string;
+          coach_name: string | null;
+          enrolled_count: number;
+          capacity: number;
+        }[];
+      };
       create_coaching_session: {
         Args: {
           p_facility_id: string;
@@ -4789,15 +4805,21 @@ export interface Database {
           p_status?: string | null;
           p_limit?: number;
           p_offset?: number;
+          p_coach_id?: string | null;
+          p_level?: string | null;
         };
         Returns: {
           id: string;
           member_id: string;
           student_name: string;
           student_phone: string | null;
+          student_age: number | null;
           program_id: string;
           program_name: string;
+          program_level: string;
+          coach_id: string | null;
           coach_name: string | null;
+          coach_avatar_url: string | null;
           start_date: string;
           end_date: string | null;
           sessions_total: number | null;

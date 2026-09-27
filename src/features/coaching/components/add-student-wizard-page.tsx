@@ -16,12 +16,42 @@ import { ServiceError } from "@/services/shared/service-error";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
+import { isValidEmail, sanitizePhoneDigits } from "@/features/coaching/add-coach-validation";
 import type { ProgramDetail, ProgramRow } from "@/features/coaching/types";
 import { blurOnWheel, fmtDate, money, NO_SPINNER_INPUT } from "@/features/coaching/components/shared";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Student Details", "Program & Enrollment", "Review & Confirm", "Payment", "Success"] as const;
 type Step = (typeof STEPS)[number];
+
+/** A student can be any age (unlike a coach hire), so this only rules out an impossible date —
+ *  not in the future, and not more than 100 years ago — rather than reusing the coach's
+ *  18-100-years-old employment-age validation. */
+function isValidStudentDateOfBirth(iso: string): boolean {
+  if (!iso) return true;
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (date > start) return false;
+  const oldest = new Date(start.getFullYear() - 100, start.getMonth(), start.getDate());
+  return date >= oldest;
+}
+/** A 10-digit Indian mobile number always starts with 6, 7, 8 or 9 — reject anything else even
+ *  when the digit count is already right. */
+function isValidIndianMobile(digits: string): boolean {
+  return digits.length === 10 && /^[6-9]/.test(digits);
+}
+
+function studentDateOfBirthMax(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="mt-1 text-xs text-destructive">{message}</p>;
+}
 
 interface MemberHit {
   id: string;
@@ -80,6 +110,8 @@ export function AddStudentWizardPage() {
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [existingWarning, setExistingWarning] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const touch = (field: string) => setTouched((s) => new Set(s).add(field));
 
   // Step 2 — Program & Enrollment
   const [programs, setPrograms] = useState<ProgramRow[] | null>(null);
@@ -147,8 +179,35 @@ export function AddStudentWizardPage() {
   const taxInr = program?.taxPercent ? Math.round(((baseFeeInr - discountInr) * program.taxPercent) / 100) : 0;
   const amountPayableInr = program?.isMembershipIncluded ? 0 : Math.max(0, baseFeeInr - discountInr) + taxInr;
 
-  const step1Valid = selectedMember ? true : Boolean(fullName.trim() && phone.trim().length >= 10);
+  // One set of rules for both the live inline errors and the "Next Step" gate, so they can
+  // never drift apart — the same pattern the Add Coach wizard's "+ New person" fields use.
+  const fieldErrors: Record<string, string> = {};
+  if (!selectedMember) {
+    if (!fullName.trim()) fieldErrors.fullName = "Full name is required.";
+    if (!phone.trim()) fieldErrors.phone = "Phone number is required.";
+    else if (phone.length !== 10) fieldErrors.phone = "Enter a valid 10-digit phone number.";
+    else if (!isValidIndianMobile(phone)) fieldErrors.phone = "Phone number must start with 6, 7, 8 or 9.";
+    if (email.trim() && !isValidEmail(email)) fieldErrors.email = "Enter a valid email address.";
+    if (!isValidStudentDateOfBirth(dateOfBirth)) fieldErrors.dateOfBirth = "Enter a valid date of birth (not in the future).";
+    if (emergencyPhone.trim()) {
+      if (emergencyPhone.length !== 10) fieldErrors.emergencyPhone = "Enter a valid 10-digit phone number.";
+      else if (!isValidIndianMobile(emergencyPhone)) fieldErrors.emergencyPhone = "Phone number must start with 6, 7, 8 or 9.";
+    }
+  }
+  const showError = (field: string) => (touched.has(field) ? fieldErrors[field] : undefined);
+
+  const step1Valid = selectedMember ? true : Object.keys(fieldErrors).length === 0;
   const step2Valid = Boolean(programId) && (program ? program.batches.length === 0 || Boolean(batchId) : false) && Boolean(startDate);
+
+  const remainingMinor = Math.round(amountPayableInr * 100) - paidSoFar;
+  const payAmountMinor = Math.round((Number(payAmount) || 0) * 100);
+  const payAmountError = !payAmount.trim()
+    ? "Enter an amount."
+    : payAmountMinor <= 0
+      ? "Enter an amount greater than zero."
+      : payAmountMinor > remainingMinor
+        ? "Amount cannot exceed the outstanding balance."
+        : undefined;
 
   function composeNotes(): string | null {
     const parts: string[] = [];
@@ -165,8 +224,8 @@ export function AddStudentWizardPage() {
       setStep("Program & Enrollment");
       return;
     }
-    if (!fullName.trim() || !phone.trim()) {
-      setError("Enter the student's full name and phone number.");
+    if (Object.keys(fieldErrors).length > 0) {
+      setTouched(new Set(Object.keys(fieldErrors)));
       return;
     }
     setBusy(true);
@@ -330,16 +389,44 @@ export function AddStudentWizardPage() {
                 <p className="text-xs text-muted-foreground">No match? Enter the student&apos;s details to create a new one.</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Full Name" required>
-                    <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                    <Input
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      onBlur={() => touch("fullName")}
+                      className={showError("fullName") ? "border-destructive" : undefined}
+                    />
+                    <FieldError message={showError("fullName")} />
                   </Field>
                   <Field label="Phone Number" required>
-                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <Input
+                      inputMode="numeric"
+                      value={phone}
+                      onChange={(e) => setPhone(sanitizePhoneDigits(e.target.value))}
+                      onBlur={() => touch("phone")}
+                      className={showError("phone") ? "border-destructive" : undefined}
+                    />
+                    <FieldError message={showError("phone")} />
                   </Field>
                   <Field label="Email">
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => touch("email")}
+                      className={showError("email") ? "border-destructive" : undefined}
+                    />
+                    <FieldError message={showError("email")} />
                   </Field>
                   <Field label="Date of Birth">
-                    <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+                    <Input
+                      type="date"
+                      max={studentDateOfBirthMax()}
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      onBlur={() => touch("dateOfBirth")}
+                      className={showError("dateOfBirth") ? "border-destructive" : undefined}
+                    />
+                    <FieldError message={showError("dateOfBirth")} />
                   </Field>
                   <Field label="Gender">
                     <Select value={gender} onValueChange={setGender}>
@@ -360,11 +447,18 @@ export function AddStudentWizardPage() {
                     <Input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} />
                   </Field>
                   <Field label="Emergency Contact Number">
-                    <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} />
+                    <Input
+                      inputMode="numeric"
+                      value={emergencyPhone}
+                      onChange={(e) => setEmergencyPhone(sanitizePhoneDigits(e.target.value))}
+                      onBlur={() => touch("emergencyPhone")}
+                      className={showError("emergencyPhone") ? "border-destructive" : undefined}
+                    />
+                    <FieldError message={showError("emergencyPhone")} />
                   </Field>
                 </div>
                 <Field label="Notes (Optional)">
-                  <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  <Textarea rows={2} maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </Field>
               </>
             )}
@@ -536,7 +630,16 @@ export function AddStudentWizardPage() {
                   <div className="space-y-3 rounded-lg border border-border p-3">
                     <div className="grid grid-cols-2 gap-3">
                       <Field label="Amount (₹)">
-                        <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                        <Input
+                          type="number"
+                          min="0"
+                          onWheel={blurOnWheel}
+                          className={cn(NO_SPINNER_INPUT, touched.has("payAmount") && payAmountError && "border-destructive")}
+                          value={payAmount}
+                          onChange={(e) => setPayAmount(e.target.value)}
+                          onBlur={() => touch("payAmount")}
+                        />
+                        <FieldError message={touched.has("payAmount") ? payAmountError : undefined} />
                       </Field>
                       <Field label="Payment Mode">
                         <Select value={payMethod} onValueChange={setPayMethod}>
@@ -556,7 +659,18 @@ export function AddStudentWizardPage() {
                       <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} />
                     </Field>
                     <div className="flex gap-2">
-                      <button type="button" disabled={busy} onClick={() => void recordPayment(false)} className="h-9 rounded-lg border border-input px-3 text-sm font-medium hover:bg-accent disabled:opacity-50">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (payAmountError) {
+                            touch("payAmount");
+                            return;
+                          }
+                          void recordPayment(false);
+                        }}
+                        className="h-9 rounded-lg border border-input px-3 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                      >
                         Record Payment
                       </button>
                       <button type="button" disabled={busy} onClick={() => void recordPayment(true)} className="h-9 rounded-lg bg-[#0B7A55] px-3 text-sm font-semibold text-white disabled:opacity-50">

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 import type {
+  ActiveBatchWithStudents,
   CoachAvailabilityWindow,
   CoachCandidate,
   CoachDetail,
@@ -470,6 +471,24 @@ export class SupabaseCoachingService {
     }));
   }
 
+  async listActiveBatchesWithStudents(facilityId: string): Promise<ActiveBatchWithStudents[]> {
+    const { data, error } = await this.supabase.rpc("list_active_coaching_batches_with_students", { p_facility_id: facilityId });
+    if (error) throw mapError(error);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      programId: r.program_id,
+      programName: r.program_name,
+      batchName: r.batch_name,
+      daysOfWeek: r.days_of_week,
+      startTime: r.start_time,
+      endTime: r.end_time,
+      courtName: r.court_name,
+      coachName: r.coach_name,
+      enrolledCount: Number(r.enrolled_count),
+      capacity: r.capacity,
+    }));
+  }
+
   async createProgramBatch(input: {
     programId: string;
     courtId: string;
@@ -661,6 +680,8 @@ export class SupabaseCoachingService {
       p_status: f.status ?? null,
       p_limit: input.limit ?? 20,
       p_offset: input.offset ?? 0,
+      p_coach_id: f.coachId ?? null,
+      p_level: f.level ?? null,
     });
     if (error) throw mapError(error);
     return {
@@ -669,9 +690,13 @@ export class SupabaseCoachingService {
         memberId: r.member_id,
         studentName: r.student_name,
         studentPhone: r.student_phone,
+        studentAge: r.student_age,
         programId: r.program_id,
         programName: r.program_name,
+        programLevel: r.program_level,
+        coachId: r.coach_id,
         coachName: r.coach_name,
+        coachAvatarUrl: r.coach_avatar_url,
         startDate: r.start_date,
         endDate: r.end_date,
         sessionsTotal: r.sessions_total,
