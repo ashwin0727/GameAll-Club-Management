@@ -136,55 +136,154 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Every module hub the app ships, reachable from here as well as
-            // from the "+" menu — permission-gated exactly as that menu is,
-            // so a staff member never sees a door they can't open.
-            _sectionLabel('Manage'),
+            // The same sections, in the same order, as the web sidebar (src/lib/constants.ts
+            // NAV_ITEMS). Mobile has no sidebar, so each web item opens its own screen from here —
+            // permission-gated exactly as the web hides them, so a staff member never sees a door
+            // they can't open. Members and Membership Schedule are tabs inside the Memberships hub
+            // rather than separate screens, so the hub appears once, as "Dashboard".
+            _sectionLabel('General'),
+            _GroupCard(children: [
+              _NavRow(
+                  icon: Icons.emoji_events_outlined,
+                  label: 'Tournaments',
+                  onTap: () => context.push(AppRoutes.tournaments)),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
+            _sectionLabel('Guest Management'),
             _GroupCard(children: [
               _NavRow(
                   icon: Icons.confirmation_number_outlined,
-                  label: 'Guest Bookings',
+                  label: 'Guest Booking',
                   onTap: () => context.push(AppRoutes.guestBookings)),
               _NavRow(
                   icon: Icons.groups_2_outlined,
                   label: 'Guest Players',
                   onTap: () => context.push(AppRoutes.guests)),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
+            _sectionLabel('Memberships Management'),
+            _GroupCard(children: [
+              _NavRow(
+                  icon: Icons.dashboard_outlined,
+                  label: 'Dashboard',
+                  onTap: () => context.push(AppRoutes.memberships)),
+              _NavRow(
+                  icon: Icons.calendar_view_week_outlined,
+                  label: 'Membership Schedule',
+                  onTap: () => context.push(AppRoutes.membershipSchedule)),
               _NavRow(
                   icon: Icons.event_repeat_outlined,
                   label: 'Membership Sessions',
-                  // The old standalone sessions dashboard is retired — this
-                  // now lands on the Members hub's own Sessions tab instead.
                   onTap: () => context.push('${AppRoutes.memberships}?new=session')),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
+            if (session.can('COACHING_VIEW')) ...[
+              _sectionLabel('Coaching Management'),
+              _GroupCard(children: [
+                _NavRow(
+                    icon: Icons.sports_outlined,
+                    label: 'Coaching',
+                    onTap: () => context.push(AppRoutes.coaching)),
+                _NavRow(
+                    icon: Icons.menu_book_outlined,
+                    label: 'Program',
+                    onTap: () => context.push(AppRoutes.coachingPrograms)),
+                _NavRow(
+                    icon: Icons.school_outlined,
+                    label: 'Students',
+                    onTap: () => context.push(AppRoutes.coachingStudents)),
+                _NavRow(
+                    icon: Icons.bar_chart_rounded,
+                    label: 'Report',
+                    onTap: () => context.push(AppRoutes.coachingReports)),
+              ]),
+              const SizedBox(height: AppSpacing.xl),
+
+            ],
+            _sectionLabel('Maintenance Management'),
+            _GroupCard(children: [
               _NavRow(
-                  icon: Icons.card_membership_outlined,
-                  label: 'Memberships',
-                  onTap: () => context.push(AppRoutes.memberships)),
+                  icon: Icons.handyman_outlined,
+                  label: 'Maintenance',
+                  onTap: () => context.push(AppRoutes.maintenance)),
+              _NavRow(
+                  icon: Icons.assignment_outlined,
+                  label: 'Maintenance Tracker',
+                  onTap: () => context.push(AppRoutes.maintenanceTickets)),
+              _NavRow(
+                  icon: Icons.category_outlined,
+                  label: 'Issue Category',
+                  onTap: () => context.push(AppRoutes.maintenanceIssueCategories)),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+
+            if (session.can('USERS_VIEW')) ...[
+              _sectionLabel('Staff Management'),
+              _GroupCard(children: [
+                _NavRow(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Staff',
+                    onTap: () => context.push(AppRoutes.usersRoles)),
+                _NavRow(
+                    icon: Icons.vpn_key_outlined,
+                    label: 'Roles & Permission',
+                    onTap: () => context.push(AppRoutes.roles)),
+                _NavRow(
+                    icon: Icons.history_rounded,
+                    label: 'Access History',
+                    onTap: () => context.push(AppRoutes.accessHistory)),
+              ]),
+              const SizedBox(height: AppSpacing.xl),
+
+            ],
+            if (session.can('INVENTORY_VIEW')) ...[
+              _sectionLabel('Inventory Management'),
+              _GroupCard(children: [
+                _NavRow(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Inventory Tracker',
+                    onTap: () => context.push(AppRoutes.inventory)),
+                _NavRow(
+                    icon: Icons.widgets_outlined,
+                    label: 'Items',
+                    onTap: () => context.push(AppRoutes.inventoryItems)),
+                _NavRow(
+                    icon: Icons.swap_horiz_rounded,
+                    label: 'Stock Movement',
+                    onTap: () => context.push(AppRoutes.inventoryMovements)),
+                _NavRow(
+                    icon: Icons.shopping_cart_outlined,
+                    label: 'Purchase Orders',
+                    onTap: () => context.push(AppRoutes.inventoryPurchaseOrders)),
+                _NavRow(
+                    icon: Icons.store_outlined,
+                    label: 'Vendors',
+                    onTap: () => context.push(AppRoutes.inventoryVendors)),
+                _NavRow(
+                    icon: Icons.label_outline_rounded,
+                    label: 'Categories',
+                    onTap: () => context.push(AppRoutes.inventoryCategories)),
+              ]),
+              const SizedBox(height: AppSpacing.xl),
+
+            ],
+            _sectionLabel('Finance'),
+            _GroupCard(children: [
               _NavRow(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'Finance',
+                  label: 'Payments',
                   onTap: () => context.push(AppRoutes.finance)),
               _NavRow(
                   icon: Icons.bar_chart_rounded,
                   label: 'Reports & Analytics',
                   onTap: () => context.push(AppRoutes.reports)),
               _NavRow(
-                  icon: Icons.handyman_outlined,
-                  label: 'Maintenance',
-                  onTap: () => context.push(AppRoutes.maintenance)),
-              if (session.can('INVENTORY_VIEW'))
-                _NavRow(
-                    icon: Icons.inventory_2_outlined,
-                    label: 'Inventory & Vendors',
-                    onTap: () => context.push(AppRoutes.inventory)),
-              _NavRow(
                   icon: Icons.currency_exchange_rounded,
                   label: 'Refunds',
                   onTap: () => context.push(AppRoutes.refunds)),
-              if (session.can('USERS_VIEW'))
-                _NavRow(
-                    icon: Icons.admin_panel_settings_outlined,
-                    label: 'Users & Roles',
-                    onTap: () => context.push(AppRoutes.usersRoles)),
             ]),
             const SizedBox(height: AppSpacing.xl),
 

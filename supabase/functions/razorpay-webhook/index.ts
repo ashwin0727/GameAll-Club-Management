@@ -9,7 +9,8 @@
 //
 // Configure in the Razorpay Dashboard → Settings → Webhooks:
 //   URL: https://<project-ref>.supabase.co/functions/v1/razorpay-webhook
-//   Events: payment.authorized, payment.captured, payment.failed, order.paid
+//   Events: payment.authorized, payment.captured, payment.failed, order.paid,
+//     plus payment_link.paid / .cancelled / .expired (coaching enrollment links)
 //   Secret: a value ONLY known to Razorpay and this function — set it as
 //     `supabase secrets set RAZORPAY_WEBHOOK_SECRET=...`. This is NOT the
 //     same value as RAZORPAY_KEY_SECRET.
@@ -26,6 +27,7 @@ import {
   type RazorpayRefund,
   type RazorpaySubscription,
 } from "../_shared/razorpay.ts";
+import { mapPaymentLinkEventToStatus, subscriptionStatusToCoaching } from "../_shared/coaching-billing.ts";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -52,6 +54,9 @@ const HANDLED_EVENT_TYPES = new Set([
   "subscription.cancelled",
   "subscription.completed",
   "subscription.resumed",
+  "payment_link.paid",
+  "payment_link.cancelled",
+  "payment_link.expired",
 ]);
 
 interface WebhookPayload {
@@ -61,6 +66,7 @@ interface WebhookPayload {
     order?: { entity?: { id?: string; amount?: number; currency?: string } };
     refund?: { entity?: RazorpayRefund };
     subscription?: { entity?: RazorpaySubscription };
+    payment_link?: { entity?: { id?: string; reference_id?: string; status?: string } };
   };
 }
 
@@ -163,6 +169,9 @@ async function processEvent(supabase: SupabaseClient, payload: WebhookPayload): 
   if (payload.event.startsWith("subscription.")) {
     return processSubscriptionEvent(supabase, payload);
   }
+  if (payload.event.startsWith("payment_link.")) {
+    return processPaymentLinkEvent(supabase, payload);
+  }
 
   const refundStatus = mapRefundEventToStatus(payload.event);
   if (refundStatus) {
@@ -240,6 +249,11 @@ async function processSubscriptionEvent(supabase: SupabaseClient, payload: Webho
     return;
   }
 
+  // A subscription created for a coaching enrollment is handled entirely by
+  // the coaching RPCs (they report whether the id is theirs); everything else
+  // is a membership subscription and continues below unchanged.
+  if (await processCoachingSubscriptionEvent(supabase, payload, sub)) return;
+
   const status = mapSubscriptionEventToStatus(payload.event);
   if (status) {
     const { error } = await supabase.rpc("apply_subscription_webhook", {
@@ -266,6 +280,81 @@ async function processSubscriptionEvent(supabase: SupabaseClient, payload: Webho
     });
     if (error) throw new Error(`record_subscription_charge failed: ${error.message}`);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Coaching enrollment billing. A subscription.* event advances the billing
+// row's status; subscription.charged additionally records that month's money
+// as a normal `payments` row (idempotent on razorpay_payment_id) so Pending
+// Payments and Finance see it. Returns true when the subscription belongs to a
+// coaching enrollment (so the membership path must not also run).
+// ─────────────────────────────────────────────────────────────────────────
+async function processCoachingSubscriptionEvent(
+  supabase: SupabaseClient,
+  payload: WebhookPayload,
+  sub: RazorpaySubscription,
+): Promise<boolean> {
+  const membershipStatus = mapSubscriptionEventToStatus(payload.event);
+  const { data: isCoaching, error } = await supabase.rpc("apply_coaching_billing_webhook", {
+    p_razorpay_subscription_id: sub.id,
+    p_status: membershipStatus ? subscriptionStatusToCoaching(membershipStatus) : null,
+    p_charge_count: sub.paid_count ?? null,
+    p_current_start: unixToDateString(sub.current_start),
+    p_current_end: unixToDateString(sub.current_end),
+  });
+  if (error) throw new Error(`apply_coaching_billing_webhook failed: ${error.message}`);
+  if (!isCoaching) return false;
+
+  if (payload.event === "subscription.charged") {
+    const payment = payload.payload?.payment?.entity;
+    if (!payment?.id) {
+      console.warn("[razorpay-webhook] coaching subscription.charged had no payment entity", { subscriptionId: sub.id });
+      return true;
+    }
+    const { error: recErr } = await supabase.rpc("record_coaching_gateway_payment", {
+      p_razorpay_subscription_id: sub.id,
+      p_amount_minor: payment.amount,
+      p_razorpay_payment_id: payment.id,
+      p_paid_at: new Date().toISOString(),
+    });
+    if (recErr) throw new Error(`record_coaching_gateway_payment failed: ${recErr.message}`);
+  }
+  return true;
+}
+
+// payment_link.paid settles a coaching enrollment's one-time fee;
+// .cancelled / .expired just close the link. Links GameAll didn't create for a
+// coaching enrollment are acknowledged and ignored.
+async function processPaymentLinkEvent(supabase: SupabaseClient, payload: WebhookPayload): Promise<void> {
+  const link = payload.payload?.payment_link?.entity;
+  if (!link?.id) {
+    console.log("[razorpay-webhook] payment_link event carried no link entity", { eventType: payload.event });
+    return;
+  }
+
+  if (payload.event === "payment_link.paid") {
+    const payment = payload.payload?.payment?.entity;
+    if (!payment?.id) {
+      console.warn("[razorpay-webhook] payment_link.paid had no payment entity", { linkId: link.id });
+      return;
+    }
+    const { error } = await supabase.rpc("record_coaching_gateway_payment", {
+      p_razorpay_payment_link_id: link.id,
+      p_amount_minor: payment.amount,
+      p_razorpay_payment_id: payment.id,
+      p_paid_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(`record_coaching_gateway_payment failed: ${error.message}`);
+    return;
+  }
+
+  const status = mapPaymentLinkEventToStatus(payload.event);
+  if (!status) return;
+  const { error } = await supabase.rpc("apply_coaching_billing_webhook", {
+    p_razorpay_payment_link_id: link.id,
+    p_status: status,
+  });
+  if (error) throw new Error(`apply_coaching_billing_webhook failed: ${error.message}`);
 }
 
 async function processRefundEvent(supabase: SupabaseClient, payload: WebhookPayload, status: "created" | "processed" | "failed"): Promise<void> {

@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DisabledReason } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +45,7 @@ import {
   addWeeksIso,
   programStructurePresetsForSport,
 } from "@/features/coaching/components/use-program-wizard-form";
-import type { ProgramDetail, ProgramPaymentMode, ProgramType } from "@/features/coaching/types";
+import type { ProgramDetail, ProgramFeeType, ProgramPaymentMode, ProgramType } from "@/features/coaching/types";
 import {
   Chip,
   ErrorState,
@@ -130,6 +131,12 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
   }
 
   const p = program;
+  // Once students have joined, the program's terms are what they signed up for: editing it or
+  // switching it off underneath them is blocked. (Reactivating an inactive program stays allowed.)
+  const lockReason =
+    p.stats.activeStudents > 0
+      ? `${p.stats.activeStudents} ${p.stats.activeStudents === 1 ? "student is" : "students are"} enrolled in this program, so it can't be edited or deactivated.`
+      : undefined;
   const onSaved = () => {
     setEditingSection(null);
     void load();
@@ -143,9 +150,16 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
         subtitle={`${p.level} · ${p.ageGroup} · ${p.category}`}
         action={
           canManage && (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleStatus()}>
-              {p.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
-            </Button>
+            <DisabledReason reason={p.status === "ACTIVE" ? lockReason : undefined}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || (p.status === "ACTIVE" && Boolean(lockReason))}
+                onClick={() => void toggleStatus()}
+              >
+                {p.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+              </Button>
+            </DisabledReason>
           )
         }
       />
@@ -156,6 +170,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
         </Badge>
         {p.isMembershipIncluded && <Badge variant="outline">Membership-included</Badge>}
       </div>
+      {canManage && lockReason && <p className="text-xs text-muted-foreground">{lockReason}</p>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Active Students" value={String(p.stats.activeStudents)} />
@@ -168,7 +183,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
       </div>
 
       <Card className="p-4">
-        <SectionHeader title="Basic Information" onEdit={canManage ? () => setEditingSection("basic") : undefined} />
+        <SectionHeader title="Basic Information" onEdit={canManage ? () => setEditingSection("basic") : undefined} lockedReason={lockReason} />
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           {p.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded program image
@@ -189,7 +204,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
       </Card>
 
       <Card className="p-4">
-        <SectionHeader title="Program Details" onEdit={canManage ? () => setEditingSection("details") : undefined} />
+        <SectionHeader title="Program Details" onEdit={canManage ? () => setEditingSection("details") : undefined} lockedReason={lockReason} />
         {(() => {
           // Only fields that actually have a value — an unfilled optional (Minimum Students,
           // Session Format, …) is left off entirely rather than shown as a bare "—".
@@ -234,7 +249,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
       </Card>
 
       <Card className="p-4">
-        <SectionHeader title="Pricing & Settings" onEdit={canManage && canPrice ? () => setEditingSection("pricing") : undefined} />
+        <SectionHeader title="Pricing & Settings" onEdit={canManage && canPrice ? () => setEditingSection("pricing") : undefined} lockedReason={lockReason} />
         {(() => {
           const baseFeeInr = p.defaultPriceMinor != null ? p.defaultPriceMinor / 100 : 0;
           const discountInr = p.earlyBirdDiscountMinor != null ? p.earlyBirdDiscountMinor / 100 : 0;
@@ -253,6 +268,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
                     />
                   )}
                   <IconRow icon={Percent} label="Tax Applicable" value={p.taxPercent ? `Yes (${p.taxPercent}% GST)` : "No"} />
+                  <IconRow icon={IndianRupee} label="Fee Type" value={p.feeType === "MONTHLY" ? "Monthly" : "One-time"} />
                   <IconRow icon={IndianRupee} label="Payment Mode" value={{ OFFLINE: "Offline", ONLINE: "Online", BOTH: "Offline & Online" }[p.paymentMode]} />
                   {p.paymentNotes && <IconRow icon={Tag} label="Payment Notes" value={p.paymentNotes} />}
                 </dl>
@@ -311,15 +327,22 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
   );
 }
 
-function SectionHeader({ title, onEdit }: { title: string; onEdit?: () => void }) {
+function SectionHeader({ title, onEdit, lockedReason }: { title: string; onEdit?: () => void; lockedReason?: string }) {
   return (
     <div className="flex items-center justify-between">
       <h2 className="text-sm font-semibold">{title}</h2>
       {onEdit && (
-        <button type="button" onClick={onEdit} className="flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-xs font-semibold transition-colors hover:bg-accent">
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-          Edit
-        </button>
+        <DisabledReason reason={lockedReason}>
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={Boolean(lockedReason)}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-input px-2.5 text-xs font-semibold transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+            Edit
+          </button>
+        </DisabledReason>
       )}
     </div>
   );
@@ -645,6 +668,7 @@ function EditProgramDetailsDialog({ program, onClose, onSaved }: { program: Prog
 function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDetail; onClose: () => void; onSaved: () => void }) {
   const [programFee, setProgramFee] = useState(minorToRupees(program.defaultPriceMinor));
   const [paymentMode, setPaymentMode] = useState<ProgramPaymentMode>(program.paymentMode);
+  const [feeType, setFeeType] = useState<ProgramFeeType>(program.feeType);
   const [earlyBirdDiscount, setEarlyBirdDiscount] = useState(minorToRupees(program.earlyBirdDiscountMinor));
   const [discountValidTill, setDiscountValidTill] = useState(program.discountValidTill ?? "");
   const [taxApplicable, setTaxApplicable] = useState(program.taxPercent != null);
@@ -668,6 +692,7 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
         programId: program.id,
         defaultPriceMinor: programFee.trim() ? rupeesToMinor(programFee) : null,
         paymentMode,
+        feeType,
         earlyBirdDiscountMinor: earlyBirdDiscount.trim() ? rupeesToMinor(earlyBirdDiscount) : null,
         discountValidTill: discountValidTill.trim() || null,
         taxPercent: taxApplicable ? Number(taxPercent) : null,
@@ -694,7 +719,18 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Program Fee (₹)">
+            <Field label="Fee Type">
+              <Select value={feeType} onValueChange={(v) => setFeeType(v as ProgramFeeType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ONE_TIME">One-time</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly (fee below is per month)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={feeType === "MONTHLY" ? "Fee per Month (₹)" : "Program Fee (₹)"}>
               <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={programFee} onChange={(e) => setProgramFee(e.target.value)} />
             </Field>
             <Field label="Payment Mode">

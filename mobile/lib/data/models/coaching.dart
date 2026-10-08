@@ -526,6 +526,72 @@ class ProgramPage {
       );
 }
 
+/// A recurring weekly slot of a program (one day-set / time / court / coach) that students are
+/// enrolled into — coaching_program_batches (migration 0100).
+class ProgramBatch {
+  const ProgramBatch({
+    required this.id,
+    required this.name,
+    required this.daysOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.capacity,
+    required this.status,
+    required this.courtId,
+    required this.courtName,
+    required this.coachId,
+    required this.coachName,
+    this.enrolledCount,
+  });
+  final String id;
+  final String name;
+
+  /// 0 = Sunday … 6 = Saturday.
+  final List<int> daysOfWeek;
+  final String startTime;
+  final String endTime;
+  final int capacity;
+  final String status;
+  final String? courtId;
+  final String? courtName;
+  final String? coachId;
+  final String? coachName;
+
+  /// Only present on list_coaching_program_batches, not on get_coaching_program's embedded batches.
+  final int? enrolledCount;
+
+  bool get isFull => enrolledCount != null && enrolledCount! >= capacity;
+
+  static String _hhmm(dynamic v) {
+    final t = (v as String?) ?? '';
+    return t.length >= 5 ? t.substring(0, 5) : t;
+  }
+
+  /// "Mon, Wed, Fri · 17:00–18:00".
+  String get scheduleLabel {
+    const d = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final days = ([...daysOfWeek]..sort()).map((i) => d[i % 7]).join(', ');
+    return '$days · $startTime–$endTime';
+  }
+
+  /// Accepts both the embedded camelCase shape (get_coaching_program) and the snake_case rows of
+  /// list_coaching_program_batches.
+  factory ProgramBatch.fromJson(Map<String, dynamic> j) => ProgramBatch(
+        id: j['id'] as String,
+        name: j['name'] as String? ?? '',
+        daysOfWeek: ((j['daysOfWeek'] ?? j['days_of_week']) as List<dynamic>? ?? const []).map((e) => (e as num).toInt()).toList(),
+        startTime: _hhmm(j['startTime'] ?? j['start_time']),
+        endTime: _hhmm(j['endTime'] ?? j['end_time']),
+        capacity: _int(j['capacity']),
+        status: j['status'] as String? ?? 'ACTIVE',
+        courtId: (j['courtId'] ?? j['court_id']) as String?,
+        courtName: (j['courtName'] ?? j['court_name']) as String?,
+        coachId: (j['coachId'] ?? j['coach_id']) as String?,
+        coachName: (j['coachName'] ?? j['coach_name']) as String?,
+        enrolledCount: _intN(j['enrolled_count'] ?? j['enrolledCount']),
+      );
+}
+
 class ProgramDetail {
   const ProgramDetail({
     required this.id,
@@ -545,6 +611,15 @@ class ProgramDetail {
     required this.totalEnrollments,
     required this.scheduledSessions,
     required this.completedSessions,
+    this.startDate,
+    this.endDate,
+    this.sessionsPerWeek,
+    this.paymentMode = 'BOTH',
+    this.feeType = 'ONE_TIME',
+    this.earlyBirdDiscountMinor,
+    this.discountValidTill,
+    this.taxPercent,
+    this.batches = const [],
   });
   final String id;
   final String name;
@@ -563,6 +638,60 @@ class ProgramDetail {
   final int totalEnrollments;
   final int scheduledSessions;
   final int completedSessions;
+  final String? startDate;
+  final String? endDate;
+  final int? sessionsPerWeek;
+
+  /// OFFLINE | ONLINE | BOTH — which collection methods the program allows.
+  final String paymentMode;
+
+  /// ONE_TIME | MONTHLY. For MONTHLY, [defaultPriceMinor] is the fee PER MONTH (migration 0110).
+  final String feeType;
+  final int? earlyBirdDiscountMinor;
+  final String? discountValidTill;
+  final double? taxPercent;
+  final List<ProgramBatch> batches;
+
+  bool get isMonthly => feeType == 'MONTHLY' && !isMembershipIncluded;
+
+  /// Once students have joined, the program's terms are what they signed up for — editing or
+  /// deactivating it underneath them is blocked (mirrors the web program page).
+  bool get isLocked => activeStudents > 0;
+
+  /// The same lock message the web shows, or null when the program is free to change.
+  String? get lockReason => activeStudents > 0
+      ? '$activeStudents ${activeStudents == 1 ? 'student is' : 'students are'} enrolled in this program, so it can\'t be edited or deactivated.'
+      : null;
+
+  ProgramDetail withFeeType(String value) => ProgramDetail(
+        id: id,
+        name: name,
+        level: level,
+        ageGroup: ageGroup,
+        category: category,
+        description: description,
+        defaultDurationMinutes: defaultDurationMinutes,
+        defaultCapacity: defaultCapacity,
+        sessionCount: sessionCount,
+        defaultPriceMinor: defaultPriceMinor,
+        isMembershipIncluded: isMembershipIncluded,
+        status: status,
+        createdAt: createdAt,
+        activeStudents: activeStudents,
+        totalEnrollments: totalEnrollments,
+        scheduledSessions: scheduledSessions,
+        completedSessions: completedSessions,
+        startDate: startDate,
+        endDate: endDate,
+        sessionsPerWeek: sessionsPerWeek,
+        paymentMode: paymentMode,
+        feeType: value,
+        earlyBirdDiscountMinor: earlyBirdDiscountMinor,
+        discountValidTill: discountValidTill,
+        taxPercent: taxPercent,
+        batches: batches,
+      );
+
   factory ProgramDetail.fromJson(Map<String, dynamic> j) {
     final s = (j['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
     return ProgramDetail(
@@ -583,6 +712,17 @@ class ProgramDetail {
       totalEnrollments: _int(s['totalEnrollments']),
       scheduledSessions: _int(s['scheduledSessions']),
       completedSessions: _int(s['completedSessions']),
+      startDate: j['startDate'] as String?,
+      endDate: j['endDate'] as String?,
+      sessionsPerWeek: _intN(j['sessionsPerWeek']),
+      paymentMode: j['paymentMode'] as String? ?? 'BOTH',
+      feeType: j['feeType'] as String? ?? 'ONE_TIME',
+      earlyBirdDiscountMinor: _intN(j['earlyBirdDiscountMinor']),
+      discountValidTill: j['discountValidTill'] as String?,
+      taxPercent: (j['taxPercent'] as num?)?.toDouble(),
+      batches: ((j['batches'] as List<dynamic>?) ?? const [])
+          .map((b) => ProgramBatch.fromJson((b as Map).cast<String, dynamic>()))
+          .toList(),
     );
   }
 }
@@ -596,6 +736,12 @@ class ProgramOption {
     required this.defaultPriceMinor,
     required this.isMembershipIncluded,
     required this.sessionCount,
+    this.feeType = 'ONE_TIME',
+    this.endDate,
+    this.startDate,
+    this.paymentMode = 'BOTH',
+    this.earlyBirdDiscountMinor,
+    this.taxPercent,
   });
   final String id;
   final String name;
@@ -604,7 +750,41 @@ class ProgramOption {
   final int? defaultPriceMinor;
   final bool isMembershipIncluded;
   final int? sessionCount;
+
+  /// 'ONE_TIME' or 'MONTHLY'. For a MONTHLY program [defaultPriceMinor] is the fee PER MONTH and
+  /// the enrollment total is that fee × the months until [endDate] (migration 0110).
+  final String feeType;
+  final String? endDate;
+
+  /// The program's own start date — a program that has not begun yet enrolls students from here.
+  final String? startDate;
+
+  /// OFFLINE | ONLINE | BOTH.
+  final String paymentMode;
+  final int? earlyBirdDiscountMinor;
+  final double? taxPercent;
+
+  /// What ONE charge costs a student, in paise: (fee − early-bird discount) + tax, or 0 when the
+  /// program is included in a membership. For a monthly program this is the fee for one month.
+  /// Same formula as the web Add Student wizard.
+  int get chargeMinor {
+    if (isMembershipIncluded) return 0;
+    final base = defaultPriceMinor ?? 0;
+    final afterDiscount = (base - (earlyBirdDiscountMinor ?? 0)).clamp(0, base);
+    final tax = taxPercent == null ? 0 : ((afterDiscount / 100) * taxPercent! / 100).round() * 100;
+    return afterDiscount + tax;
+  }
+
+  bool get onlineAllowed => paymentMode != 'OFFLINE';
+  bool get isMonthly => feeType == 'MONTHLY' && !isMembershipIncluded;
+
   factory ProgramOption.fromJson(Map<String, dynamic> j) => ProgramOption(
+        feeType: j['fee_type'] as String? ?? 'ONE_TIME',
+        endDate: j['end_date'] as String?,
+        startDate: j['start_date'] as String?,
+        paymentMode: j['payment_mode'] as String? ?? 'BOTH',
+        earlyBirdDiscountMinor: _intN(j['early_bird_discount_minor']),
+        taxPercent: (j['tax_percent'] as num?)?.toDouble(),
         id: j['id'] as String,
         name: j['name'] as String,
         defaultCapacity: _int(j['default_capacity']),
@@ -801,7 +981,17 @@ class EnrollmentRow {
     required this.priceMinor,
     required this.status,
     required this.paymentStatus,
+    this.programId = '',
+    this.studentPhone,
+    this.studentAge,
+    this.batchName,
+    this.coachName,
   });
+  final String programId;
+  final String? studentPhone;
+  final int? studentAge;
+  final String? batchName;
+  final String? coachName;
   final String id;
   final String studentName;
   final String programName;
@@ -811,6 +1001,11 @@ class EnrollmentRow {
   final EnrollmentStatus status;
   final EnrollmentPaymentStatus paymentStatus;
   factory EnrollmentRow.fromJson(Map<String, dynamic> j) => EnrollmentRow(
+        programId: j['program_id'] as String? ?? '',
+        studentPhone: j['student_phone'] as String?,
+        studentAge: _intN(j['student_age']),
+        batchName: j['batch_name'] as String?,
+        coachName: j['coach_name'] as String?,
         id: j['id'] as String,
         studentName: j['student_name'] as String? ?? '',
         programName: j['program_name'] as String? ?? '',
@@ -905,8 +1100,10 @@ class EnrollmentDetail {
     required this.payments,
     required this.progressNotes,
     required this.canViewProgress,
+    this.batchName,
   });
 
+  final String? batchName;
   final String id;
   final String facilityId;
   final String studentName;
@@ -934,6 +1131,7 @@ class EnrollmentDetail {
   bool get isMembershipIncluded => pricingType == 'MEMBERSHIP_INCLUDED';
 
   factory EnrollmentDetail.fromJson(Map<String, dynamic> j) => EnrollmentDetail(
+        batchName: j['batchName'] as String?,
         id: j['id'] as String,
         facilityId: j['facilityId'] as String,
         studentName: j['studentName'] as String? ?? '',
@@ -1027,5 +1225,61 @@ class CoachUtilization {
         scheduledHours: _dbl(j['scheduledHours']),
         weeklyAvailableHours: _dbl(j['weeklyAvailableHours']),
         sessions: _int(j['sessions']),
+      );
+}
+
+// ── Online billing (Razorpay payment link / monthly subscription) ──────────
+/// The Razorpay link (one-time program) or AutoPay subscription (monthly program) behind an
+/// enrollment — a row of coaching_enrollment_billing (migration 0110).
+class EnrollmentBilling {
+  const EnrollmentBilling({
+    required this.kind,
+    required this.status,
+    required this.amountMinor,
+    required this.totalCycles,
+    required this.chargeCount,
+    required this.shortUrl,
+    required this.currentEnd,
+  });
+
+  /// 'PAYMENT_LINK' or 'SUBSCRIPTION'.
+  final String kind;
+
+  /// CREATED, AUTHENTICATED, ACTIVE, PENDING, HALTED, PAID, CANCELLED, COMPLETED or EXPIRED.
+  final String status;
+
+  /// One charge — the whole fee for a link, the per-month fee for a subscription.
+  final int amountMinor;
+  final int totalCycles;
+  final int chargeCount;
+  final String? shortUrl;
+  final String? currentEnd;
+
+  bool get isSubscription => kind == 'SUBSCRIPTION';
+
+  /// Still able to take money (not paid / cancelled / finished / expired).
+  bool get isLive => const {'CREATED', 'AUTHENTICATED', 'ACTIVE', 'PENDING', 'HALTED'}.contains(status);
+
+  String get statusLabel => switch (status) {
+        'CREATED' => 'Awaiting payment',
+        'AUTHENTICATED' => 'Mandate approved',
+        'ACTIVE' => 'Active',
+        'PENDING' => 'Charge pending',
+        'HALTED' => 'Halted — charge failed',
+        'PAID' => 'Paid',
+        'CANCELLED' => 'Cancelled',
+        'COMPLETED' => 'Completed',
+        'EXPIRED' => 'Link expired',
+        _ => status,
+      };
+
+  factory EnrollmentBilling.fromJson(Map<String, dynamic> j) => EnrollmentBilling(
+        kind: j['kind'] as String,
+        status: j['status'] as String,
+        amountMinor: _int(j['amount_minor']),
+        totalCycles: _int(j['total_cycles']),
+        chargeCount: _int(j['charge_count']),
+        shortUrl: j['short_url'] as String?,
+        currentEnd: j['current_end'] as String?,
       );
 }

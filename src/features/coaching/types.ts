@@ -12,6 +12,9 @@ export type CoachStatus = "ACTIVE" | "INACTIVE" | "ON_LEAVE";
 export type ProgramStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED" | "INACTIVE";
 export type ProgramType = "GROUP" | "ONE_ON_ONE" | "TRIAL";
 export type ProgramPaymentMode = "OFFLINE" | "ONLINE" | "BOTH";
+/** ONE_TIME → one Razorpay payment link; MONTHLY → a Razorpay subscription charged monthly until the program ends.
+ *  For MONTHLY, the program's price is the fee PER MONTH. */
+export type ProgramFeeType = "ONE_TIME" | "MONTHLY";
 export type SessionStatus = "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type EnrollmentStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
 export type EnrollmentPaymentStatus = "INCLUDED" | "PAID" | "PARTIAL" | "PENDING";
@@ -314,6 +317,7 @@ export interface ProgramDetail {
   startDate: string | null;
   endDate: string | null;
   paymentMode: ProgramPaymentMode;
+  feeType: ProgramFeeType;
   earlyBirdDiscountMinor: number | null;
   discountValidTill: string | null;
   taxPercent: number | null;
@@ -369,6 +373,7 @@ export interface CreateProgramInput {
   startDate?: string | null;
   endDate?: string | null;
   paymentMode?: ProgramPaymentMode;
+  feeType?: ProgramFeeType;
   earlyBirdDiscountMinor?: number | null;
   discountValidTill?: string | null;
   taxPercent?: number | null;
@@ -661,4 +666,28 @@ export interface CoachingEvent {
   actorName: string | null;
   detail: Record<string, unknown>;
   createdAt: string;
+}
+
+// ── Online billing (Razorpay link / subscription behind an enrollment) ─────
+export type BillingKind = "PAYMENT_LINK" | "SUBSCRIPTION";
+export type BillingStatus = "CREATED" | "AUTHENTICATED" | "ACTIVE" | "PENDING" | "HALTED" | "PAID" | "CANCELLED" | "COMPLETED" | "EXPIRED";
+
+export interface EnrollmentBilling {
+  kind: BillingKind;
+  status: BillingStatus;
+  /** One charge — the whole fee for a link, the per-month fee for a subscription. */
+  amountMinor: number;
+  totalCycles: number;
+  chargeCount: number;
+  shortUrl: string | null;
+  currentEnd: string | null;
+}
+
+/** What the create-coaching-enrollment-billing function returns. */
+export interface EnrollmentBillingLink {
+  kind: BillingKind;
+  shortUrl: string | null;
+  status: BillingStatus;
+  amountMinor?: number;
+  cycles?: number;
 }

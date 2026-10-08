@@ -18,12 +18,17 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
-import 'coaching_enrollment_form_sheet.dart';
 
 /// Coaching → Enrollments — mirrors
 /// src/features/coaching/components/enrollments-page.tsx.
+///
+/// Opened from a program's "View Enrollments" with [initialProgramId], it lists only that program's
+/// students (the Program filter starts on it and can be widened to All). Enrolling a student happens
+/// in Manage Students → Add Student, not here.
 class CoachingEnrollmentsScreen extends ConsumerStatefulWidget {
-  const CoachingEnrollmentsScreen({super.key});
+  const CoachingEnrollmentsScreen({super.key, this.initialProgramId});
+
+  final String? initialProgramId;
 
   @override
   ConsumerState<CoachingEnrollmentsScreen> createState() => _CoachingEnrollmentsScreenState();
@@ -36,7 +41,7 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
   Timer? _debounce;
   String _search = '';
   EnrollmentStatus? _status;
-  String? _programId;
+  late String? _programId = widget.initialProgramId;
   List<ProgramOption> _programs = const [];
   int _page = 0;
   List<EnrollmentRow>? _rows;
@@ -147,39 +152,19 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
     _load();
   }
 
-  Future<void> _add() async {
-    final fid = _facilityId;
-    if (fid == null) return;
-    final id = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => CoachingEnrollmentFormSheet(facilityId: fid),
-    );
-    if (id != null && mounted) {
-      context.push('/coaching/enrollments/$id');
-      _load();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Enrollments', message: "You don't have permission to view coaching.");
     }
-    final canManage = session.can('COACHING_MANAGE_ENROLLMENTS');
     final totalPages = _total == 0 ? 1 : ((_total + _pageSize - 1) ~/ _pageSize);
     final programLabel = _programId == null
         ? 'All Programs'
         : _programs.where((p) => p.id == _programId).map((p) => p.name).firstOrNull ?? 'Program';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Student Enrollments'),
-        actions: [
-          if (canManage) IconButton(icon: const Icon(Icons.add), tooltip: 'Add enrollment', onPressed: _add),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Student Enrollments')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,

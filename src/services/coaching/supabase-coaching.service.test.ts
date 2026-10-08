@@ -186,3 +186,61 @@ describe("SupabaseCoachingService", () => {
     expect(page.enrollments[0]?.priceMinor).toBe(300000);
   });
 });
+
+describe("SupabaseCoachingService — online billing", () => {
+  it("getBillingCycles asks the database for the cycle count", async () => {
+    const rpc = vi.fn(async () => ({ data: 3, error: null }));
+    const cycles = await new SupabaseCoachingService({ rpc } as never).getBillingCycles("2026-01-15", "2026-03-15");
+    expect(rpc).toHaveBeenCalledWith("coaching_billing_cycles", { p_start: "2026-01-15", p_end: "2026-03-15" });
+    expect(cycles).toBe(3);
+  });
+
+  it("createProgramFull stores a non-default fee type after creating the program", async () => {
+    const rpc = vi.fn(async (name: string) => ({ data: name === "create_coaching_program_full" ? { id: "p1" } : null, error: null }));
+    const id = await new SupabaseCoachingService({ rpc } as never).createProgramFull({ facilityId: "f1", name: "Monthly Squad", feeType: "MONTHLY" });
+    expect(id).toBe("p1");
+    expect(rpc).toHaveBeenCalledWith("set_coaching_program_fee_type", { p_program_id: "p1", p_fee_type: "MONTHLY" });
+  });
+
+  it("createProgramFull does not touch fee type for a one-time program", async () => {
+    const rpc = vi.fn(async () => ({ data: { id: "p1" }, error: null }));
+    await new SupabaseCoachingService({ rpc } as never).createProgramFull({ facilityId: "f1", name: "Camp", feeType: "ONE_TIME" });
+    expect(rpc).not.toHaveBeenCalledWith("set_coaching_program_fee_type", expect.anything());
+  });
+
+  it("createEnrollmentBilling sends only the enrollment id and returns the link", async () => {
+    const invoke = vi.fn(async () => ({ data: { kind: "PAYMENT_LINK", shortUrl: "https://rzp.io/i/x", status: "CREATED" }, error: null }));
+    const link = await new SupabaseCoachingService({ functions: { invoke } } as never).createEnrollmentBilling("e1");
+    expect(invoke).toHaveBeenCalledWith("create-coaching-enrollment-billing", { body: { enrollmentId: "e1" } });
+    expect(link.shortUrl).toBe("https://rzp.io/i/x");
+  });
+
+  it("createEnrollmentBilling surfaces the function error message", async () => {
+    const context = new Response(JSON.stringify({ error: "There is nothing left to collect for this enrollment." }), { status: 400 });
+    const invoke = vi.fn(async () => ({ data: null, error: { context } }));
+    await expect(new SupabaseCoachingService({ functions: { invoke } } as never).createEnrollmentBilling("e1")).rejects.toMatchObject({
+      code: "PAYMENT_GATEWAY_ERROR",
+      message: "There is nothing left to collect for this enrollment.",
+    });
+  });
+
+  it("cancelling an enrollment also cancels its online billing", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const invoke = vi.fn(async () => ({ data: { cancelled: true }, error: null }));
+    await new SupabaseCoachingService({ rpc, functions: { invoke } } as never).setEnrollmentStatus("e1", "CANCELLED", "Moved away");
+    expect(invoke).toHaveBeenCalledWith("cancel-coaching-enrollment-billing", { body: { enrollmentId: "e1" } });
+  });
+
+  it("a failure to cancel billing does not fail the enrollment cancellation", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const invoke = vi.fn(async () => ({ data: null, error: new Error("gateway down") }));
+    await expect(new SupabaseCoachingService({ rpc, functions: { invoke } } as never).setEnrollmentStatus("e1", "CANCELLED", "x")).resolves.toBeUndefined();
+  });
+
+  it("pausing an enrollment leaves online billing alone", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: null }));
+    const invoke = vi.fn();
+    await new SupabaseCoachingService({ rpc, functions: { invoke } } as never).setEnrollmentStatus("e1", "PAUSED");
+    expect(invoke).not.toHaveBeenCalled();
+  });
+});

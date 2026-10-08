@@ -192,7 +192,9 @@ class CoachingRepository {
   Future<ProgramDetail> getProgram(String programId) async {
     try {
       final data = await _client.rpc('get_coaching_program', params: {'p_program_id': programId});
-      return ProgramDetail.fromJson(_obj(data));
+      // get_coaching_program predates fee_type (0110) — read it straight from the row.
+      final fee = await _client.from('coaching_programs').select('fee_type').eq('id', programId).maybeSingle();
+      return ProgramDetail.fromJson({..._obj(data), 'feeType': fee?['fee_type'] ?? 'ONE_TIME'});
     } catch (e) {
       throw _map(e);
     }
@@ -201,7 +203,84 @@ class CoachingRepository {
   Future<List<ProgramOption>> listProgramOptions(String facilityId) async {
     try {
       final rows = await _client.rpc('list_coaching_program_options', params: {'p_facility_id': facilityId});
-      return _rows(rows).map(ProgramOption.fromJson).toList();
+      // list_coaching_program_options predates fee_type / end_date (0110) — merge them in from the table.
+      final extra = _rows(await _client.from('coaching_programs').select('id, fee_type, start_date, end_date, payment_mode, early_bird_discount_minor, tax_percent').eq('facility_id', facilityId));
+      final byId = {for (final r in extra) r['id'] as String: r};
+      return _rows(rows).map((r) => ProgramOption.fromJson({...r, ...?byId[r['id']]})).toList();
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<List<ProgramBatch>> listProgramBatches(String programId) async {
+    try {
+      final rows = await _client.rpc('list_coaching_program_batches', params: {'p_program_id': programId});
+      return _rows(rows).map(ProgramBatch.fromJson).toList();
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// ONE_TIME or MONTHLY. A monthly program needs a start and end date (the database enforces it).
+  Future<void> setProgramFeeType(String programId, String feeType) async {
+    try {
+      await _client.rpc('set_coaching_program_fee_type', params: {'p_program_id': programId, 'p_fee_type': feeType});
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// A program together with its first batch, atomically — what the web Create Program wizard submits.
+  /// [batch] keys: courtId, coachId (nullable), name, daysOfWeek, startTime, endTime, capacity.
+  Future<String> createProgramFull({
+    required String facilityId,
+    required String name,
+    String level = 'All Levels',
+    String ageGroup = 'All Ages',
+    String category = 'General',
+    String? description,
+    int defaultDurationMinutes = 60,
+    int defaultCapacity = 1,
+    int? sessionCount,
+    int? defaultPriceMinor,
+    bool isMembershipIncluded = false,
+    int? sessionsPerWeek,
+    String? startDate,
+    String? endDate,
+    String paymentMode = 'BOTH',
+    int? earlyBirdDiscountMinor,
+    String? discountValidTill,
+    double? taxPercent,
+    String feeType = 'ONE_TIME',
+    List<Map<String, dynamic>> batches = const [],
+  }) async {
+    try {
+      final row = await _client.rpc('create_coaching_program_full', params: {
+        'p_facility_id': facilityId,
+        'p_name': name,
+        'p_level': level,
+        'p_age_group': ageGroup,
+        'p_category': category,
+        'p_description': description,
+        'p_facility_sport_id': null,
+        'p_default_duration_minutes': defaultDurationMinutes,
+        'p_default_capacity': defaultCapacity,
+        'p_session_count': sessionCount,
+        'p_default_price_minor': defaultPriceMinor,
+        'p_is_membership_included': isMembershipIncluded,
+        'p_sessions_per_week': sessionsPerWeek,
+        'p_start_date': startDate,
+        'p_end_date': endDate,
+        'p_payment_mode': paymentMode,
+        'p_early_bird_discount_minor': earlyBirdDiscountMinor,
+        'p_discount_valid_till': discountValidTill,
+        'p_tax_percent': taxPercent,
+        'p_status': 'ACTIVE',
+        'p_batches': batches,
+      });
+      final id = _obj(row)['id'] as String;
+      if (feeType != 'ONE_TIME') await setProgramFeeType(id, feeType);
+      return id;
     } catch (e) {
       throw _map(e);
     }
@@ -253,9 +332,24 @@ class CoachingRepository {
     int? sessionCount,
     int? defaultPriceMinor,
     ProgramStatus? status,
+    int? sessionsPerWeek,
+    String? startDate,
+    String? endDate,
+    String? paymentMode,
+    int? earlyBirdDiscountMinor,
+    String? discountValidTill,
+    double? taxPercent,
+    String? feeType,
   }) async {
     try {
       await _client.rpc('update_coaching_program', params: {
+        'p_sessions_per_week': sessionsPerWeek,
+        'p_start_date': startDate,
+        'p_end_date': endDate,
+        'p_payment_mode': paymentMode,
+        'p_early_bird_discount_minor': earlyBirdDiscountMinor,
+        'p_discount_valid_till': discountValidTill,
+        'p_tax_percent': taxPercent,
         'p_program_id': programId,
         'p_name': name,
         'p_level': level,
@@ -270,6 +364,7 @@ class CoachingRepository {
         'p_is_membership_included': null,
         'p_status': status?.toJson(),
       });
+      if (feeType != null) await setProgramFeeType(programId, feeType);
     } catch (e) {
       throw _map(e);
     }
@@ -422,15 +517,23 @@ class CoachingRepository {
     EnrollmentStatus? status,
     int limit = 20,
     int offset = 0,
+    String? coachId,
+    String? level,
+
+    /// Overrides [status] with a raw filter key — 'NOT_ACTIVE' groups every non-ACTIVE enrollment
+    /// (the Manage Students "Inactive" tab).
+    String? statusKey,
   }) async {
     try {
       final rows = await _client.rpc('list_coaching_enrollments', params: {
         'p_facility_id': facilityId,
         'p_search': (search != null && search.trim().isNotEmpty) ? search.trim() : null,
         'p_program_id': programId,
-        'p_status': status?.toJson(),
+        'p_status': statusKey ?? status?.toJson(),
         'p_limit': limit,
         'p_offset': offset,
+        'p_coach_id': coachId,
+        'p_level': level,
       });
       return EnrollmentPage.fromRows(_rows(rows));
     } catch (e) {
@@ -458,9 +561,11 @@ class CoachingRepository {
     int? priceMinor,
     String? pricingType,
     String? notes,
+    String? batchId,
   }) async {
     try {
       final row = await _client.rpc('create_coaching_enrollment', params: {
+        'p_batch_id': batchId,
         'p_facility_id': facilityId,
         'p_member_id': memberId,
         'p_program_id': programId,
@@ -512,6 +617,70 @@ class CoachingRepository {
     } catch (e) {
       throw _map(e);
     }
+    // A cancelled student must not keep being charged: stop any live Razorpay link/subscription.
+    // Best-effort — the status change above already succeeded and the billing card can cancel it again.
+    if (status == 'CANCELLED') {
+      try {
+        await cancelEnrollmentBilling(enrollmentId);
+      } on AppException {
+        // swallowed on purpose, see above
+      }
+    }
+  }
+
+  // ── Online billing (Razorpay payment link / monthly subscription) ──────
+  /// Monthly charges between an enrollment start and a program end. Computed by the database
+  /// (coaching_billing_cycles) so the total shown here always equals what the enrollment stores.
+  Future<int> getBillingCycles(String startDate, String? endDate) async {
+    try {
+      final data = await _client.rpc('coaching_billing_cycles', params: {'p_start': startDate, 'p_end': endDate});
+      return (data as num).toInt();
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<EnrollmentBilling?> getEnrollmentBilling(String enrollmentId) async {
+    try {
+      final row = await _client
+          .from('coaching_enrollment_billing')
+          .select('kind, status, amount_minor, total_cycles, charge_count, short_url, current_end')
+          .eq('enrollment_id', enrollmentId)
+          .maybeSingle();
+      return row == null ? null : EnrollmentBilling.fromJson(row);
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Creates (or returns the existing) Razorpay link / AutoPay subscription for the enrollment. The
+  /// amount is decided server-side from the enrollment — nothing money-related is sent from here.
+  Future<void> createEnrollmentBilling(String enrollmentId) =>
+      _invokeBilling('create-coaching-enrollment-billing', enrollmentId);
+
+  Future<void> cancelEnrollmentBilling(String enrollmentId) =>
+      _invokeBilling('cancel-coaching-enrollment-billing', enrollmentId);
+
+  /// Asks Razorpay directly whether the link / subscription has been paid and records it (idempotent
+  /// with the webhook), so the screen reflects a payment immediately instead of waiting on the webhook.
+  Future<void> reconcileEnrollmentBilling(String enrollmentId) =>
+      _invokeBilling('reconcile-coaching-enrollment-billing', enrollmentId);
+
+  Future<void> _invokeBilling(String function, String enrollmentId) async {
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(function, body: {'enrollmentId': enrollmentId});
+    } on FunctionsHttpException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] is String) {
+        throw AppException(AppErrorCode.paymentGatewayError, details['error'] as String);
+      }
+      throw AppException(AppErrorCode.paymentGatewayError);
+    } on FunctionException {
+      throw AppException(AppErrorCode.paymentGatewayError);
+    }
+    final data = response.data;
+    if (data is! Map || data['error'] != null) throw AppException(AppErrorCode.paymentGatewayError);
   }
 
   // ── Progress ────────────────────────────────────────────────────────────

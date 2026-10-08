@@ -26,6 +26,7 @@ import '../payments/payment_status_panel.dart';
 import 'booking_status_presentation.dart';
 import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
+import 'potential_members_screen.dart';
 
 const _perPage = 10;
 
@@ -417,7 +418,17 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Guest Bookings')),
+      appBar: AppBar(
+        title: const Text('Guest Bookings'),
+        actions: [
+          // Guests who book often and aren't members yet — the web reaches this from Guest Insights.
+          IconButton(
+            icon: const Icon(Icons.trending_up_rounded),
+            tooltip: 'Potential Members',
+            onPressed: () => Navigator.of(context).push(AppPageRoute(builder: (_) => const PotentialMembersScreen())),
+          ),
+        ],
+      ),
       floatingActionButton: _loading || _loadError != null
           ? null
           : _NewBookingFab(

@@ -28,12 +28,27 @@ export const PAYMENT_STATUSES = ["created", "paid", "failed", "refunded"] as con
 export const BOOKING_STATUSES = ["pending", "confirmed", "cancelled", "completed"] as const;
 export const INVENTORY_TXN_TYPES = ["checkout", "return", "restock", "damage"] as const;
 
-export type NavGroup = "main" | "club" | "operations" | "finance";
+export type NavGroup =
+  | "main"
+  | "guest"
+  | "memberships"
+  | "coaching"
+  | "maintenance"
+  | "staff"
+  | "inventory"
+  | "finance";
+
+/** Sidebar sections in display order. */
+export const NAV_GROUP_ORDER: NavGroup[] = ["main", "guest", "memberships", "coaching", "maintenance", "staff", "inventory", "finance"];
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   main: null,
-  club: "Club",
-  operations: "Operations",
+  guest: "Guest Management",
+  memberships: "Memberships Management",
+  coaching: "Coaching Management",
+  maintenance: "Maintenance Management",
+  staff: "Staff Management",
+  inventory: "Inventory Management",
   finance: "Finance",
 };
 
@@ -44,42 +59,65 @@ export interface NavItem {
   href: string;
   roles: Role[];
   /**
-   * A facility permission key gating the whole section. When set, the item is
-   * hidden unless the signed-in user holds it for the active facility. This is
-   * UX only — the page's own guard and the database enforce access.
+   * A facility permission key gating the item. When set, the item is hidden
+   * unless the signed-in user holds it for the active facility. This is UX
+   * only — the page's own guard and the database enforce access.
    */
   permission?: string;
   /**
-   * Sub-pages shown when the section is expanded. A section still has its
-   * own href — the parent is a real destination, not just a toggle.
+   * Sub-pages shown when the item is expanded (only the Finance group still
+   * uses this; every other section lists its pages directly as flat items).
    */
   children?: { label: string; href: string }[];
 }
 
+const STAFF_ROLES: Role[] = ["admin", "staff"];
+
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
-  { label: "Members", group: "club", href: "/memberships", roles: ["admin", "staff"] },
-  {
-    label: "Memberships",
-    group: "club",
-    href: "/memberships/v1",
-    roles: ["admin", "staff"],
-    // "Overview" shares the section's own href — clicking the parent row only expands/collapses
-    // it (see NavSection), so this child is what actually links back to the dashboard itself.
-    children: [
-      { label: "Overview", href: "/memberships/v1" },
-      { label: "Membership Schedule", href: "/memberships/v1/schedule" },
-    ],
-  },
-  { label: "Membership Sessions", group: "club", href: "/membership-sessions", roles: ["admin", "staff"] },
   { label: "Calendar", group: "main", href: "/calendar", roles: ["admin", "staff", "member"] },
-  { label: "Guest Bookings", group: "main", href: "/guest-bookings", roles: ["admin", "staff"] },
-  { label: "Guest Players", group: "club", href: "/guests", roles: ["admin", "staff"] },
+  { label: "Tournaments", group: "main", href: "/tournaments", roles: STAFF_ROLES },
+
+  // Guest Management
+  { label: "Guest Booking", group: "guest", href: "/guest-bookings", roles: STAFF_ROLES },
+  { label: "Guest Players", group: "guest", href: "/guests", roles: STAFF_ROLES },
+
+  // Memberships Management
+  { label: "Dashboard", group: "memberships", href: "/memberships/v1", roles: STAFF_ROLES },
+  { label: "Membership Schedule", group: "memberships", href: "/memberships/v1/schedule", roles: STAFF_ROLES },
+  { label: "Membership Sessions", group: "memberships", href: "/membership-sessions", roles: STAFF_ROLES },
+  { label: "Members", group: "memberships", href: "/memberships", roles: STAFF_ROLES },
+
+  // Coaching Management
+  { label: "Coaching", group: "coaching", href: "/coaching", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
+  { label: "Program", group: "coaching", href: "/coaching/programs", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
+  { label: "Students", group: "coaching", href: "/coaching/students", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
+  { label: "Report", group: "coaching", href: "/coaching/reports", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
+
+  // Maintenance Management (Court Schedule is no longer in the menu; its page still exists)
+  { label: "Maintenance", group: "maintenance", href: "/maintenance", roles: STAFF_ROLES },
+  { label: "Maintenance Tracker", group: "maintenance", href: "/maintenance/tickets", roles: STAFF_ROLES },
+  { label: "Issue Category", group: "maintenance", href: "/maintenance/issue-categories", roles: STAFF_ROLES },
+
+  // Staff Management
+  { label: "Staff", group: "staff", href: "/users-roles/staff", roles: STAFF_ROLES, permission: "USERS_VIEW" },
+  { label: "Roles & Permission", group: "staff", href: "/users-roles/roles", roles: STAFF_ROLES, permission: "USERS_VIEW" },
+  { label: "Access History", group: "staff", href: "/users-roles/access-history", roles: STAFF_ROLES, permission: "USERS_VIEW" },
+
+  // Inventory Management
+  { label: "Inventory Tracker", group: "inventory", href: "/inventory", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Items", group: "inventory", href: "/inventory/items", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Stock Movement", group: "inventory", href: "/inventory/movements", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Purchase Orders", group: "inventory", href: "/inventory/purchase-orders", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Vendors", group: "inventory", href: "/inventory/vendors", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Categories", group: "inventory", href: "/inventory/categories", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+
+  // Finance (unchanged)
   {
     label: "Payments",
     group: "finance",
     href: "/finance",
-    roles: ["admin", "staff"],
+    roles: STAFF_ROLES,
     children: [
       { label: "Overview", href: "/finance" },
       { label: "Transactions", href: "/finance/transactions" },
@@ -94,7 +132,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Reports & Analytics",
     group: "finance",
     href: "/reports",
-    roles: ["admin", "staff"],
+    roles: STAFF_ROLES,
     children: [
       { label: "Overview", href: "/reports" },
       { label: "Bookings", href: "/reports/bookings" },
@@ -102,59 +140,6 @@ export const NAV_ITEMS: NavItem[] = [
       { label: "Revenue", href: "/reports/revenue" },
       { label: "Memberships", href: "/reports/memberships" },
       { label: "Guest Bookings", href: "/reports/guest-bookings" },
-    ],
-  },
-  {
-    label: "Maintenance",
-    group: "operations",
-    href: "/maintenance",
-    roles: ["admin", "staff"],
-    children: [
-      { label: "Overview", href: "/maintenance" },
-      { label: "Maintenance Tickets", href: "/maintenance/tickets" },
-      { label: "Court Schedule", href: "/maintenance/court-schedule" },
-      { label: "Issue Categories", href: "/maintenance/issue-categories" },
-    ],
-  },
-  {
-    label: "Staff",
-    group: "operations",
-    href: "/users-roles/staff",
-    roles: ["admin", "staff"],
-    permission: "USERS_VIEW",
-    children: [
-      { label: "Staff", href: "/users-roles/staff" },
-      { label: "Roles & Permissions", href: "/users-roles/roles" },
-      { label: "Access History", href: "/users-roles/access-history" },
-    ],
-  },
-  {
-    label: "Inventory",
-    group: "operations",
-    href: "/inventory",
-    roles: ["admin", "staff"],
-    permission: "INVENTORY_VIEW",
-    children: [
-      { label: "Overview", href: "/inventory" },
-      { label: "Items", href: "/inventory/items" },
-      { label: "Stock Movements", href: "/inventory/movements" },
-      { label: "Purchase Orders", href: "/inventory/purchase-orders" },
-      { label: "Vendors", href: "/inventory/vendors" },
-      { label: "Categories", href: "/inventory/categories" },
-    ],
-  },
-  { label: "Tournaments", group: "club", href: "/tournaments", roles: ["admin", "staff"] },
-  {
-    label: "Coaching",
-    group: "club",
-    href: "/coaching",
-    roles: ["admin", "staff"],
-    permission: "COACHING_VIEW",
-    children: [
-      { label: "Manage Coaching", href: "/coaching" },
-      { label: "Manage Program", href: "/coaching/programs" },
-      { label: "Manage Students", href: "/coaching/students" },
-      { label: "Reports", href: "/coaching/reports" },
     ],
   },
 ];
