@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,28 +22,28 @@ import {
   money,
   paymentStatusBadge,
 } from "@/features/coaching/components/shared";
-import { EnrollmentFormDialog } from "@/features/coaching/components/enrollment-form-dialog";
 
 const PAGE_SIZE = 20;
 const ALL = "ALL";
 
-export function EnrollmentsPage() {
+/**
+ * Student Enrollments. Opened from a program's "View Enrollments" with `initialProgramId`, it lists
+ * only that program's students (the Program filter starts on it and can be widened to All).
+ * Enrolling a student happens in Manage Students → Add Student, not here.
+ */
+export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: string }) {
   const perms = usePermissionContext();
-  const router = useRouter();
   const facilityId = perms?.facilityId ?? null;
 
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [status, setStatus] = useState(ALL);
-  const [programId, setProgramId] = useState(ALL);
+  const [programId, setProgramId] = useState(initialProgramId ?? ALL);
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<EnrollmentRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
-  const [adding, setAdding] = useState(false);
-
-  const canManage = perms?.can("COACHING_MANAGE_ENROLLMENTS") ?? false;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);
@@ -88,18 +86,13 @@ export function EnrollmentsPage() {
     };
   }, [load]);
 
+  const selectedProgram = programId === ALL ? null : programs.find((p) => p.id === programId);
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Student Enrollments"
-        subtitle="Manage student enrollments across programs."
-        action={
-          canManage && (
-            <Button size="sm" onClick={() => setAdding(true)}>
-              <Plus className="h-4 w-4" aria-hidden /> Add Enrollment
-            </Button>
-          )
-        }
+        subtitle={selectedProgram ? `Students enrolled in ${selectedProgram.name}.` : "Manage student enrollments across programs."}
       />
 
       <Card className="p-4">
@@ -175,17 +168,6 @@ export function EnrollmentsPage() {
         )}
         <Pagination page={page} pageSize={PAGE_SIZE} totalCount={totalCount} onPage={setPage} unit="enrollments" />
       </Card>
-
-      {adding && facilityId && (
-        <EnrollmentFormDialog
-          facilityId={facilityId}
-          onClose={() => setAdding(false)}
-          onSaved={(id) => {
-            setAdding(false);
-            router.push(`/coaching/enrollments/${id}`);
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -209,3 +209,31 @@ policy percent calculation, refundable-amount/over-refund math, revenue
 aggregation (gross/refund/net, revenue-by-source classification, duplicate
 protection), and the settlement routing/exception-reason logic are all pure
 functions; Razorpay HTTP calls are tested against a mocked `fetch`.
+
+## Coaching enrollment online payments (migration 0110)
+
+Collect a coaching enrollment's fee through Razorpay from *Add Student → Payment* (web) or the enrollment's
+*Payments* tab (web + mobile).
+
+- **create-coaching-enrollment-billing** — one-time program → a Razorpay **Payment Link** for the outstanding fee;
+  monthly program → a Razorpay **Subscription** (UPI AutoPay) charging the per-month fee for `billing_cycles`
+  cycles, i.e. until the program end date. Runs under the staff member's JWT; the amount is read server-side.
+- **cancel-coaching-enrollment-billing** — stops the link / subscription (enrollment cancelled, or the fee was
+  settled another way).
+- **razorpay-webhook** — now also handles `payment_link.paid`, `payment_link.cancelled` and
+  `payment_link.expired`; `subscription.*` events for a coaching subscription are routed to the coaching
+  RPCs (anything else stays on the membership path). Each successful charge becomes a normal `payments`
+  row, idempotent on `razorpay_payment_id`.
+
+**Apply migration 0110 before (or together with) deploying these** — the webhook calls the new coaching RPCs
+for every subscription event.
+
+```sh
+supabase functions deploy create-coaching-enrollment-billing
+supabase functions deploy cancel-coaching-enrollment-billing
+supabase functions deploy razorpay-webhook --no-verify-jwt
+```
+
+Razorpay Dashboard → Settings → Webhooks: add **payment_link.paid**, **payment_link.cancelled** and
+**payment_link.expired** to the events already listed above. **Payment Links** and **Subscriptions** must both be
+enabled on the account. Unit tests: `deno test _shared/coaching-billing.test.ts`.

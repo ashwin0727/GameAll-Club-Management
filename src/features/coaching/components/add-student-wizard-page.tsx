@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Search } from "lucide-react";
+import { Check, ChevronRight, Copy, Link2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import { usePermissionContext } from "@/features/auth/context/permission-provide
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
 import { isValidEmail, sanitizePhoneDigits } from "@/features/coaching/add-coach-validation";
-import type { ProgramDetail, ProgramRow } from "@/features/coaching/types";
+import type { EnrollmentBillingLink, ProgramDetail, ProgramRow } from "@/features/coaching/types";
 import { blurOnWheel, fmtDate, money, NO_SPINNER_INPUT } from "@/features/coaching/components/shared";
 import { cn } from "@/lib/utils";
 
@@ -123,7 +123,15 @@ export function AddStudentWizardPage() {
 
   // Step 4 — Payment
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
-  const [paymentMode, setPaymentMode] = useState<"OFFLINE" | "LATER" | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "OFFLINE" | "LATER" | null>(null);
+  // Razorpay: the link (one-time program) or AutoPay mandate (monthly program) generated for this enrollment.
+  const [billingLink, setBillingLink] = useState<EnrollmentBillingLink | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  // Set once Razorpay confirms the student paid (link) or approved the mandate and the first charge landed (monthly).
+  const [onlinePaid, setOnlinePaid] = useState(false);
+  // Number of monthly charges (monthly programs only) — computed by the database, never client-side.
+  const [billingCycles, setBillingCycles] = useState<number | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("Cash");
   const [payReference, setPayReference] = useState("");
@@ -162,9 +170,60 @@ export function AddStudentWizardPage() {
       .then((p) => {
         setProgram(p);
         setBatchId(p.batches[0]?.id ?? "");
+        // A program that has not started yet enrolls the student from its own start date, not from
+        // today; one already running (or with no start date) starts them today.
+        const today = new Date().toISOString().slice(0, 10);
+        setStartDate(p.startDate && p.startDate > today ? p.startDate : today);
       })
       .catch(() => setProgram(null));
   }, [programId]);
+
+  useEffect(() => {
+    if (program?.feeType !== "MONTHLY" || !startDate) {
+      setBillingCycles(null);
+      return;
+    }
+    let cancelled = false;
+    getCoachingService()
+      .getBillingCycles(startDate, program.endDate)
+      .then((c) => !cancelled && setBillingCycles(c))
+      .catch(() => !cancelled && setBillingCycles(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [program, startDate]);
+
+  // After the link is generated, watch for the student paying it: ask Razorpay on a short timer and when
+  // this tab regains focus, so the wizard moves on by itself the moment the payment lands.
+  useEffect(() => {
+    if (!enrollmentId || !billingLink || step !== "Payment" || onlinePaid) return;
+    let cancelled = false;
+    let running = false;
+    const check = async () => {
+      if (running) return;
+      running = true;
+      try {
+        await getCoachingService().reconcileEnrollmentBilling(enrollmentId).catch(() => undefined);
+        const b = await getCoachingService().getEnrollmentBilling(enrollmentId);
+        if (!cancelled && b && (b.status === "PAID" || b.chargeCount > 0)) {
+          setOnlinePaid(true);
+          setStep("Success");
+        }
+      } catch {
+        // transient — the next tick retries
+      } finally {
+        running = false;
+      }
+    };
+    const timer = setInterval(() => void check(), 5000);
+    const onFocus = () => void check();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [enrollmentId, billingLink, step, onlinePaid]);
 
   if (!perms?.can("COACHING_MANAGE_ENROLLMENTS")) {
     return <PermissionDenied message="You don't have permission to manage coaching enrollments." />;
@@ -177,7 +236,17 @@ export function AddStudentWizardPage() {
   const baseFeeInr = program?.defaultPriceMinor != null ? program.defaultPriceMinor / 100 : 0;
   const discountInr = program?.earlyBirdDiscountMinor != null ? program.earlyBirdDiscountMinor / 100 : 0;
   const taxInr = program?.taxPercent ? Math.round(((baseFeeInr - discountInr) * program.taxPercent) / 100) : 0;
+  // For a monthly program this is the fee for ONE month (discount and tax apply per month).
   const amountPayableInr = program?.isMembershipIncluded ? 0 : Math.max(0, baseFeeInr - discountInr) + taxInr;
+  const isMonthly = program?.feeType === "MONTHLY" && !program.isMembershipIncluded;
+  const cycles = isMonthly ? (billingCycles ?? 1) : 1;
+  const cycleFeeMinor = Math.round(amountPayableInr * 100);
+  /** The enrollment's total obligation: one fee, or every month's fee until the program ends. */
+  const totalPayableMinor = cycleFeeMinor * cycles;
+  // The program's existing Payment Mode decides which collection methods are offered.
+  const onlineAllowed = program ? program.paymentMode !== "OFFLINE" : false;
+  const offlineAllowed = program ? program.paymentMode !== "ONLINE" : true;
+  const monthlyNeedsDates = isMonthly && !program?.endDate;
 
   // One set of rules for both the live inline errors and the "Next Step" gate, so they can
   // never drift apart — the same pattern the Add Coach wizard's "+ New person" fields use.
@@ -197,9 +266,14 @@ export function AddStudentWizardPage() {
   const showError = (field: string) => (touched.has(field) ? fieldErrors[field] : undefined);
 
   const step1Valid = selectedMember ? true : Object.keys(fieldErrors).length === 0;
-  const step2Valid = Boolean(programId) && (program ? program.batches.length === 0 || Boolean(batchId) : false) && Boolean(startDate);
+  const step2Valid =
+    Boolean(programId) &&
+    (program ? program.batches.length === 0 || Boolean(batchId) : false) &&
+    Boolean(startDate) &&
+    !monthlyNeedsDates &&
+    (!isMonthly || billingCycles !== null);
 
-  const remainingMinor = Math.round(amountPayableInr * 100) - paidSoFar;
+  const remainingMinor = totalPayableMinor - paidSoFar;
   const payAmountMinor = Math.round((Number(payAmount) || 0) * 100);
   const payAmountError = !payAmount.trim()
     ? "Enter an amount."
@@ -264,7 +338,7 @@ export function AddStudentWizardPage() {
         programId,
         batchId: batchId || null,
         startDate,
-        priceMinor: program?.isMembershipIncluded ? 0 : Math.round(amountPayableInr * 100),
+        priceMinor: program?.isMembershipIncluded ? 0 : totalPayableMinor,
         pricingType: program?.isMembershipIncluded ? "MEMBERSHIP_INCLUDED" : "STANDARD",
       });
       setEnrollmentId(id);
@@ -278,7 +352,7 @@ export function AddStudentWizardPage() {
 
   async function recordPayment(full: boolean) {
     if (!enrollmentId) return;
-    const remaining = Math.round(amountPayableInr * 100) - paidSoFar;
+    const remaining = totalPayableMinor - paidSoFar;
     const amountMinor = full ? remaining : Math.round((Number(payAmount) || 0) * 100);
     if (amountMinor <= 0 || amountMinor > remaining) {
       setError("Enter a valid amount up to the outstanding balance.");
@@ -303,6 +377,30 @@ export function AddStudentWizardPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function generateLink() {
+    if (!enrollmentId) return;
+    setGeneratingLink(true);
+    setError(null);
+    try {
+      setBillingLink(await getCoachingService().createEnrollmentBilling(enrollmentId));
+    } catch (e) {
+      setError(e instanceof ServiceError ? e.message : "Could not generate the payment link.");
+    } finally {
+      setGeneratingLink(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!billingLink?.shortUrl) return;
+    try {
+      await navigator.clipboard.writeText(billingLink.shortUrl);
+    } catch {
+      window.prompt("Copy this link:", billingLink.shortUrl);
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   }
 
   return (
@@ -588,10 +686,27 @@ export function AddStudentWizardPage() {
                     <dt className="text-muted-foreground">Tax</dt>
                     <dd>{money(Math.round(taxInr * 100))}</dd>
                   </div>
-                  <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
-                    <dt>Amount Payable</dt>
-                    <dd>{money(Math.round(amountPayableInr * 100))}</dd>
-                  </div>
+                  {isMonthly ? (
+                    <>
+                      <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
+                        <dt>Amount per Month</dt>
+                        <dd>{money(cycleFeeMinor)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-muted-foreground">Monthly charges (until {program.endDate ? fmtDate(program.endDate) : "program end"})</dt>
+                        <dd>× {cycles}</dd>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <dt>Total Payable</dt>
+                        <dd>{money(totalPayableMinor)}</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
+                      <dt>Amount Payable</dt>
+                      <dd>{money(totalPayableMinor)}</dd>
+                    </div>
+                  )}
                 </dl>
               )}
             </div>
@@ -603,21 +718,41 @@ export function AddStudentWizardPage() {
             <div className="rounded-lg border border-border p-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Amount Payable</span>
-                <span className="text-lg font-bold">{money(Math.round(amountPayableInr * 100) - paidSoFar)}</span>
+                <span className="text-lg font-bold">{money(totalPayableMinor - paidSoFar)}</span>
               </div>
+              {isMonthly && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {money(cycleFeeMinor)} per month × {cycles} {cycles === 1 ? "month" : "months"}
+                  {program?.endDate ? " · until " + fmtDate(program.endDate) : ""}
+                </p>
+              )}
             </div>
-            {Math.round(amountPayableInr * 100) - paidSoFar <= 0 ? (
+            {totalPayableMinor - paidSoFar <= 0 ? (
               <p className="text-sm text-success">No payment due.</p>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode("OFFLINE")}
-                    className={cn("h-10 rounded-lg border text-sm font-medium", paymentMode === "OFFLINE" ? "border-success bg-success/10 text-success" : "border-input hover:bg-accent/50")}
-                  >
-                    Record Offline Payment
-                  </button>
+                <div className={cn("grid gap-2", onlineAllowed && offlineAllowed ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2")}>
+                  {onlineAllowed && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("ONLINE")}
+                      className={cn("flex h-10 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium", paymentMode === "ONLINE" ? "border-success bg-success/10 text-success" : "border-input hover:bg-accent/50")}
+                    >
+                      <Link2 className="h-4 w-4" aria-hidden />
+                      {isMonthly ? "Set Up Monthly Auto-Pay" : "Send Payment Link"}
+                    </button>
+                  )}
+                  {offlineAllowed && (
+                    <button
+                      type="button"
+                      disabled={Boolean(billingLink)}
+                      title={billingLink ? "A payment link was already generated — record the payment through it." : undefined}
+                      onClick={() => setPaymentMode("OFFLINE")}
+                      className={cn("h-10 rounded-lg border text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50", paymentMode === "OFFLINE" ? "border-success bg-success/10 text-success" : "border-input hover:bg-accent/50")}
+                    >
+                      Record Offline Payment
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPaymentMode("LATER")}
@@ -626,6 +761,52 @@ export function AddStudentWizardPage() {
                     Pay Later
                   </button>
                 </div>
+                {paymentMode === "ONLINE" && (
+                  <div className="space-y-3 rounded-lg border border-border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      {isMonthly
+                        ? `A Razorpay AutoPay link will be created. The student approves it once, then ${money(cycleFeeMinor)} is charged automatically every month for ${cycles} ${cycles === 1 ? "month" : "months"}${program?.endDate ? ` (until ${fmtDate(program.endDate)})` : ""}.`
+                        : `A Razorpay payment link for ${money(totalPayableMinor - paidSoFar)} will be created. Share it with the student — the enrollment is marked paid automatically once they pay.`}
+                    </p>
+                    {billingLink?.shortUrl ? (
+                      <div className="space-y-2 rounded-lg border border-success/30 bg-success/10 p-3">
+                        <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
+                          <Check className="h-4 w-4" aria-hidden />
+                          {isMonthly ? "Auto-pay link ready" : "Payment link ready"}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Input readOnly value={billingLink.shortUrl} className="flex-1 bg-card text-xs" />
+                          <button
+                            type="button"
+                            onClick={() => void copyLink()}
+                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0B7A55] px-3 text-xs font-semibold text-white"
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden />
+                            {linkCopied ? "Copied" : "Copy"}
+                          </button>
+                        </div>
+                        <p className="text-xs text-foreground/80">
+                          The student is enrolled and the payment shows as due until they pay — it updates automatically.
+                        </p>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={generatingLink}
+                        onClick={() => void generateLink()}
+                        className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-4 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        <Link2 className="h-4 w-4" aria-hidden />
+                        {generatingLink ? "Generating…" : isMonthly ? "Generate Auto-Pay Link" : "Generate Payment Link"}
+                      </button>
+                    )}
+                    {billingLink?.shortUrl && (
+                      <button type="button" onClick={() => setStep("Success")} className="flex h-10 items-center gap-2 rounded-lg border border-input px-4 text-sm font-medium hover:bg-accent">
+                        Continue
+                      </button>
+                    )}
+                  </div>
+                )}
                 {paymentMode === "OFFLINE" && (
                   <div className="space-y-3 rounded-lg border border-border p-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -704,6 +885,18 @@ export function AddStudentWizardPage() {
                 {selectedMember?.fullName} has been enrolled in <span className="font-medium text-foreground">{program?.name}</span>
                 {selectedBatch ? ` — ${selectedBatch.name}` : ""}.
               </p>
+              {billingLink && onlinePaid && (
+                <p className="mt-2 text-sm font-medium text-success">
+                  {isMonthly ? "Auto-pay is active — the first month's payment was received." : "Payment received online."}
+                </p>
+              )}
+              {billingLink && !onlinePaid && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {isMonthly
+                    ? "Monthly auto-pay is set up — it starts once the student approves the mandate from the link."
+                    : "Awaiting online payment — the status updates automatically once the student pays."}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap justify-center gap-2 pt-2">
               {enrollmentId && (

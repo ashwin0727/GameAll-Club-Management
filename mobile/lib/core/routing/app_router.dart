@@ -81,6 +81,9 @@ import '../../features/coaching/coaching_session_detail_screen.dart';
 import '../../features/coaching/coaching_enrollments_screen.dart';
 import '../../features/coaching/coaching_enrollment_detail_screen.dart';
 import '../../features/coaching/coaching_reports_screen.dart';
+import '../../features/bookings/potential_members_screen.dart';
+import '../../features/memberships/member_schedule_screen.dart';
+import '../../features/coaching/coaching_add_student_screen.dart';
 import '../../features/coaching/coaching_students_screen.dart';
 import '../../features/tournaments/tournament_app_config.dart';
 import '../../features/tournaments/tournament_management_screen.dart';
@@ -225,6 +228,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.guestBookings,
         pageBuilder: (context, state) =>
             slideOver(state, const GuestBookingsScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.membershipSchedule,
+        pageBuilder: (context, state) => slideOver(state, const MemberScheduleScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.potentialMembers,
+        pageBuilder: (context, state) =>
+            slideOver(state, const PotentialMembersScreen()),
       ),
       GoRoute(
         path: AppRoutes.guests,
@@ -470,14 +482,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             slideOver(state, CoachingSessionDetailScreen(sessionId: state.pathParameters['sessionId']!)),
       ),
-      GoRoute(path: AppRoutes.coachingEnrollments, builder: (context, state) => const CoachingEnrollmentsScreen()),
+      GoRoute(
+        path: AppRoutes.coachingEnrollments,
+        // `?programId=` comes from a program's "View Enrollments" — only that program's students.
+        builder: (context, state) => CoachingEnrollmentsScreen(initialProgramId: state.uri.queryParameters['programId']),
+      ),
       GoRoute(
         path: AppRoutes.coachingEnrollmentDetail,
         pageBuilder: (context, state) =>
-            slideOver(state, CoachingEnrollmentDetailScreen(enrollmentId: state.pathParameters['enrollmentId']!)),
+            slideOver(
+          state,
+          CoachingEnrollmentDetailScreen(
+            enrollmentId: state.pathParameters['enrollmentId']!,
+            // `?tab=payments` is how Add Student hands off to the payment step.
+            initialTab: state.uri.queryParameters['tab'] == 'payments' ? 2 : 0,
+          ),
+        ),
       ),
       GoRoute(path: AppRoutes.coachingReports, builder: (context, state) => const CoachingReportsScreen()),
       GoRoute(path: AppRoutes.coachingStudents, builder: (context, state) => const CoachingStudentsScreen()),
+      GoRoute(
+        path: AppRoutes.coachingStudentNew,
+        pageBuilder: (context, state) => slideOver(state, const CoachingAddStudentScreen()),
+      ),
 
       // ── Tournament Management (separate app — handoff screen only) ──────
       GoRoute(

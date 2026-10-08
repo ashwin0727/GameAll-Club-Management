@@ -28,6 +28,9 @@ class AppRoutes {
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
   static const guestBookings = '/guest-bookings';
+
+  /// Guests who book often and aren't members yet. Reached from Guest Bookings; not in the menu.
+  static const potentialMembers = '/guest-bookings/potential-members';
   static const guests = '/guests';
 
   /// Mirrors the web's NAV_ITEMS "Memberships" entry (src/lib/constants.ts)
@@ -35,6 +38,9 @@ class AppRoutes {
   /// /memberships/new.
   static const memberships = '/memberships';
   static const membershipsNew = '/memberships/new';
+
+  /// Membership Schedule — a member's weekly court slots. Web's /memberships/v1/schedule.
+  static const membershipSchedule = '/memberships/schedule';
 
   static const membershipSessions = '/membership-sessions';
   static const refunds = '/refunds';
@@ -148,8 +154,12 @@ class AppRoutes {
   static const coachingEnrollmentDetail = '/coaching/enrollments/:enrollmentId';
   static const coachingReports = '/coaching/reports';
 
-  /// Placeholder — "Manage Students" is a nav destination only; the screen isn't built yet.
+  /// Manage Students — the roster of every enrolled student (one row per enrollment).
   static const coachingStudents = '/coaching/students';
+
+  /// Add Student — find or create a student, pick a program + batch, then hand off to the
+  /// enrollment's Payments tab.
+  static const coachingStudentNew = '/coaching/students/new';
 
   /// Tournament Management is a SEPARATE app — this route is a handoff/bridge
   /// screen that explains it and opens or links to it. No tournament features

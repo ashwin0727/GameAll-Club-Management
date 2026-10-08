@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/booking.dart';
 import '../models/membership.dart';
+import '../../features/memberships/member_schedule.dart';
 
 String _dateOnly(DateTime d) {
   final year = d.year.toString().padLeft(4, '0');
@@ -504,6 +505,17 @@ class MembershipRepository {
   /// Everything the Membership Details screen shows — one
   /// `get_membership_detail` read returning a single jsonb document.
   /// Mirrors `getMembershipDetail` on the web.
+  /// Every (member, batch) assignment at the facility — one row each. The Membership Schedule screen
+  /// groups these per member. Mirrors `listMemberSchedules` on the web.
+  Future<List<MemberScheduleRow>> listMemberSchedules(String facilityId) async {
+    try {
+      final rows = await _client.rpc('list_member_schedules', params: {'p_facility_id': facilityId});
+      return (rows as List<dynamic>).map((r) => MemberScheduleRow.fromJson((r as Map).cast<String, dynamic>())).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   Future<MembershipDetail> getMembershipDetail(String membershipId) async {
     try {
       final doc = await _client.rpc('get_membership_detail', params: {'p_membership_id': membershipId});

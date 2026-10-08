@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/coaching.dart';
@@ -93,11 +95,24 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
           title: Text(_program?.name ?? 'Program'),
           actions: [
             if (_program != null && canManage) ...[
-              TextButton(
-                onPressed: _busy ? null : _toggle,
-                child: Text(_program!.status == ProgramStatus.active ? 'Deactivate' : 'Reactivate'),
+              // Once students have joined, the program is locked: it can't be edited or deactivated
+              // underneath them (Reactivate stays available). A long-press explains why.
+              Tooltip(
+                message: (_program!.status == ProgramStatus.active ? _program!.lockReason : null) ?? '',
+                triggerMode: TooltipTriggerMode.tap,
+                child: TextButton(
+                  onPressed: _busy || (_program!.status == ProgramStatus.active && _program!.isLocked) ? null : _toggle,
+                  child: Text(_program!.status == ProgramStatus.active ? 'Deactivate' : 'Reactivate'),
+                ),
               ),
-              IconButton(icon: const Icon(Icons.edit_outlined), onPressed: _edit),
+              Tooltip(
+                message: _program!.lockReason ?? 'Edit',
+                triggerMode: TooltipTriggerMode.tap,
+                child: IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: _program!.isLocked ? null : _edit,
+                ),
+              ),
             ],
           ],
         ),
@@ -131,6 +146,10 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
           ),
           const SizedBox(height: AppSpacing.sm),
           Text('${p.level} · ${p.ageGroup} · ${p.category}', style: AppTypography.secondary(context)),
+          if (ref.read(sessionControllerProvider).can('COACHING_MANAGE_PROGRAMS') && p.lockReason != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(p.lockReason!, style: AppTypography.caption(context)),
+          ],
           const SizedBox(height: AppSpacing.md),
           GridView.count(
             crossAxisCount: 2,
@@ -146,6 +165,15 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
               CoachingKpi(label: 'Completed', value: '${p.completedSessions}'),
             ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('${AppRoutes.coachingEnrollments}?programId=${p.id}'),
+              icon: const Icon(Icons.people_outline, size: 18),
+              label: const Text('View Enrollments'),
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
           AppCard(
             child: Column(
@@ -154,14 +182,21 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
                 _kv('Default duration', '${p.defaultDurationMinutes} min'),
                 _kv('Default capacity', '${p.defaultCapacity}'),
                 _kv('Sessions / package', p.sessionCount != null ? '${p.sessionCount}' : '—'),
+                _kv('Start date', coachDate(p.startDate)),
+                _kv('End date', coachDate(p.endDate)),
+                if (p.sessionsPerWeek != null) _kv('Sessions / week', '${p.sessionsPerWeek}'),
+                _kv('Fee type', p.isMembershipIncluded ? 'Included' : (p.feeType == 'MONTHLY' ? 'Monthly' : 'One-time')),
                 _kv(
-                  'Default price',
+                  p.isMonthly ? 'Fee per month' : 'Default price',
                   p.isMembershipIncluded
                       ? 'Included'
                       : p.defaultPriceMinor != null
                           ? coachMoney(p.defaultPriceMinor)
                           : 'Per enrollment',
                 ),
+                if (p.earlyBirdDiscountMinor != null) _kv('Early-bird discount', coachMoney(p.earlyBirdDiscountMinor)),
+                if (p.taxPercent != null) _kv('Tax', '${p.taxPercent}%'),
+                _kv('Payment mode', const {'OFFLINE': 'Offline', 'ONLINE': 'Online', 'BOTH': 'Offline & Online'}[p.paymentMode] ?? p.paymentMode),
                 _kv('Created', coachDate(p.createdAt)),
                 if (p.description != null && p.description!.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -170,6 +205,29 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
               ],
             ),
           ),
+          if (p.batches.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text('Batches', style: AppTypography.rowTitle(context)),
+            const SizedBox(height: AppSpacing.xs),
+            for (final b in p.batches)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b.name, style: AppTypography.rowTitle(context)),
+                      const SizedBox(height: 2),
+                      Text(b.scheduleLabel, style: AppTypography.secondary(context)),
+                      Text(
+                        [b.courtName, b.coachName, 'Capacity ${b.capacity}'].whereType<String>().join(' · '),
+                        style: AppTypography.caption(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
           const SizedBox(height: AppSpacing.xl),
         ],
       ),

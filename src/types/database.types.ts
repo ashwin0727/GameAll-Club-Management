@@ -1356,6 +1356,7 @@ export interface Database {
           start_date: string | null;
           end_date: string | null;
           payment_mode: "OFFLINE" | "ONLINE" | "BOTH";
+          fee_type: "ONE_TIME" | "MONTHLY";
           early_bird_discount_minor: number | null;
           discount_valid_till: string | null;
           tax_percent: number | null;
@@ -1480,9 +1481,35 @@ export interface Database {
           cancelled_at: string | null;
           cancel_reason: string | null;
           batch_id: string | null;
+          fee_type: "ONE_TIME" | "MONTHLY";
+          billing_cycles: number;
         };
         Insert: { facility_id: string; member_id: string; program_id: string };
         Update: Partial<Database["public"]["Tables"]["coaching_enrollments"]["Insert"]>;
+        Relationships: [];
+      };
+      coaching_enrollment_billing: {
+        Row: {
+          id: string;
+          enrollment_id: string;
+          facility_id: string;
+          kind: "PAYMENT_LINK" | "SUBSCRIPTION";
+          status: "CREATED" | "AUTHENTICATED" | "ACTIVE" | "PENDING" | "HALTED" | "PAID" | "CANCELLED" | "COMPLETED" | "EXPIRED";
+          amount_minor: number;
+          total_cycles: number;
+          charge_count: number;
+          razorpay_payment_link_id: string | null;
+          razorpay_plan_id: string | null;
+          razorpay_subscription_id: string | null;
+          short_url: string | null;
+          current_start: string | null;
+          current_end: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { enrollment_id: string; facility_id: string; kind: "PAYMENT_LINK" | "SUBSCRIPTION"; amount_minor: number };
+        Update: Partial<Database["public"]["Tables"]["coaching_enrollment_billing"]["Insert"]>;
         Relationships: [];
       };
       student_progress_notes: {
@@ -4618,6 +4645,14 @@ export interface Database {
         Returns: Database["public"]["Tables"]["coaching_session_students"]["Row"];
       };
       remove_session_student: { Args: { p_session_id: string; p_enrollment_id: string }; Returns: undefined };
+      coaching_billing_cycles: {
+        Args: { p_start: string; p_end: string | null };
+        Returns: number;
+      };
+      set_coaching_program_fee_type: {
+        Args: { p_program_id: string; p_fee_type: string };
+        Returns: undefined;
+      };
       create_coaching_enrollment: {
         Args: {
           p_facility_id: string;

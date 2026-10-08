@@ -554,12 +554,33 @@ export function ProgramWizardPage() {
 
           {form.step === "Pricing & Settings" && (
             <>
+              <Field label="Fee Type">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {(["ONE_TIME", "MONTHLY"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => form.setFeeType(t)}
+                      className={cn(
+                        "rounded-xl border p-3 text-left text-sm transition-colors",
+                        form.feeType === t ? "border-success bg-success/10 text-success" : "border-input hover:bg-accent/50",
+                      )}
+                    >
+                      <span className="block font-medium">{t === "ONE_TIME" ? "One-time Payment" : "Monthly Payment"}</span>
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {t === "ONE_TIME" ? "Student pays the full fee once, via a payment link." : "Auto-charged every month until the program ends."}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
               <Field label="Fee Structure">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {(["SINGLE", "PER_SESSION"] as const).map((f) => (
                     <button
                       key={f}
                       type="button"
+                      disabled={form.feeType === "MONTHLY" && f === "PER_SESSION"}
                       onClick={() => form.setFeeStructure(f)}
                       className={cn(
                         "rounded-xl border p-3 text-left text-sm font-medium transition-colors",
@@ -572,7 +593,7 @@ export function ProgramWizardPage() {
                 </div>
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Total Program Fee (₹)">
+                <Field label={form.feeType === "MONTHLY" ? "Fee per Month (₹)" : "Total Program Fee (₹)"}>
                   <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.programFee} onChange={(e) => form.setProgramFee(e.target.value)} />
                 </Field>
                 <Field label="Payment Mode">
@@ -741,6 +762,7 @@ export function ProgramWizardPage() {
               <ReviewSection n={4} title="Pricing & Settings" onEdit={() => form.setStep("Pricing & Settings")}>
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
+                    <ReviewRow icon={Repeat} label="Fee Type" value={form.feeType === "MONTHLY" ? "Monthly (auto-charged until program ends)" : "One-time"} />
                     <ReviewRow icon={IndianRupee} label="Fee Structure" value={form.feeStructure === "SINGLE" ? "Single Program Fee" : "Per Session Fee"} />
                     {form.feeStructure === "PER_SESSION" ? (
                       <>

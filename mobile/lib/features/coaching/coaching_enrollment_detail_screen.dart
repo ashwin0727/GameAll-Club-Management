@@ -14,14 +14,18 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
+import 'coaching_billing_card.dart';
 import 'coaching_common.dart';
 
 /// Coaching → Enrollment detail — mirrors
 /// src/features/coaching/components/enrollment-details-page.tsx.
 class CoachingEnrollmentDetailScreen extends ConsumerStatefulWidget {
-  const CoachingEnrollmentDetailScreen({super.key, required this.enrollmentId});
+  const CoachingEnrollmentDetailScreen({super.key, required this.enrollmentId, this.initialTab = 0});
 
   final String enrollmentId;
+
+  /// Index into the Overview / Sessions / Payments / Progress tabs to open on.
+  final int initialTab;
 
   @override
   ConsumerState<CoachingEnrollmentDetailScreen> createState() => _CoachingEnrollmentDetailScreenState();
@@ -32,7 +36,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
 
   EnrollmentDetail? _e;
   String? _error;
-  int _tab = 0;
+  late int _tab = widget.initialTab;
   bool _busy = false;
   bool _changed = false;
 
@@ -176,6 +180,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
           children: [
             _kv('Student', '${e.studentName}${e.studentPhone != null ? ' · ${e.studentPhone}' : ''}'),
             _kv('Program', e.programName),
+            _kv('Batch', e.batchName ?? '—'),
             _kv('Coach', e.coachName ?? '—'),
             _kv('Start date', coachDate(e.startDate)),
             _kv('End date', coachDate(e.endDate)),
@@ -219,10 +224,23 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
   }
 
   List<Widget> _payments(EnrollmentDetail e) {
+    final billingCard = e.isMembershipIncluded
+        ? null
+        : CoachingBillingCard(
+            enrollmentId: e.id,
+            outstandingMinor: e.outstandingMinor,
+            canManage: ref.read(sessionControllerProvider).can('COACHING_MANAGE_ENROLLMENTS'),
+            onChanged: () {
+              _changed = true;
+              _load();
+            },
+          );
     if (e.payments.isEmpty) {
-      return [Text('No payments recorded.', style: AppTypography.secondary(context))];
+      return [?billingCard, Text('No payments recorded.', style: AppTypography.secondary(context))];
     }
-    return e.payments
+    return [
+      ?billingCard,
+      ...e.payments
         .map((p) => AppCard(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
@@ -233,7 +251,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
                 ],
               ),
             ))
-        .toList();
+    ];
   }
 
   List<Widget> _progress(EnrollmentDetail e, bool canProgress) {

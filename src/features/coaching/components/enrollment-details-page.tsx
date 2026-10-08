@@ -20,6 +20,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { EnrollmentDetail } from "@/features/coaching/types";
+import { EnrollmentBillingCard } from "@/features/coaching/components/enrollment-billing-card";
 import {
   ErrorState,
   PROGRESS_LABEL,
@@ -163,9 +164,10 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
       {tab === "Overview" && (
         <Card className="p-4">
           <h3 className="text-sm font-semibold">Enrollment</h3>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm md:grid-cols-3">
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-4 text-sm md:grid-cols-3">
             <Row label="Student" value={`${e.studentName}${e.studentPhone ? ` · ${e.studentPhone}` : ""}`} />
             <Row label="Program" value={e.programName} />
+            <Row label="Batch" value={e.batchName ?? "—"} />
             <Row label="Coach" value={e.coachName ?? "—"} />
             <Row label="Start date" value={fmtDate(e.startDate)} />
             <Row label="End date" value={fmtDate(e.endDate)} />
@@ -199,6 +201,15 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
       )}
 
       {tab === "Payments" && (
+        <div className="space-y-4">
+        {e.pricingType !== "MEMBERSHIP_INCLUDED" && (
+          <EnrollmentBillingCard
+            enrollmentId={e.id}
+            outstandingMinor={e.outstandingMinor}
+            canManage={canManage}
+            onChanged={() => void load()}
+          />
+        )}
         <Card className="p-0">
           {e.payments.length === 0 ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No payments recorded.</div>
@@ -217,6 +228,7 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
             </ul>
           )}
         </Card>
+        </div>
       )}
 
       {tab === "Progress" && (
@@ -506,18 +518,18 @@ function AddProgressDialog({
 
 function Back() {
   return (
-    <Link href="/coaching/enrollments" className="text-sm text-muted-foreground hover:underline">
-      ← Back to enrollments
+    <Link href="/coaching/students" className="text-sm text-muted-foreground hover:underline">
+      ← Back to Manage Students
     </Link>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-medium">{value}</dd>
-    </>
+    <div className="min-w-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words font-medium">{value}</dd>
+    </div>
   );
 }
 

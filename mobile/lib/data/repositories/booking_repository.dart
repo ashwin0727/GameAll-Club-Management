@@ -166,6 +166,37 @@ class BookingRepository {
     }
   }
 
+  /// Every guest booking at the facility (optionally one sport), fetched a page at a time until it
+  /// is all here — the raw material for Potential Members. Capped so a runaway history can't hammer
+  /// the database.
+  Future<List<GuestBookingRow>> listAllGuestBookings(String facilityId, {String? facilitySportId}) async {
+    const pageSize = 500;
+    const maxPages = 20;
+    final out = <GuestBookingRow>[];
+    for (var page = 0; page < maxPages; page++) {
+      final result = await listGuestBookings(facilityId, facilitySportId: facilitySportId, limit: pageSize, offset: page * pageSize);
+      out.addAll(result.rows);
+      if (out.length >= result.totalCount || result.rows.isEmpty) break;
+    }
+    return out;
+  }
+
+  /// The phone keys (last ten digits) of the facility's ACTIVE members — who a guest is checked
+  /// against so someone already a member is never offered a membership.
+  Future<Set<String>> activeMemberPhoneKeys(String facilityId) async {
+    try {
+      final rows = await _client.from('members').select('phone').eq('facility_id', facilityId).eq('status', 'ACTIVE');
+      final keys = <String>{};
+      for (final r in rows as List<dynamic>) {
+        final digits = ((r as Map)['phone'] as String? ?? '').replaceAll(RegExp(r'\D'), '');
+        if (digits.length >= 7) keys.add(digits.length > 10 ? digits.substring(digits.length - 10) : digits);
+      }
+      return keys;
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   Future<Booking?> getBooking(String bookingId) async {
     try {
       final row = await _client.from('bookings').select().eq('id', bookingId).maybeSingle();

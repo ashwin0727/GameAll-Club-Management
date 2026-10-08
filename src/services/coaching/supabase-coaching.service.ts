@@ -21,6 +21,8 @@ import type {
   CreateEnrollmentInput,
   CreateProgramInput,
   CreateSessionInput,
+  EnrollmentBilling,
+  EnrollmentBillingLink,
   EnrollmentDetail,
   EnrollmentFilters,
   EnrollmentPage,
@@ -62,6 +64,20 @@ function mapError(error: unknown): ServiceError {
   }
   if (message) return new ServiceError("COACHING_RULE_ERROR", message);
   return new ServiceError("COACHING_DATA_ERROR");
+}
+
+/** An Edge Function's non-2xx body is { error: "<user-safe message>" } — surface it rather than a generic failure. */
+async function functionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  try {
+    const res = (error as { context?: Response } | null)?.context;
+    if (res && typeof res.json === "function") {
+      const body = (await res.json()) as { error?: string };
+      if (body?.error) return body.error;
+    }
+  } catch {
+    // body already consumed / not JSON — fall through to the fallback
+  }
+  return fallback;
 }
 
 export class SupabaseCoachingService {
@@ -325,7 +341,23 @@ export class SupabaseCoachingService {
   async getProgram(programId: string): Promise<ProgramDetail> {
     const { data, error } = await this.supabase.rpc("get_coaching_program", { p_program_id: programId });
     if (error || !data) throw mapError(error);
-    return data as unknown as ProgramDetail;
+    // get_coaching_program predates fee_type (0110) — read it straight from the row so that RPC's
+    // many-field payload does not have to be re-declared.
+    const { data: fee } = await this.supabase.from("coaching_programs").select("fee_type").eq("id", programId).maybeSingle();
+    return { ...(data as unknown as ProgramDetail), feeType: fee?.fee_type ?? "ONE_TIME" };
+  }
+
+  /** Monthly charges between an enrollment start and a program end — computed by the database so the
+   *  total shown here always equals what the enrollment trigger stores (see coaching_billing_cycles). */
+  async getBillingCycles(startDate: string, endDate: string | null): Promise<number> {
+    const { data, error } = await this.supabase.rpc("coaching_billing_cycles", { p_start: startDate, p_end: endDate });
+    if (error || typeof data !== "number") throw mapError(error);
+    return data;
+  }
+
+  async setProgramFeeType(programId: string, feeType: "ONE_TIME" | "MONTHLY"): Promise<void> {
+    const { error } = await this.supabase.rpc("set_coaching_program_fee_type", { p_program_id: programId, p_fee_type: feeType });
+    if (error) throw mapError(error);
   }
 
   async listProgramOptions(facilityId: string): Promise<ProgramOption[]> {
@@ -400,6 +432,7 @@ export class SupabaseCoachingService {
       })),
     });
     if (error || !data) throw mapError(error);
+    if (input.feeType && input.feeType !== "ONE_TIME") await this.setProgramFeeType(data.id, input.feeType);
     return data.id;
   }
 
@@ -439,6 +472,7 @@ export class SupabaseCoachingService {
       p_enrollment_deadline: input.enrollmentDeadline ?? null,
     });
     if (error) throw mapError(error);
+    if (input.feeType) await this.setProgramFeeType(input.programId, input.feeType);
   }
 
   async uploadProgramImage(file: File): Promise<string> {
@@ -759,6 +793,64 @@ export class SupabaseCoachingService {
       p_reason: reason ?? null,
     });
     if (error) throw mapError(error);
+    // A cancelled student must not keep being charged: stop any live Razorpay link/subscription.
+    // Best-effort — the status change above already succeeded and billing can be cancelled again
+    // from the enrollment page.
+    if (status === "CANCELLED") {
+      await this.cancelEnrollmentBilling(enrollmentId).catch((e) => console.error("[coaching-service] could not cancel billing", e));
+    }
+  }
+
+  // ── Online billing (Razorpay payment link / monthly subscription) ───────
+  /** Creates (or returns the existing) Razorpay link/subscription for the enrollment. The amount is
+   *  decided server-side from the enrollment — nothing money-related is sent from here. */
+  async createEnrollmentBilling(enrollmentId: string): Promise<EnrollmentBillingLink> {
+    const { data, error } = await this.supabase.functions.invoke<EnrollmentBillingLink | { error: string }>(
+      "create-coaching-enrollment-billing",
+      { body: { enrollmentId } },
+    );
+    if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR", await functionErrorMessage(error, "Could not set up the online payment."));
+    if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+    return data;
+  }
+
+  async cancelEnrollmentBilling(enrollmentId: string): Promise<void> {
+    const { data, error } = await this.supabase.functions.invoke<{ cancelled: boolean } | { error: string }>(
+      "cancel-coaching-enrollment-billing",
+      { body: { enrollmentId } },
+    );
+    if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR", await functionErrorMessage(error, "Could not cancel the online payment."));
+    if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+  }
+
+  /** Asks Razorpay directly whether the link / subscription has been paid and records it (idempotent with the
+   *  webhook). Lets the page reflect a payment immediately instead of waiting on webhook delivery. */
+  async reconcileEnrollmentBilling(enrollmentId: string): Promise<void> {
+    const { data, error } = await this.supabase.functions.invoke<{ changed: boolean } | { error: string }>(
+      "reconcile-coaching-enrollment-billing",
+      { body: { enrollmentId } },
+    );
+    if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR", await functionErrorMessage(error, "Could not check the payment."));
+    if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
+  }
+
+  async getEnrollmentBilling(enrollmentId: string): Promise<EnrollmentBilling | null> {
+    const { data, error } = await this.supabase
+      .from("coaching_enrollment_billing")
+      .select("kind, status, amount_minor, total_cycles, charge_count, short_url, current_end")
+      .eq("enrollment_id", enrollmentId)
+      .maybeSingle();
+    if (error) throw mapError(error);
+    if (!data) return null;
+    return {
+      kind: data.kind,
+      status: data.status,
+      amountMinor: data.amount_minor,
+      totalCycles: data.total_cycles,
+      chargeCount: data.charge_count,
+      shortUrl: data.short_url,
+      currentEnd: data.current_end,
+    };
   }
 
   // ── Progress ─────────────────────────────────────────────────────────────

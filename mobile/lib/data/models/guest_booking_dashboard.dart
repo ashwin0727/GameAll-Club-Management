@@ -71,6 +71,7 @@ class GuestBookingRow {
     required this.endTime,
     required this.partySize,
     this.amountMinor,
+    this.paidMinor,
     required this.currency,
     required this.paymentStatus,
     this.paymentMethod,
@@ -88,6 +89,9 @@ class GuestBookingRow {
   final DateTime endTime;
   final int partySize;
   final int? amountMinor;
+
+  /// Money actually collected on this booking (null when the list payload didn't carry it).
+  final int? paidMinor;
   final String currency;
   final String paymentStatus; // PENDING | PAID | REFUNDED
   final String? paymentMethod;
@@ -107,6 +111,7 @@ class GuestBookingRow {
         endTime: DateTime.parse(j['end_time'] as String).toLocal(),
         partySize: (j['party_size'] as num?)?.toInt() ?? 1,
         amountMinor: (j['amount_minor'] as num?)?.toInt(),
+        paidMinor: (j['paid_minor'] as num?)?.toInt(),
         currency: j['currency'] as String? ?? 'INR',
         paymentStatus: j['payment_status'] as String? ?? 'PENDING',
         paymentMethod: j['payment_method'] as String?,

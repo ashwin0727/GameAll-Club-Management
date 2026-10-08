@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
-import type { CreateProgramInput, DraftProgramBatch, ProgramPaymentMode, ProgramType } from "@/features/coaching/types";
+import type { CreateProgramInput, DraftProgramBatch, ProgramFeeType, ProgramPaymentMode, ProgramType } from "@/features/coaching/types";
 
 export const PROGRAM_STEPS = ["Basic Information", "Program Details", "Schedule & Batches", "Pricing & Settings", "Review & Create"] as const;
 export type ProgramStep = (typeof PROGRAM_STEPS)[number];
@@ -127,6 +127,12 @@ export function useProgramWizardForm(facilityId: string | null) {
   const [feeStructure, setFeeStructure] = useState<"SINGLE" | "PER_SESSION">("SINGLE");
   const [programFee, setProgramFee] = useState("");
   const [paymentMode, setPaymentMode] = useState<ProgramPaymentMode>("BOTH");
+  const [feeType, setFeeTypeState] = useState<ProgramFeeType>("ONE_TIME");
+  // A monthly fee is one flat amount per month, so "Per Session Fee" does not apply to it.
+  function setFeeType(next: ProgramFeeType) {
+    setFeeTypeState(next);
+    if (next === "MONTHLY") setFeeStructure("SINGLE");
+  }
   const [earlyBirdDiscount, setEarlyBirdDiscount] = useState("");
   const [discountValidTill, setDiscountValidTill] = useState("");
   const [taxApplicable, setTaxApplicable] = useState(false);
@@ -203,6 +209,7 @@ export function useProgramWizardForm(facilityId: string | null) {
   const step3Valid = batches.length === 1;
   const step4Valid =
     priceInr >= 0 &&
+    (feeType === "ONE_TIME" || priceInr > 0) &&
     discountInr <= perStudentBaseFeeInr &&
     (!enrollmentDeadlineEnabled || Boolean(enrollmentDeadline));
   const canSubmit = step1Valid && step2Valid && step3Valid && step4Valid;
@@ -242,6 +249,7 @@ export function useProgramWizardForm(facilityId: string | null) {
       // — a Per Session Fee is already multiplied out to the program's real total sessions here.
       defaultPriceMinor: perStudentBaseFeeInr > 0 ? Math.round(perStudentBaseFeeInr * 100) : null,
       paymentMode,
+      feeType,
       earlyBirdDiscountMinor: discountInr > 0 ? Math.round(discountInr * 100) : null,
       discountValidTill: discountValidTill.trim() || null,
       taxPercent: taxApplicable ? Number(taxPercent) : null,
@@ -338,6 +346,8 @@ export function useProgramWizardForm(facilityId: string | null) {
     setProgramFee,
     paymentMode,
     setPaymentMode,
+    feeType,
+    setFeeType,
     earlyBirdDiscount,
     setEarlyBirdDiscount,
     discountValidTill,

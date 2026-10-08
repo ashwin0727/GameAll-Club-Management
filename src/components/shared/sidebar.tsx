@@ -21,13 +21,24 @@ import {
   Trophy,
   Users,
   CalendarDays,
+  ArrowLeftRight,
+  BookOpen,
+  ClipboardList,
+  GraduationCap,
+  History,
+  KeyRound,
+  Package,
+  ShoppingCart,
+  Store,
+  Tags,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_ITEMS, type NavGroup, type NavItem } from "@/lib/constants";
+import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, type NavItem } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { PermissionKey } from "@/features/staff/types";
+import { activeHrefFor } from "@/lib/nav-active";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
@@ -41,28 +52,23 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/finance": BadgeIndianRupee,
   "/reports": BarChart3,
   "/maintenance": Wrench,
+  "/maintenance/tickets": ClipboardList,
+  "/maintenance/issue-categories": Tags,
   "/users-roles/staff": ShieldCheck,
+  "/users-roles/roles": KeyRound,
+  "/users-roles/access-history": History,
   "/inventory": Boxes,
+  "/inventory/items": Package,
+  "/inventory/movements": ArrowLeftRight,
+  "/inventory/purchase-orders": ShoppingCart,
+  "/inventory/vendors": Store,
+  "/inventory/categories": Tags,
   "/coaching": Dumbbell,
+  "/coaching/programs": BookOpen,
+  "/coaching/students": GraduationCap,
+  "/coaching/reports": BarChart3,
   "/tournaments": Trophy,
 };
-
-/**
- * Match the exact path or a real sub-path ("/memberships/new"), never a bare
- * string prefix of a sibling route — "/book" must not light up "/bookings" or "/calendar".
- *
- * "/memberships/v1" (the Membership Dashboard) is carved out of "/memberships" (the Members
- * list) the same way: both are top-level nav items sharing a prefix, so only the more specific
- * one should light up. "Member Schedule" (/memberships/v1/schedule) is carved out of
- * "/memberships/v1" the same way, so visiting it doesn't also light up "Memberships".
- */
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/memberships" && pathname.startsWith("/memberships/v1")) return false;
-  if (href === "/memberships/v1" && pathname.startsWith("/memberships/v1/")) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-const GROUP_ORDER: NavGroup[] = ["main", "club", "operations", "finance"];
 
 export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
@@ -76,6 +82,13 @@ export function Sidebar({ role }: { role: Role }) {
       // the active facility (or there is no permission context yet — e.g.
       // mid-onboarding — in which case fall back to the role gate above).
       (!item.permission || !perms || perms.can(item.permission as PermissionKey)),
+  );
+
+  // One entry is "current": the most specific href matching this page, across flat items and
+  // Finance's sub-pages alike.
+  const activeHref = activeHrefFor(
+    pathname,
+    items.flatMap((item) => [item.href, ...(item.children ?? []).map((c) => c.href)]),
   );
 
   return (
@@ -106,7 +119,7 @@ export function Sidebar({ role }: { role: Role }) {
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-3">
-          {GROUP_ORDER.map((group) => {
+          {NAV_GROUP_ORDER.map((group) => {
             const groupItems = items.filter((item) => item.group === group);
             if (groupItems.length === 0) return null;
             const heading = NAV_GROUP_LABELS[group];
@@ -122,7 +135,7 @@ export function Sidebar({ role }: { role: Role }) {
                     <NavSection
                       key={item.href}
                       item={item}
-                      pathname={pathname}
+                      activeHref={activeHref}
                       onNavigate={() => setSidebarOpen(false)}
                     />
                   ) : (
@@ -131,7 +144,7 @@ export function Sidebar({ role }: { role: Role }) {
                       href={item.href}
                       label={item.label}
                       icon={ICONS[item.href] ?? LayoutDashboard}
-                      active={isActive(pathname, item.href)}
+                      active={activeHref === item.href}
                       onNavigate={() => setSidebarOpen(false)}
                     />
                   ),
@@ -168,16 +181,15 @@ export function Sidebar({ role }: { role: Role }) {
  */
 function NavSection({
   item,
-  pathname,
+  activeHref,
   onNavigate,
 }: {
   item: NavItem;
-  pathname: string;
+  activeHref: string | null;
   onNavigate: () => void;
 }) {
   const children = item.children ?? [];
-  const sectionActive =
-    isActive(pathname, item.href) || children.some((child) => isActive(pathname, child.href));
+  const sectionActive = activeHref === item.href || children.some((child) => child.href === activeHref);
   const [open, setOpen] = useState(sectionActive);
 
   useEffect(() => {
@@ -207,10 +219,7 @@ function NavSection({
       {open && (
         <ul className="mt-1 space-y-0.5">
           {children.map((child) => {
-            // Overview shares the section's own href, so it must match
-            // exactly or every Finance page would light it up too.
-            const active =
-              child.href === item.href ? pathname === child.href : isActive(pathname, child.href);
+            const active = child.href === activeHref;
             return (
               <li key={child.href}>
                 <Link
