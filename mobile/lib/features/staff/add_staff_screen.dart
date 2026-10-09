@@ -14,6 +14,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Users & Roles → Staff → Add — mirrors add-staff-page.tsx (3-step wizard).
 class AddStaffScreen extends ConsumerStatefulWidget {
@@ -169,7 +170,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                         ] else if (_step == 1) ...[
                           const Text('Access & Role', style: TextStyle(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpacing.sm),
-                          DropdownButtonFormField<String>(
+                          AppDropdown<String>(
                             initialValue: _roleId,
                             decoration: const InputDecoration(labelText: 'Role *'),
                             items: _roles

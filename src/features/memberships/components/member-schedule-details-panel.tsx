@@ -66,7 +66,7 @@ export function MemberScheduleDetailsPanel({ member }: { member: MemberScheduleS
 
   function onAction(key: string) {
     if (key === "edit") {
-      if (member.membershipId) router.push(`/memberships/${member.membershipId}/edit`);
+      if (member.membershipId) router.push(`/memberships/v1/${member.membershipId}/edit`);
       else setNotice("This member has no linked membership to edit yet.");
       return;
     }

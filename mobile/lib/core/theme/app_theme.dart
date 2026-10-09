@@ -44,6 +44,9 @@ class AppTheme {
     );
 
     final textTheme = AppTypography.textTheme(primaryText: tokens.textPrimary, secondaryText: tokens.textSecondary);
+    // Button labels (every kind) sit one step lighter than the surrounding text so a button reads as
+    // an action, not a heading. Only the weight changes — size and colour stay as the theme sets them.
+    final buttonText = textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500);
     final base = ThemeData(colorScheme: colorScheme, useMaterial3: true, brightness: brightness, textTheme: textTheme);
 
     // Status-bar / nav-bar icons must contrast the app ground: dark icons on
@@ -84,7 +87,7 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           // Pill, per the button design.
           shape: const StadiumBorder(),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          textStyle: buttonText,
           elevation: 0,
         ),
       ),
@@ -102,7 +105,7 @@ class AppTheme {
           foregroundColor: tokens.textPrimary,
           backgroundColor: tokens.surface2,
           shape: const StadiumBorder(),
-          textStyle: textTheme.labelLarge,
+          textStyle: buttonText,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -110,8 +113,12 @@ class AppTheme {
           shape: const StadiumBorder(),
           minimumSize: const Size(0, AppSpacing.huge),
           foregroundColor: tokens.primary,
-          textStyle: textTheme.labelLarge,
+          textStyle: buttonText,
         ),
+      ),
+      // FilledButton had no theme, so it fell back to the heavier default label weight.
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(textStyle: buttonText),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
@@ -127,11 +134,15 @@ class AppTheme {
         hintStyle: TextStyle(color: tokens.textSecondary),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: tokens.borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide(color: tokens.borderColor),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: tokens.borderColor.withValues(alpha: 0.5)),
         ),
         // GameAll Green ring on focus (spec §"Borders": "Focused: GameAll
         // Green glow/ring") — a clearly stronger 2px border stands in for a
@@ -173,8 +184,8 @@ class AppTheme {
       chipTheme: base.chipTheme.copyWith(
         backgroundColor: tokens.surface2,
         selectedColor: tokens.primary.withValues(alpha: 0.16),
-        labelStyle: TextStyle(color: tokens.textPrimary),
-        secondaryLabelStyle: TextStyle(color: tokens.onPrimary),
+        labelStyle: TextStyle(color: tokens.textPrimary, fontWeight: FontWeight.w500),
+        secondaryLabelStyle: TextStyle(color: tokens.onPrimary, fontWeight: FontWeight.w500),
         side: BorderSide(color: tokens.borderColor),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.pill),

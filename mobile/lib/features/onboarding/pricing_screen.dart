@@ -11,6 +11,7 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
@@ -452,10 +453,8 @@ class _PeriodsEditor extends StatelessWidget {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    DropdownButton<String>(
+                    AppInlineDropdown<String>(
                       value: p.draft.dayType,
-                      isDense: true,
-                      underline: const SizedBox.shrink(),
                       items: _dayTypeOptions
                           .map((o) => DropdownMenuItem(value: o.value, child: Text(o.label)))
                           .toList(),

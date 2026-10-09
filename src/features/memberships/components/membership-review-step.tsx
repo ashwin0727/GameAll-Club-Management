@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getPlayingAreasService } from "@/services/playing-areas";
 import {
   BadgeCheck,
   Calendar,
@@ -19,6 +17,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { DAY_OPTIONS } from "@/features/memberships/slot-form";
 import { formatClock } from "@/features/memberships/slot-format";
+import { PlanSlotsList } from "@/features/memberships/components/plan-slots-list";
 import {
   billingIntervalLabel,
   currentBillingPeriod,
@@ -30,7 +29,7 @@ import {
 } from "@/features/memberships/plan-insights";
 import { PLAN_CARD_THEMES } from "@/features/memberships/components/plan-card";
 import type { Charges, WizardDraft, WizardStep } from "@/features/memberships/add-member-wizard";
-import type { ScheduleRange } from "@/features/memberships/playing-schedule";
+import type { PlanSlot } from "@/features/memberships/plan-slots";
 import type { MembershipPlan } from "@/features/memberships/types";
 import { cn } from "@/lib/utils";
 
@@ -135,46 +134,24 @@ const NEXT_STEPS = [
  * field came from, rather than stepping through the wizard again.
  */
 export function MembershipReviewStep({
-  facilityId,
   draft,
   photoPreview,
   plans,
   selectedPlan,
   planEndDate,
-  scheduleRanges,
+  slots,
   charges,
   onEditStep,
 }: {
-  facilityId: string;
   draft: WizardDraft;
   photoPreview: string | null;
   plans: MembershipPlan[];
   selectedPlan: MembershipPlan | undefined;
   planEndDate: Date | null;
-  scheduleRanges: ScheduleRange[];
+  slots: PlanSlot[];
   charges: Charges;
   onEditStep: (step: WizardStep) => void;
 }) {
-  // The schedule draft only carries the court's id; its name lives in the same list the
-  // picker itself loads, so it's fetched again here for display purposes only.
-  const [courtName, setCourtName] = useState<string | null>(null);
-  useEffect(() => {
-    if (!draft.schedule.courtId) {
-      setCourtName(null);
-      return;
-    }
-    let cancelled = false;
-    getPlayingAreasService()
-      .getPlayingAreas(facilityId)
-      .then((areas) => {
-        if (!cancelled) setCourtName(areas.find((a) => a.id === draft.schedule.courtId)?.name ?? null);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [facilityId, draft.schedule.courtId]);
-
   const planIndex = Math.max(0, plans.findIndex((p) => p.id === draft.planId));
   const theme = PLAN_CARD_THEMES[planIndex % PLAN_CARD_THEMES.length]!;
   const name = selectedPlan ? splitPlanName(selectedPlan.name) : { main: draft.planName, detail: null };
@@ -186,12 +163,6 @@ export function MembershipReviewStep({
   const emergency = [draft.emergencyName, draft.emergencyPhone && `${draft.emergencyCountryCode} ${draft.emergencyPhone}`]
     .filter(Boolean)
     .join(" — ");
-
-  const scheduleLine =
-    scheduleRanges.length === 0
-      ? "No dedicated slot"
-      : scheduleRanges.map((r) => `${formatClock(r.startTime)} - ${formatClock(r.endTime)}`).join(", ");
-  const dayLabels = DAY_OPTIONS.filter((d) => draft.schedule.daysOfWeek.includes(d.value)).map((d) => d.label);
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
@@ -314,40 +285,14 @@ export function MembershipReviewStep({
         </Card>
 
         <Card className="space-y-4 rounded-xl p-4">
-          <SectionHeader icon={Clock} tone="bg-blue-500/15 text-blue-600 dark:text-blue-400" title="Playing Schedule" onEdit={() => onEditStep(3)} />
-
-          {draft.schedule.times.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No dedicated court time selected.</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {DAY_OPTIONS.map((d) => {
-                  const on = draft.schedule.daysOfWeek.includes(d.value);
-                  return (
-                    <span
-                      key={d.value}
-                      className={cn(
-                        "rounded-lg px-3 py-1.5 text-xs font-medium",
-                        on ? "bg-[#0B9B63] text-white" : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {d.label}
-                    </span>
-                  );
-                })}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Detail icon={Clock} label="Playing Time" value={scheduleLine} />
-                <Detail icon={MapPin} label="Court" value={courtName ?? "—"} />
-              </div>
-
-              <div className="flex items-start gap-2 rounded-lg bg-blue-500/10 p-3 text-xs text-foreground/80">
-                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
-                These time slots will be reserved for this member throughout the membership period. Guest bookings will not
-                be allowed during these times.
-              </div>
-            </>
+          <SectionHeader icon={Clock} tone="bg-blue-500/15 text-blue-600 dark:text-blue-400" title="Court & Timing" subtitle="Set by the plan" onEdit={() => onEditStep(2)} />
+          <PlanSlotsList slots={slots} />
+          {slots.length > 0 && (
+            <div className="flex items-start gap-2 rounded-lg bg-blue-500/10 p-3 text-xs text-foreground/80">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+              These time slots will be reserved for this member throughout the membership period. Guest bookings will not
+              be allowed during these times.
+            </div>
           )}
         </Card>
 
@@ -391,9 +336,14 @@ export function MembershipReviewStep({
             <SummaryRow icon={CalendarDays} label="Plan Duration" value={durationLabel(draft.durationDays)} />
             <SummaryRow icon={Calendar} label="Start Date" value={fmtDate(draft.startDate)} />
             {planEndDate && <SummaryRow icon={Calendar} label="End Date" value={fmtDate(planEndDate)} />}
-            {dayLabels.length > 0 && <SummaryRow icon={CalendarDays} label="Playing Days" value={dayLabels.join(", ")} />}
-            {scheduleRanges.length > 0 && <SummaryRow icon={Clock} label="Playing Time" value={scheduleLine} />}
-            {draft.schedule.courtId && <SummaryRow icon={MapPin} label="Court" value={courtName ?? "—"} />}
+            {slots.map((slot) => (
+              <SummaryRow
+                key={slot.batchId}
+                icon={MapPin}
+                label={slot.courtName}
+                value={`${DAY_OPTIONS.filter((d) => slot.daysOfWeek.includes(d.value)).map((d) => d.label).join(", ")} · ${formatClock(slot.startTime)} - ${formatClock(slot.endTime)}`}
+              />
+            ))}
             <SummaryRow icon={Wallet} label="Total Payable" value={inr(charges.total)} />
           </div>
         </Card>

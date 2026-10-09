@@ -12,6 +12,7 @@ import '../../shared/widgets/app_button.dart';
 import '../authentication/session_controller.dart';
 import '../maintenance/maintenance_court_options.dart';
 import '../staff/staff_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Create a coaching program — mirrors the web's Create Program wizard as a
 /// single scrolling form on mobile. Edit reuses via [existing].
@@ -446,7 +447,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         ],
       ),
       const SizedBox(height: AppSpacing.sm),
-      DropdownButtonFormField<String>(
+      AppDropdown<String>(
         initialValue: _courtId,
         isExpanded: true,
         decoration: const InputDecoration(labelText: 'Court'),
@@ -456,7 +457,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         onChanged: (v) => setState(() => _courtId = v),
       ),
       const SizedBox(height: AppSpacing.sm),
-      DropdownButtonFormField<String>(
+      AppDropdown<String>(
         initialValue: _coachId,
         isExpanded: true,
         decoration: const InputDecoration(labelText: 'Coach'),
@@ -481,7 +482,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         );
         if (picked != null) onPicked(picked);
       },
-      child: InputDecorator(
+      child: AppSelectField(
         decoration: InputDecoration(labelText: label),
         child: Text(value == null ? '—' : DateFormat('d MMM yyyy').format(value)),
       ),
@@ -494,7 +495,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         final picked = await showTimePicker(context: context, initialTime: value);
         if (picked != null) onPicked(picked);
       },
-      child: InputDecorator(
+      child: AppSelectField(
         decoration: InputDecoration(labelText: label),
         child: Text(value.format(context)),
       ),
@@ -510,7 +511,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
   }
 
   Widget _dropdown(String label, String value, List<String> options, ValueChanged<String> onChanged) {
-    return DropdownButtonFormField<String>(
+    return AppDropdown<String>(
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
@@ -519,7 +520,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
   }
 
   Widget _dropdownMap(String label, String value, Map<String, String> options, ValueChanged<String> onChanged) {
-    return DropdownButtonFormField<String>(
+    return AppDropdown<String>(
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options.entries.map((o) => DropdownMenuItem(value: o.key, child: Text(o.value))).toList(),

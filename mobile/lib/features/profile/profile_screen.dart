@@ -176,7 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _NavRow(
                   icon: Icons.event_repeat_outlined,
                   label: 'Membership Sessions',
-                  onTap: () => context.push('${AppRoutes.memberships}?new=session')),
+                  onTap: () => context.push(AppRoutes.membershipSessions)),
             ]),
             const SizedBox(height: AppSpacing.xl),
 

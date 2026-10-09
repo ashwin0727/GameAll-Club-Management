@@ -29,7 +29,7 @@ import '../../features/finance/record_payment_screen.dart';
 import '../../features/finance/transaction_details_screen.dart';
 import '../../features/finance/transactions_screen.dart';
 import '../../features/guests/guests_screen.dart';
-import '../../features/memberships/create_membership_screen.dart';
+import '../../features/memberships/add_member_wizard_screen.dart';
 import '../../features/memberships/members_screen.dart';
 import '../../features/memberships/memberships_screen.dart';
 import '../../features/membership_sessions/membership_sessions_screen.dart';
@@ -83,6 +83,7 @@ import '../../features/coaching/coaching_enrollment_detail_screen.dart';
 import '../../features/coaching/coaching_reports_screen.dart';
 import '../../features/bookings/potential_members_screen.dart';
 import '../../features/memberships/member_schedule_screen.dart';
+import '../../features/memberships/membership_plan_wizard_screen.dart';
 import '../../features/coaching/coaching_add_student_screen.dart';
 import '../../features/coaching/coaching_students_screen.dart';
 import '../../features/tournaments/tournament_app_config.dart';
@@ -230,6 +231,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             slideOver(state, const GuestBookingsScreen()),
       ),
       GoRoute(
+        path: AppRoutes.membershipPlanNew,
+        pageBuilder: (context, state) => slideOver(state, const MembershipPlanWizardScreen()),
+      ),
+      GoRoute(
         path: AppRoutes.membershipSchedule,
         pageBuilder: (context, state) => slideOver(state, const MemberScheduleScreen()),
       ),
@@ -250,7 +255,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           MembersScreen(
             openPlans: state.uri.queryParameters['new'] == 'plan',
             openNew: state.uri.queryParameters['new'] == 'membership',
-            openSessions: state.uri.queryParameters['new'] == 'session',
           ),
         ),
       ),
@@ -262,7 +266,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.membershipsNew,
         pageBuilder: (context, state) =>
-            slideOver(state, const CreateMembershipScreen()),
+            slideOver(state, const AddMemberWizardScreen()),
       ),
       GoRoute(
         path: AppRoutes.membershipSessions,

@@ -397,7 +397,7 @@ class _PotentialMembersScreenState extends ConsumerState<PotentialMembersScreen>
             children: [
               Icon(icon, size: 15, color: color),
               const SizedBox(width: 4),
-              Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+              Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
             ],
           ),
         ),

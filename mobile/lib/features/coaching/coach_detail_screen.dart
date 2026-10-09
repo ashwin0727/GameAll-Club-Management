@@ -17,6 +17,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Coaching → Coach detail — mirrors
 /// src/features/coaching/components/coach-details-page.tsx.
@@ -355,9 +356,8 @@ class _AvailabilityEditorState extends ConsumerState<_AvailabilityEditor> {
                 children: [
                   SizedBox(
                     width: 96,
-                    child: DropdownButtonFormField<int>(
+                    child: AppDropdown<int>(
                       initialValue: w.dayOfWeek,
-                      isDense: true,
                       decoration: const InputDecoration(isDense: true),
                       items: List.generate(
                         7,
@@ -526,7 +526,7 @@ class _EditCoachSheetState extends ConsumerState<_EditCoachSheet> {
             const SizedBox(height: AppSpacing.sm),
             TextField(controller: _bio, maxLines: 3, decoration: const InputDecoration(labelText: 'Bio')),
             const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<CoachStatus>(
+            AppDropdown<CoachStatus>(
               initialValue: _status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: CoachStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),

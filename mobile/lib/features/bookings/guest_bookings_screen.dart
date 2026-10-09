@@ -1044,7 +1044,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: AppSpacing.sm),
-            DropdownButtonFormField<String>(
+            AppDropdown<String>(
               initialValue: method.text,
               decoration: const InputDecoration(labelText: 'Payment method'),
               items: const [
@@ -1771,7 +1771,7 @@ class _NewBookingFab extends StatelessWidget {
                   'New booking',
                   style: TextStyle(
                     color: tokens.onAccent(tokens.primary),
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w500,
                     fontSize: 14,
                   ),
                 ),

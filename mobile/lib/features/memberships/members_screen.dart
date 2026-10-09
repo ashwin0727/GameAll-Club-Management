@@ -1,50 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/routing/page_transitions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
+import '../../data/repositories/membership_repository.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
-import '../membership_sessions/membership_batches_sheet.dart';
-import '../membership_sessions/membership_session_detail_screen.dart';
-import 'create_membership_screen.dart';
+import 'add_member_wizard_screen.dart';
 import 'member_detail_screen.dart';
-import 'membership_plans_sheet.dart';
+import 'member_row.dart';
+import 'membership_plan_details_screen.dart';
+import 'membership_plans_tab.dart';
+import 'members_insights.dart';
+import 'members_ordering.dart';
+import 'membership_plan_wizard_screen.dart';
 
-const _monthShort = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
-/// The redesigned Members hub — Plans, People and Sessions in one place.
+/// The Memberships hub — Members (the default tab) and Plans. Membership sessions live on their own
+/// screen (Profile → Manage → Membership Sessions).
 class MembersScreen extends ConsumerStatefulWidget {
-  const MembersScreen(
-      {super.key,
-      this.openPlans = false,
-      this.openNew = false,
-      this.openSessions = false});
+  const MembersScreen({super.key, this.openPlans = false, this.openNew = false});
 
-  /// When true (deep-linked from the "+" menu), the plan editor opens as soon
-  /// as the screen has loaded.
+  /// When true (deep-linked from the "+" menu), the Plans tab is shown and the plan editor
+  /// opens as soon as the screen has loaded.
   final bool openPlans;
 
   /// When true, the "New membership" form opens as soon as the screen loads.
   final bool openNew;
-
-  /// When true (deep-linked from the "+" menu), the sessions sheet opens as
-  /// soon as the screen has loaded.
-  final bool openSessions;
 
   @override
   ConsumerState<MembersScreen> createState() => _MembersScreenState();
@@ -52,20 +45,20 @@ class MembersScreen extends ConsumerStatefulWidget {
 
 class _MembersScreenState extends ConsumerState<MembersScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 3, vsync: this);
+  // Members is the first tab and the one the screen lands on; Plans only when deep-linked to.
+  late final TabController _tabs = TabController(length: 2, vsync: this, initialIndex: widget.openPlans ? 1 : 0);
 
   bool _loading = true;
   String? _error;
   String? _facilityId;
-  int _tabIndex = 0;
+  late int _tabIndex = widget.openPlans ? 1 : 0;
   bool _autoOpenedPlans = false;
   bool _autoOpenedNew = false;
-  bool _autoOpenedSessions = false;
 
   List<MembershipPlan> _plans = const [];
   MembershipPageSummary? _summary;
-  List<MembershipRevenuePoint> _revenue = const [];
   List<MembershipListRow> _members = const [];
+  int _memberTotal = 0;
   List<AssignableBatch> _batches = const [];
 
   @override
@@ -106,19 +99,16 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       final results = await Future.wait([
         repo.getFacilityPlans(facility.id),
         repo.getMembershipPageSummary(facility.id),
-        repo.getMembershipRevenueTimeseries(facility.id,
-            granularity: MembershipRevenueGranularity.month),
-        repo.listMemberships(
-            facility.id, const MembershipListParams(page: 1, perPage: 100)),
+        _loadAllMemberships(repo, facility.id),
         repo.listAssignableBatches(facility.id),
       ]);
       setState(() {
         _facilityId = facility.id;
         _plans = results[0] as List<MembershipPlan>;
         _summary = results[1] as MembershipPageSummary;
-        _revenue = results[2] as List<MembershipRevenuePoint>;
-        _members = (results[3] as MembershipListResult).rows;
-        _batches = results[4] as List<AssignableBatch>;
+        _members = (results[2] as MembershipListResult).rows;
+        _memberTotal = (results[2] as MembershipListResult).totalCount;
+        _batches = results[3] as List<AssignableBatch>;
         _loading = false;
       });
       if (widget.openPlans && !_autoOpenedPlans && mounted) {
@@ -127,14 +117,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       }
       if (widget.openNew && !_autoOpenedNew && mounted) {
         _autoOpenedNew = true;
-        _tabs.animateTo(1); // land on People afterwards
         WidgetsBinding.instance
             .addPostFrameCallback((_) => _openNewMembership());
-      }
-      if (widget.openSessions && !_autoOpenedSessions && mounted) {
-        _autoOpenedSessions = true;
-        _tabs.animateTo(2); // land on Sessions afterwards
-        WidgetsBinding.instance.addPostFrameCallback((_) => _manageSessions());
       }
     } on AppException catch (e) {
       setState(() {
@@ -150,23 +134,21 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
     }
   }
 
-  int get _expiringCount {
-    final now = DateTime.now();
-    final soon = now.add(const Duration(days: 30));
-    return _members
-        .where((m) =>
-            m.status == MembershipListStatus.active &&
-            m.endDate.isAfter(now) &&
-            m.endDate.isBefore(soon))
-        .length;
-  }
-
-  int get _newThisMonth {
-    final now = DateTime.now();
-    return _members
-        .where((m) =>
-            m.startDate.year == now.year && m.startDate.month == now.month)
-        .length;
+  /// Every membership at the facility, a page at a time (capped). The list RPC sorts oldest-first, so
+  /// a single page of 100 would hide the newest joiners at a larger club — and the Members tab shows
+  /// the most recent first.
+  Future<MembershipListResult> _loadAllMemberships(MembershipRepository repo, String facilityId) async {
+    const perPage = 100;
+    const maxPages = 10;
+    final rows = <MembershipListRow>[];
+    var total = 0;
+    for (var page = 1; page <= maxPages; page++) {
+      final result = await repo.listMemberships(facilityId, MembershipListParams(page: page, perPage: perPage));
+      total = result.totalCount;
+      rows.addAll(result.rows);
+      if (rows.length >= total || result.rows.isEmpty) break;
+    }
+    return MembershipListResult(rows: rows, totalCount: total);
   }
 
   /// Memberships created via the full form are self-contained (no plan_id),
@@ -182,27 +164,21 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
 
   int _planMemberCount(MembershipPlan plan) => _planMembers(plan).length;
 
-  Future<void> _openPlanMembers(MembershipPlan plan) async {
-    final rows = _planMembers(plan);
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheet) => _PlanMembersSheet(
-        plan: plan,
-        rows: rows,
-        onOpen: (row) async {
-          Navigator.pop(sheet);
-          final changed = await Navigator.of(context).push<bool>(
-            AppPageRoute(
-              builder: (_) =>
-                  MemberDetailScreen(membershipId: row.membershipId),
-            ),
-          );
-          if (changed == true) _load();
-        },
+  /// A plan's details page — its price and length, benefits, session slots and members.
+  Future<void> _openPlan(MembershipPlan plan) async {
+    final id = _facilityId;
+    if (id == null) return;
+    final changed = await Navigator.of(context).push<bool>(
+      AppPageRoute(
+        builder: (_) => MembershipPlanDetailsScreen(
+          plan: plan,
+          facilityId: id,
+          members: _planMembers(plan),
+          batches: _batches.where((b) => b.planId == plan.id).toList(),
+        ),
       ),
     );
+    if (changed == true) _load();
   }
 
   void _copyJoinLink() {
@@ -217,48 +193,20 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       ..showSnackBar(const SnackBar(content: Text('Join link copied.')));
   }
 
+  /// New plan — the four-step Create Plan wizard (Plan Details → Plan Configuration → Court Access →
+  /// Review & Create), same as the web's /memberships/v1/plans/new.
   Future<void> _managePlans() async {
-    final id = _facilityId;
-    if (id == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => MembershipPlansSheet(facilityId: id),
-    );
-    _load();
-  }
-
-  Future<void> _manageSessions() async {
-    final id = _facilityId;
-    if (id == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => MembershipBatchesSheet(facilityId: id),
-    );
-    _load();
-  }
-
-  Future<void> _openNewMembership() async {
     final created = await Navigator.of(context).push<bool>(
-      AppPageRoute(builder: (_) => const CreateMembershipScreen()),
+      AppPageRoute(builder: (_) => const MembershipPlanWizardScreen()),
     );
     if (created == true) _load();
   }
 
-  Future<void> _openBatch(AssignableBatch batch) async {
-    final id = _facilityId;
-    if (id == null) return;
-    await Navigator.of(context).push(
-      AppPageRoute<void>(
-        builder: (_) => MembershipSessionDetailScreen(
-          facilityId: id,
-          batchId: batch.batchId,
-          title: batch.name,
-        ),
-      ),
+  Future<void> _openNewMembership() async {
+    final created = await Navigator.of(context).push<bool>(
+      AppPageRoute(builder: (_) => const AddMemberWizardScreen()),
     );
-    _load();
+    if (created == true) _load();
   }
 
   @override
@@ -269,7 +217,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       child: Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
-        title: const Text('Members',
+        title: const Text('Memberships',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
           OutlinedButton.icon(
@@ -314,9 +262,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                 labelStyle:
                     const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 tabs: const [
+                  Tab(text: 'Members'),
                   Tab(text: 'Plans'),
-                  Tab(text: 'People'),
-                  Tab(text: 'Sessions'),
                 ],
               ),
             ),
@@ -333,27 +280,20 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                     child: TabBarView(
                       controller: _tabs,
                       children: [
-                        _PlansTab(
-                          plans: _plans,
-                          summary: _summary!,
-                          revenue: _revenue,
-                          activeCount: _summary!.activeMembers,
-                          expiringCount: _expiringCount,
-                          newThisMonth: _newThisMonth,
-                          planMemberCount: _planMemberCount,
-                          onManagePlans: _managePlans,
-                          onOpenPlan: _openPlanMembers,
-                        ),
-                        _PeopleTab(
+                        _MembersTab(
                           members: _members,
+                          counts: countMembers(_members, DateTime.now(), total: _memberTotal),
+                          summary: _summary!,
+                          batches: _batches,
                           onNew: _openNewMembership,
                           onReload: _load,
                         ),
-                        _SessionsTab(
-                          batches: _batches,
+                        MembershipPlansTab(
                           plans: _plans,
-                          onManage: _manageSessions,
-                          onOpenBatch: _openBatch,
+                          batches: _batches,
+                          memberCount: _planMemberCount,
+                          onOpen: _openPlan,
+                          onCreate: _managePlans,
                         ),
                       ],
                     ),
@@ -371,13 +311,12 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   }
 
   /// The primary "create" action, which changes with the active tab:
-  /// Plans → new plan, People → new membership, Sessions → new session.
+  /// Members → new membership, Plans → new plan.
   Widget? _buildCreateFab() {
     if (_loading || _error != null) return null;
     final (label, icon, onTap) = switch (_tabIndex) {
-      0 => ('New plan', Icons.add_card_outlined, _managePlans),
-      1 => ('New membership', Icons.person_add_alt_1, _openNewMembership),
-      _ => ('New session', Icons.event_repeat_outlined, _manageSessions),
+      0 => ('New membership', Icons.person_add_alt_1, _openNewMembership),
+      _ => ('New plan', Icons.add_card_outlined, _managePlans),
     };
     return _CreateFab(key: ValueKey(label), label: label, icon: icon, onTap: onTap);
   }
@@ -440,94 +379,20 @@ class _CreateFab extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────── Plans ──
 
-class _PlansTab extends StatelessWidget {
-  const _PlansTab({
-    required this.plans,
-    required this.summary,
-    required this.revenue,
-    required this.activeCount,
-    required this.expiringCount,
-    required this.newThisMonth,
-    required this.planMemberCount,
-    required this.onManagePlans,
-    required this.onOpenPlan,
+/// The photo hero card — a title, one big figure, and a row of small figures beneath a hairline.
+/// The Members tab shows the total member count in it.
+class _HeroStatCard extends StatelessWidget {
+  const _HeroStatCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.figs,
   });
 
-  final List<MembershipPlan> plans;
-  final MembershipPageSummary summary;
-  final List<MembershipRevenuePoint> revenue;
-  final int activeCount;
-  final int expiringCount;
-  final int newThisMonth;
-  final int Function(MembershipPlan plan) planMemberCount;
-  final VoidCallback onManagePlans;
-  final ValueChanged<MembershipPlan> onOpenPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final maxCount = plans
-        .map(planMemberCount)
-        .fold<int>(1, (m, c) => c > m ? c : m);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
-      children: [
-        _RecurringRevenueCard(
-          amountInr: summary.revenueInr,
-          revenue: revenue,
-          activeCount: activeCount,
-          expiringCount: expiringCount,
-          newThisMonth: newThisMonth,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (plans.isEmpty)
-          _EmptyState(
-            icon: Icons.card_membership_outlined,
-            title: 'No plans yet',
-            action: 'Create a plan',
-            onAction: onManagePlans,
-          )
-        else ...[
-          for (final p in plans)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: _PlanCard(
-                plan: p,
-                members: planMemberCount(p),
-                fraction: planMemberCount(p) / maxCount,
-                onTap: () => onOpenPlan(p),
-              ),
-            ),
-          const SizedBox(height: AppSpacing.xs),
-          Center(
-            child: TextButton.icon(
-              onPressed: onManagePlans,
-              icon: const Icon(Icons.tune, size: 18),
-              label: const Text('Manage plans'),
-              style: TextButton.styleFrom(foregroundColor: tokens.violet),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _RecurringRevenueCard extends StatelessWidget {
-  const _RecurringRevenueCard({
-    required this.amountInr,
-    required this.revenue,
-    required this.activeCount,
-    required this.expiringCount,
-    required this.newThisMonth,
-  });
-
-  final int amountInr;
-  final List<MembershipRevenuePoint> revenue;
-  final int activeCount;
-  final int expiringCount;
-  final int newThisMonth;
+  final IconData icon;
+  final String title;
+  final String value;
+  final List<({String value, String label})> figs;
 
   @override
   Widget build(BuildContext context) {
@@ -572,10 +437,9 @@ class _RecurringRevenueCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.show_chart_rounded,
-                          size: 16, color: Color(0xFFFFFFFF)),
+                      Icon(icon, size: 16, color: const Color(0xFFFFFFFF)),
                       const SizedBox(width: 6),
-                      Text('Recurring revenue',
+                      Text(title,
                           style: TextStyle(
                               fontSize: 13,
                               color: const Color(0xFFFFFFFF)
@@ -584,7 +448,7 @@ class _RecurringRevenueCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    Formatters.currencyInr(amountInr),
+                    value,
                     style: const TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
@@ -603,23 +467,13 @@ class _RecurringRevenueCard extends StatelessWidget {
                   const SizedBox(height: AppSpacing.lg),
                   Row(
                     children: [
-                      _MiniFig(
-                          value: '$activeCount',
-                          label: 'active',
-                          onAccent: true),
-                      const SizedBox(width: AppSpacing.xl),
-                      _MiniFig(
-                        value: '$expiringCount',
-                        label: 'expiring',
-                        onAccent: true,
-                      ),
-                      const SizedBox(width: AppSpacing.xl),
-                      _MiniFig(
-                        value: '+$newThisMonth',
-                        label:
-                            'new in ${_monthShort[DateTime.now().month - 1]}',
-                        onAccent: true,
-                      ),
+                      for (var i = 0; i < figs.length; i++) ...[
+                        if (i > 0) const SizedBox(width: AppSpacing.xl),
+                        _MiniFig(
+                            value: figs[i].value,
+                            label: figs[i].label,
+                            onAccent: true),
+                      ],
                     ],
                   ),
                 ],
@@ -664,255 +518,106 @@ class _MiniFig extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({
-    required this.plan,
-    required this.members,
-    required this.fraction,
-    required this.onTap,
-  });
-
-  final MembershipPlan plan;
-  final int members;
-  final double fraction;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final subtitle = plan.features.isNotEmpty
-        ? plan.features.join(' · ')
-        : '${plan.durationDays}-day membership';
-    return Material(
-      color: tokens.surface1,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(plan.name,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: tokens.textPrimary)),
-              ),
-              Text.rich(TextSpan(children: [
-                TextSpan(
-                  text: Formatters.currencyInr(plan.priceInr),
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: tokens.textPrimary),
-                ),
-                TextSpan(
-                  text: '/mo',
-                  style:
-                      TextStyle(fontSize: 12, color: tokens.textSecondary),
-                ),
-              ])),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Text(subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12.5, color: tokens.textSecondary)),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: fraction.clamp(0.02, 1.0),
-                    minHeight: 6,
-                    backgroundColor: tokens.surface2,
-                    color: tokens.violet,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Text('$members member${members == 1 ? '' : 's'}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: tokens.textSecondary)),
-              const SizedBox(width: 2),
-              Icon(Icons.chevron_right, size: 16, color: tokens.textSecondary),
-            ],
-          ),
-        ],
-      ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The members enrolled on one plan — opened by tapping a plan card.
-class _PlanMembersSheet extends StatelessWidget {
-  const _PlanMembersSheet({
-    required this.plan,
-    required this.rows,
-    required this.onOpen,
-  });
-
-  final MembershipPlan plan;
-  final List<MembershipListRow> rows;
-  final ValueChanged<MembershipListRow> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    // Same full-bottom DraggableScrollableSheet other member/session sheets
-    // use (see BatchMembersSheet) — a fixed, generous starting height rather
-    // than shrink-wrapping to content, so an empty plan doesn't render as a
-    // tiny stub floating over a dark scrim.
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      maxChildSize: 0.95,
-      minChildSize: 0.4,
-      expand: false,
-      builder: (context, scrollController) {
-        return SafeArea(
-          top: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(plan.name,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w800)),
-                    Text(
-                      '${rows.length} member${rows.length == 1 ? '' : 's'}',
-                      style:
-                          TextStyle(fontSize: 12, color: tokens.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: rows.isEmpty
-                    ? ListView(
-                        controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                        children: [
-                          const SizedBox(height: AppSpacing.xxl),
-                          Center(
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(color: tokens.surface2, shape: BoxShape.circle),
-                              child: Icon(Icons.group_outlined, size: 26, color: tokens.textSecondary),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          Text('No members yet',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 15, color: tokens.textPrimary)),
-                          const SizedBox(height: 4),
-                          Text('Members who join "${plan.name}" will show up here.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-                        ],
-                      )
-                    : ListView.separated(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
-                        itemCount: rows.length,
-                        separatorBuilder: (_, i) =>
-                            Divider(height: 1, color: tokens.borderColor),
-                        itemBuilder: (context, i) {
-                          final r = rows[i];
-                          final (label, color) = switch (r.status) {
-                            MembershipListStatus.active =>
-                              ('Active', tokens.primary),
-                            MembershipListStatus.paymentIncomplete =>
-                              ('Unpaid', tokens.warning),
-                            MembershipListStatus.inactive =>
-                              ('Inactive', tokens.textSecondary),
-                          };
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: AppAvatar(
-                                name: r.memberName, size: AppAvatarSize.small),
-                            title: Text(r.memberName,
-                                maxLines: 1, overflow: TextOverflow.ellipsis),
-                            subtitle: Text('+91 ${r.memberPhone}',
-                                style: TextStyle(
-                                    fontSize: 12, color: tokens.textSecondary)),
-                            trailing: Text(label,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: color)),
-                            onTap: () => onOpen(r),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────── People ──
 
-class _PeopleTab extends StatefulWidget {
-  const _PeopleTab(
-      {required this.members, required this.onNew, required this.onReload});
+/// The Members tab — a total-members hero card, a collapsible "View More Insights" panel, then the
+/// members themselves: Active first, then Inactive, most recent joiners first within each.
+class _MembersTab extends StatefulWidget {
+  const _MembersTab({
+    required this.members,
+    required this.counts,
+    required this.summary,
+    required this.batches,
+    required this.onNew,
+    required this.onReload,
+  });
 
   final List<MembershipListRow> members;
+  final MemberCounts counts;
+  final MembershipPageSummary summary;
+  final List<AssignableBatch> batches;
   final VoidCallback onNew;
   final VoidCallback onReload;
 
   @override
-  State<_PeopleTab> createState() => _PeopleTabState();
+  State<_MembersTab> createState() => _MembersTabState();
 }
 
-class _PeopleTabState extends State<_PeopleTab> {
+class _MembersTabState extends State<_MembersTab> {
   String _query = '';
+  bool _insightsOpen = false;
+  bool _expiringOnly = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final now = DateTime.now();
     final q = _query.trim().toLowerCase();
-    final rows = q.isEmpty
-        ? widget.members
-        : widget.members
-            .where((m) =>
-                m.memberName.toLowerCase().contains(q) ||
-                m.memberPhone.contains(q))
-            .toList();
+    final ordered = orderMembersForDisplay(widget.members);
+    final rows = ordered.where((m) {
+      if (_expiringOnly && !isExpiringSoon(m, now)) return false;
+      if (q.isEmpty) return true;
+      return m.memberName.toLowerCase().contains(q) || m.memberPhone.contains(q);
+    }).toList();
+    final c = widget.counts;
+    final utilization = utilizationPercent(widget.batches);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
       children: [
+        _HeroStatCard(
+          icon: Icons.groups_rounded,
+          title: 'Total members',
+          value: '${c.total}',
+          figs: [
+            (value: '${c.active}', label: 'active'),
+            (value: '${c.inactive}', label: 'inactive'),
+            (value: '${c.expiring}', label: 'expiring'),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        InsightsPanel(
+          open: _insightsOpen,
+          onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
+          tiles: [
+            InsightData(
+              icon: Icons.groups_outlined,
+              color: tokens.electricBlue,
+              title: 'Total Members',
+              value: '${c.total}',
+              onTap: () => setState(() => _expiringOnly = false),
+            ),
+            InsightData(
+              icon: Icons.schedule_rounded,
+              color: tokens.warning,
+              title: 'Expiring Soon',
+              value: '${c.expiring}',
+              sub: 'Next 30 days',
+              onTap: () => setState(() => _expiringOnly = true),
+            ),
+            InsightData(
+              icon: Icons.account_balance_wallet_outlined,
+              color: tokens.violet,
+              title: 'Total Revenue',
+              value: Formatters.currencyInr(widget.summary.revenueInr),
+              sub: _changeLabel(widget.summary.revenueChangePct),
+              subColor: _changeColor(tokens, widget.summary.revenueChangePct),
+              onTap: () => context.push(AppRoutes.reportsMemberships),
+            ),
+            InsightData(
+              icon: Icons.bar_chart_rounded,
+              color: tokens.primary,
+              title: 'Utilization',
+              value: utilization == null ? '—' : '$utilization%',
+              sub: 'Avg. slot usage',
+              onTap: () => context.push(AppRoutes.membershipSessions),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
         Text(
-          '${widget.members.length} member${widget.members.length == 1 ? '' : 's'}',
+          '${rows.length} member${rows.length == 1 ? '' : 's'}',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -924,6 +629,16 @@ class _PeopleTabState extends State<_PeopleTab> {
             isDense: true,
           ),
         ),
+        if (_expiringOnly) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InputChip(
+              label: const Text('Expiring in 30 days'),
+              onDeleted: () => setState(() => _expiringOnly = false),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         if (rows.isEmpty)
           Padding(
@@ -936,7 +651,9 @@ class _PeopleTabState extends State<_PeopleTab> {
                 Text(
                   widget.members.isEmpty
                       ? 'No members yet.'
-                      : 'No members match “$_query”.',
+                      : _expiringOnly
+                          ? 'No memberships are expiring in the next 30 days.'
+                          : 'No members match “$_query”.',
                   style: TextStyle(color: tokens.textSecondary),
                 ),
                 if (widget.members.isEmpty) ...[
@@ -955,7 +672,7 @@ class _PeopleTabState extends State<_PeopleTab> {
           for (final m in rows)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: _MemberRow(
+              child: MemberRow(
                 row: m,
                 onTap: () async {
                   final changed = await Navigator.of(context).push<bool>(
@@ -971,262 +688,16 @@ class _PeopleTabState extends State<_PeopleTab> {
       ],
     );
   }
-}
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.row, required this.onTap});
-
-  final MembershipListRow row;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final (label, color) = switch (row.status) {
-      MembershipListStatus.active => ('Active', tokens.primary),
-      MembershipListStatus.paymentIncomplete => ('Unpaid', tokens.warning),
-      MembershipListStatus.inactive => ('Inactive', tokens.textSecondary),
-    };
-    return Material(
-      color: tokens.surface1,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.borderColor),
-      ),
-      child: Row(
-        children: [
-          AppAvatar(name: row.memberName, size: AppAvatarSize.medium),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(row.memberName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text('${row.planName} · renews ${_date(row.endDate)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: 12, color: tokens.textSecondary)),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
-          ),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right, size: 18, color: tokens.textSecondary),
-        ],
-      ),
-        ),
-      ),
-    );
+  static String? _changeLabel(double? pct) {
+    if (pct == null) return null;
+    final rounded = pct.abs().round();
+    return pct >= 0 ? '↑ +$rounded%' : '↓ $rounded%';
   }
 
-  static String _date(DateTime d) => '${d.day} ${_monthShort[d.month - 1]}';
-}
-
-// ────────────────────────────────────────────────────────────── Sessions ──
-
-class _SessionsTab extends StatelessWidget {
-  const _SessionsTab({
-    required this.batches,
-    required this.plans,
-    required this.onManage,
-    required this.onOpenBatch,
-  });
-
-  final List<AssignableBatch> batches;
-  final List<MembershipPlan> plans;
-  final VoidCallback onManage;
-  final ValueChanged<AssignableBatch> onOpenBatch;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    if (batches.isEmpty) {
-      return ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          _EmptyState(
-            icon: Icons.event_repeat_outlined,
-            title: 'No coaching sessions yet',
-            action: 'Create a session',
-            onAction: onManage,
-          ),
-        ],
-      );
-    }
-    final totalSeats = batches.fold<int>(0, (s, b) => s + b.capacity);
-    final filledSeats = batches.fold<int>(0, (s, b) => s + b.enrolledCount);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
-      children: [
-        Row(
-          children: [
-            Text('${batches.length} session${batches.length == 1 ? '' : 's'}',
-                style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w800)),
-            const Spacer(),
-            Text('$filledSeats / $totalSeats seats filled',
-                style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        for (final b in batches)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: _BatchCard(
-              batch: b,
-              planName: plans
-                  .where((p) => p.id == b.planId)
-                  .map((p) => p.name)
-                  .firstOrNull,
-              onTap: () => onOpenBatch(b),
-            ),
-          ),
-        const SizedBox(height: AppSpacing.xs),
-        Center(
-          child: TextButton.icon(
-            onPressed: onManage,
-            icon: const Icon(Icons.tune, size: 18),
-            label: const Text('Manage sessions'),
-            style: TextButton.styleFrom(foregroundColor: tokens.violet),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BatchCard extends StatelessWidget {
-  const _BatchCard({
-    required this.batch,
-    required this.planName,
-    required this.onTap,
-  });
-
-  final AssignableBatch batch;
-  final String? planName;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final full = batch.enrolledCount >= batch.capacity;
-    final fraction =
-        batch.capacity == 0 ? 0.0 : batch.enrolledCount / batch.capacity;
-    return Material(
-      color: tokens.surface1,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: tokens.borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: tokens.violet.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(Icons.event_repeat_rounded,
-                        size: 20, color: tokens.violet),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(batch.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${batch.sportName} · ${Formatters.time12h(batch.startTime)}–${Formatters.time12h(batch.endTime)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 12, color: tokens.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${batch.enrolledCount}/${batch.capacity}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: full ? tokens.warning : tokens.primary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: fraction.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor: tokens.surface2,
-                        color: full ? tokens.warning : tokens.violet,
-                      ),
-                    ),
-                  ),
-                  if (planName != null) ...[
-                    const SizedBox(width: AppSpacing.md),
-                    Text(planName!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: tokens.textSecondary)),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  static Color? _changeColor(AppColorTokens tokens, double? pct) {
+    if (pct == null) return null;
+    return pct >= 0 ? tokens.primary : tokens.destructive;
   }
 }
 
@@ -1299,46 +770,6 @@ class _MembersScreenSkeleton extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.action,
-    required this.onAction,
-  });
-
-  final IconData icon;
-  final String title;
-  final String action;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: tokens.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.borderColor),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 34, color: tokens.textSecondary),
-          const SizedBox(height: AppSpacing.sm),
-          Text(title, style: TextStyle(color: tokens.textSecondary)),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(
-            onPressed: onAction,
-            style: FilledButton.styleFrom(backgroundColor: tokens.violet),
-            child: Text(action),
-          ),
-        ],
-      ),
     );
   }
 }

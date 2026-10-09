@@ -7,6 +7,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/inventory.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Add / edit a vendor — mirrors
 /// src/features/inventory/components/vendor-form-dialog.tsx.
@@ -116,7 +117,7 @@ class _VendorFormSheetState extends ConsumerState<VendorFormSheet> {
             _f(_notes, 'Notes', lines: 2),
             if (_isEdit) ...[
               const SizedBox(height: AppSpacing.xs),
-              DropdownButtonFormField<VendorStatus>(
+              AppDropdown<VendorStatus>(
                 initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: VendorStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),

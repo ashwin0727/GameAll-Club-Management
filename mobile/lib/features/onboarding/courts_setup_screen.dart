@@ -11,6 +11,7 @@ import '../../data/models/facility.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
@@ -388,10 +389,8 @@ class _InlineDropdown extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text('$label: ', style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-        DropdownButton<String>(
+        AppInlineDropdown<String>(
           value: value,
-          isDense: true,
-          underline: const SizedBox.shrink(),
           items: options
               .map((o) => DropdownMenuItem(value: o, child: Text(o[0] + o.substring(1).toLowerCase())))
               .toList(),

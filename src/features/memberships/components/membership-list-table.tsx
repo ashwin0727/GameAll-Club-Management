@@ -426,7 +426,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
                               <Eye className="mr-2 h-4 w-4" />
                               View details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push(`/memberships/${row.membershipId}/edit`)}>
+                            <DropdownMenuItem onClick={() => router.push(`/memberships/v1/${row.membershipId}/edit`)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit membership
                             </DropdownMenuItem>

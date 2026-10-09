@@ -20,6 +20,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'finance_presentation.dart';
 import 'money.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Record Payment as its own page — mirrors
 /// src/features/finance/components/record-payment-page.tsx.
@@ -256,7 +257,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                     onChanged: (_) => setState(() => _error = null),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _method,
                     decoration: const InputDecoration(labelText: 'Payment Mode'),
                     items: _methods
@@ -267,7 +268,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   InkWell(
                     onTap: _pickDate,
-                    child: InputDecorator(
+                    child: AppSelectField(
                       decoration: const InputDecoration(labelText: 'Payment Date'),
                       child: Text(DateFormat('d MMM yyyy').format(_paidOn)),
                     ),

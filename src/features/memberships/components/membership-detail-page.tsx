@@ -195,7 +195,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 Record Payment
               </Button>
             )}
-            <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/memberships/${membershipId}/edit`)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/memberships/v1/${membershipId}/edit`)}>
               <Pencil className="mr-1.5 h-4 w-4" />
               Edit
             </Button>

@@ -13,6 +13,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../maintenance/maintenance_court_options.dart';
 import '../staff/staff_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Create a coaching session — mirrors
 /// src/features/coaching/components/session-wizard-page.tsx. Court, coach and
@@ -166,7 +167,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _programId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Program'),
@@ -176,7 +177,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                     onChanged: _onProgramChanged,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _coachId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Coach'),
@@ -186,7 +187,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                     onChanged: (v) => setState(() => _coachId = v),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _courtId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Court'),
@@ -207,7 +208,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                       );
                       if (picked != null) setState(() => _date = picked);
                     },
-                    child: InputDecorator(
+                    child: AppSelectField(
                       decoration: const InputDecoration(labelText: 'Date'),
                       child: Text(DateFormat('d MMM yyyy').format(_date)),
                     ),
@@ -218,7 +219,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                       Expanded(
                         child: InkWell(
                           onTap: () => _pickTime(true),
-                          child: InputDecorator(
+                          child: AppSelectField(
                             decoration: const InputDecoration(labelText: 'Start'),
                             child: Text(_start.format(context)),
                           ),
@@ -228,7 +229,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                       Expanded(
                         child: InkWell(
                           onTap: () => _pickTime(false),
-                          child: InputDecorator(
+                          child: AppSelectField(
                             decoration: const InputDecoration(labelText: 'End'),
                             child: Text(_end.format(context)),
                           ),

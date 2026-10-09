@@ -45,7 +45,7 @@ const _tabs = <({
     tab: AppTab.members,
     icon: Icons.groups_outlined,
     activeIcon: Icons.groups_rounded,
-    label: 'Members',
+    label: 'Memberships',
     route: AppRoutes.memberships,
   ),
 ];
@@ -62,7 +62,7 @@ const _tabs = <({
 /// context-aware FAB) rather than duplicating them.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
   (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
-  (icon: Icons.event_repeat_outlined, label: 'New Session', route: '${AppRoutes.memberships}?new=session', permission: null),
+  (icon: Icons.event_repeat_outlined, label: 'New Session', route: AppRoutes.membershipSessions, permission: null),
   (icon: Icons.card_membership_outlined, label: 'New Membership', route: '${AppRoutes.memberships}?new=membership', permission: null),
   (icon: Icons.add_card_outlined, label: 'New Plan', route: '${AppRoutes.memberships}?new=plan', permission: null),
   (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenanceTicketNew, permission: null),

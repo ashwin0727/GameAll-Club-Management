@@ -15,6 +15,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Coaching → Session detail — mirrors
 /// src/features/coaching/components/session-details-page.tsx.
@@ -415,7 +416,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
                     );
                     if (p != null) setSheet(() => date = p);
                   },
-                  child: InputDecorator(
+                  child: AppSelectField(
                     decoration: const InputDecoration(labelText: 'Date'),
                     child: Text('${date.day}/${date.month}/${date.year}'),
                   ),
@@ -429,7 +430,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
                           final p = await showTimePicker(context: ctx, initialTime: start);
                           if (p != null) setSheet(() => start = p);
                         },
-                        child: InputDecorator(
+                        child: AppSelectField(
                           decoration: const InputDecoration(labelText: 'Start'),
                           child: Text(start.format(ctx)),
                         ),
@@ -442,7 +443,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
                           final p = await showTimePicker(context: ctx, initialTime: end);
                           if (p != null) setSheet(() => end = p);
                         },
-                        child: InputDecorator(
+                        child: AppSelectField(
                           decoration: const InputDecoration(labelText: 'End'),
                           child: Text(end.format(ctx)),
                         ),

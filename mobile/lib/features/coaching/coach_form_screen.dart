@@ -11,6 +11,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Add a coaching profile to an existing staff member — mirrors
 /// src/features/coaching/components/add-coach-page.tsx. Never creates a
@@ -110,7 +111,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _userId,
                     decoration: const InputDecoration(labelText: 'Staff member'),
                     items: _candidates.isEmpty
@@ -155,7 +156,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   TextField(controller: _bio, maxLines: 3, decoration: const InputDecoration(labelText: 'Bio')),
                   const SizedBox(height: AppSpacing.sm),
-                  DropdownButtonFormField<CoachStatus>(
+                  AppDropdown<CoachStatus>(
                     initialValue: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: CoachStatus.values

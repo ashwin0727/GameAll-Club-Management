@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectField } from "@/components/shared/select-field";
 import { DatePicker } from "@/components/shared/date-picker";
-import { PlayingSchedulePicker } from "@/features/memberships/components/playing-schedule-picker";
+import { PlanSlotsList } from "@/features/memberships/components/plan-slots-list";
 import { MembershipReviewStep } from "@/features/memberships/components/membership-review-step";
 import { MemberContextPanel } from "@/features/memberships/components/member-context-panel";
 import { PaymentStep, PAYMENT_TAB_COPY } from "@/features/memberships/components/payment-step";
@@ -26,18 +26,20 @@ import {
   validateStep,
   WIZARD_STEPS,
   type WizardDraft,
+  LAST_STEP,
   type WizardStep,
 } from "@/features/memberships/add-member-wizard";
 import { durationLabel, monthlyEquivalentInr, planBadges, planFeatures, splitPlanName, type PlanBadge } from "@/features/memberships/plan-insights";
 import { PLAN_CARD_THEMES } from "@/features/memberships/components/plan-card";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
-import { findMatchingBatch, groupContiguousRanges } from "@/features/memberships/playing-schedule";
+import { planSlotsFor } from "@/features/memberships/plan-slots";
+import { DUPLICATE_MEMBER_MESSAGE, findDuplicateMember } from "@/features/memberships/duplicate-guards";
+import { getPlayingAreasService } from "@/services/playing-areas";
 import { plansForSport } from "@/features/memberships/sport-scope";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
 import { getMembershipService } from "@/services/memberships";
-import { getMembershipSessionService } from "@/services/membership-sessions";
 import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipListRow, MembershipPlan } from "@/features/memberships/types";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
@@ -65,10 +67,6 @@ const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 /** A stable empty array, so a `?? EMPTY_ROWS` fallback doesn't create a new reference every render. */
 const EMPTY_ROWS: MembershipListRow[] = [];
 const EMPTY_BATCHES: MembershipBatch[] = [];
-/** Court/day/time slots aren't capacity-limited — this is just the (non-zero) value the
- *  database column still requires when a new batch is created. */
-const UNLIMITED_BATCH_CAPACITY = 999;
-
 /**
  * The design's "Upload Photo" box. There's nowhere for this photo to go yet — `members` has no
  * photo column and no storage bucket is wired up for it — so this only previews the chosen
@@ -276,8 +274,8 @@ function Field({
 }
 
 /**
- * Add New Member, as a five-step wizard: who they are, which plan, when they play, a review,
- * then payment. It submits through the same `createMembershipFull` call the single-page form
+ * Add New Member, as a four-step wizard: who they are, which plan (its courts and timings come
+ * with it — they are set when the plan is created, not here), a review, then payment. It submits through the same `createMembershipFull` call the single-page form
  * uses, so a member created here is identical to one created there.
  */
 export function AddMemberWizardPage() {
@@ -346,12 +344,6 @@ export function AddMemberWizardPage() {
     membershipFeeInr: 0,
     registrationFeeInr: 0,
     gstPercent: 0,
-    // Mon - Fri seeded once, right here in the wizard's own initial state — not by an effect
-    // inside PlayingSchedulePicker, which unmounts every time the step is left and remounts
-    // fresh on return. An effect-based seed can't tell "never touched" apart from "the member
-    // clicked Custom to clear it and hasn't picked a day yet" — both look like an empty array
-    // — so it kept quietly overwriting a Custom choice back to Mon-Fri on every revisit.
-    schedule: { facilitySportId: "", courtId: "", daysOfWeek: [1, 2, 3, 4, 5], times: [] },
     paymentTab: "link",
     paymentAmount: 0,
     paymentDate: todayIso(),
@@ -377,15 +369,40 @@ export function AddMemberWizardPage() {
     };
   }, [facilityId]);
 
+  const [courtNames, setCourtNames] = useState<ReadonlyMap<string, string>>(new Map());
+  useEffect(() => {
+    if (!facilityId) return;
+    let cancelled = false;
+    getPlayingAreasService()
+      .getPlayingAreas(facilityId)
+      .then((areas) => !cancelled && setCourtNames(new Map(areas.map((a) => [a.id, a.name]))))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
+
   const charges = useMemo(() => computeCharges(draft), [draft]);
   // The plan's own length laid out from the chosen start date — shown, not edited, here.
   const planEndDate = useMemo(
     () => (draft.startDate && draft.durationDays ? addDays(parseISO(draft.startDate), draft.durationDays - 1) : null),
     [draft.startDate, draft.durationDays],
   );
-  const scheduleRanges = useMemo(() => groupContiguousRanges(draft.schedule.times), [draft.schedule.times]);
-  const errors = useMemo(() => fieldErrors(step, draft), [step, draft]);
-  const stepError = validateStep(step, draft);
+  // The chosen plan's own court/timing slots — fixed when the plan was created.
+  const slots = useMemo(() => planSlotsFor(batches, draft.planId, courtNames), [batches, draft.planId, courtNames]);
+  // The same person (same phone number) can't be put on the same plan twice.
+  const duplicateMember = useMemo(
+    () =>
+      draft.planId && draft.phone
+        ? findDuplicateMember(membershipRows, { id: draft.planId, name: draft.planName }, draft.phone)
+        : null,
+    [membershipRows, draft.planId, draft.planName, draft.phone],
+  );
+  const errors = useMemo<Record<string, string | undefined>>(
+    () => ({ ...fieldErrors(step, draft), ...(step === 2 && duplicateMember ? { planId: DUPLICATE_MEMBER_MESSAGE } : {}) }),
+    [step, draft, duplicateMember],
+  );
+  const stepError = validateStep(step, draft) ?? (step === 2 && duplicateMember ? DUPLICATE_MEMBER_MESSAGE : null);
   const furthest = furthestReachableStep(draft);
   // Shown as soon as a field is left (blurred), or once Next/Create has been tried — not while
   // it's still being typed into for the first time.
@@ -399,7 +416,7 @@ export function AddMemberWizardPage() {
       return;
     }
     setTouchedFields(new Set());
-    setStep((s) => Math.min(5, s + 1) as WizardStep);
+    setStep((s) => Math.min(LAST_STEP, s + 1) as WizardStep);
   }
 
   function choosePlan(plan: MembershipPlan) {
@@ -430,22 +447,18 @@ export function AddMemberWizardPage() {
   // name, not whatever was typed so far), and never overwritten again after that.
   const receivedFromSeededRef = useRef(false);
   useEffect(() => {
-    if (step !== 5 || receivedFromSeededRef.current) return;
+    if (step !== LAST_STEP || receivedFromSeededRef.current) return;
     receivedFromSeededRef.current = true;
     setDraft((d) => (d.receivedFrom ? d : { ...d, receivedFrom: d.fullName.trim() }));
   }, [step]);
 
   /**
    * Creates the membership itself — shared by all three Payment tabs, which only differ in
-   * what `paymentMode`/`paymentMethods`/`recurring`/notes they pass in. Non-adjacent playing
-   * hours (e.g. 6-7 AM and 2-4 PM) become separate ranges: the first rides along with the
-   * membership itself, any further ones are their own batch, created and assigned once the
-   * membership exists.
+   * what `paymentMode`/`paymentMethods`/`recurring`/notes they pass in.
    *
-   * A court/day/time slot isn't exclusive to one member — several members can share the same
-   * recurring batch. So each range first looks for an existing active batch that's an exact
-   * match (same court, clock range and days) and joins it; only when there's no match does it
-   * create a new one. New batches get a generously high capacity since slots aren't capped.
+   * The member's court and timings are the plan's own: the first of the plan's slots rides along
+   * with the membership itself, any further ones are joined once the membership exists. Nothing
+   * is created or picked here — the slots were set up when the plan was.
    */
   async function createTheMember(opts: {
     paymentMode: "PAID" | "PENDING" | "FREE";
@@ -453,20 +466,8 @@ export function AddMemberWizardPage() {
     recurring: boolean;
   }) {
     if (!facilityId) throw new Error("No facility");
-    const ranges = groupContiguousRanges(draft.schedule.times);
-    const [firstRange, ...extraRanges] = ranges;
+    const [firstSlot, ...extraSlots] = slots;
     const notes = [composeNotes(draft), composePaymentNotes(draft)].filter(Boolean).join("\n") || undefined;
-
-    const existingBatches = ranges.length > 0 ? await getMembershipService().listAssignableBatches(facilityId) : [];
-    const matchFor = (range: { startTime: string; endTime: string }) =>
-      findMatchingBatch(existingBatches, {
-        courtId: draft.schedule.courtId,
-        daysOfWeek: draft.schedule.daysOfWeek,
-        startTime: range.startTime,
-        endTime: range.endTime,
-      });
-
-    const firstMatch = firstRange ? matchFor(firstRange) : undefined;
 
     const membership = await getMembershipService().createMembershipFull({
       facilityId,
@@ -481,18 +482,7 @@ export function AddMemberWizardPage() {
       maxFamilyMembers: 1,
       startDate: draft.startDate,
       durationDays: draft.durationDays,
-      batchId: firstMatch?.batchId,
-      newBatch:
-        firstRange && !firstMatch
-          ? {
-              courtId: draft.schedule.courtId,
-              facilitySportId: draft.schedule.facilitySportId,
-              daysOfWeek: draft.schedule.daysOfWeek,
-              startTime: firstRange.startTime,
-              endTime: firstRange.endTime,
-              capacity: UNLIMITED_BATCH_CAPACITY,
-            }
-          : undefined,
+      batchId: firstSlot?.batchId,
       membershipFeeInr: draft.paymentAmount || charges.subTotal,
       registrationFeeInr: charges.registration,
       gstPercent: draft.gstPercent,
@@ -503,24 +493,8 @@ export function AddMemberWizardPage() {
       notes,
     });
 
-    for (const range of extraRanges) {
-      const match = matchFor(range);
-      const batchId =
-        match?.batchId ??
-        (
-          await getMembershipSessionService().createBatch({
-            facilityId,
-            planId: draft.planId,
-            facilitySportId: draft.schedule.facilitySportId,
-            courtId: draft.schedule.courtId,
-            name: `${draft.fullName.trim()} — ${range.startTime}`,
-            daysOfWeek: draft.schedule.daysOfWeek,
-            startTime: range.startTime,
-            endTime: range.endTime,
-            capacity: UNLIMITED_BATCH_CAPACITY,
-          })
-        ).id;
-      await getMembershipService().assignMembershipToBatch(batchId, membership.memberId, membership.id);
+    for (const slot of extraSlots) {
+      await getMembershipService().assignMembershipToBatch(slot.batchId, membership.memberId, membership.id);
     }
 
     queryClient.invalidateQueries({ queryKey: ["membership-list"] });
@@ -543,6 +517,10 @@ export function AddMemberWizardPage() {
   async function submit() {
     if (!facilityId || stepError) {
       setTouchedFields(new Set(Object.keys(errors)));
+      return;
+    }
+    if (duplicateMember) {
+      setError(DUPLICATE_MEMBER_MESSAGE);
       return;
     }
     setSaving(true);
@@ -579,6 +557,10 @@ export function AddMemberWizardPage() {
       setTouchedFields(new Set(Object.keys(errors)));
       return;
     }
+    if (duplicateMember) {
+      setLinkError(DUPLICATE_MEMBER_MESSAGE);
+      return;
+    }
     setGeneratingLink(true);
     setLinkError(null);
     try {
@@ -611,11 +593,11 @@ export function AddMemberWizardPage() {
   // The hero's tagline: Review & Confirm has its own, Payment has one per tab, everything else
   // shares the wizard's default.
   const heroTagline =
-    step === 4 ? "One More Step!" : step === 5 ? PAYMENT_TAB_COPY[draft.paymentTab].tagline : "More Players. A Stronger Community.";
+    step === 3 ? "One More Step!" : step === 4 ? PAYMENT_TAB_COPY[draft.paymentTab].tagline : "More Players. A Stronger Community.";
   const heroSub =
-    step === 4
+    step === 3
       ? "Review the details and confirm to add a new member."
-      : step === 5
+      : step === 4
         ? PAYMENT_TAB_COPY[draft.paymentTab].sub
         : "Give your members a dedicated time to play and be part of something bigger.";
 
@@ -635,14 +617,14 @@ export function AddMemberWizardPage() {
             <span className="font-medium text-foreground">Add New Member</span>
           </nav>
           <h1 className="mt-1 truncate text-2xl font-bold text-black dark:text-foreground">Add New Member</h1>
-          <p className="text-sm text-muted-foreground">Create a new member, assign a plan and set their playing schedule.</p>
+          <p className="text-sm text-muted-foreground">Create a new member and assign a plan — its court and timings come with it.</p>
         </div>
 
         {/* Hidden on mobile/tablet — decorative only; desktop (lg+) is unaffected. */}
         <div
           className="relative hidden flex-1 items-center gap-4 px-6 lg:flex"
           style={{
-            backgroundImage: `url(/assets/${step === 4 || (step === 5 && draft.paymentTab === "link") ? "Membership_Review" : "Membership_Dashboard"}.png), linear-gradient(to right, hsl(var(--card)) 0%, ${PANEL_TINT} 22%, ${PANEL_TINT} 100%)`,
+            backgroundImage: `url(/assets/${step === 3 || (step === 4 && draft.paymentTab === "link") ? "Membership_Review" : "Membership_Dashboard"}.png), linear-gradient(to right, hsl(var(--card)) 0%, ${PANEL_TINT} 22%, ${PANEL_TINT} 100%)`,
             backgroundSize: "74%, 100% 100%",
             backgroundPosition: "right 12px center, left center",
             backgroundRepeat: "no-repeat, no-repeat",
@@ -870,6 +852,8 @@ export function AddMemberWizardPage() {
               </div>
             )}
 
+            {show("planId") && <p className="text-sm text-destructive">{show("planId")}</p>}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Plan Start Date" required error={show("startDate")}>
                 <DatePicker
@@ -896,10 +880,22 @@ export function AddMemberWizardPage() {
               </Field>
             </div>
 
+            {selectedPlan && (
+              <div className="space-y-2 rounded-xl border border-border p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Court &amp; Timing</p>
+                  <p className="text-xs text-muted-foreground">
+                    Set by this plan — the member plays on these courts and timings. To change them, edit the plan.
+                  </p>
+                </div>
+                <PlanSlotsList slots={slots} className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2" />
+              </div>
+            )}
+
             <div className="flex items-start gap-2.5 rounded-lg bg-blue-500/10 p-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
               <p className="text-xs leading-relaxed text-foreground/80">
-                The membership will be active from the selected start date. You can manage or change the schedule later.
+                The membership will be active from the selected start date.
               </p>
             </div>
 
@@ -930,25 +926,13 @@ export function AddMemberWizardPage() {
         )}
 
         {step === 3 && (
-          <PlayingSchedulePicker
-            facilityId={facilityId}
-            value={draft.schedule}
-            onChange={(s) => {
-              set("schedule", s);
-              touch("slot");
-            }}
-          />
-        )}
-
-        {step === 4 && (
           <MembershipReviewStep
-            facilityId={facilityId}
             draft={draft}
             photoPreview={photoPreview}
             plans={plans}
             selectedPlan={selectedPlan}
             planEndDate={planEndDate}
-            scheduleRanges={scheduleRanges}
+            slots={slots}
             charges={charges}
             onEditStep={(s) => {
               setTouchedFields(new Set());
@@ -957,7 +941,7 @@ export function AddMemberWizardPage() {
           />
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
             <PaymentStep
               draft={draft}
@@ -973,12 +957,11 @@ export function AddMemberWizardPage() {
               isRecurringPlan={selectedPlan?.planType === "RECURRING"}
             />
             <MemberContextPanel
-              facilityId={facilityId}
               draft={draft}
               photoPreview={photoPreview}
               plans={plans}
               selectedPlan={selectedPlan}
-              scheduleRanges={scheduleRanges}
+              slots={slots}
               onEditStep={(s) => {
                 setTouchedFields(new Set());
                 setStep(s);
@@ -988,9 +971,6 @@ export function AddMemberWizardPage() {
           </div>
         )}
 
-        {/* Steps 1, 2 and 5 show their errors under each field; this is only for step 3 (the
-            slot picker has no field of its own to attach an error to). */}
-        {show("slot") && <p className="text-sm text-destructive">{show("slot")}</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
@@ -1003,7 +983,7 @@ export function AddMemberWizardPage() {
             {step === 1 ? "Cancel" : "Back"}
           </button>
 
-          {step < 5 ? (
+          {step < LAST_STEP ? (
             <button
               type="button"
               onClick={next}

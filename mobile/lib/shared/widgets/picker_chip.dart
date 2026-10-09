@@ -56,7 +56,7 @@ class PickerChip extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       color: tokens.textPrimary)),
             ),
             const SizedBox(width: 4),

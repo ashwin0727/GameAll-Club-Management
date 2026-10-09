@@ -42,6 +42,9 @@ class AppRoutes {
   /// Membership Schedule — a member's weekly court slots. Web's /memberships/v1/schedule.
   static const membershipSchedule = '/memberships/schedule';
 
+  /// The four-step Create Plan wizard. Web's /memberships/v1/plans/new.
+  static const membershipPlanNew = '/memberships/plans/new';
+
   static const membershipSessions = '/membership-sessions';
   static const refunds = '/refunds';
 

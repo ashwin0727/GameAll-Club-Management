@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Records an expense — mirrors src/features/finance/components/add-expense-dialog.tsx.
 ///
@@ -154,7 +155,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted),
             ),
             const SizedBox(height: AppSpacing.md),
-            DropdownButtonFormField<String>(
+            AppDropdown<String>(
               initialValue: _categoryId,
               decoration: const InputDecoration(labelText: 'Category'),
               items: widget.categories
@@ -178,7 +179,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 Expanded(
                   child: InkWell(
                     onTap: _pickDate,
-                    child: InputDecorator(
+                    child: AppSelectField(
                       decoration: const InputDecoration(labelText: 'Date'),
                       child: Text(DateFormat('d MMM yyyy').format(_spentOn)),
                     ),
@@ -220,7 +221,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               const SizedBox(height: AppSpacing.sm),
               InkWell(
                 onTap: _pickDueDate,
-                child: InputDecorator(
+                child: AppSelectField(
                   decoration: const InputDecoration(labelText: 'Due date (optional)'),
                   child: Text(_dueOn == null ? 'Not set' : DateFormat('d MMM yyyy').format(_dueOn!)),
                 ),

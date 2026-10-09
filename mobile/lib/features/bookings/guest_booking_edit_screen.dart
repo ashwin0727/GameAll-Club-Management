@@ -259,7 +259,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                                     _loadSlots();
                                   }
                                 },
-                                child: InputDecorator(
+                                child: AppSelectField(
                                   decoration: const InputDecoration(labelText: 'Date', suffixIcon: Icon(Icons.calendar_today, size: 18)),
                                   child: Text(Formatters.dateShort(_date)),
                                 ),

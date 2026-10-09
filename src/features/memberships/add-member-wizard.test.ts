@@ -36,7 +36,6 @@ function draft(overrides: Partial<WizardDraft> = {}): WizardDraft {
     membershipFeeInr: 2500,
     registrationFeeInr: 0,
     gstPercent: 0,
-    schedule: { facilitySportId: "sport-1", courtId: "", daysOfWeek: [], times: [] },
     paymentTab: "offline",
     paymentAmount: 2500,
     paymentDate: "2026-09-23",
@@ -50,11 +49,10 @@ function draft(overrides: Partial<WizardDraft> = {}): WizardDraft {
 }
 
 describe("WIZARD_STEPS", () => {
-  it("is the five steps from the design, in order", () => {
+  it("is the four steps from the design, in order", () => {
     expect(WIZARD_STEPS.map((s) => s.title)).toEqual([
       "Personal Information",
       "Select Plan",
-      "Playing Schedule",
       "Review & Confirm",
       "Payment",
     ]);
@@ -108,45 +106,32 @@ describe("validateStep", () => {
     expect(validateStep(2, draft({ startDate: "" }))).toMatch(/start date is required/i);
   });
 
-  it("defers the schedule step to the playing-schedule rules", () => {
-    expect(validateStep(3, draft())).toBeNull(); // nothing picked — optional
-    expect(
-      validateStep(3, draft({ schedule: { facilitySportId: "sport-1", courtId: "", daysOfWeek: [1], times: ["06:00"] } })),
-    ).not.toBeNull(); // hour picked, no court
-    expect(
-      validateStep(
-        3,
-        draft({ schedule: { facilitySportId: "sport-1", courtId: "court-1", daysOfWeek: [1], times: ["06:00"] } }),
-      ),
-    ).toBeNull();
-  });
-
   it("never blocks the review step", () => {
-    expect(validateStep(4, draft())).toBeNull();
+    expect(validateStep(3, draft())).toBeNull();
   });
 
   it("needs a real amount on every payment tab", () => {
-    expect(validateStep(5, draft())).toBeNull();
-    expect(validateStep(5, draft({ paymentAmount: 0 }))).toMatch(/payment amount is required/i);
+    expect(validateStep(4, draft())).toBeNull();
+    expect(validateStep(4, draft({ paymentAmount: 0 }))).toMatch(/payment amount is required/i);
   });
 
   it("needs date, received-from and collected-by only on the offline/paid tabs, not the link tab", () => {
-    expect(validateStep(5, draft({ paymentTab: "link", paymentDate: "", receivedFrom: "", collectedBy: "" }))).toBeNull();
-    expect(validateStep(5, draft({ paymentTab: "offline", paymentDate: "" }))).toMatch(/payment date is required/i);
-    expect(validateStep(5, draft({ paymentTab: "paid", receivedFrom: "" }))).toMatch(/received from is required/i);
-    expect(validateStep(5, draft({ paymentTab: "paid", collectedBy: "" }))).toMatch(/collected by is required/i);
+    expect(validateStep(4, draft({ paymentTab: "link", paymentDate: "", receivedFrom: "", collectedBy: "" }))).toBeNull();
+    expect(validateStep(4, draft({ paymentTab: "offline", paymentDate: "" }))).toMatch(/payment date is required/i);
+    expect(validateStep(4, draft({ paymentTab: "paid", receivedFrom: "" }))).toMatch(/received from is required/i);
+    expect(validateStep(4, draft({ paymentTab: "paid", collectedBy: "" }))).toMatch(/collected by is required/i);
   });
 
   it("only requires a reference number for UPI/Bank Transfer, not Cash or Other", () => {
-    expect(validateStep(5, draft({ paymentMethod: "Cash", paymentReference: "" }))).toBeNull();
-    expect(validateStep(5, draft({ paymentMethod: "Other", paymentReference: "" }))).toBeNull();
-    expect(validateStep(5, draft({ paymentMethod: "UPI", paymentReference: "" }))).toMatch(/reference \/ transaction id is required/i);
-    expect(validateStep(5, draft({ paymentMethod: "Bank Transfer", paymentReference: "" }))).toMatch(
+    expect(validateStep(4, draft({ paymentMethod: "Cash", paymentReference: "" }))).toBeNull();
+    expect(validateStep(4, draft({ paymentMethod: "Other", paymentReference: "" }))).toBeNull();
+    expect(validateStep(4, draft({ paymentMethod: "UPI", paymentReference: "" }))).toMatch(/reference \/ transaction id is required/i);
+    expect(validateStep(4, draft({ paymentMethod: "Bank Transfer", paymentReference: "" }))).toMatch(
       /reference \/ transaction id is required/i,
     );
-    expect(validateStep(5, draft({ paymentMethod: "UPI", paymentReference: "UTR123" }))).toBeNull();
+    expect(validateStep(4, draft({ paymentMethod: "UPI", paymentReference: "UTR123" }))).toBeNull();
     // Doesn't apply to the link tab, where nothing's been collected yet.
-    expect(validateStep(5, draft({ paymentTab: "link", paymentMethod: "UPI", paymentReference: "" }))).toBeNull();
+    expect(validateStep(4, draft({ paymentTab: "link", paymentMethod: "UPI", paymentReference: "" }))).toBeNull();
   });
 });
 
@@ -262,15 +247,10 @@ describe("furthestReachableStep / isStepComplete", () => {
   it("stops at the first step that isn't finished", () => {
     expect(furthestReachableStep(draft({ fullName: "" }))).toBe(1);
     expect(furthestReachableStep(draft({ planId: "" }))).toBe(2);
-    expect(
-      furthestReachableStep(
-        draft({ schedule: { facilitySportId: "sport-1", courtId: "", daysOfWeek: [1], times: ["06:00"] } }),
-      ),
-    ).toBe(3);
   });
 
   it("reaches the end once every step is valid", () => {
-    expect(furthestReachableStep(draft())).toBe(5);
+    expect(furthestReachableStep(draft())).toBe(4);
   });
 
   it("only marks a step complete once it's behind you and valid", () => {

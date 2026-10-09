@@ -174,7 +174,7 @@ class AuthGradientButton extends StatelessWidget {
                           loadingLabel ?? label,
                           style: TextStyle(
                             color: tokens.onPrimary,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             fontSize: 16,
                           ),
                         ),
@@ -184,7 +184,7 @@ class AuthGradientButton extends StatelessWidget {
                       label,
                       style: TextStyle(
                         color: tokens.onPrimary,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         fontSize: 16,
                       ),
                     ),

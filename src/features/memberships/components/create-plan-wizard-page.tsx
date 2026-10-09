@@ -29,6 +29,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectField } from "@/components/shared/select-field";
 import { ToggleSwitch } from "@/features/bookings/components/toggle-switch";
+import { PlanCreatedSuccess } from "@/features/memberships/components/plan-created-success";
+import type { MembershipPlan } from "@/features/memberships/types";
 import { PlanWizardStepper } from "@/features/memberships/components/plan-wizard-stepper";
 import { CourtAccessStep } from "@/features/memberships/components/court-access-step";
 import { formatClock12 } from "@/features/memberships/components/member-schedule-grid";
@@ -41,6 +43,9 @@ import {
 import { useFacilitySportNames, usePlayingAreasList } from "@/features/memberships/hooks/use-member-schedule";
 import { courtsForSport } from "@/features/memberships/sport-scope";
 import { useCourtSchedules } from "@/features/bookings/hooks/use-booking-calendar-data";
+import { useQuery } from "@tanstack/react-query";
+import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
+import { duplicatePlanMessage, findDuplicatePlan } from "@/features/memberships/duplicate-guards";
 import { getMembershipService } from "@/services/memberships";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { ServiceError } from "@/services/shared/service-error";
@@ -298,7 +303,14 @@ function ReviewChip({ icon: Icon, iconClass, label }: { icon: React.ComponentTyp
  * what Review & Create is about to save.
  */
 export function CreatePlanWizardPage() {
+  // "Create Another Plan" remounts the wizard, so it starts again from a blank first page.
+  const [run, setRun] = useState(0);
+  return <CreatePlanWizard key={run} onCreateAnother={() => setRun((r) => r + 1)} />;
+}
+
+function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) {
   const router = useRouter();
+  const [created, setCreated] = useState<{ plan: MembershipPlan; sportLabel: string | null } | null>(null);
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
 
@@ -350,8 +362,29 @@ export function CreatePlanWizardPage() {
     value: PlanWizardDraft[K],
   ) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const errors = fieldErrors(step, draft);
-  const stepError = validateStep(step, draft);
+  // An exact repeat of an existing plan's courts, days and hours is not allowed; the same hours on
+  // different days (or other courts) is a different plan and is fine.
+  const existingPlansQuery = useQuery({
+    queryKey: ["membership-plans-all", facilityId],
+    enabled: Boolean(facilityId),
+    queryFn: () => getMembershipService().getFacilityPlans(facilityId!),
+  });
+  const existingBatches = useFacilityBatches(facilityId).data;
+  const duplicatePlan = findDuplicatePlan(
+    draft.timeWindows,
+    (existingPlansQuery.data ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      slots: (existingBatches ?? []).filter((b) => b.isActive && b.planId === p.id),
+    })),
+  );
+  const duplicateError = duplicatePlan ? duplicatePlanMessage(duplicatePlan.name) : null;
+
+  const errors: Record<string, string | undefined> = {
+    ...fieldErrors(step, draft),
+    ...(step === 3 && duplicateError ? { timeWindows: duplicateError } : {}),
+  };
+  const stepError = validateStep(step, draft) ?? (step === 3 ? duplicateError : null);
   const furthest = furthestReachableStep(draft);
   const show = (field: string) =>
     touchedFields.has(field) ? errors[field] : undefined;
@@ -377,6 +410,10 @@ export function CreatePlanWizardPage() {
     // the first re-render — this closes that gap so a second call never fires createPlan twice.
     if (saving || !facilityId || stepError) {
       setTouchedFields(new Set(Object.keys(errors)));
+      return;
+    }
+    if (duplicateError) {
+      setError(duplicateError);
       return;
     }
     setSaving(true);
@@ -415,7 +452,19 @@ export function CreatePlanWizardPage() {
         });
       }
 
-      router.push("/memberships/v1/plans");
+      const sportLabel =
+        [
+          ...new Set(
+            draft.courtIds
+              .map((id) => courts.find((c) => c.id === id)?.facilitySportId)
+              .filter((id): id is string => Boolean(id))
+              .map((id) => sportNamesQuery.data?.get(id)),
+          ),
+        ]
+          .filter(Boolean)
+          .join(", ") || null;
+      setCreated({ plan, sportLabel });
+      setSaving(false);
     } catch (err) {
       setError(
         err instanceof ServiceError
@@ -424,6 +473,18 @@ export function CreatePlanWizardPage() {
       );
       setSaving(false);
     }
+  }
+
+  if (created) {
+    return (
+      <PlanCreatedSuccess
+        plan={created.plan}
+        sportLabel={created.sportLabel}
+        onViewPlan={() => router.push(`/memberships/v1/plans/${created.plan.id}`)}
+        onCreateAnother={onCreateAnother}
+        onGoToPlans={() => router.push("/memberships/v1/plans")}
+      />
+    );
   }
 
   if (facilityLoading) {

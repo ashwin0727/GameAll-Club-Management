@@ -14,7 +14,7 @@ import '../../shared/widgets/app_avatar.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
-import 'create_membership_screen.dart';
+import 'edit_member_screen.dart';
 import 'slot_format.dart';
 
 const _monthShort = [
@@ -163,7 +163,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     final saved = await Navigator.of(context).push<bool>(
       AppPageRoute(
         builder: (_) =>
-            CreateMembershipScreen(membershipId: widget.membershipId),
+            EditMemberScreen(membershipId: widget.membershipId),
       ),
     );
     if (saved == true) {

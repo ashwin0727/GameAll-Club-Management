@@ -12,7 +12,6 @@ import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-f
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
-import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
 import { PlanCard } from "@/features/memberships/components/plan-card";
 import { PlansTable } from "@/features/memberships/components/plans-table";
 import { planBadges, planStats } from "@/features/memberships/plan-insights";
@@ -50,7 +49,6 @@ export function MembershipPlansPage() {
   const activeSportId = useActiveFacilitySportId(facilityId);
 
   const [allPlans, setAllPlans] = useState<MembershipPlan[] | null>(null);
-  const [plansOpen, setPlansOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rowsQuery = useAllMemberships(facilityId);
   const allRows = useMemo(() => rowsQuery.data ?? [], [rowsQuery.data]);
@@ -66,10 +64,6 @@ export function MembershipPlansPage() {
   }, [facilityId]);
 
   useEffect(loadPlans, [loadPlans]);
-  // The plans dialog creates and edits plans; pick its changes up when it closes.
-  useEffect(() => {
-    if (!plansOpen) loadPlans();
-  }, [plansOpen, loadPlans]);
 
   // Scoped to the top bar's active sport — a facility with both Badminton and Cricket (Turf)
   // shows only one sport's plans/members/revenue at a time; switching sport up there switches
@@ -253,7 +247,7 @@ export function MembershipPlansPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {popular.map((p, i) => (
-              <PlanCard key={p.id} plan={p} badge={badges.get(p.id)} index={i} glass onViewDetails={() => setPlansOpen(true)} />
+              <PlanCard key={p.id} plan={p} badge={badges.get(p.id)} index={i} glass onViewDetails={() => router.push(`/memberships/v1/plans/${p.id}`)} />
             ))}
           </div>
         )}
@@ -265,14 +259,13 @@ export function MembershipPlansPage() {
           rows={rows}
           badges={badges}
           className={GLASS}
-          onEdit={() => setPlansOpen(true)}
+          onEdit={(p) => router.push(`/memberships/v1/plans/${p.id}`)}
           onToggleActive={toggleActive}
         />
       ) : (
         <Skeleton className="h-80 w-full rounded-xl" />
       )}
 
-      {facilityId && <MembershipPlansDialog open={plansOpen} onOpenChange={setPlansOpen} facilityId={facilityId} />}
     </div>
   );
 }

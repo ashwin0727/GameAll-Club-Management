@@ -21,6 +21,7 @@ import '../../shared/widgets/app_card.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Coaching → Manage Students → Add Student — mirrors
 /// src/features/coaching/components/add-student-wizard-page.tsx.
@@ -393,7 +394,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
           );
           if (picked != null) setState(() => _dateOfBirth = picked);
         },
-        child: InputDecorator(
+        child: AppSelectField(
           decoration: const InputDecoration(labelText: 'Date of birth'),
           child: Text(_dateOfBirth == null ? '—' : DateFormat('d MMM yyyy').format(_dateOfBirth!)),
         ),
@@ -406,7 +407,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
   List<Widget> _programSection() {
     final p = _program;
     return [
-      DropdownButtonFormField<String>(
+      AppDropdown<String>(
         initialValue: _programId,
         isExpanded: true,
         decoration: InputDecoration(labelText: _loadingPrograms ? 'Loading programs…' : 'Coaching program *'),
@@ -445,7 +446,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
                     _refreshCycles();
                   }
                 },
-          child: InputDecorator(
+          child: AppSelectField(
             decoration: const InputDecoration(labelText: 'Enrollment start date *'),
             child: Text(DateFormat('d MMM yyyy').format(_startDate)),
           ),

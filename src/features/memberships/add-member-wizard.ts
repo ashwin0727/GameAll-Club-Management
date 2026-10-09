@@ -1,13 +1,12 @@
-import { validatePlayingSchedule, type PlayingScheduleDraft } from "@/features/memberships/playing-schedule";
+export type WizardStep = 1 | 2 | 3 | 4;
 
-export type WizardStep = 1 | 2 | 3 | 4 | 5;
+export const LAST_STEP: WizardStep = 4;
 
 export const WIZARD_STEPS: { step: WizardStep; title: string; hint: string }[] = [
   { step: 1, title: "Personal Information", hint: "Basic details" },
   { step: 2, title: "Select Plan", hint: "Choose membership plan" },
-  { step: 3, title: "Playing Schedule", hint: "Select days & time" },
-  { step: 4, title: "Review & Confirm", hint: "Verify details" },
-  { step: 5, title: "Payment", hint: "Complete registration" },
+  { step: 3, title: "Review & Confirm", hint: "Verify details" },
+  { step: 4, title: "Payment", hint: "Complete registration" },
 ];
 
 export interface WizardDraft {
@@ -33,7 +32,6 @@ export interface WizardDraft {
   membershipFeeInr: number;
   registrationFeeInr: number;
   gstPercent: number;
-  schedule: PlayingScheduleDraft;
   /** Which of the three Payment step panels is open. */
   paymentTab: PaymentTab;
   /** Defaults to the plan's total but is editable via "Edit Amount". */
@@ -173,12 +171,7 @@ export function fieldErrors(step: WizardStep, draft: WizardDraft, now: Date = ne
     if (draft.gstPercent < 0 || draft.gstPercent > 28) errors.gstPercent = invalidMsg("GST");
   }
 
-  if (step === 3) {
-    const scheduleErr = validatePlayingSchedule(draft.schedule);
-    if (scheduleErr) errors.slot = scheduleErr;
-  }
-
-  if (step === 5) {
+  if (step === 4) {
     // "Generate Payment Link" only needs the amount to be something real — everything else
     // (method, who received it) doesn't apply until the member actually pays through the link.
     if (draft.paymentAmount <= 0) errors.paymentAmount = requiredMsg("Payment amount");
@@ -267,7 +260,7 @@ export function furthestReachableStep(draft: WizardDraft, now: Date = new Date()
   for (const { step } of WIZARD_STEPS) {
     if (validateStep(step, draft, now) !== null) return step;
   }
-  return 5;
+  return LAST_STEP;
 }
 
 export function isStepComplete(step: WizardStep, draft: WizardDraft, current: WizardStep, now: Date = new Date()): boolean {

@@ -51,6 +51,12 @@ class MembershipPlan {
     required this.features,
     required this.isActive,
     required this.createdAt,
+    this.description,
+    this.category,
+    this.planType = 'TIME_BASED',
+    this.joiningFeeInr,
+    this.securityDepositInr,
+    this.badgeText,
   });
 
   final String id;
@@ -63,6 +69,23 @@ class MembershipPlan {
   final bool isActive;
   final DateTime createdAt;
 
+  // The richer plan details the web's Create Plan wizard saves (migrations 0091-0094). Plans made
+  // on mobile only set name / price / duration, so every one of these can be empty.
+  final String? description;
+
+  /// What the plan is for — a sport or a kind of use ("Badminton", "Multi Sport").
+  final String? category;
+
+  /// TIME_BASED — fixed length, paid once. RECURRING — renews each cycle.
+  final String planType;
+  final int? joiningFeeInr;
+  final int? securityDepositInr;
+
+  /// An owner-set label ("Popular", "Best Deal") — null when none was set.
+  final String? badgeText;
+
+  bool get isRecurring => planType == 'RECURRING';
+
   factory MembershipPlan.fromJson(Map<String, dynamic> json) {
     return MembershipPlan(
       id: json['id'] as String,
@@ -73,6 +96,12 @@ class MembershipPlan {
       features: (json['features'] as List<dynamic>? ?? const []).cast<String>(),
       isActive: json['is_active'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
+      description: json['description'] as String?,
+      category: json['category'] as String?,
+      planType: json['plan_type'] as String? ?? 'TIME_BASED',
+      joiningFeeInr: (json['joining_fee_inr'] as num?)?.toInt(),
+      securityDepositInr: (json['security_deposit_inr'] as num?)?.toInt(),
+      badgeText: json['badge_text'] as String?,
     );
   }
 }
@@ -84,6 +113,12 @@ class MembershipPlanInput {
     required this.priceInr,
     required this.durationDays,
     this.features = const [],
+    this.description,
+    this.category,
+    this.planType = 'TIME_BASED',
+    this.joiningFeeInr,
+    this.securityDepositInr,
+    this.badgeText,
   });
 
   final String facilityId;
@@ -91,6 +126,16 @@ class MembershipPlanInput {
   final int priceInr;
   final int durationDays;
   final List<String> features;
+  final String? description;
+  final String? category;
+
+  /// TIME_BASED or RECURRING.
+  final String planType;
+  final int? joiningFeeInr;
+  final int? securityDepositInr;
+
+  /// Null when the plan carries no badge.
+  final String? badgeText;
 }
 
 class Membership {

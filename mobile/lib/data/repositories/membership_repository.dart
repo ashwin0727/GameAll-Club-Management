@@ -183,6 +183,12 @@ class MembershipRepository {
             'price_inr': input.priceInr,
             'duration_days': input.durationDays,
             'features': input.features,
+            'description': input.description,
+            'category': input.category,
+            'plan_type': input.planType,
+            'joining_fee_inr': input.joiningFeeInr,
+            'security_deposit_inr': input.securityDepositInr,
+            'badge_text': input.badgeText,
           })
           .select()
           .single();
@@ -199,16 +205,43 @@ class MembershipRepository {
     int? durationDays,
     List<String>? features,
     bool? isActive,
+    String? description,
+    String? category,
+    int? joiningFeeInr,
+    int? securityDepositInr,
+
+    /// The badge is nullable on the plan (null = none), so "clear it" needs its own flag.
+    bool setBadge = false,
+    String? badgeText,
   }) async {
     final update = <String, dynamic>{};
+    if (description != null) update['description'] = description.trim().isEmpty ? null : description.trim();
+    if (category != null) update['category'] = category;
+    if (joiningFeeInr != null) update['joining_fee_inr'] = joiningFeeInr > 0 ? joiningFeeInr : null;
+    if (securityDepositInr != null) update['security_deposit_inr'] = securityDepositInr > 0 ? securityDepositInr : null;
+    if (setBadge) update['badge_text'] = (badgeText == null || badgeText.trim().isEmpty) ? null : badgeText.trim();
     if (name != null) update['name'] = name;
     if (priceInr != null) update['price_inr'] = priceInr;
     if (durationDays != null) update['duration_days'] = durationDays;
     if (features != null) update['features'] = features;
     if (isActive != null) update['is_active'] = isActive;
     try {
+      // Memberships made through the full form carry the plan's name, not its id — that name is the
+      // only link back to the plan, so a rename has to carry them along.
+      Map<String, dynamic>? before;
+      if (name != null) {
+        before = await _client.from('membership_plans').select('name, facility_id').eq('id', planId).maybeSingle();
+      }
       final row = await _client.from('membership_plans').update(update).eq('id', planId).select().maybeSingle();
       if (row == null) throw AppException(AppErrorCode.membershipPlanNotFound);
+      if (before != null && before['name'] != name) {
+        await _client
+            .from('memberships')
+            .update({'name': name})
+            .eq('facility_id', before['facility_id'] as String)
+            .isFilter('plan_id', null)
+            .eq('name', before['name'] as String);
+      }
       return MembershipPlan.fromJson(row);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e, notFound: AppErrorCode.membershipPlanNotFound);
@@ -385,6 +418,22 @@ class MembershipRepository {
     final data = response.data;
     if (data is! Map || data['error'] != null) throw AppException(AppErrorCode.paymentGatewayError);
     return MembershipSubscriptionInfo.fromJson(data.cast<String, dynamic>());
+  }
+
+  /// Cancels the Razorpay mandate behind a membership — used when a payment link was generated but
+  /// the member then paid another way. Mirrors `cancelMembershipSubscription` on the web.
+  Future<void> cancelMembershipSubscription(String membershipId) async {
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'cancel-membership-subscription',
+        body: {'membershipId': membershipId},
+      );
+    } on FunctionException {
+      throw AppException(AppErrorCode.paymentGatewayError);
+    }
+    final data = response.data;
+    if (data is! Map || data['error'] != null) throw AppException(AppErrorCode.paymentGatewayError);
   }
 
   /// The Memberships page list — every membership at the facility (not one

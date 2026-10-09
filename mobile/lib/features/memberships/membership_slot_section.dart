@@ -398,7 +398,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
           onPicked('${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
         }
       },
-      child: InputDecorator(
+      child: AppSelectField(
         decoration: InputDecoration(labelText: label),
         child: Text(formatClock(value)),
       ),

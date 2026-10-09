@@ -247,6 +247,14 @@ export class SupabaseMembershipService implements MembershipService {
     if (patch.features !== undefined) update.features = patch.features;
     if (patch.isActive !== undefined) update.is_active = patch.isActive;
 
+    // Memberships made through the full form carry the plan's name, not its id — that name is the
+    // only link back to the plan. Renaming the plan must carry them along or they'd drop off it.
+    let previous: { name: string; facility_id: string } | null = null;
+    if (patch.name !== undefined) {
+      const { data: before } = await this.supabase.from("membership_plans").select("name, facility_id").eq("id", planId).maybeSingle();
+      previous = before ?? null;
+    }
+
     const { data, error } = await this.supabase
       .from("membership_plans")
       .update(update)
@@ -256,6 +264,16 @@ export class SupabaseMembershipService implements MembershipService {
 
     if (error) throw mapSupabaseError(error);
     if (!data) throw new ServiceError("MEMBERSHIP_PLAN_NOT_FOUND");
+
+    if (previous && patch.name !== undefined && previous.name !== patch.name) {
+      const { error: renameError } = await this.supabase
+        .from("memberships")
+        .update({ name: patch.name })
+        .eq("facility_id", previous.facility_id)
+        .is("plan_id", null)
+        .eq("name", previous.name);
+      if (renameError) throw mapSupabaseError(renameError);
+    }
     return toPlan(data);
   }
 

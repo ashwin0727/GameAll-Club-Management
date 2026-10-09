@@ -19,7 +19,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
-import 'create_membership_screen.dart';
+import 'edit_member_screen.dart';
 import 'membership_list_presentation.dart';
 import 'slot_format.dart';
 
@@ -76,7 +76,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
     final d = _detail;
     if (d == null) return;
     final saved = await Navigator.of(context).push<bool>(
-      AppPageRoute(builder: (_) => CreateMembershipScreen(membershipId: d.membershipId)),
+      AppPageRoute(builder: (_) => EditMemberScreen(membershipId: d.membershipId)),
     );
     if (saved == true) _load();
   }

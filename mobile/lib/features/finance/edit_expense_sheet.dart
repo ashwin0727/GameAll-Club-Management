@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Edit a RECORDED expense — mirrors the web's EditExpenseDialog. `update_
 /// expense` (0069) rejects a total below what has already been paid, and
@@ -121,7 +122,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             Text('Edit expense', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
             if (_categories.isNotEmpty)
-              DropdownButtonFormField<String>(
+              AppDropdown<String>(
                 initialValue: _categoryId,
                 decoration: const InputDecoration(labelText: 'Category'),
                 items: _categories
@@ -144,7 +145,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                 Expanded(
                   child: InkWell(
                     onTap: _pickDate,
-                    child: InputDecorator(
+                    child: AppSelectField(
                       decoration: const InputDecoration(labelText: 'Expense date'),
                       child: Text(DateFormat('d MMM yyyy').format(_spentOn)),
                     ),

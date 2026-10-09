@@ -11,6 +11,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Add / edit an inventory item — mirrors the web's Add Item wizard and the
 /// item-details edit dialog. A single scrolling form on mobile.
@@ -178,7 +179,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             if (_loadingRefs)
               const AppSkeleton(height: 56, radius: 8)
             else
-              DropdownButtonFormField<String?>(
+              AppDropdown<String?>(
                 initialValue: _categoryId,
                 decoration: const InputDecoration(labelText: 'Category (optional)'),
                 items: [
@@ -191,7 +192,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             if (_loadingRefs)
               const AppSkeleton(height: 56, radius: 8)
             else
-              DropdownButtonFormField<String?>(
+              AppDropdown<String?>(
                 initialValue: _preferredVendorId,
                 decoration: const InputDecoration(labelText: 'Preferred vendor (optional)'),
                 items: [
@@ -202,7 +203,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
               ),
             if (_isEdit) ...[
               const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<ItemStatus>(
+              AppDropdown<ItemStatus>(
                 initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: ItemStatus.values

@@ -10,6 +10,7 @@ import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import 'finance_presentation.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Settle all or part of an unpaid expense — mirrors the web's
 /// mark-expense-paid-dialog.tsx. The server (`record_expense_payment`, 0069)
@@ -117,7 +118,7 @@ class _MarkExpensePaidSheetState extends ConsumerState<MarkExpensePaidSheet> {
             const SizedBox(height: AppSpacing.sm),
             InkWell(
               onTap: _pickDate,
-              child: InputDecorator(
+              child: AppSelectField(
                 decoration: const InputDecoration(labelText: 'Paid on'),
                 child: Text(DateFormat('d MMM yyyy').format(_paidOn)),
               ),

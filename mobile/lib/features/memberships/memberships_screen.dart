@@ -28,7 +28,7 @@ import '../../shared/widgets/states.dart';
 import 'membership_detail_screen.dart';
 import 'membership_access_days_sheet.dart';
 import 'membership_list_presentation.dart';
-import 'membership_plans_sheet.dart';
+import 'membership_plan_wizard_screen.dart';
 import 'slot_format.dart';
 import '../authentication/session_controller.dart';
 
@@ -289,12 +289,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
   }
 
   Future<void> _openPlans() async {
-    final facilityId = _facilityId;
-    if (facilityId == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => MembershipPlansSheet(facilityId: facilityId),
+    await Navigator.of(context).push<bool>(
+      AppPageRoute(builder: (_) => const MembershipPlanWizardScreen()),
     );
   }
 

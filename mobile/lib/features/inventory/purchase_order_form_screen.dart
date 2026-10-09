@@ -14,6 +14,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'inventory_common.dart';
+import '../../shared/widgets/app_dropdown.dart';
 
 /// Create a draft purchase order — mirrors the web's PO wizard. A single
 /// scrolling form on mobile; the PO is created as DRAFT and placed from its
@@ -177,7 +178,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  DropdownButtonFormField<String>(
+                  AppDropdown<String>(
                     initialValue: _vendorId,
                     decoration: const InputDecoration(labelText: 'Vendor'),
                     items: _vendors.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))).toList(),
@@ -242,7 +243,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
+                  child: AppDropdown<String>(
                     initialValue: l.itemId,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Item', isDense: true),
@@ -305,7 +306,7 @@ class _PurchaseOrderFormScreenState extends ConsumerState<PurchaseOrderFormScree
         );
         if (picked != null) onPick(picked);
       },
-      child: InputDecorator(
+      child: AppSelectField(
         decoration: InputDecoration(labelText: label),
         child: Text(value == null ? (allowNull ? 'Not set' : '') : DateFormat('d MMM yyyy').format(value)),
       ),

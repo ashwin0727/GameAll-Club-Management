@@ -1103,7 +1103,7 @@ class _Header extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(_dateLabel,
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700, color: tokens.onAccent(tokens.primary))),
+                            fontSize: 13, fontWeight: FontWeight.w500, color: tokens.onAccent(tokens.primary))),
                     const SizedBox(width: 2),
                     Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: tokens.onAccent(tokens.primary)),
                   ],
