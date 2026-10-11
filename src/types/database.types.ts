@@ -4706,6 +4706,7 @@ export interface Database {
       };
       delete_progress_note: { Args: { p_note_id: string }; Returns: undefined };
       get_coaching_overview: { Args: { p_facility_id: string }; Returns: Record<string, unknown> };
+      get_coaching_total_revenue: { Args: { p_facility_id: string }; Returns: number };
       get_coaching_insights: { Args: { p_facility_id: string; p_days?: number }; Returns: Record<string, unknown> };
       list_coaches: {
         Args: {

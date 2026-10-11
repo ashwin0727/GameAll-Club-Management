@@ -184,7 +184,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _sectionLabel('Coaching Management'),
               _GroupCard(children: [
                 _NavRow(
-                    icon: Icons.sports_outlined,
+                    icon: Icons.school_outlined,
                     label: 'Coaching',
                     onTap: () => context.push(AppRoutes.coaching)),
                 _NavRow(
@@ -192,7 +192,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: 'Program',
                     onTap: () => context.push(AppRoutes.coachingPrograms)),
                 _NavRow(
-                    icon: Icons.school_outlined,
+                    icon: Icons.groups_outlined,
                     label: 'Students',
                     onTap: () => context.push(AppRoutes.coachingStudents)),
                 _NavRow(

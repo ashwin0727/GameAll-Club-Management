@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { todaysActiveCount } from "@/features/coaching/active-sessions";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 import type {
@@ -91,7 +92,30 @@ export class SupabaseCoachingService {
   async getOverview(facilityId: string): Promise<CoachingOverview> {
     const { data, error } = await this.supabase.rpc("get_coaching_overview", { p_facility_id: facilityId });
     if (error || !data) throw mapError(error);
-    return data as unknown as CoachingOverview;
+    const overview = data as unknown as CoachingOverview;
+
+    // Active Sessions is the current day's session count, taken from the session list so it follows the
+    // same rules as the Sessions page.
+    try {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      const today = await this.listSessions({ facilityId, filters: { from: start.toISOString(), to: end.toISOString() }, limit: 500 });
+      overview.kpis.activeSessions = todaysActiveCount(today.sessions);
+    } catch {
+      overview.kpis.activeSessions = 0;
+    }
+
+    // Overall revenue (migration 0115). A missing function leaves it undefined — the page shows a dash
+    // rather than passing off this month's figure as the total.
+    try {
+      const { data: total, error: totalError } = await this.supabase.rpc("get_coaching_total_revenue", { p_facility_id: facilityId });
+      if (!totalError && total !== null && total !== undefined) overview.kpis.revenueTotalMinor = Number(total);
+    } catch {
+      // leave it undefined
+    }
+    return overview;
   }
 
   /** The Coaching Insights panel's own Last 30/60/90 Days figures — independent of the KPI row's

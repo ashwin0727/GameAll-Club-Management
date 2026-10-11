@@ -44,6 +44,36 @@ describe("SupabaseCoachingService", () => {
     expect(page.coaches[0]?.rating).toBe(4.5);
   });
 
+  it("getOverview's Active Sessions is how many sessions today has, cancelled ones left out", async () => {
+    const sessionRow = (id: string, status: string) => ({
+      id, program_id: "p", program_name: "P", coach_id: "c", coach_name: "C", court_id: "k", court_name: "K",
+      start_at: new Date().toISOString(), end_at: new Date().toISOString(), capacity: 5, enrolled_count: 1, status, session_type: "GROUP", total_count: 4,
+    });
+    const rpc = vi.fn(async (name: string) => {
+      if (name === "get_coaching_overview") return { data: { kpis: { activeSessions: 158 }, upcomingSessions: [] }, error: null };
+      if (name === "list_coaching_sessions") {
+        return { data: [sessionRow("a", "SCHEDULED"), sessionRow("b", "COMPLETED"), sessionRow("c", "IN_PROGRESS"), sessionRow("d", "CANCELLED")], error: null };
+      }
+      return { data: 0, error: null };
+    });
+    const result = await new SupabaseCoachingService({ rpc } as never).getOverview("f1");
+    expect(result.kpis.activeSessions).toBe(3);
+    // Only the session list for today was asked for, with today's bounds.
+    const call = rpc.mock.calls.find((c) => c[0] === "list_coaching_sessions");
+    expect(call).toBeTruthy();
+  });
+
+  it("getOverview adds the overall revenue, and leaves it out if that function is missing", async () => {
+    const base = () => ({ kpis: { activeSessions: 1, revenueThisMonthMinor: 100 }, upcomingSessions: [] });
+    const ok = vi.fn(async (name: string) => (name === "get_coaching_overview" ? { data: base(), error: null } : { data: 987654, error: null }));
+    expect((await new SupabaseCoachingService({ rpc: ok } as never).getOverview("f1")).kpis.revenueTotalMinor).toBe(987654);
+
+    const missing = vi.fn(async (name: string) =>
+      name === "get_coaching_overview" ? { data: base(), error: null } : { data: null, error: { message: "no such function" } },
+    );
+    expect((await new SupabaseCoachingService({ rpc: missing } as never).getOverview("f1")).kpis.revenueTotalMinor).toBeUndefined();
+  });
+
   it("listCoaches forwards a custom sort", async () => {
     const rpc = vi.fn(async () => ({ data: [], error: null }));
     await new SupabaseCoachingService({ rpc } as never).listCoaches({ facilityId: "f1", sort: "sessions_desc" });

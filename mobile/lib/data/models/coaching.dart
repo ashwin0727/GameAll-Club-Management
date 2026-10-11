@@ -156,8 +156,10 @@ class CoachingOverview {
     required this.activeCoaches,
     required this.coachesOnLeave,
     required this.sessionsThisMonth,
+    this.activeSessions = 0,
     required this.upcomingSessionsCount,
     required this.revenueThisMonthMinor,
+    this.revenueTotalMinor,
     required this.upcomingSessions,
     required this.programs,
     required this.studentsByProgram,
@@ -170,13 +172,54 @@ class CoachingOverview {
   final int activeCoaches;
   final int coachesOnLeave;
   final int sessionsThisMonth;
+
+  /// Today's scheduled sessions that are in an active status.
+  final int activeSessions;
   final int upcomingSessionsCount;
   final int revenueThisMonthMinor;
+
+  /// Everything ever collected for coaching; null until migration 0115 is applied.
+  final int? revenueTotalMinor;
   final List<UpcomingSession> upcomingSessions;
   final List<OverviewProgram> programs;
   final List<StudentsByProgram> studentsByProgram;
   final List<GrowthPoint> studentGrowth;
   final List<RecentEnrollment> recentEnrollments;
+
+  /// The same overview with a different Active Sessions figure.
+  CoachingOverview withRevenueTotal(int? minor) => CoachingOverview(
+        activeStudents: activeStudents,
+        activePrograms: activePrograms,
+        activeCoaches: activeCoaches,
+        coachesOnLeave: coachesOnLeave,
+        sessionsThisMonth: sessionsThisMonth,
+        activeSessions: activeSessions,
+        upcomingSessionsCount: upcomingSessionsCount,
+        revenueThisMonthMinor: revenueThisMonthMinor,
+        revenueTotalMinor: minor,
+        upcomingSessions: upcomingSessions,
+        programs: programs,
+        studentsByProgram: studentsByProgram,
+        studentGrowth: studentGrowth,
+        recentEnrollments: recentEnrollments,
+      );
+
+  CoachingOverview withActiveSessions(int count) => CoachingOverview(
+        activeStudents: activeStudents,
+        activePrograms: activePrograms,
+        activeCoaches: activeCoaches,
+        coachesOnLeave: coachesOnLeave,
+        sessionsThisMonth: sessionsThisMonth,
+        activeSessions: count,
+        upcomingSessionsCount: upcomingSessionsCount,
+        revenueThisMonthMinor: revenueThisMonthMinor,
+        revenueTotalMinor: revenueTotalMinor,
+        upcomingSessions: upcomingSessions,
+        programs: programs,
+        studentsByProgram: studentsByProgram,
+        studentGrowth: studentGrowth,
+        recentEnrollments: recentEnrollments,
+      );
 
   factory CoachingOverview.fromJson(Map<String, dynamic> j) {
     final k = (j['kpis'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -186,6 +229,7 @@ class CoachingOverview {
       activeCoaches: _int(k['activeCoaches']),
       coachesOnLeave: _int(k['coachesOnLeave']),
       sessionsThisMonth: _int(k['sessionsThisMonth']),
+      activeSessions: _int(k['activeSessions']),
       upcomingSessionsCount: _int(k['upcomingSessions']),
       revenueThisMonthMinor: _int(k['revenueThisMonthMinor']),
       upcomingSessions: _rows(j['upcomingSessions']).map(UpcomingSession.fromJson).toList(),
@@ -294,6 +338,7 @@ class CoachRow {
     required this.programCount,
     required this.sessionCount,
     required this.studentCount,
+    this.sports = const [],
   });
   final String id;
   final String userId;
@@ -307,6 +352,9 @@ class CoachRow {
   final int programCount;
   final int sessionCount;
   final int studentCount;
+
+  /// The names of the sports this coach is set up for (empty on older rows).
+  final List<String> sports;
   factory CoachRow.fromJson(Map<String, dynamic> j) => CoachRow(
         id: j['id'] as String,
         userId: j['user_id'] as String,
@@ -320,6 +368,10 @@ class CoachRow {
         programCount: _int(j['program_count']),
         sessionCount: _int(j['session_count']),
         studentCount: _int(j['student_count']),
+        sports: [
+          for (final x in (j['sports'] as List<dynamic>? ?? const []))
+            if (x is Map && (x['name'] as String?)?.isNotEmpty == true) x['name'] as String,
+        ],
       );
 }
 

@@ -42,8 +42,10 @@ const OVERVIEW: CoachingOverview = {
     activeCoaches: 5,
     coachesOnLeave: 1,
     sessionsThisMonth: 42,
+    activeSessions: 6,
     upcomingSessions: 7,
     revenueThisMonthMinor: 285_00000,
+    revenueTotalMinor: 910_00000,
   },
   upcomingSessions: [
     {
@@ -100,7 +102,8 @@ describe("CoachingOverviewPage", () => {
 
     expect(await screen.findByText("5")).toBeInTheDocument(); // Active Coaches
     expect(screen.getByText("Active Coaches")).toBeInTheDocument();
-    expect(screen.getAllByText("42").length).toBeGreaterThan(0); // Coaching Sessions this month
+    expect(screen.getAllByText("6").length).toBeGreaterThan(0); // Active Sessions
+    expect(screen.getByText("Active Sessions")).toBeInTheDocument();
 
     expect(screen.getByText("Beginner Badminton")).toBeInTheDocument();
     expect(screen.getByText(/Arjun V/)).toBeInTheDocument();

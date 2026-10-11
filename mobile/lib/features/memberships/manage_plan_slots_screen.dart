@@ -11,7 +11,8 @@ import '../../data/repositories/repository_providers.dart';
 import '../membership_sessions/membership_batches_sheet.dart';
 import '../staff/staff_common.dart';
 import 'member_row.dart';
-import 'membership_slot_edit_sheet.dart';
+import '../../core/routing/page_transitions.dart';
+import 'membership_slot_edit_screen.dart';
 import 'plan_presentation.dart';
 import 'plan_wizard.dart' show planDayAbbr;
 
@@ -56,10 +57,8 @@ class _ManagePlanSlotsScreenState extends ConsumerState<ManagePlanSlotsScreen> {
   }
 
   Future<void> _editCapacity(AssignableBatch b) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => MembershipSlotEditSheet(batch: b, facilityId: widget.facilityId, capacityOnly: true),
+    final saved = await Navigator.of(context).push<bool>(
+      AppPageRoute(builder: (_) => MembershipSlotEditScreen(batch: b, facilityId: widget.facilityId, capacityOnly: true)),
     );
     if (saved == true) {
       _changed = true;

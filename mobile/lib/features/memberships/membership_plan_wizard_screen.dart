@@ -10,6 +10,8 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/models/membership_session.dart';
+import '../../data/models/playing_area.dart';
+import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_dropdown.dart';
@@ -101,10 +103,18 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       return;
     }
     try {
-      final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(fid);
       final sportsRepo = ref.read(sportsRepositoryProvider);
-      final sports = await sportsRepo.getActiveSports();
-      final facilitySports = await sportsRepo.getFacilitySports(fid);
+      final membershipRepo = ref.read(membershipRepositoryProvider);
+      final loaded = await Future.wait<Object>([
+        ref.read(playingAreaRepositoryProvider).getPlayingAreas(fid),
+        sportsRepo.getActiveSports(),
+        sportsRepo.getFacilitySports(fid),
+        membershipRepo.getFacilityPlans(fid),
+        membershipRepo.listAssignableBatches(fid),
+      ]);
+      final areas = loaded[0] as List<PlayingArea>;
+      final sports = loaded[1] as List<Sport>;
+      final facilitySports = loaded[2] as List<FacilitySport>;
       String sportName(String facilitySportId) {
         final fs = facilitySports.where((f) => f.id == facilitySportId).firstOrNull;
         if (fs == null) return 'Sport';
@@ -123,9 +133,8 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
               indoor: a.areaType == 'INDOOR',
             ),
       ]..sort((a, b) => a.name.compareTo(b.name));
-      final repo = ref.read(membershipRepositoryProvider);
-      final plans = await repo.getFacilityPlans(fid);
-      final batches = await repo.listAssignableBatches(fid);
+      final plans = loaded[3] as List<MembershipPlan>;
+      final batches = loaded[4] as List<AssignableBatch>;
       if (mounted) {
         setState(() {
           _courts = courts;
@@ -156,6 +165,14 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
     return errors;
   }
   String? _show(String field) => _touched.contains(field) ? _errors[field] : null;
+
+  /// Applies a typed value without rebuilding the page — it only rebuilds when that changes which
+  /// errors are showing.
+  void _typed(VoidCallback assign) {
+    final before = _errors.toString();
+    assign();
+    if (_touched.isNotEmpty && before != _errors.toString()) setState(() {});
+  }
 
   void _next() {
     final errors = _errors;
@@ -448,7 +465,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       TextField(
         controller: _name,
         textCapitalization: TextCapitalization.words,
-        onChanged: (v) => setState(() => _d.name = v),
+        onChanged: (v) => _typed(() => _d.name = v),
         decoration: InputDecoration(
           labelText: 'Plan Name *',
           hintText: 'Monthly Membership',
@@ -461,7 +478,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         controller: _description,
         maxLines: 3,
         maxLength: 200,
-        onChanged: (v) => setState(() => _d.description = v),
+        onChanged: (v) => _typed(() => _d.description = v),
         decoration: InputDecoration(
           labelText: 'Description',
           hintText: 'Perfect for regular players who want consistent court access.',
@@ -486,7 +503,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         TextField(
           controller: _badge,
           maxLength: 24,
-          onChanged: (v) => setState(() => _d.badgeText = v),
+          onChanged: (v) => _typed(() => _d.badgeText = v),
           decoration: const InputDecoration(labelText: 'Badge text', hintText: 'Popular'),
         ),
       ],
@@ -633,7 +650,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       controller: controller,
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-      onChanged: (v) => setState(() => onChanged(int.tryParse(v.trim()) ?? 0)),
+      onChanged: (v) => _typed(() => onChanged(int.tryParse(v.trim()) ?? 0)),
       decoration: InputDecoration(labelText: label, hintText: hint, prefixText: '₹ ', helperText: helper, errorText: error),
     );
   }

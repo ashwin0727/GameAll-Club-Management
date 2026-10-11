@@ -12,12 +12,13 @@ import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import 'add_member_wizard.dart';
+import 'form_section.dart';
 import 'plan_wizard.dart' show planDayAbbr;
 
 /// Edit Member — the Memberships section's own edit page, the counterpart of the Add Member wizard
 /// (and of the web's /memberships/v1/:id/edit). Personal details and the start date are editable;
-/// the plan — and with it the court and timings — is fixed, so it is shown read-only. Pops `true`
-/// once saved.
+/// the plan — and with it the court, timings and fees — is fixed, so it is shown read-only. Pops
+/// `true` once saved.
 class EditMemberScreen extends ConsumerStatefulWidget {
   const EditMemberScreen({super.key, required this.membershipId});
 
@@ -100,6 +101,16 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
 
   String? _show(String field) => _touched.contains(field) ? _errors[field] : null;
 
+  String _errorSig = '';
+
+  /// Typing only rebuilds the page when it changes which errors are showing — not on every keystroke.
+  void _typed() {
+    if (_touched.isEmpty) return;
+    final sig = _errors.toString();
+    if (sig == _errorSig) return;
+    setState(() => _errorSig = sig);
+  }
+
   DateTime? get _endDate {
     final days = _detail?.membership.durationDays;
     return days == null || days <= 0 ? null : DateTime(_startDate.year, _startDate.month, _startDate.day + days - 1);
@@ -109,9 +120,13 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
     final d = _detail;
     if (d == null || _saving) return;
     if (_errors.isNotEmpty) {
-      setState(() => _touched.addAll(_errors.keys));
+      setState(() {
+        _touched.addAll(_errors.keys);
+        _errorSig = _errors.toString();
+      });
       return;
     }
+    FocusScope.of(context).unfocus();
     setState(() {
       _saving = true;
       _error = null;
@@ -154,6 +169,11 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
   static String _isoDate(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  static String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2);
+    return parts.map((p) => p[0].toUpperCase()).join();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -164,7 +184,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
     if (d == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit Member')),
-        body: Center(child: Text(_loadError ?? "We couldn't load this member.")),
+        body: Center(child: Text(_loadError ?? "We couldn't load this member.", style: AppTypography.secondary(context))),
       );
     }
     return PopScope(
@@ -178,21 +198,16 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-                    icon: const Icon(Icons.arrow_back, size: 18),
-                    label: const Text('Cancel'),
-                  ),
+                  child: OutlinedButton(onPressed: _saving ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   flex: 2,
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     onPressed: _saving ? null : _save,
-                    icon: _saving
+                    child: _saving
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.check, size: 18),
-                    label: Text(_saving ? 'Saving…' : 'Save Changes'),
+                        : const Text('Save Changes'),
                   ),
                 ),
               ],
@@ -200,163 +215,207 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
           ),
         ),
         body: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            const Text('Personal Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            Text('Basic details', style: AppTypography.secondary(context)),
-            const SizedBox(height: AppSpacing.md),
-            _field(_fullName, 'Full Name *', 'fullName'),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _summary(tokens, d),
+            FormSection(
+              title: 'Personal Information',
+              icon: Icons.person_outline_rounded,
               children: [
-                SizedBox(
-                  width: 96,
-                  child: AppDropdown<String>(
-                    initialValue: _countryCode,
-                    decoration: const InputDecoration(labelText: 'Code'),
-                    items: [for (final c in addMemberCountryCodes) DropdownMenuItem(value: c, child: Text(c))],
-                    onChanged: (v) => setState(() => _countryCode = v ?? _countryCode),
-                  ),
+                TextField(
+                  controller: _fullName,
+                  textCapitalization: TextCapitalization.words,
+                  onChanged: (_) => _typed(),
+                  decoration: InputDecoration(labelText: 'Full name *', errorText: _show('fullName')),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _field(
-                    _phone,
-                    'Phone Number *',
-                    'phone',
-                    keyboard: TextInputType.phone,
-                    formatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(_countryCode == '+91' ? 10 : 14)],
-                  ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 92,
+                      child: AppDropdown<String>(
+                        initialValue: _countryCode,
+                        decoration: const InputDecoration(labelText: 'Code'),
+                        items: [for (final c in addMemberCountryCodes) DropdownMenuItem(value: c, child: Text(c))],
+                        onChanged: (v) => setState(() => _countryCode = v ?? _countryCode),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: TextField(
+                        controller: _phone,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(_countryCode == '+91' ? 10 : 14)],
+                        onChanged: (_) => _typed(),
+                        decoration: InputDecoration(labelText: 'Phone number *', errorText: _show('phone')),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => _typed(),
+                  decoration: InputDecoration(labelText: 'Email', errorText: _show('email')),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                DateField(
+                  label: 'Date of birth',
+                  value: _dob,
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                  format: Formatters.dateShort,
+                  errorText: _show('dateOfBirth'),
+                  onPick: (v) => setState(() => _dob = v),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppDropdown<String>(
+                  initialValue: _gender,
+                  decoration: const InputDecoration(labelText: 'Gender'),
+                  items: [for (final g in addMemberGenders) DropdownMenuItem(value: g.value, child: Text(g.label))],
+                  onChanged: (v) => setState(() => _gender = v ?? ''),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(controller: _address, decoration: const InputDecoration(labelText: 'Address')),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(controller: _notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes')),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            _field(_email, 'Email', 'email', keyboard: TextInputType.emailAddress),
-            const SizedBox(height: AppSpacing.md),
-            _dateField('Date of Birth', _dob, (v) => _dob = v, first: DateTime(1900), last: DateTime.now(), error: _show('dateOfBirth')),
-            const SizedBox(height: AppSpacing.md),
-            AppDropdown<String>(
-              initialValue: _gender,
-              decoration: const InputDecoration(labelText: 'Gender'),
-              items: [for (final g in addMemberGenders) DropdownMenuItem(value: g.value, child: Text(g.label))],
-              onChanged: (v) => setState(() => _gender = v ?? ''),
+            FormSection(
+              title: 'Membership',
+              subtitle: "The plan and its fees can't be changed here — only the start date.",
+              icon: Icons.card_membership_outlined,
+              children: [
+                InfoRow('Plan', d.membership.name),
+                InfoRow('Type', _titleCase(d.membership.membershipType)),
+                InfoRow('Duration', d.membership.durationDays == null ? '—' : _duration(d.membership.durationDays!)),
+                const SizedBox(height: AppSpacing.sm),
+                DateField(
+                  label: 'Plan start date *',
+                  value: _startDate,
+                  firstDate: DateTime(DateTime.now().year - 3),
+                  lastDate: DateTime(DateTime.now().year + 3),
+                  format: Formatters.dateShort,
+                  onPick: (v) => setState(() => _startDate = v),
+                ),
+                InfoRow('Plan end date', _endDate == null ? '—' : Formatters.dateShort(_endDate!)),
+                const Divider(height: AppSpacing.lg),
+                InfoRow('Membership fee', Formatters.currencyInr(d.membership.membershipFeeInr)),
+                if (d.membership.registrationFeeInr > 0) InfoRow('Registration fee', Formatters.currencyInr(d.membership.registrationFeeInr)),
+                if (d.membership.gstPercent > 0) InfoRow('GST (${d.membership.gstPercent}%)', Formatters.currencyInr(d.membership.gstAmountInr)),
+                InfoRow('Total', Formatters.currencyInr(d.membership.totalAmountInr)),
+                if (d.payment != null) ...[
+                  const Divider(height: AppSpacing.lg),
+                  InfoRow(
+                    'Payment',
+                    d.payment!.settled ? 'Paid' : 'Pending',
+                    valueColor: d.payment!.settled ? tokens.success : tokens.warning,
+                  ),
+                  if (d.payment!.method != null && d.payment!.method!.isNotEmpty) InfoRow('Method', d.payment!.method!),
+                  if (d.payment!.paidAt != null) InfoRow('Paid on', Formatters.dateShort(d.payment!.paidAt!.toLocal())),
+                ],
+                if (d.referralName != null || d.discoverySource != null || d.createdByName != null) const Divider(height: AppSpacing.lg),
+                if (d.referralName != null) InfoRow('Referred by', d.referralName!),
+                if (d.discoverySource != null && d.discoverySource!.isNotEmpty) InfoRow('Found us via', d.discoverySource!),
+                if (d.createdByName != null) InfoRow('Added by', d.createdByName!),
+              ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            _field(_address, 'Address', null),
-            const SizedBox(height: AppSpacing.md),
-            _field(_notes, 'Notes', null, maxLines: 2),
-            const SizedBox(height: AppSpacing.xl),
-            const Text('Membership Plan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            Text("The plan can't be changed here — its court and timings come with it.", style: AppTypography.secondary(context)),
-            const SizedBox(height: AppSpacing.md),
-            InputDecorator(
-              decoration: const InputDecoration(labelText: 'Plan'),
-              child: Text('${d.membership.name} · ${Formatters.currencyInr(d.membership.membershipFeeInr)}'),
+            FormSection(
+              title: 'Court & Timing',
+              subtitle: 'Set by the plan.',
+              icon: Icons.schedule_outlined,
+              children: [_slot(d.slot)],
             ),
-            const SizedBox(height: AppSpacing.md),
-            _dateField('Plan Start Date *', _startDate, (v) => _startDate = v, first: DateTime(DateTime.now().year - 3)),
-            const SizedBox(height: AppSpacing.md),
-            InputDecorator(
-              decoration: const InputDecoration(labelText: 'Plan End Date'),
-              child: Text(_endDate == null ? '—' : Formatters.dateShort(_endDate!)),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text('Court & Timing', style: AppTypography.rowTitle(context)),
-            const SizedBox(height: AppSpacing.sm),
-            _slot(d.slot),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Text(_error!, style: TextStyle(color: tokens.destructive, fontSize: 13)),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Text(_error!, style: TextStyle(color: tokens.destructive, fontSize: 12)),
               ),
-            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
     );
   }
 
-  Widget _field(
-    TextEditingController c,
-    String label,
-    String? field, {
-    TextInputType? keyboard,
-    List<TextInputFormatter>? formatters,
-    int maxLines = 1,
-  }) {
-    return TextField(
-      controller: c,
-      keyboardType: keyboard,
-      inputFormatters: formatters,
-      maxLines: maxLines,
-      onChanged: (_) => setState(() {}),
-      decoration: InputDecoration(labelText: label, errorText: field == null ? null : _show(field)),
+  /// Who this is, at a glance — the gap at the top of the page, filled with what the app knows.
+  Widget _summary(AppColorTokens tokens, MembershipDetail d) {
+    final (label, color) = switch (d.displayStatus) {
+      MembershipListStatus.active => ('Active', tokens.success),
+      MembershipListStatus.paymentIncomplete => ('Payment pending', tokens.warning),
+      MembershipListStatus.inactive => ('Inactive', tokens.destructive),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: tokens.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: tokens.borderColor),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: tokens.primary.withValues(alpha: 0.14),
+              child: Text(_initials(d.member.fullName), style: TextStyle(fontWeight: FontWeight.w700, color: tokens.primary)),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(d.member.fullName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.sectionTitle(context)),
+                  Text(d.member.phone, style: AppTypography.secondary(context)),
+                  const SizedBox(height: 4),
+                  Text('Member since ${Formatters.dateShort(d.member.memberSince.toLocal())}', style: AppTypography.caption(context)),
+                ],
+              ),
+            ),
+            TintPill(label, color),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _dateField(String label, DateTime? value, ValueChanged<DateTime> onPick, {DateTime? first, DateTime? last, String? error}) {
-    return TextField(
-      readOnly: true,
-      controller: TextEditingController(text: value == null ? '' : Formatters.dateShort(value)),
-      onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: value ?? now,
-          firstDate: first ?? DateTime(now.year - 5),
-          lastDate: last ?? DateTime(now.year + 5),
-        );
-        if (picked != null) setState(() => onPick(picked));
-      },
-      decoration: InputDecoration(labelText: label, hintText: 'Select date', suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18), errorText: error),
-    );
+  static String _titleCase(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
+
+  static String _duration(int days) {
+    final months = (days / 30).round();
+    if (days < 30) return '$days ${days == 1 ? 'day' : 'days'}';
+    return months == 1 ? '1 month' : '$months months';
   }
 
   Widget _slot(MembershipSlot? s) {
     final tokens = context.tokens;
-    if (s == null) return Text('No court time reserved.', style: AppTypography.caption(context));
+    if (s == null) return Text('No court time reserved.', style: AppTypography.secondary(context));
     final days = [...s.daysOfWeek]..sort();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: tokens.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: tokens.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.place_outlined, size: 16),
-            const SizedBox(width: 6),
-            Expanded(child: Text(s.courtName ?? 'Court', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
-          ]),
-          const SizedBox(height: 6),
-          Row(children: [
-            const Icon(Icons.schedule, size: 16),
-            const SizedBox(width: 6),
-            Text('${Formatters.time12h(s.startTime)} - ${Formatters.time12h(s.endTime)}', style: const TextStyle(fontSize: 13)),
-          ]),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (final day in const [1, 2, 3, 4, 5, 6, 0])
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: days.contains(day) ? tokens.primary : tokens.surface2, borderRadius: BorderRadius.circular(6)),
-                  child: Text(
-                    planDayAbbr[day],
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: days.contains(day) ? tokens.onPrimary : tokens.textSecondary),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InfoRow('Court', s.courtName ?? '—'),
+        InfoRow('Time', '${Formatters.time12h(s.startTime)} - ${Formatters.time12h(s.endTime)}'),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            for (final day in const [1, 2, 3, 4, 5, 6, 0])
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: days.contains(day) ? tokens.primary : tokens.surface2, borderRadius: BorderRadius.circular(6)),
+                child: Text(
+                  planDayAbbr[day],
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: days.contains(day) ? tokens.onPrimary : tokens.textSecondary),
                 ),
-            ],
-          ),
-        ],
-      ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

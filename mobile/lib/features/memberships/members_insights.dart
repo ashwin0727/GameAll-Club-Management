@@ -31,11 +31,15 @@ class InsightsPanel extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.tiles,
+    this.subtitle = 'Total members, revenue, expiring soon and more',
   });
 
   final bool open;
   final VoidCallback onToggle;
   final List<InsightData> tiles;
+
+  /// The line under "View More Insights" — says what the panel holds on this page.
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +80,7 @@ class InsightsPanel extends StatelessWidget {
                                 fontSize: 14, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
                         Text(
-                          'Total members, revenue, expiring soon and more',
+                          subtitle,
                           style: TextStyle(
                               fontSize: 12, color: tokens.textSecondary),
                         ),

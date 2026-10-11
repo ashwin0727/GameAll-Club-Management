@@ -140,15 +140,14 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   Future<MembershipListResult> _loadAllMemberships(MembershipRepository repo, String facilityId) async {
     const perPage = 100;
     const maxPages = 10;
-    final rows = <MembershipListRow>[];
-    var total = 0;
-    for (var page = 1; page <= maxPages; page++) {
-      final result = await repo.listMemberships(facilityId, MembershipListParams(page: page, perPage: perPage));
-      total = result.totalCount;
-      rows.addAll(result.rows);
-      if (rows.length >= total || result.rows.isEmpty) break;
-    }
-    return MembershipListResult(rows: rows, totalCount: total);
+    final first = await repo.listMemberships(facilityId, MembershipListParams(page: 1, perPage: perPage));
+    final pages = (first.totalCount / perPage).ceil().clamp(1, maxPages);
+    if (pages == 1 || first.rows.isEmpty) return first;
+    // The first page says how many there are, so the rest can be fetched together.
+    final rest = await Future.wait([
+      for (var page = 2; page <= pages; page++) repo.listMemberships(facilityId, MembershipListParams(page: page, perPage: perPage)),
+    ]);
+    return MembershipListResult(rows: [...first.rows, for (final r in rest) ...r.rows], totalCount: first.totalCount);
   }
 
   /// Memberships created via the full form are self-contained (no plan_id),
@@ -562,10 +561,9 @@ class _MembersTabState extends State<_MembersTab> {
     final c = widget.counts;
     final utilization = utilizationPercent(widget.batches);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
-      children: [
+    // The page header is a short fixed list; the member rows come after it and are built only as they
+    // scroll into view — a club can have hundreds, and typing in the search box rebuilds this page.
+    final header = <Widget>[
         _HeroStatCard(
           icon: Icons.groups_rounded,
           title: 'Total members',
@@ -668,24 +666,26 @@ class _MembersTabState extends State<_MembersTab> {
               ],
             ),
           )
-        else
-          for (final m in rows)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: MemberRow(
-                row: m,
-                onTap: () async {
-                  final changed = await Navigator.of(context).push<bool>(
-                    AppPageRoute(
-                      builder: (_) =>
-                          MemberDetailScreen(membershipId: m.membershipId),
-                    ),
-                  );
-                  if (changed == true) widget.onReload();
-                },
-              ),
-            ),
-      ],
+    ];
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xxl),
+      itemCount: header.length + rows.length,
+      itemBuilder: (context, i) {
+        if (i < header.length) return header[i];
+        final m = rows[i - header.length];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: MemberRow(
+            row: m,
+            onTap: () async {
+              final changed = await Navigator.of(context).push<bool>(
+                AppPageRoute(builder: (_) => MemberDetailScreen(membershipId: m.membershipId)),
+              );
+              if (changed == true) widget.onReload();
+            },
+          ),
+        );
+      },
     );
   }
 

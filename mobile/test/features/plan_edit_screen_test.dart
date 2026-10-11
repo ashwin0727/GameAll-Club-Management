@@ -6,7 +6,7 @@ import 'package:gameall_club_mobile/core/theme/app_theme.dart';
 import 'package:gameall_club_mobile/data/models/membership.dart';
 import 'package:gameall_club_mobile/data/repositories/membership_repository.dart';
 import 'package:gameall_club_mobile/data/repositories/repository_providers.dart';
-import 'package:gameall_club_mobile/features/memberships/membership_plan_edit_sheet.dart';
+import 'package:gameall_club_mobile/features/memberships/membership_plan_edit_screen.dart';
 
 class _Fake implements MembershipRepository {
   String? savedName;
@@ -49,7 +49,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [membershipRepositoryProvider.overrideWithValue(fake)],
-        child: MaterialApp(theme: AppTheme.light(), home: Scaffold(body: MembershipPlanEditSheet(plan: _plan('p1', 'Morning')))),
+        child: MaterialApp(theme: AppTheme.light(), home: MembershipPlanEditScreen(plan: _plan('p1', 'Morning'))),
       ),
     );
     return fake;
@@ -57,14 +57,14 @@ void main() {
 
   testWidgets('name and fees are editable; price and duration are locked', (tester) async {
     final fake = await open(tester);
-    expect(find.widgetWithText(TextField, 'Plan Name *'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Joining Fee (₹)'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Security Deposit (₹)'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Plan name *'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Joining fee (₹)'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Security deposit (₹)'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Price (₹)'), findsNothing);
     expect(find.byIcon(Icons.lock_outline), findsNWidgets(2));
 
-    await tester.enterText(find.widgetWithText(TextField, 'Plan Name *'), 'Early Morning');
-    await tester.enterText(find.widgetWithText(TextField, 'Joining Fee (₹)'), '300');
+    await tester.enterText(find.widgetWithText(TextField, 'Plan name *'), 'Early Morning');
+    await tester.enterText(find.widgetWithText(TextField, 'Joining fee (₹)'), '300');
     await tester.tap(find.text('Save Changes'));
     await tester.pumpAndSettle();
     expect(fake.savedName, 'Early Morning');
@@ -73,7 +73,7 @@ void main() {
 
   testWidgets('a name another plan already has is refused', (tester) async {
     final fake = await open(tester);
-    await tester.enterText(find.widgetWithText(TextField, 'Plan Name *'), 'evening');
+    await tester.enterText(find.widgetWithText(TextField, 'Plan name *'), 'evening');
     await tester.tap(find.text('Save Changes'));
     await tester.pumpAndSettle();
     expect(find.text('Another plan already has this name.'), findsOneWidget);

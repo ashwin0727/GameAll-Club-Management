@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +17,7 @@ import '../../shared/widgets/app_dropdown.dart';
 import '../authentication/session_controller.dart';
 import 'add_member_wizard.dart';
 import 'duplicate_guards.dart';
+import 'form_section.dart';
 import 'plan_presentation.dart';
 import 'plan_wizard.dart' show planBillingIntervalLabel, planDayAbbr;
 
@@ -128,31 +131,20 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         return;
       }
       final repo = ref.read(membershipRepositoryProvider);
-      final plans = await repo.getFacilityPlans(facility.id, activeOnly: true);
-      var batches = const <AssignableBatch>[];
-      try {
-        batches = await repo.listAssignableBatches(facility.id);
-      } on AppException catch (_) {
-        // Without slots the plan simply reserves no court time.
-      }
-      final rows = <MembershipListRow>[];
-      try {
-        for (var page = 1; page <= 10; page++) {
-          final result = await repo.listMemberships(facility.id, MembershipListParams(page: page, perPage: 100));
-          rows.addAll(result.rows);
-          if (rows.length >= result.totalCount || result.rows.isEmpty) break;
-        }
-      } on AppException catch (_) {
-        // Without the list the check is skipped; the database still gets the save.
-      }
+      // Plans and slots load together, and the page opens as soon as they are in — the membership
+      // list (only needed for the duplicate check) fills in behind it.
+      final results = await Future.wait<Object>([
+        repo.getFacilityPlans(facility.id, activeOnly: true),
+        repo.listAssignableBatches(facility.id).catchError((Object _) => const <AssignableBatch>[]),
+      ]);
       if (!mounted) return;
       setState(() {
-        _memberships = rows;
         _facilityId = facility.id;
-        _plans = plans;
-        _batches = batches;
+        _plans = results[0] as List<MembershipPlan>;
+        _batches = results[1] as List<AssignableBatch>;
         _loading = false;
       });
+      unawaited(_loadMemberships(facility.id));
     } on AppException catch (e) {
       if (mounted) {
         setState(() {
@@ -161,6 +153,28 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadMemberships(String facilityId) async {
+    final repo = ref.read(membershipRepositoryProvider);
+    final rows = <MembershipListRow>[];
+    try {
+      final first = await repo.listMemberships(facilityId, MembershipListParams(page: 1, perPage: 100));
+      rows.addAll(first.rows);
+      final pages = ((first.totalCount) / 100).ceil().clamp(1, 10);
+      if (pages > 1) {
+        final rest = await Future.wait([
+          for (var p = 2; p <= pages; p++) repo.listMemberships(facilityId, MembershipListParams(page: p, perPage: 100)),
+        ]);
+        for (final r in rest) {
+          rows.addAll(r.rows);
+        }
+      }
+    } on AppException catch (_) {
+      // Without the list the check is skipped; the database still gets the save.
+      return;
+    }
+    if (mounted) setState(() => _memberships = rows);
   }
 
   // ── navigation ─────────────────────────────────────────────────────────
@@ -515,6 +529,17 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     );
   }
 
+  String _errorSig = '';
+
+  /// Typing only rebuilds the page when it changes which errors are showing — not on every keystroke.
+  void _typed() {
+    if (_touched.isEmpty) return;
+    _syncText();
+    final sig = _errors.toString();
+    if (sig == _errorSig) return;
+    setState(() => _errorSig = sig);
+  }
+
   Widget _textField(
     TextEditingController c,
     String label, {
@@ -534,7 +559,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
       inputFormatters: formatters,
       maxLength: maxLength,
       maxLines: maxLines,
-      onChanged: (_) => setState(() {}),
+      onChanged: (_) => _typed(),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
@@ -546,21 +571,16 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
   }
 
   Widget _dateField(String label, DateTime? value, ValueChanged<DateTime> onPick, {DateTime? first, DateTime? last, String? error, bool enabled = true}) {
-    return TextField(
-      readOnly: true,
+    final now = DateTime.now();
+    return DateField(
+      label: label,
+      value: value,
+      firstDate: first ?? DateTime(now.year - 5),
+      lastDate: last ?? DateTime(now.year + 5),
+      format: Formatters.dateShort,
+      errorText: error,
       enabled: enabled && !_locked,
-      controller: TextEditingController(text: value == null ? '' : Formatters.dateShort(value)),
-      onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: value ?? now,
-          firstDate: first ?? DateTime(now.year - 5),
-          lastDate: last ?? DateTime(now.year + 5),
-        );
-        if (picked != null) setState(() => onPick(picked));
-      },
-      decoration: InputDecoration(labelText: label, hintText: 'Select date', suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18), errorText: error),
+      onPick: (v) => setState(() => onPick(v)),
     );
   }
 

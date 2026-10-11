@@ -13,8 +13,8 @@ import '../staff/staff_common.dart';
 import 'member_detail_screen.dart';
 import 'member_row.dart';
 import 'manage_plan_slots_screen.dart';
-import 'membership_plan_edit_sheet.dart';
-import 'membership_slot_edit_sheet.dart';
+import 'membership_plan_edit_screen.dart';
+import 'membership_slot_edit_screen.dart';
 import 'membership_plans_tab.dart';
 import 'plan_presentation.dart';
 
@@ -59,10 +59,10 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
   bool _busy = false;
 
   Future<void> _edit({PlanEditSection section = PlanEditSection.overview}) async {
-    final saved = await showModalBottomSheet<MembershipPlan>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => MembershipPlanEditSheet(plan: _plan, section: section),
+    final saved = await Navigator.of(context).push<MembershipPlan>(
+      AppPageRoute(
+        builder: (_) => MembershipPlanEditScreen(plan: _plan, section: section, memberCount: widget.members.length, slotCount: _batches.length),
+      ),
     );
     if (saved != null && mounted) {
       setState(() {
@@ -112,10 +112,8 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
   }
 
   Future<void> _editSlot(AssignableBatch b) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => MembershipSlotEditSheet(batch: b, facilityId: widget.facilityId),
+    final saved = await Navigator.of(context).push<bool>(
+      AppPageRoute(builder: (_) => MembershipSlotEditScreen(batch: b, facilityId: widget.facilityId)),
     );
     if (saved == true) {
       await _reloadSlots();

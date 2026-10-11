@@ -67,7 +67,7 @@ import '../../features/inventory/purchase_order_detail_screen.dart';
 import '../../features/inventory/vendors_screen.dart';
 import '../../features/inventory/vendor_detail_screen.dart';
 import '../../features/inventory/inventory_categories_screen.dart';
-import '../../features/coaching/coaching_overview_screen.dart';
+import '../../features/coaching/coaching_hub_screen.dart';
 import '../../features/coaching/coaches_screen.dart';
 import '../../features/coaching/coach_form_screen.dart';
 import '../../features/coaching/coach_detail_screen.dart';
@@ -454,7 +454,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.inventoryCategories, builder: (context, state) => const InventoryCategoriesScreen()),
 
       // ── Coaching Management ────────────────────────────────────────────
-      GoRoute(path: AppRoutes.coaching, builder: (context, state) => const CoachingOverviewScreen()),
+      GoRoute(path: AppRoutes.coaching, pageBuilder: (context, state) => fadeThrough(state, const CoachingHubScreen())),
       GoRoute(path: AppRoutes.coachingCoaches, builder: (context, state) => const CoachesScreen()),
       GoRoute(
         path: AppRoutes.coachingCoachAdd,

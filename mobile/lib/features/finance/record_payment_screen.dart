@@ -254,7 +254,9 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                     decoration: const InputDecoration(labelText: 'Amount (₹)'),
-                    onChanged: (_) => setState(() => _error = null),
+                    onChanged: (_) {
+                      if (_error != null) setState(() => _error = null);
+                    },
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   AppDropdown<String>(

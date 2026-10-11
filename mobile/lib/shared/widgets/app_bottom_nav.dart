@@ -10,8 +10,10 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/authentication/session_controller.dart';
 
-/// The five primary destinations. Everything else lives behind [AppTab.more].
-enum AppTab { today, courts, money, members, more }
+/// The primary destinations — Today, Calendar, Coaching and Memberships — and everything else behind
+/// [AppTab.more]. [AppTab.money] is no longer on the bar (Finance lives in the "+" menu), but the
+/// Finance screens still say they are the current tab, so nothing on the bar is highlighted there.
+enum AppTab { today, courts, money, members, coaching, more }
 
 const _tabs = <({
   AppTab tab,
@@ -31,15 +33,15 @@ const _tabs = <({
     tab: AppTab.courts,
     icon: Icons.calendar_month_outlined,
     activeIcon: Icons.calendar_month_rounded,
-    label: 'Courts',
+    label: 'Calendar',
     route: AppRoutes.bookings,
   ),
   (
-    tab: AppTab.money,
-    icon: Icons.account_balance_wallet_outlined,
-    activeIcon: Icons.account_balance_wallet_rounded,
-    label: 'Finance',
-    route: AppRoutes.finance,
+    tab: AppTab.coaching,
+    icon: Icons.school_outlined,
+    activeIcon: Icons.school_rounded,
+    label: 'Coaching',
+    route: AppRoutes.coaching,
   ),
   (
     tab: AppTab.members,
@@ -53,14 +55,14 @@ const _tabs = <({
 /// Everything that doesn't fit the bar, reached through the "+" button.
 ///
 /// Deliberately short — this is a "things I do right now" menu, not a site
-/// map. Finance is dropped because it's the same screen as the Money tab,
-/// and the occasional/admin screens (Reports, Inventory, Users & Roles)
+/// map. Finance sits here now that it has left the bar, and the occasional/admin screens (Reports, Inventory, Users & Roles)
 /// live one tap away in Profile → Manage instead of crowding a menu meant
 /// to be scanned in a second — each still resolves to the ONE screen for
 /// that job, never a second copy of it. New Plan/Membership/Session deep-link
 /// into the Members hub's own create flows (same screens as its
 /// context-aware FAB) rather than duplicating them.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
+  (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
   (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
   (icon: Icons.event_repeat_outlined, label: 'New Session', route: AppRoutes.membershipSessions, permission: null),
   (icon: Icons.card_membership_outlined, label: 'New Membership', route: '${AppRoutes.memberships}?new=membership', permission: null),

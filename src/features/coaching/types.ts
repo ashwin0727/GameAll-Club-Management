@@ -29,8 +29,12 @@ export interface CoachingOverview {
     activeCoaches: number;
     coachesOnLeave: number;
     sessionsThisMonth: number;
+    /** Today's scheduled sessions that are in an active status. */
+    activeSessions: number;
     upcomingSessions: number;
     revenueThisMonthMinor: number;
+    /** Everything ever collected for coaching (migration 0115); missing until that is applied. */
+    revenueTotalMinor?: number;
   };
   upcomingSessions: {
     id: string;

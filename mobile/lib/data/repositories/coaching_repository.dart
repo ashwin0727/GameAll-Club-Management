@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../features/coaching/coaching_hub.dart' show todaysActiveCount;
 import '../models/coaching.dart';
 
 /// Coaching Management — mirrors src/services/coaching/supabase-coaching.service.ts.
@@ -33,7 +34,29 @@ class CoachingRepository {
   Future<CoachingOverview> getOverview(String facilityId) async {
     try {
       final data = await _client.rpc('get_coaching_overview', params: {'p_facility_id': facilityId});
-      return CoachingOverview.fromJson(_obj(data));
+      final json = _obj(data);
+      var overview = CoachingOverview.fromJson(json);
+
+      // Active Sessions is the current day's session count, taken from the session list so it follows the
+      // same rules as the Sessions page.
+      try {
+        final now = DateTime.now();
+        final start = DateTime(now.year, now.month, now.day);
+        final today = await listSessions(facilityId: facilityId, from: start, to: start.add(const Duration(days: 1)), limit: 500);
+        overview = overview.withActiveSessions(todaysActiveCount(today.sessions));
+      } catch (_) {
+        overview = overview.withActiveSessions(0);
+      }
+
+      // Overall revenue (migration 0115). Missing leaves it null, shown as a dash — never this month's
+      // figure passed off as the total.
+      try {
+        final total = await _client.rpc('get_coaching_total_revenue', params: {'p_facility_id': facilityId});
+        if (total is num) overview = overview.withRevenueTotal(total.toInt());
+      } catch (_) {
+        // leave it null
+      }
+      return overview;
     } catch (e) {
       throw _map(e);
     }
@@ -69,6 +92,10 @@ class CoachingRepository {
         'p_specialization': null,
         'p_limit': limit,
         'p_offset': offset,
+        // The full argument list, like the web sends: with only the first six, Postgres can match both
+        // this and an older six-argument copy of the function and refuse to pick one.
+        'p_sport_id': null,
+        'p_sort': 'name_asc',
       });
       return CoachPage.fromRows(_rows(rows));
     } catch (e) {

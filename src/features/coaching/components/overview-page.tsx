@@ -15,6 +15,7 @@ import { CoachesListPanel } from "@/features/coaching/components/coaches-list-pa
 import { AddCoachSheet } from "@/features/coaching/components/add-coach-sheet";
 import type { CoachingInsights, CoachingOverview } from "@/features/coaching/types";
 import { EmptyState, ErrorState, fmtTime, money } from "@/features/coaching/components/shared";
+import { nextSessions, sessionDayLabel } from "@/features/coaching/upcoming-sessions";
 
 const INSIGHTS_WINDOWS = [
   { value: "30", label: "Last 30 Days" },
@@ -143,9 +144,9 @@ export function CoachingOverviewPage() {
               icon={ClipboardList}
               iconBg="bg-purple-500/15"
               iconColor="text-purple-600 dark:text-purple-400"
-              value={String(data.kpis.sessionsThisMonth)}
-              label="Coaching Sessions"
-              sub="This month"
+              value={String(data.kpis.activeSessions ?? 0)}
+              label="Active Sessions"
+              sub="Today"
               index={2}
               compact
             />
@@ -153,9 +154,8 @@ export function CoachingOverviewPage() {
               icon={Star}
               iconBg="bg-warning/15"
               iconColor="text-warning"
-              value={money(data.kpis.revenueThisMonthMinor)}
-              label="Coaching Revenue"
-              sub="This month"
+              value={data.kpis.revenueTotalMinor === undefined ? "—" : money(data.kpis.revenueTotalMinor)}
+              label="Overall Coaching Revenue"
               index={3}
               compact
             />
@@ -180,9 +180,10 @@ export function CoachingOverviewPage() {
               <EmptyState message="No coaching sessions scheduled." />
             ) : (
               <ul className="mt-3 space-y-2">
-                {data.upcomingSessions.slice(0, 5).map((s) => (
+                {nextSessions(data.upcomingSessions).map((s) => (
                   <li key={s.id} className="flex items-start gap-3 rounded-lg border border-border p-2.5 text-sm">
-                    <span className="shrink-0 rounded-md bg-success/15 px-2 py-1 text-xs font-semibold tabular-nums text-success">
+                    <span className="shrink-0 rounded-md bg-success/15 px-2 py-1 text-center text-xs font-semibold tabular-nums text-success">
+                      <span className="block text-[10px] font-medium opacity-80">{sessionDayLabel(s.startAt)}</span>
                       {fmtTime(s.startAt)}
                     </span>
                     <div className="min-w-0 flex-1">

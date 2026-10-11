@@ -11,7 +11,6 @@ import {
   CalendarPlus,
   ChevronRight,
   Loader2,
-  Dumbbell,
   Gauge,
   GraduationCap,
   Hourglass,
@@ -629,7 +628,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
         />
         <DashKpi
           delay={240}
-          icon={Dumbbell}
+          icon={GraduationCap}
           tone="bg-warning/15 text-warning"
           label="Coaching Sessions"
           value="—"
