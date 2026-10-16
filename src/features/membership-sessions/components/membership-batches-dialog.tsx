@@ -15,6 +15,7 @@ import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { ServiceError } from "@/services/shared/service-error";
 import { BatchMembersDialog } from "@/features/membership-sessions/components/batch-members-dialog";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DAYS = [
   { value: 1, label: "Mon" },
@@ -201,7 +202,7 @@ export function MembershipBatchesDialog({
                   className="h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm"
                 />
                 <div className="grid grid-cols-2 gap-2">
-                  <select
+                  <DropdownSelect
                     aria-label="Plan"
                     value={planId}
                     onChange={(e) => setPlanId(e.target.value)}
@@ -213,8 +214,8 @@ export function MembershipBatchesDialog({
                         {p.name}
                       </option>
                     ))}
-                  </select>
-                  <select
+                  </DropdownSelect>
+                  <DropdownSelect
                     aria-label="Sport"
                     value={facilitySportId}
                     onChange={(e) => {
@@ -232,9 +233,9 @@ export function MembershipBatchesDialog({
                         </option>
                       );
                     })}
-                  </select>
+                  </DropdownSelect>
                 </div>
-                <select
+                <DropdownSelect
                   aria-label="Court"
                   value={courtId}
                   onChange={(e) => setCourtId(e.target.value)}
@@ -247,7 +248,7 @@ export function MembershipBatchesDialog({
                       {a.name}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((d) => (
                     <button

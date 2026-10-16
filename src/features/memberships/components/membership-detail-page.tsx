@@ -42,7 +42,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getMembershipService } from "@/services/memberships";
 import { formatSlot } from "@/features/memberships/slot-format";
 import { ServiceError } from "@/services/shared/service-error";
-import type { MembershipDetail, MembershipListStatus } from "@/features/memberships/types";
+import { autoPayNextCharge, autoPayStatusLabel, autoPayCadence, effectiveAutoPayStatus } from "@/features/memberships/autopay";
+import type { MembershipAutoPay, MembershipDetail, MembershipListStatus } from "@/features/memberships/types";
 
 function inr(v: number): string {
   return `₹${v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -118,6 +119,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [autoPay, setAutoPay] = useState<MembershipAutoPay | null>(null);
 
   async function load() {
     setLoading(true);
@@ -125,6 +127,8 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
     try {
       const d = await getMembershipService().getMembershipDetail(membershipId);
       setDetail(d);
+      // AutoPay is a nice-to-have: a failure here must not hide the membership itself.
+      setAutoPay(await getMembershipService().getMembershipAutoPay(membershipId).catch(() => null));
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to load this membership.");
     } finally {
@@ -278,6 +282,35 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
               </div>
             </div>
           </Card>
+
+          {autoPay && (
+            <Card className="p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">AutoPay</h3>
+                  <p className="text-xs text-muted-foreground">{autoPayStatusLabel(effectiveAutoPayStatus(autoPay)).detail}</p>
+                </div>
+                <Badge variant="outline">{autoPayStatusLabel(effectiveAutoPayStatus(autoPay)).label}</Badge>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <HeaderStat icon={IndianRupee} label="Charged every cycle" value={`${inr(autoPay.amountInr)} ${autoPayCadence(autoPay.intervalMonths)}`} />
+                <HeaderStat icon={CalendarDays} label="Next charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "—"} />
+                <HeaderStat icon={IdCard} label="Charges collected" value={autoPay.chargeCount} />
+                <HeaderStat icon={IndianRupee} label="One-time, first payment only" value={autoPay.oneTimeInr > 0 ? inr(autoPay.oneTimeInr) : "None"} />
+              </div>
+              {autoPayNextCharge(autoPay, detail.membership.endDate) && (
+                <div className="mt-4 flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+                  <span>
+                    {inr(autoPay.amountInr)} · due {fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate))}
+                  </span>
+                  <Badge variant="outline">Not paid yet</Badge>
+                </div>
+              )}
+              {autoPay.shortUrl && autoPay.status === "created" && (
+                <p className="mt-3 break-all text-xs text-muted-foreground">Payment link: {autoPay.shortUrl}</p>
+              )}
+            </Card>
+          )}
 
           {/* Three info cards */}
           <div className="grid gap-6 lg:grid-cols-3">

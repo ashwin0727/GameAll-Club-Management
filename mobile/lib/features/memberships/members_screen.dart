@@ -30,7 +30,10 @@ import 'membership_plan_wizard_screen.dart';
 /// The Memberships hub — Members (the default tab) and Plans. Membership sessions live on their own
 /// screen (Profile → Manage → Membership Sessions).
 class MembersScreen extends ConsumerStatefulWidget {
-  const MembersScreen({super.key, this.openPlans = false, this.openNew = false});
+  const MembersScreen({super.key, this.openPlans = false, this.openNew = false, this.showPlansTab = false});
+
+  /// Open on the Plans tab without launching the plan manager (a plain menu link).
+  final bool showPlansTab;
 
   /// When true (deep-linked from the "+" menu), the Plans tab is shown and the plan editor
   /// opens as soon as the screen has loaded.
@@ -46,12 +49,12 @@ class MembersScreen extends ConsumerStatefulWidget {
 class _MembersScreenState extends ConsumerState<MembersScreen>
     with SingleTickerProviderStateMixin {
   // Members is the first tab and the one the screen lands on; Plans only when deep-linked to.
-  late final TabController _tabs = TabController(length: 2, vsync: this, initialIndex: widget.openPlans ? 1 : 0);
+  late final TabController _tabs = TabController(length: 2, vsync: this, initialIndex: widget.openPlans || widget.showPlansTab ? 1 : 0);
 
   bool _loading = true;
   String? _error;
   String? _facilityId;
-  late int _tabIndex = widget.openPlans ? 1 : 0;
+  late int _tabIndex = widget.openPlans || widget.showPlansTab ? 1 : 0;
   bool _autoOpenedPlans = false;
   bool _autoOpenedNew = false;
 

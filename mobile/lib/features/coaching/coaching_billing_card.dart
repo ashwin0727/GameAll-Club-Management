@@ -12,6 +12,7 @@ import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
+import 'coaching_billing.dart';
 import 'coaching_common.dart';
 
 /// The Razorpay payment link (one-time program) or AutoPay subscription (monthly program) behind a
@@ -165,6 +166,16 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
   }
 
+  Widget _fact(BuildContext context, String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: AppTypography.secondary(context))),
+            Text(value, style: AppTypography.rowTitle(context)),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     if (!_loaded) return const SizedBox.shrink();
@@ -202,10 +213,16 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
               Text(
                 b.isSubscription
                     ? 'Monthly auto-pay · ${coachMoney(b.amountMinor)} per month · ${b.chargeCount} of ${b.totalCycles} charged'
-                        '${b.currentEnd != null ? ' · next cycle ends ${coachDate(b.currentEnd)}' : ''}'
                     : 'Payment link · ${coachMoney(b.amountMinor)}',
                 style: AppTypography.secondary(context),
               ),
+              if (b.isSubscription) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _fact(context, 'Next payment', nextPaymentDate(b) == null ? '—' : coachDate(nextPaymentDate(b))),
+                _fact(context, 'Charges left', '${chargesLeft(b)} of ${b.totalCycles}'),
+                _fact(context, 'Total for the program', coachMoney(b.amountMinor * b.totalCycles)),
+                for (final d in upcomingCharges(b)) _fact(context, 'Due ${coachDate(d.toIso8601String())}', 'Not paid yet'),
+              ],
               if (b.isLive && b.shortUrl != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Row(

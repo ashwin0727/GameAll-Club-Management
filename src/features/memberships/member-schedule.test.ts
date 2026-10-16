@@ -5,6 +5,7 @@ import {
   blocksForDay,
   groupMemberSchedules,
   preferredTimeRanges,
+  slotsOutsideRange,
   weekDates,
   type MemberBatchSlot,
   type OtherCourtEvent,
@@ -171,5 +172,20 @@ describe("blocksForDay", () => {
     ];
     const blocks = blocksForDay(tue, [morning], events, ["court-1"], false);
     expect(blocks.map((b) => b.kind)).toEqual(["MEMBER", "GUEST"]);
+  });
+});
+
+describe("slotsOutsideRange", () => {
+  const slot = { batchId: "b", batchName: "B", courtId: "c1", courtName: "Court 1", daysOfWeek: [5, 6, 0], startTime: "18:00:00", endTime: "19:00:00" };
+  const days = [new Date(2026, 9, 12), new Date(2026, 9, 13), new Date(2026, 9, 14), new Date(2026, 9, 15)]; // Mon–Thu
+  const none = days.map(() => ({ blocks: [] }));
+  it("names the days the member plays when the range misses them all", () => {
+    expect(slotsOutsideRange([slot], ["c1"], days, none)).toContain("Sun, Fri, Sat");
+  });
+  it("says nothing when a member slot is drawn", () => {
+    expect(slotsOutsideRange([slot], ["c1"], days, [{ blocks: [{ kind: "MEMBER", startTime: "18:00", endTime: "19:00", title: "", subtitle: "" }] }])).toBeNull();
+  });
+  it("says nothing for a court the member does not play on", () => {
+    expect(slotsOutsideRange([slot], ["c2"], days, none)).toBeNull();
   });
 });

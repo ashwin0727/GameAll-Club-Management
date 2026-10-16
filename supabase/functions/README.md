@@ -237,3 +237,17 @@ supabase functions deploy razorpay-webhook --no-verify-jwt
 Razorpay Dashboard → Settings → Webhooks: add **payment_link.paid**, **payment_link.cancelled** and
 **payment_link.expired** to the events already listed above. **Payment Links** and **Subscriptions** must both be
 enabled on the account. Unit tests: `deno test _shared/coaching-billing.test.ts`.
+
+## create-booking-payment-link — guest booking "Pay Online"
+
+Staff-side only (the public booking page has its own flow and is untouched). Creates a ONE-TIME Razorpay Payment
+Link for a guest booking so the player can pay on their own phone, instead of opening a checkout on the staff
+member's screen.
+
+- `action: "create"` (default) makes — or returns the still-open — link for `{ facilityId, bookingId }`; `"status"`
+  asks Razorpay whether it was paid and settles it; `"cancel"` closes an unpaid link.
+- The amount comes from the booking row on the server (`create_payment_order`); the client never sends one.
+- Payment is applied through `apply_payment_verification` (migration 0124 `apply_booking_payment_link_event` from the
+  webhook) — amount / currency / duplicate-payment checks, finance row, and `settle_payment` confirming the booking.
+- Deploy: `supabase functions deploy create-booking-payment-link razorpay-webhook`, apply migration 0124, and make
+  sure the Razorpay webhook sends `payment_link.paid`, `payment_link.cancelled` and `payment_link.expired`.

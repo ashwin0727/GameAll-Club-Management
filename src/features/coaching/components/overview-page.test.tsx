@@ -46,6 +46,8 @@ const OVERVIEW: CoachingOverview = {
     upcomingSessions: 7,
     revenueThisMonthMinor: 285_00000,
     revenueTotalMinor: 910_00000,
+    totalCoaches: 9,
+    coachingExpenseMinor: 12_500_00,
   },
   upcomingSessions: [
     {
@@ -102,8 +104,15 @@ describe("CoachingOverviewPage", () => {
 
     expect(await screen.findByText("5")).toBeInTheDocument(); // Active Coaches
     expect(screen.getByText("Active Coaches")).toBeInTheDocument();
-    expect(screen.getAllByText("6").length).toBeGreaterThan(0); // Active Sessions
-    expect(screen.getByText("Active Sessions")).toBeInTheDocument();
+    expect(screen.getByText("Total Coaches")).toBeInTheDocument();
+    expect(screen.getByText("9")).toBeInTheDocument();
+    expect(screen.getByText("Coaching Expense")).toBeInTheDocument();
+    expect(screen.getByText(/12,500/)).toBeInTheDocument();
+    expect(screen.getByText("Scheduled Sessions")).toBeInTheDocument();
+    expect(screen.getByText("7")).toBeInTheDocument();
+    // The old tiles are gone.
+    expect(screen.queryByText("Active Sessions")).not.toBeInTheDocument();
+    expect(screen.queryByText("Overall Coaching Revenue")).not.toBeInTheDocument();
 
     expect(screen.getByText("Beginner Badminton")).toBeInTheDocument();
     expect(screen.getByText(/Arjun V/)).toBeInTheDocument();

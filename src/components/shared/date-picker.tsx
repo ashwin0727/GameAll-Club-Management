@@ -19,6 +19,7 @@ import {
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const MONTH_NAMES = Array.from({ length: 12 }, (_, i) => format(new Date(2000, i, 1), "MMMM"));
@@ -130,7 +131,7 @@ export function DatePicker({
               <ChevronLeft className="h-4 w-4" aria-hidden />
             </button>
 
-            <select
+            <DropdownSelect
               aria-label="Month"
               value={month.getMonth()}
               onChange={(e) => setMonth((m) => setMonthOfYear(m, Number(e.target.value)))}
@@ -141,9 +142,9 @@ export function DatePicker({
                   {name}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
 
-            <select
+            <DropdownSelect
               aria-label="Year"
               value={month.getFullYear()}
               onChange={(e) => setMonth((m) => setYear(m, Number(e.target.value)))}
@@ -154,7 +155,7 @@ export function DatePicker({
                   {y}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
 
             <button
               type="button"

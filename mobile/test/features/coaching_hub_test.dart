@@ -251,11 +251,12 @@ void main() {
 
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Active Sessions'), findsOneWidget);
-      expect(find.text('Sessions This Month'), findsNothing);
-      expect(find.text('Overall Revenue'), findsOneWidget);
-      expect(find.text('Revenue This Month'), findsNothing);
-      expect(find.text('₹9,10,000'), findsOneWidget);
+      expect(find.text('Total Coaches'), findsOneWidget);
+      expect(find.text('Active Coaches'), findsOneWidget);
+      expect(find.text('Coaching Expense'), findsOneWidget);
+      expect(find.text('Scheduled Sessions'), findsOneWidget);
+      expect(find.text('Active Sessions'), findsNothing);
+      expect(find.text('Overall Revenue'), findsNothing);
 
       await tester.tap(find.text('Programs'));
       await tester.pumpAndSettle();
@@ -263,7 +264,12 @@ void main() {
       expect(find.text('Total programs'), findsOneWidget);
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Average Fee'), findsOneWidget);
+      expect(find.text('Total Programs'), findsOneWidget);
+      expect(find.text('Active Programs'), findsOneWidget);
+      expect(find.text('Enrolled Students'), findsOneWidget);
+      expect(find.text('Available Seats'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
+      expect(find.text('Average Fee'), findsNothing);
 
       await tester.tap(find.text('Students'));
       await tester.pumpAndSettle();
@@ -271,7 +277,11 @@ void main() {
       expect(find.text('Total students'), findsOneWidget);
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Payment Pending'), findsOneWidget);
+      expect(find.text('Total Students'), findsOneWidget);
+      expect(find.text('Enrolled Students'), findsOneWidget);
+      expect(find.text('Revenue Collected'), findsOneWidget);
+      expect(find.text('Payments Pending'), findsOneWidget);
+      expect(find.text('Payment Pending'), findsNothing);
     });
   });
 }
@@ -294,6 +304,14 @@ class _OwnerSession extends SessionController {
 }
 
 class _FakeCoaching implements CoachingRepository {
+  @override
+  Future<StudentCardStats?> getStudentCardStats(String facilityId) async =>
+      const StudentCardStats(totalStudents: 8, enrolledStudents: 5, revenueMinor: 1250000, pendingMinor: 480000);
+
+  @override
+  Future<ProgramCardStats?> getProgramCardStats(String facilityId) async =>
+      const ProgramCardStats(total: 4, active: 3, enrolled: 13, availableSeats: 7);
+
   @override
   Future<CoachingOverview> getOverview(String facilityId) async => CoachingOverview(
         activeStudents: 12,

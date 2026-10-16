@@ -15,6 +15,7 @@ import type {
   MembershipPlanInput,
   MembershipRevenuePoint,
   MembershipSubscriptionInfo,
+  MembershipAutoPay,
   MemberScheduleRow,
   MemberStats,
   RevenueGranularity,
@@ -59,6 +60,8 @@ export interface MembershipService {
   getMembershipDetail(membershipId: string): Promise<MembershipDetail>;
   /** Starts (or reuses) a Razorpay Subscription for recurring UPI AutoPay on this membership. */
   createMembershipSubscription(membershipId: string): Promise<MembershipSubscriptionInfo>;
+  /** The membership's AutoPay, or null when it has none. */
+  getMembershipAutoPay(membershipId: string): Promise<MembershipAutoPay | null>;
   /** Cancels this membership's Razorpay Subscription (if any) so its payment link/mandate stops
    *  working — used when the member ends up paying a different way after a link was generated.
    *  A no-op, not an error, when there's no subscription or it's already cancelled. */

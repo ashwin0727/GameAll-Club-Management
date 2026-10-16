@@ -287,8 +287,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     });
   }
 
-  DateTime? get _endDate =>
-      _d.durationDays > 0 ? DateTime(_d.startDate.year, _d.startDate.month, _d.startDate.day + _d.durationDays - 1) : null;
+  DateTime? get _endDate => _d.durationDays > 0 ? periodEndDate(_d.startDate, _d.durationDays) : null;
 
   // ── saving ─────────────────────────────────────────────────────────────
 
@@ -299,6 +298,12 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     final slots = _slots;
     final repo = ref.read(membershipRepositoryProvider);
     final charges = addMemberCharges(_d);
+    final split = membershipFeeSplit(
+      planPriceInr: charges.subTotal,
+      gstAmountInr: charges.gstAmount,
+      registrationInr: charges.registration,
+      paymentAmountInr: _d.paymentAmount,
+    );
     final membership = await repo.createMembershipFull(
       CreateMembershipFullInput(
         facilityId: facilityId,
@@ -314,8 +319,10 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         startDate: _d.startDate,
         durationDays: _d.durationDays,
         batchId: slots.isEmpty ? null : slots.first.batchId,
-        membershipFeeInr: _d.paymentAmount > 0 ? _d.paymentAmount : charges.subTotal,
-        registrationFeeInr: charges.registration,
+        // The fee is always the plan's price — what AutoPay charges every cycle. Extras go in the
+        // registration fee as a one-time amount.
+        membershipFeeInr: split.feeInr,
+        registrationFeeInr: split.registrationInr,
         gstPercent: _d.gstPercent,
         paymentMode: mode,
         paymentMethods: methods,

@@ -7,15 +7,29 @@ import { cn } from "@/lib/utils";
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** The visible window, matching the design — 6 AM to 10 PM. A member/guest/maintenance block
- *  outside this range simply isn't drawn; the vast majority of court activity falls inside it. */
-const VIEW_START_MIN = 6 * 60;
-const VIEW_END_MIN = 22 * 60;
+/** The default visible window, matching the design — 6 AM to 10 PM. It widens (by whole hours) when a
+ *  member slot, guest booking or maintenance block falls outside it, so nothing is ever left undrawn. */
+const DEFAULT_START_MIN = 6 * 60;
+const DEFAULT_END_MIN = 22 * 60;
 const HOUR_PX = 56;
 const PX_PER_MIN = HOUR_PX / 60;
-const BODY_HEIGHT = ((VIEW_END_MIN - VIEW_START_MIN) / 60) * HOUR_PX;
 
-const HOURS = Array.from({ length: (VIEW_END_MIN - VIEW_START_MIN) / 60 }, (_, i) => VIEW_START_MIN / 60 + i);
+/** The visible hour range for these day columns: 6 AM–10 PM, stretched to take in every block. */
+export function viewWindow(days: { blocks: ScheduleBlock[] }[]): { startMin: number; endMin: number } {
+  let startMin = DEFAULT_START_MIN;
+  let endMin = DEFAULT_END_MIN;
+  for (const { blocks } of days) {
+    for (const b of blocks) {
+      if (b.kind === "CLOSED") continue;
+      const s = minutesFromClock(b.startTime);
+      const e = minutesFromClock(b.endTime);
+      if (e <= s) continue;
+      startMin = Math.min(startMin, Math.floor(s / 60) * 60);
+      endMin = Math.max(endMin, Math.ceil(e / 60) * 60);
+    }
+  }
+  return { startMin, endMin: Math.min(endMin, 24 * 60) };
+}
 
 function clockLabel(hour: number): string {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -34,11 +48,11 @@ const BLOCK_STYLES: Record<ScheduleBlockKind, string> = {
   CLOSED: "border-destructive/20 bg-destructive/5 text-destructive/70",
 };
 
-function BlockCard({ block }: { block: ScheduleBlock }) {
-  const startMin = Math.max(minutesFromClock(block.startTime), VIEW_START_MIN);
-  const endMin = Math.min(minutesFromClock(block.endTime), VIEW_END_MIN);
+function BlockCard({ block, viewStartMin, viewEndMin }: { block: ScheduleBlock; viewStartMin: number; viewEndMin: number }) {
+  const startMin = Math.max(minutesFromClock(block.startTime), viewStartMin);
+  const endMin = Math.min(minutesFromClock(block.endTime), viewEndMin);
   if (endMin <= startMin) return null;
-  const top = (startMin - VIEW_START_MIN) * PX_PER_MIN;
+  const top = (startMin - viewStartMin) * PX_PER_MIN;
   const height = Math.max((endMin - startMin) * PX_PER_MIN, 20);
 
   return (
@@ -71,6 +85,9 @@ export interface DayColumnData {
  * goes in each column — this only lays it out.
  */
 export function MemberScheduleGrid({ days, today }: { days: DayColumnData[]; today: Date }) {
+  const { startMin: VIEW_START_MIN, endMin: VIEW_END_MIN } = viewWindow(days);
+  const BODY_HEIGHT = ((VIEW_END_MIN - VIEW_START_MIN) / 60) * HOUR_PX;
+  const HOURS = Array.from({ length: (VIEW_END_MIN - VIEW_START_MIN) / 60 }, (_, i) => VIEW_START_MIN / 60 + i);
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <div
@@ -121,7 +138,7 @@ export function MemberScheduleGrid({ days, today }: { days: DayColumnData[]; tod
                   <p className="text-xs font-medium">Court Closed</p>
                 </div>
               ) : (
-                blocks.map((block, i) => <BlockCard key={`${block.kind}-${i}-${block.startTime}`} block={block} />)
+                blocks.map((block, i) => <BlockCard key={`${block.kind}-${i}-${block.startTime}`} block={block} viewStartMin={VIEW_START_MIN} viewEndMin={VIEW_END_MIN} />)
               )}
             </div>
           );

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Armchair,
   BookOpen,
   CalendarPlus,
+  CheckCircle2,
   ChevronRight,
   ClipboardList,
   LayoutGrid,
@@ -199,37 +201,37 @@ export function ProgramsPage() {
                 iconColor="text-success"
                 value={String(insights.totalPrograms)}
                 label="Total Programs"
-                sub={insights.newProgramsThisMonth > 0 ? `${insights.newProgramsThisMonth} new this month` : undefined}
-                subTone="text-success"
+                sub="All programs"
                 index={0}
                 compact
               />
               <MembershipStatCard
-                icon={Users}
+                icon={CheckCircle2}
                 iconBg="bg-blue-500/15"
                 iconColor="text-blue-600 dark:text-blue-400"
-                value={String(insights.enrolledStudents)}
-                label="Enrolled Students"
-                deltaPct={insights.enrolledStudentsPctChange ?? undefined}
-                sub={insights.enrolledStudentsPctChange != null ? "from last month" : undefined}
+                value={insights.activePrograms === undefined ? "—" : String(insights.activePrograms)}
+                label="Active Programs"
+                sub="Currently running"
                 index={1}
                 compact
               />
               <MembershipStatCard
-                icon={Percent}
+                icon={Users}
                 iconBg="bg-warning/15"
                 iconColor="text-warning"
-                value={insights.avgCompletionPct != null ? `${insights.avgCompletionPct}%` : "—"}
-                label="Average Completion"
+                value={String(insights.enrolledStudents)}
+                label="Enrolled Students"
+                sub="Current enrollment"
                 index={2}
                 compact
               />
               <MembershipStatCard
-                icon={Star}
+                icon={Armchair}
                 iconBg="bg-purple-500/15"
                 iconColor="text-purple-600 dark:text-purple-400"
-                value={insights.averageRating != null ? insights.averageRating.toFixed(1) : "—"}
-                label="Average Rating"
+                value={insights.availableSeats === undefined ? "—" : String(insights.availableSeats)}
+                label="Available Seats"
+                sub="Remaining capacity"
                 index={3}
                 compact
               />

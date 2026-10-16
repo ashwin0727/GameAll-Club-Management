@@ -229,6 +229,22 @@ export interface MembershipSubscriptionInfo {
   keyId: string;
 }
 
+/** A membership's AutoPay: what is charged each cycle, how often, and when the next charge falls. */
+export interface MembershipAutoPay {
+  status: "created" | "authenticated" | "active" | "pending" | "halted" | "cancelled" | "completed";
+  /** Charged every cycle: the plan's price. */
+  amountInr: number;
+  /** Months between charges (1, 3, 6, 12); null if unknown. */
+  intervalMonths: number | null;
+  /** Taken once with the first payment (registration fee, GST) — never repeated. */
+  oneTimeInr: number;
+  /** Successful charges so far. */
+  chargeCount: number;
+  /** The date the next charge is due, once Razorpay has scheduled it. */
+  nextChargeDate: string | null;
+  shortUrl: string | null;
+}
+
 export type RevenueGranularity = "day" | "month" | "year";
 
 export interface MembershipRevenuePoint {

@@ -13,6 +13,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipPlan } from "@/features/memberships/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DAYS = [
   { value: 1, label: "Mon" },
@@ -124,18 +125,18 @@ export function CreateSessionDialog({
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <Label>Plan</Label>
-              <select value={planId} onChange={(e) => setPlanId(e.target.value)} className={selectCls}>
+              <DropdownSelect value={planId} onChange={(e) => setPlanId(e.target.value)} className={selectCls}>
                 <option value="">Select plan</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             </div>
             <div className="space-y-1.5">
               <Label>Sport</Label>
-              <select
+              <DropdownSelect
                 value={facilitySportId}
                 onChange={(e) => {
                   setFacilitySportId(e.target.value);
@@ -152,12 +153,12 @@ export function CreateSessionDialog({
                     </option>
                   );
                 })}
-              </select>
+              </DropdownSelect>
             </div>
           </div>
           <div className="space-y-1.5">
             <Label>Court</Label>
-            <select
+            <DropdownSelect
               value={courtId}
               onChange={(e) => setCourtId(e.target.value)}
               disabled={!facilitySportId}
@@ -169,7 +170,7 @@ export function CreateSessionDialog({
                   {a.name}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           </div>
           <div className="space-y-1.5">
             <Label>Days</Label>

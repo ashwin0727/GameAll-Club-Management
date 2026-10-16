@@ -85,6 +85,7 @@ export const NAV_ITEMS: NavItem[] = [
   // Memberships Management
   { label: "Dashboard", group: "memberships", href: "/memberships/v1", roles: STAFF_ROLES },
   { label: "Membership Schedule", group: "memberships", href: "/memberships/v1/schedule", roles: STAFF_ROLES },
+  { label: "Membership Plan", group: "memberships", href: "/memberships/v1/plans", roles: STAFF_ROLES },
   { label: "Membership Sessions", group: "memberships", href: "/membership-sessions", roles: STAFF_ROLES },
   { label: "Members", group: "memberships", href: "/memberships", roles: STAFF_ROLES },
 

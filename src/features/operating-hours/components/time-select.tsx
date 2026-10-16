@@ -1,5 +1,7 @@
 "use client";
 
+import { DropdownSelect } from "@/components/shared/dropdown-select";
+
 const OPTIONS: { value: string; label: string }[] = Array.from({ length: 48 }, (_, i) => {
   const hour24 = Math.floor(i / 2);
   const minute = i % 2 === 0 ? "00" : "30";
@@ -19,7 +21,7 @@ export function TimeSelect({
   "aria-label": string;
 }) {
   return (
-    <select
+    <DropdownSelect
       aria-label={ariaLabel}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -31,6 +33,6 @@ export function TimeSelect({
           {option.label}
         </option>
       ))}
-    </select>
+    </DropdownSelect>
   );
 }

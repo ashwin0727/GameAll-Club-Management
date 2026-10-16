@@ -1,4 +1,6 @@
 import type {
+  BookingPaymentLink,
+  BookingPaymentLinkInput,
   CreatePaymentOrderInput,
   PaymentOrderCheckoutInfo,
   PaymentVerificationResult,
@@ -9,6 +11,19 @@ import type {
 } from "@/features/payments/types";
 
 export interface PaymentService {
+  /**
+   * "Pay Online" for a guest booking made by staff: creates (or returns the still-open) ONE-TIME Razorpay
+   * payment link for the booking, to be shared with the player. The amount is the booking's own server-side
+   * price — never sent from the client. The booking turns Paid only when Razorpay confirms the payment.
+   */
+  createBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink>;
+
+  /** Asks Razorpay whether the link was paid and settles it if so — the webhook is the normal path; this is the backstop. */
+  checkBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink>;
+
+  /** Closes an unpaid link so it can no longer be paid. */
+  cancelBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink>;
+
   /**
    * The single write path for starting a payment, regardless of source
    * (membership purchase, member booking, or guest booking). Calls the

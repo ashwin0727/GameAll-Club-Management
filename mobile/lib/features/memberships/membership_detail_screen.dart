@@ -19,6 +19,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
+import 'add_member_wizard.dart' show autoPayCadence, autoPayNextCharge, autoPayStatusLabel, effectiveAutoPayStatus;
 import 'edit_member_screen.dart';
 import 'membership_list_presentation.dart';
 import 'slot_format.dart';
@@ -39,6 +40,7 @@ class MembershipDetailScreen extends ConsumerStatefulWidget {
 
 class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen> {
   MembershipDetail? _detail;
+  MembershipAutoPay? _autoPay;
   bool _loading = true;
   String? _error;
   bool _processing = false;
@@ -55,10 +57,19 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       _error = null;
     });
     try {
-      final d = await ref.read(membershipRepositoryProvider).getMembershipDetail(widget.membershipId);
+      final repo = ref.read(membershipRepositoryProvider);
+      final d = await repo.getMembershipDetail(widget.membershipId);
+      // AutoPay is a nice-to-have: a failure here must not hide the membership itself.
+      MembershipAutoPay? autoPay;
+      try {
+        autoPay = await repo.getMembershipAutoPay(widget.membershipId);
+      } on AppException {
+        autoPay = null;
+      }
       if (!mounted) return;
       setState(() {
         _detail = d;
+        _autoPay = autoPay;
         _loading = false;
       });
     } on AppException catch (e) {
@@ -71,6 +82,20 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
   }
 
   String _money(int inr) => Formatters.currencyInr(inr);
+
+  Widget _autoPayCard(BuildContext context, MembershipAutoPay a, DateTime endDate) {
+    final status = autoPayStatusLabel(effectiveAutoPayStatus(a.status, a.chargeCount));
+    final next = autoPayNextCharge(status: a.status, chargeCount: a.chargeCount, nextChargeDate: a.nextChargeDate, membershipEndDate: endDate);
+    return _sectionCard(context, 'AutoPay', [
+      _row(context, 'Status', status.label),
+      if (status.detail.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: AppSpacing.sm), child: _muted(context, status.detail)),
+      _row(context, 'Charged every cycle', '${_money(a.amountInr)} ${autoPayCadence(a.intervalMonths)}'),
+      _row(context, 'Next charge', next == null ? '—' : Formatters.dateShort(next)),
+      _row(context, 'Charges collected', '${a.chargeCount}'),
+      if (next != null) _row(context, 'Due ${Formatters.dateShort(next)}', 'Not paid yet'),
+      _row(context, 'One-time, first payment only', a.oneTimeInr > 0 ? _money(a.oneTimeInr) : 'None'),
+    ]);
+  }
 
   Future<void> _edit() async {
     final d = _detail;
@@ -248,6 +273,11 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         ),
       ),
       const SizedBox(height: AppSpacing.md),
+
+      if (_autoPay != null) ...[
+        _autoPayCard(context, _autoPay!, m.endDate),
+        const SizedBox(height: AppSpacing.md),
+      ],
 
       // Membership Information
       _sectionCard(context, 'Membership Information', [

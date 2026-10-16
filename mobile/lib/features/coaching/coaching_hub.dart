@@ -27,6 +27,25 @@ class ProgramInsights {
   final int membershipIncluded;
 }
 
+/// The Programs tab's four cards, computed in the database across every program (migration 0122).
+class ProgramCardStats {
+  const ProgramCardStats({required this.total, required this.active, required this.enrolled, required this.availableSeats});
+
+  final int total;
+  final int active;
+  final int enrolled;
+
+  /// Open seats across all active programs' batches (or the program capacity when it has no batches).
+  final int availableSeats;
+
+  factory ProgramCardStats.fromJson(Map<String, dynamic> j) => ProgramCardStats(
+        total: (j['totalPrograms'] as num?)?.toInt() ?? 0,
+        active: (j['activePrograms'] as num?)?.toInt() ?? 0,
+        enrolled: (j['enrolledStudents'] as num?)?.toInt() ?? 0,
+        availableSeats: (j['availableSeats'] as num?)?.toInt() ?? 0,
+      );
+}
+
 /// [total] is the facility-wide count (the list may be a capped page of it).
 ProgramInsights programInsights(List<ProgramRow> programs, {int? total}) {
   final active = programs.where((p) => p.status == ProgramStatus.active).length;
@@ -40,6 +59,30 @@ ProgramInsights programInsights(List<ProgramRow> programs, {int? total}) {
     avgFeeMinor: priced.isEmpty ? null : (priced.reduce((a, b) => a + b) / priced.length).round(),
     membershipIncluded: programs.where((p) => p.isMembershipIncluded).length,
   );
+}
+
+/// The Students tab's four cards, computed in the database (migration 0123). Money in minor units.
+class StudentCardStats {
+  const StudentCardStats({required this.totalStudents, required this.enrolledStudents, required this.revenueMinor, required this.pendingMinor});
+
+  /// Unique students with any enrollment — not enrollment rows.
+  final int totalStudents;
+
+  /// Unique students with an active enrollment.
+  final int enrolledStudents;
+
+  /// Confirmed coaching payments this month.
+  final int revenueMinor;
+
+  /// Still owed on enrollments (fee minus confirmed payments).
+  final int pendingMinor;
+
+  factory StudentCardStats.fromJson(Map<String, dynamic> j) => StudentCardStats(
+        totalStudents: (j['totalStudents'] as num?)?.toInt() ?? 0,
+        enrolledStudents: (j['enrolledStudents'] as num?)?.toInt() ?? 0,
+        revenueMinor: (j['revenueMinor'] as num?)?.toInt() ?? 0,
+        pendingMinor: (j['pendingMinor'] as num?)?.toInt() ?? 0,
+      );
 }
 
 class StudentInsights {

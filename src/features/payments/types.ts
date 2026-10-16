@@ -74,3 +74,27 @@ export interface PaymentVerificationResult {
   paymentOrderId: string;
   status: PaymentOrderStatus;
 }
+
+/** Where a guest booking's "Pay Online" payment link stands. */
+export type BookingPaymentLinkStatus = "CREATED" | "PAID" | "CANCELLED" | "EXPIRED";
+
+/** A one-time Razorpay payment link for a guest booking — shared with the player, who pays on their own phone. */
+export interface BookingPaymentLink {
+  paymentOrderId: string | null;
+  bookingId: string;
+  /** The URL to share. Null once the booking is already paid and no link is needed. */
+  shortUrl: string | null;
+  amountMinor: number | null;
+  currency: string | null;
+  status: BookingPaymentLinkStatus;
+  /** True once the money is in and the booking is settled. */
+  paid: boolean;
+  expiresAt: string | null;
+  /** An already-open link was handed back instead of creating a second one. */
+  reused: boolean;
+}
+
+export interface BookingPaymentLinkInput {
+  facilityId: string;
+  bookingId: string;
+}

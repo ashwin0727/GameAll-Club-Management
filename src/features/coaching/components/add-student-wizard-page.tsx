@@ -19,6 +19,7 @@ import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-
 import { isValidEmail, sanitizePhoneDigits } from "@/features/coaching/add-coach-validation";
 import type { EnrollmentBillingLink, ProgramDetail, ProgramRow } from "@/features/coaching/types";
 import { blurOnWheel, fmtDate, money, NO_SPINNER_INPUT } from "@/features/coaching/components/shared";
+import { chargeDates, perSessionMinor, programLengthLabel } from "@/features/coaching/billing-schedule";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Student Details", "Program & Enrollment", "Review & Confirm", "Payment", "Success"] as const;
@@ -666,6 +667,23 @@ export function AddStudentWizardPage() {
               <p className="text-xs text-muted-foreground">Enrollment Start Date</p>
               <p className="text-sm font-medium">{fmtDate(startDate)}</p>
             </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Program Length</p>
+                <p className="text-sm font-medium">{programLengthLabel(startDate, program.endDate) ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Sessions</p>
+                <p className="text-sm font-medium">
+                  {program.sessionCount ?? "—"}
+                  {program.sessionsPerWeek ? ` · ${program.sessionsPerWeek} / week` : ""}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Program Ends</p>
+                <p className="text-sm font-medium">{program.endDate ? fmtDate(program.endDate) : "—"}</p>
+              </div>
+            </div>
             <div className="rounded-lg border border-border p-3 text-sm">
               <p className="mb-2 text-xs font-semibold text-muted-foreground">Payment Summary</p>
               {program.isMembershipIncluded ? (
@@ -700,12 +718,31 @@ export function AddStudentWizardPage() {
                         <dt>Total Payable</dt>
                         <dd>{money(totalPayableMinor)}</dd>
                       </div>
+                      {perSessionMinor(totalPayableMinor, program.sessionCount) !== null && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <dt>≈ per session ({program.sessionCount} sessions)</dt>
+                          <dd>{money(perSessionMinor(totalPayableMinor, program.sessionCount)!)}</dd>
+                        </div>
+                      )}
+                      <div className="border-t border-border pt-1.5 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground">Expected payment dates</p>
+                        <p className="mt-0.5">{chargeDates(startDate, cycles).map((d) => fmtDate(d)).join(" · ")}</p>
+                        <p className="mt-0.5">Charged on the day the student approves AutoPay, then the same date every month.</p>
+                      </div>
                     </>
                   ) : (
-                    <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
-                      <dt>Amount Payable</dt>
-                      <dd>{money(totalPayableMinor)}</dd>
-                    </div>
+                    <>
+                      <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
+                        <dt>Amount Payable</dt>
+                        <dd>{money(totalPayableMinor)}</dd>
+                      </div>
+                      {perSessionMinor(totalPayableMinor, program.sessionCount) !== null && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <dt>≈ per session ({program.sessionCount} sessions)</dt>
+                          <dd>{money(perSessionMinor(totalPayableMinor, program.sessionCount)!)}</dd>
+                        </div>
+                      )}
+                    </>
                   )}
                 </dl>
               )}
@@ -724,6 +761,7 @@ export function AddStudentWizardPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   {money(cycleFeeMinor)} per month × {cycles} {cycles === 1 ? "month" : "months"}
                   {program?.endDate ? " · until " + fmtDate(program.endDate) : ""}
+                  {startDate ? " · expected dates " + chargeDates(startDate, cycles).map((d) => fmtDate(d)).join(", ") : ""}
                 </p>
               )}
             </div>

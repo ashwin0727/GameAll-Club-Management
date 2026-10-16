@@ -20,6 +20,7 @@ import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
+import 'coaching_billing.dart';
 import 'coaching_common.dart';
 import '../../shared/widgets/app_dropdown.dart';
 
@@ -514,6 +515,17 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
     final tax = p.chargeMinor - (base - discount).clamp(0, base);
     return [
       const SizedBox(height: AppSpacing.lg),
+      _heading('Program'),
+      AppCard(
+        child: Column(
+          children: [
+            _sumRow('Program length', programLengthLabel(_startDate, p.endDate == null ? null : DateTime.tryParse(p.endDate!)) ?? '—'),
+            _sumRow('Sessions', p.sessionCount == null ? '—' : '${p.sessionCount}'),
+            _sumRow('Program ends', p.endDate == null ? '—' : coachDate(p.endDate)),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.lg),
       _heading('Payment Summary'),
       AppCard(
         child: p.isMembershipIncluded
@@ -528,8 +540,34 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
                     _sumRow('Amount per month', coachMoney(p.chargeMinor), bold: true),
                     _sumRow('Monthly charges (until ${coachDate(p.endDate)})', '× $cycles'),
                     _sumRow('Total payable', coachMoney(p.chargeMinor * cycles), bold: true),
-                  ] else
+                    if (perSessionMinor(p.chargeMinor * cycles, p.sessionCount) != null)
+                      _sumRow('≈ per session (${p.sessionCount} sessions)', coachMoney(perSessionMinor(p.chargeMinor * cycles, p.sessionCount)!)),
+                    const Divider(height: AppSpacing.lg),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Expected payment dates', style: AppTypography.rowTitle(context)),
+                    ),
+                    const SizedBox(height: 2),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        [for (final d in chargeDates(_startDate, cycles)) DateFormat('d MMM yyyy').format(d)].join(' · '),
+                        style: AppTypography.secondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Charged on the day the student approves AutoPay, then the same date every month.',
+                        style: AppTypography.caption(context),
+                      ),
+                    ),
+                  ] else ...[
                     _sumRow('Amount payable', coachMoney(p.chargeMinor), bold: true),
+                    if (perSessionMinor(p.chargeMinor, p.sessionCount) != null)
+                      _sumRow('≈ per session (${p.sessionCount} sessions)', coachMoney(perSessionMinor(p.chargeMinor, p.sessionCount)!)),
+                  ],
                 ],
               ),
       ),

@@ -17,7 +17,7 @@ import { courtsForSport, scheduleRowsForSport } from "@/features/memberships/spo
 import { useCalendarEventsForRange, useCourtSchedules, dayForCourt } from "@/features/bookings/hooks/use-booking-calendar-data";
 import { addDays, startOfWeek } from "@/features/bookings/calendar-events";
 import { windowsForDay } from "@/features/bookings/slots";
-import { assignedCourtIds, blocksForDay, groupMemberSchedules, type OtherCourtEvent } from "@/features/memberships/member-schedule";
+import { assignedCourtIds, blocksForDay, groupMemberSchedules, slotsOutsideRange, type OtherCourtEvent } from "@/features/memberships/member-schedule";
 import { cn } from "@/lib/utils";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -154,6 +154,13 @@ export function MemberSchedulePage() {
     });
   }, [days, selectedMember, otherEvents, visibleCourtIds, schedulesForCourts.data]);
 
+  // A member with slots, but none of them land in the dates on screen (e.g. they play Fri–Sun and the range
+  // ends Thursday): say so, instead of showing a calendar that just looks empty.
+  const rangeHint = useMemo(
+    () => (selectedMember ? slotsOutsideRange(selectedMember.slots, visibleCourtIds, days, dayColumns) : null),
+    [selectedMember, visibleCourtIds, days, dayColumns],
+  );
+
   // Every active court, not just this member's own — they can still show up in someone else's
   // guest booking on a different court, and staff should be able to check that too. Defaults to
   // the member's own court via the effect above; this list is just what's pickable.
@@ -284,7 +291,12 @@ export function MemberSchedulePage() {
                   No members have a dedicated court schedule yet.
                 </div>
               ) : (
-                <MemberScheduleGrid days={dayColumns} today={new Date()} />
+                <>
+                  {rangeHint && (
+                    <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{rangeHint}</p>
+                  )}
+                  <MemberScheduleGrid days={dayColumns} today={new Date()} />
+                </>
               )}
             </Card>
 

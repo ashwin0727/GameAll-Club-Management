@@ -39,6 +39,7 @@ import type {
   MembershipListStatus,
   MembershipPlan,
 } from "@/features/memberships/types";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const PER_PAGE = 10;
 
@@ -333,7 +334,7 @@ export function MembershipsPage() {
           placeholder="Search by name, phone or email"
           className="h-9 w-full max-w-xs"
         />
-        <select
+        <DropdownSelect
           aria-label="Status"
           value={status}
           onChange={(e) => setStatus(e.target.value as MembershipListStatus | "")}
@@ -344,8 +345,8 @@ export function MembershipsPage() {
               {o.label}
             </option>
           ))}
-        </select>
-        <select
+        </DropdownSelect>
+        <DropdownSelect
           aria-label="Membership type"
           value={planId}
           onChange={(e) => setPlanId(e.target.value)}
@@ -357,8 +358,8 @@ export function MembershipsPage() {
               {p.name}
             </option>
           ))}
-        </select>
-        <select
+        </DropdownSelect>
+        <DropdownSelect
           aria-label="Sort by"
           value={sort}
           onChange={(e) => setSort(e.target.value as MembershipListSort)}
@@ -369,7 +370,7 @@ export function MembershipsPage() {
               {o.label}
             </option>
           ))}
-        </select>
+        </DropdownSelect>
         {hasFilters && (
           <Button
             type="button"

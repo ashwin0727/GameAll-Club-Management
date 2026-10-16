@@ -44,6 +44,8 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
   CoachingOverview? _overview;
   List<CoachRow> _coaches = const [];
   int _coachTotal = 0;
+  ProgramCardStats? _programStats;
+  StudentCardStats? _studentStats;
   Map<String, int> _perWeek = const {};
   ProgramPage _programs = const ProgramPage(programs: [], totalCount: 0);
   EnrollmentPage _students = const EnrollmentPage(enrollments: [], totalCount: 0);
@@ -87,6 +89,8 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
         repo.listCoaches(facilityId: fid, limit: _pageSize),
         repo.listSessions(facilityId: fid, from: week.start, to: week.end, limit: 500),
       ]);
+      final cardStats = await repo.getProgramCardStats(fid);
+      final studentStats = await repo.getStudentCardStats(fid);
       if (!mounted) return;
       setState(() {
         _overview = results[0] as CoachingOverview;
@@ -95,6 +99,8 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
         _coaches = (results[3] as CoachPage).coaches;
         _coachTotal = (results[3] as CoachPage).totalCount;
         _perWeek = sessionsPerWeek((results[4] as SessionPage).sessions, now);
+        _programStats = cardStats;
+        _studentStats = studentStats;
         _loading = false;
       });
     } on AppException catch (e) {
@@ -145,8 +151,8 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
                         controller: _tabs,
                         children: [
                           _CoachingTab(overview: _overview!, coaches: _coaches, coachTotal: _coachTotal, programTotal: _programs.totalCount, perWeek: _perWeek, onTab: _tabs.animateTo, onOpen: _go),
-                          _ProgramsTab(page: _programs, onOpen: _go),
-                          _StudentsTab(page: _students, onOpen: _go),
+                          _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go),
+                          _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go),
                         ],
                       ),
                     ),
@@ -323,48 +329,34 @@ class _CoachingTabState extends State<_CoachingTab> {
           InsightData(
             icon: Icons.groups_outlined,
             color: tokens.electricBlue,
-            title: 'Active Students',
-            value: '${o.activeStudents}',
-            onTap: () => widget.onTab(2),
-          ),
-          InsightData(
-            icon: Icons.sports_outlined,
-            color: tokens.violet,
-            title: 'Active Programs',
-            value: '${o.activePrograms}',
-            onTap: () => widget.onTab(1),
+            title: 'Total Coaches',
+            value: o.totalCoaches == null ? '—' : '${o.totalCoaches}',
+            sub: 'All coaches',
+            onTap: () => setState(() => _filters = _filters.copyWith(clearStatus: true)),
           ),
           InsightData(
             icon: Icons.person_pin_outlined,
-            color: tokens.primary,
+            color: tokens.success,
             title: 'Active Coaches',
             value: '${o.activeCoaches}',
-            sub: o.coachesOnLeave > 0 ? '${o.coachesOnLeave} on leave' : null,
-            subColor: tokens.warning,
+            sub: o.coachesOnLeave > 0 ? 'Currently active · ${o.coachesOnLeave} on leave' : 'Currently active',
             onTap: () => setState(() => _filters = _filters.copyWith(status: CoachStatus.active)),
           ),
           InsightData(
-            icon: Icons.event_note_outlined,
+            icon: Icons.account_balance_wallet_outlined,
             color: tokens.warning,
-            title: 'Active Sessions',
-            value: '${o.activeSessions}',
-            sub: 'Today',
-            onTap: () => widget.onOpen(AppRoutes.coachingSessions),
+            title: 'Coaching Expense',
+            value: o.coachingExpenseMinor == null ? '—' : _rupees(o.coachingExpenseMinor!),
+            sub: 'This month',
+            onTap: () {},
           ),
           InsightData(
             icon: Icons.schedule_rounded,
-            color: tokens.electricBlue,
-            title: 'Upcoming Sessions',
-            value: '${o.upcomingSessionsCount}',
-            onTap: () => widget.onOpen(AppRoutes.coachingSchedule),
-          ),
-          InsightData(
-            icon: Icons.account_balance_wallet_outlined,
             color: tokens.violet,
-            title: 'Overall Revenue',
-            value: o.revenueTotalMinor == null ? '—' : _rupees(o.revenueTotalMinor!),
-            sub: 'All time',
-            onTap: () => widget.onOpen(AppRoutes.coachingReports),
+            title: 'Scheduled Sessions',
+            value: '${o.upcomingSessionsCount}',
+            sub: 'Upcoming',
+            onTap: () => widget.onOpen(AppRoutes.coachingSchedule),
           ),
         ],
       ),
@@ -649,9 +641,10 @@ class _CoachFilterSheetState extends State<_CoachFilterSheet> {
 // ── Programs ────────────────────────────────────────────────────────────
 
 class _ProgramsTab extends StatefulWidget {
-  const _ProgramsTab({required this.page, required this.onOpen});
+  const _ProgramsTab({required this.page, required this.cardStats, required this.onOpen});
 
   final ProgramPage page;
+  final ProgramCardStats? cardStats;
   final Future<void> Function(String route) onOpen;
 
   @override
@@ -692,26 +685,38 @@ class _ProgramsTabState extends State<_ProgramsTab> {
         onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
         subtitle: 'Programs, students, sessions and fees',
         tiles: [
-          InsightData(icon: Icons.sports_outlined, color: tokens.violet, title: 'Total Programs', value: '${stats.total}', onTap: () => setState(() => _status = null)),
+          InsightData(
+            icon: Icons.sports_outlined,
+            color: tokens.violet,
+            title: 'Total Programs',
+            value: '${widget.cardStats?.total ?? stats.total}',
+            sub: 'All programs',
+            onTap: () => setState(() => _status = null),
+          ),
           InsightData(
             icon: Icons.check_circle_outline,
             color: tokens.success,
             title: 'Active Programs',
-            value: '${stats.active}',
-            sub: '${stats.inactive} inactive',
+            value: widget.cardStats == null ? '—' : '${widget.cardStats!.active}',
+            sub: 'Currently running',
             onTap: () => setState(() => _status = ProgramStatus.active),
           ),
-          InsightData(icon: Icons.groups_outlined, color: tokens.electricBlue, title: 'Students Enrolled', value: '${stats.students}', sub: 'Across programs', onTap: () {}),
-          InsightData(icon: Icons.event_note_outlined, color: tokens.warning, title: 'Scheduled Sessions', value: '${stats.scheduledSessions}', onTap: () {}),
           InsightData(
-            icon: Icons.currency_rupee,
-            color: tokens.violet,
-            title: 'Average Fee',
-            value: stats.avgFeeMinor == null ? '—' : _rupees(stats.avgFeeMinor!),
-            sub: 'Per program',
+            icon: Icons.groups_outlined,
+            color: tokens.electricBlue,
+            title: 'Enrolled Students',
+            value: '${widget.cardStats?.enrolled ?? stats.students}',
+            sub: 'Current enrollment',
             onTap: () {},
           ),
-          InsightData(icon: Icons.card_membership_outlined, color: tokens.primary, title: 'Membership Included', value: '${stats.membershipIncluded}', sub: 'Programs', onTap: () {}),
+          InsightData(
+            icon: Icons.event_seat_outlined,
+            color: tokens.warning,
+            title: 'Available Seats',
+            value: widget.cardStats == null ? '—' : '${widget.cardStats!.availableSeats}',
+            sub: 'Remaining capacity',
+            onTap: () {},
+          ),
         ],
       ),
       const SizedBox(height: AppSpacing.lg),
@@ -761,7 +766,9 @@ class _ProgramsTabState extends State<_ProgramsTab> {
 // ── Students ────────────────────────────────────────────────────────────
 
 class _StudentsTab extends StatefulWidget {
-  const _StudentsTab({required this.page, required this.onOpen});
+  const _StudentsTab({required this.page, required this.cardStats, required this.onOpen});
+
+  final StudentCardStats? cardStats;
 
   final EnrollmentPage page;
   final Future<void> Function(String route) onOpen;
@@ -817,32 +824,38 @@ class _StudentsTabState extends State<_StudentsTab> {
         onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
         subtitle: 'Students, payments and fees',
         tiles: [
-          InsightData(icon: Icons.groups_outlined, color: tokens.electricBlue, title: 'Total Students', value: '${stats.total}', onTap: () => setState(() => _filter = _StudentFilter.all)),
-          InsightData(icon: Icons.check_circle_outline, color: tokens.success, title: 'Active Students', value: '${stats.active}', onTap: () => setState(() => _filter = _StudentFilter.active)),
           InsightData(
-            icon: Icons.pause_circle_outline,
-            color: tokens.textSecondary,
-            title: 'Inactive Students',
-            value: '${stats.inactive}',
-            sub: 'Paused, completed or cancelled',
-            onTap: () => setState(() => _filter = _StudentFilter.inactive),
+            icon: Icons.groups_outlined,
+            color: tokens.electricBlue,
+            title: 'Total Students',
+            value: widget.cardStats == null ? '${stats.total}' : '${widget.cardStats!.totalStudents}',
+            sub: 'All student records',
+            onTap: () => setState(() => _filter = _StudentFilter.all),
           ),
           InsightData(
-            icon: Icons.hourglass_bottom_rounded,
-            color: tokens.warning,
-            title: 'Payment Pending',
-            value: '${stats.paymentPending}',
-            sub: 'Active students',
-            subColor: tokens.warning,
-            onTap: () => setState(() => _filter = _StudentFilter.pending),
+            icon: Icons.check_circle_outline,
+            color: tokens.success,
+            title: 'Enrolled Students',
+            value: widget.cardStats == null ? '${stats.active}' : '${widget.cardStats!.enrolledStudents}',
+            sub: 'Currently enrolled',
+            onTap: () => setState(() => _filter = _StudentFilter.active),
           ),
           InsightData(
             icon: Icons.account_balance_wallet_outlined,
             color: tokens.violet,
-            title: 'Fees (Active)',
-            value: _rupees(stats.activeFeesMinor),
-            sub: 'Charged to active students',
+            title: 'Revenue Collected',
+            value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.revenueMinor),
+            sub: 'This month',
             onTap: () {},
+          ),
+          InsightData(
+            icon: Icons.hourglass_bottom_rounded,
+            color: tokens.warning,
+            title: 'Payments Pending',
+            value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.pendingMinor),
+            sub: 'Needs follow-up',
+            subColor: tokens.warning,
+            onTap: () => setState(() => _filter = _StudentFilter.pending),
           ),
         ],
       ),

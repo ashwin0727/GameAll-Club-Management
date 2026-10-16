@@ -236,3 +236,53 @@ class PaymentVerificationResult {
     );
   }
 }
+
+/// Mirrors src/features/payments/types.ts's `BookingPaymentLink`: a one-time Razorpay payment link for a guest
+/// booking, shared with the player, who pays on their own phone. `status` is CREATED / PAID / CANCELLED / EXPIRED.
+class BookingPaymentLink {
+  const BookingPaymentLink({
+    required this.bookingId,
+    this.paymentOrderId,
+    this.shortUrl,
+    this.amountMinor,
+    this.currency,
+    this.status = 'CREATED',
+    this.paid = false,
+    this.expiresAt,
+    this.reused = false,
+  });
+
+  final String bookingId;
+  final String? paymentOrderId;
+
+  /// The URL to share. Null once the booking is already paid and no link is needed.
+  final String? shortUrl;
+  final int? amountMinor;
+  final String? currency;
+  final String status;
+
+  /// True once the money is in and the booking is settled.
+  final bool paid;
+  final DateTime? expiresAt;
+
+  /// An already-open link was handed back instead of creating a second one.
+  final bool reused;
+
+  bool get isOpen => !paid && status == 'CREATED';
+  bool get isClosed => !paid && (status == 'CANCELLED' || status == 'EXPIRED');
+
+  factory BookingPaymentLink.fromJson(Map<String, dynamic> j, {required String fallbackBookingId}) {
+    final paid = j['paid'] == true || j['status'] == 'PAID';
+    return BookingPaymentLink(
+      bookingId: (j['bookingId'] as String?) ?? fallbackBookingId,
+      paymentOrderId: j['paymentOrderId'] as String?,
+      shortUrl: j['shortUrl'] as String?,
+      amountMinor: (j['amountMinor'] as num?)?.toInt(),
+      currency: j['currency'] as String?,
+      status: paid ? 'PAID' : ((j['status'] as String?) ?? 'CREATED'),
+      paid: paid,
+      expiresAt: j['expiresAt'] == null ? null : DateTime.tryParse(j['expiresAt'] as String),
+      reused: j['reused'] == true,
+    );
+  }
+}

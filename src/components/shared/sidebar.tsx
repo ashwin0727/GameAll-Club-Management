@@ -44,6 +44,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/memberships": Users,
   "/memberships/v1": Crown,
   "/memberships/v1/schedule": CalendarDays,
+  "/memberships/v1/plans": Tags,
   "/membership-sessions": CalendarCheck2,
   "/calendar": CalendarClock,
   "/guest-bookings": CalendarRange,

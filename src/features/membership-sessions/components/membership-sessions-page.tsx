@@ -29,6 +29,7 @@ import type {
 } from "@/features/membership-sessions/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const PER_PAGE = 10;
 const STATUS_OPTIONS: { value: MembershipSessionStatus | ""; label: string }[] = [
@@ -172,23 +173,23 @@ export function MembershipSessionsPage() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sessions by name or court" className="h-9 w-full max-w-xs" />
-          <select aria-label="Sport" value={sportId} onChange={(e) => { setSportId(e.target.value); setCourtId(""); }} className={selectCls}>
+          <DropdownSelect aria-label="Sport" value={sportId} onChange={(e) => { setSportId(e.target.value); setCourtId(""); }} className={selectCls}>
             <option value="">All Sports</option>
             {facilitySports.map((fs) => {
               const s = sports.find((sp) => sp.id === fs.sportId);
               return <option key={fs.id} value={fs.id}>{fs.customSportName ?? s?.name ?? "Sport"}</option>;
             })}
-          </select>
-          <select aria-label="Court" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={selectCls}>
+          </DropdownSelect>
+          <DropdownSelect aria-label="Court" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={selectCls}>
             <option value="">All Courts</option>
             {courtsForSport.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as MembershipSessionStatus | "")} className={selectCls}>
+          </DropdownSelect>
+          <DropdownSelect aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as MembershipSessionStatus | "")} className={selectCls}>
             {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <select aria-label="Day" value={day} onChange={(e) => setDay(e.target.value)} className={selectCls}>
+          </DropdownSelect>
+          <DropdownSelect aria-label="Day" value={day} onChange={(e) => setDay(e.target.value)} className={selectCls}>
             {DAY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </DropdownSelect>
         </div>
 
         {/* Table */}

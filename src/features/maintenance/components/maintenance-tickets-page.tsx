@@ -13,6 +13,7 @@ import type { MaintenancePriority, MaintenanceStatus, MaintenanceTicketFilters, 
 import { getFacilityService } from "@/services/facility";
 import { getMaintenanceService } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const PAGE_SIZE = 20;
 const STATUSES: MaintenanceStatus[] = ["REPORTED", "ASSIGNED", "SCHEDULED", "IN_PROGRESS", "RESOLVED", "CLOSED"];
@@ -185,7 +186,7 @@ function FilterSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <select
+    <DropdownSelect
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -197,6 +198,6 @@ function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </DropdownSelect>
   );
 }

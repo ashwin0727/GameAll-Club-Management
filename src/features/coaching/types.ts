@@ -35,6 +35,10 @@ export interface CoachingOverview {
     revenueThisMonthMinor: number;
     /** Everything ever collected for coaching (migration 0115); missing until that is applied. */
     revenueTotalMinor?: number;
+    /** All coaches, any status (migration 0121); missing until that is applied. */
+    totalCoaches?: number;
+    /** This month's recorded expenses in the "Coaching" category (migration 0121). */
+    coachingExpenseMinor?: number;
   };
   upcomingSessions: {
     id: string;
@@ -238,6 +242,10 @@ export interface ProgramPage {
 /** The Coaching Programs list page's KPI row, Featured Program card and Program Insights panel. */
 export interface ProgramInsights {
   totalPrograms: number;
+  /** Programs currently running (migration 0122); missing until that is applied. */
+  activePrograms?: number;
+  /** Open seats across every active program's batches (migration 0122). */
+  availableSeats?: number;
   newProgramsThisMonth: number;
   enrolledStudents: number;
   /** Null when there were no enrollments in the prior 30-day period to compare against. */
@@ -694,4 +702,16 @@ export interface EnrollmentBillingLink {
   status: BillingStatus;
   amountMinor?: number;
   cycles?: number;
+}
+
+/** The Students page's four cards, computed in the database (migration 0123). Money in minor units. */
+export interface StudentCardStats {
+  /** Unique students with any enrollment — not enrollment rows. */
+  totalStudents: number;
+  /** Unique students with an active enrollment. */
+  enrolledStudents: number;
+  /** Confirmed coaching payments this month. */
+  revenueMinor: number;
+  /** Still owed on enrollments (fee minus confirmed payments). */
+  pendingMinor: number;
 }

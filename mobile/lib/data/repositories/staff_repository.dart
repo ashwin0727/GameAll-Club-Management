@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -91,6 +93,21 @@ class StaffRepository {
     }
   }
 
+  /// Uploads a profile photo to the avatars bucket (under the signed-in user's folder) and returns its public
+  /// URL — used by Add Coach's "+ New person" before create-staff, since the new person has no id yet.
+  Future<String> uploadAvatar(List<int> bytes, String fileName, String contentType) async {
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid == null) throw StateError('not signed in');
+      final safe = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final path = '$uid/${DateTime.now().microsecondsSinceEpoch}-$safe';
+      await _client.storage.from('avatars').uploadBinary(path, Uint8List.fromList(bytes), fileOptions: FileOptions(contentType: contentType));
+      return _client.storage.from('avatars').getPublicUrl(path);
+    } catch (_) {
+      throw AppException(AppErrorCode.databaseError, 'Could not upload this photo. Please try again.');
+    }
+  }
+
   Future<CreateStaffResult> createStaff({
     required String facilityId,
     required String fullName,
@@ -100,6 +117,7 @@ class StaffRepository {
     bool isPrimary = false,
     String? title,
     String? notes,
+    String? avatarUrl,
   }) async {
     try {
       final res = await _client.functions.invoke('create-staff', body: {
@@ -111,6 +129,7 @@ class StaffRepository {
         'isPrimary': isPrimary,
         if (title != null && title.isNotEmpty) 'title': title,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (avatarUrl != null && avatarUrl.isNotEmpty) 'avatarUrl': avatarUrl,
       });
       final data = (res.data as Map).cast<String, dynamic>();
       return CreateStaffResult(

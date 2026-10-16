@@ -3,6 +3,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type {
+  BookingPaymentLink,
+  BookingPaymentLinkInput,
+  BookingPaymentLinkStatus,
   CreatePaymentOrderInput,
   PaymentOrderCheckoutInfo,
   PaymentOrderStatus,
@@ -25,6 +28,18 @@ interface EdgeFunctionSuccess {
   receipt: string;
 }
 
+interface BookingLinkResponse {
+  paymentOrderId?: string;
+  bookingId?: string;
+  shortUrl?: string | null;
+  amountMinor?: number;
+  currency?: string;
+  status?: string;
+  paid?: boolean;
+  expiresAt?: string;
+  reused?: boolean;
+}
+
 interface EdgeFunctionError {
   error: string;
 }
@@ -39,6 +54,52 @@ export class SupabasePaymentService implements PaymentService {
 
   constructor(client?: SupabaseClient<Database>) {
     this.supabase = client ?? createClient();
+  }
+
+  createBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink> {
+    return this.callBookingPaymentLink("create", input);
+  }
+
+  checkBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink> {
+    return this.callBookingPaymentLink("status", input);
+  }
+
+  cancelBookingPaymentLink(input: BookingPaymentLinkInput): Promise<BookingPaymentLink> {
+    return this.callBookingPaymentLink("cancel", input);
+  }
+
+  private async callBookingPaymentLink(action: "create" | "status" | "cancel", input: BookingPaymentLinkInput): Promise<BookingPaymentLink> {
+    const { data, error } = await this.supabase.functions.invoke<BookingLinkResponse | EdgeFunctionError>("create-booking-payment-link", {
+      body: { action, facilityId: input.facilityId, bookingId: input.bookingId },
+    });
+    if (error) {
+      // The function answers a business problem (not found, not payable, Razorpay down) with a non-2xx and a
+      // readable { error } body — surface that text rather than a generic failure.
+      let message: string | undefined;
+      try {
+        const body = (await (error as { context?: Response }).context?.json()) as { error?: string } | undefined;
+        message = body?.error;
+      } catch {
+        // not a JSON body
+      }
+      console.error("[payment-service] create-booking-payment-link failed", error);
+      throw new ServiceError(message ? "PAYMENT_ORDER_ERROR" : "PAYMENT_GATEWAY_ERROR", message);
+    }
+    if (!data || "error" in data) {
+      throw new ServiceError("PAYMENT_ORDER_ERROR", data && "error" in data ? data.error : undefined);
+    }
+    const paid = data.paid === true || data.status === "PAID";
+    return {
+      paymentOrderId: data.paymentOrderId ?? null,
+      bookingId: data.bookingId ?? input.bookingId,
+      shortUrl: data.shortUrl ?? null,
+      amountMinor: data.amountMinor ?? null,
+      currency: data.currency ?? null,
+      status: paid ? "PAID" : ((data.status as BookingPaymentLinkStatus | undefined) ?? "CREATED"),
+      paid,
+      expiresAt: data.expiresAt ?? null,
+      reused: data.reused === true,
+    };
   }
 
   async createPaymentOrder(input: CreatePaymentOrderInput): Promise<PaymentOrderCheckoutInfo> {

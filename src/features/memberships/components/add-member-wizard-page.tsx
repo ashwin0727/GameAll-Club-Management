@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Camera, CalendarDays, Check, ChevronRight, Info, X } from "lucide-react";
-import { addDays, format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +29,7 @@ import {
   LAST_STEP,
   type WizardStep,
 } from "@/features/memberships/add-member-wizard";
-import { durationLabel, monthlyEquivalentInr, planBadges, planFeatures, splitPlanName, type PlanBadge } from "@/features/memberships/plan-insights";
+import { durationLabel, monthlyEquivalentInr, periodEndDate, planBadges, planFeatures, splitPlanName, type PlanBadge } from "@/features/memberships/plan-insights";
 import { PLAN_CARD_THEMES } from "@/features/memberships/components/plan-card";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
 import { planSlotsFor } from "@/features/memberships/plan-slots";
@@ -385,7 +385,7 @@ export function AddMemberWizardPage() {
   const charges = useMemo(() => computeCharges(draft), [draft]);
   // The plan's own length laid out from the chosen start date — shown, not edited, here.
   const planEndDate = useMemo(
-    () => (draft.startDate && draft.durationDays ? addDays(parseISO(draft.startDate), draft.durationDays - 1) : null),
+    () => (draft.startDate && draft.durationDays ? periodEndDate(draft.startDate, draft.durationDays) : null),
     [draft.startDate, draft.durationDays],
   );
   // The chosen plan's own court/timing slots — fixed when the plan was created.
@@ -483,8 +483,11 @@ export function AddMemberWizardPage() {
       startDate: draft.startDate,
       durationDays: draft.durationDays,
       batchId: firstSlot?.batchId,
-      membershipFeeInr: draft.paymentAmount || charges.subTotal,
-      registrationFeeInr: charges.registration,
+      // The fee is ALWAYS the plan's price — it is what AutoPay charges every cycle. Anything the owner
+      // added on top (registration / joining fee, or a higher amount typed under "Edit Amount") is a
+      // one-time extra and goes in the registration fee, so it is never repeated.
+      membershipFeeInr: charges.subTotal,
+      registrationFeeInr: draft.paymentAmount > 0 ? Math.max(draft.paymentAmount - charges.subTotal - charges.gstAmount, 0) : charges.registration,
       gstPercent: draft.gstPercent,
       paymentMode: opts.paymentMode,
       paymentMethods: opts.paymentMethods,
@@ -498,6 +501,7 @@ export function AddMemberWizardPage() {
     }
 
     queryClient.invalidateQueries({ queryKey: ["membership-list"] });
+    queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
     queryClient.invalidateQueries({ queryKey: ["membership-summary"] });
     queryClient.invalidateQueries({ queryKey: ["membership-revenue"] });
     queryClient.invalidateQueries({ queryKey: ["membership-dashboard-rows"] });

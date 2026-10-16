@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, GraduationCap, IndianRupee, LayoutGrid, List, MoreVertical, PauseCircle, Search, Users } from "lucide-react";
+import { ChevronRight, GraduationCap, IndianRupee, LayoutGrid, List, MoreVertical, Search, Users, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -21,10 +21,11 @@ import { SKILL_LEVELS } from "@/features/coaching/components/use-program-wizard-
 import { getCoachingService } from "@/services/coaching";
 import { ServiceError } from "@/services/shared/service-error";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
-import type { CoachOption, EnrollmentPaymentStatus, EnrollmentRow, ProgramOption } from "@/features/coaching/types";
+import type { CoachOption, EnrollmentPaymentStatus, EnrollmentRow, ProgramOption, StudentCardStats } from "@/features/coaching/types";
 import {
   EmptyState,
   ErrorState,
+  money,
   Pagination,
   TableSkeleton,
   enrollmentStatusBadge,
@@ -71,7 +72,9 @@ export function CoachingStudentsPage() {
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
   const [coaches, setCoaches] = useState<CoachOption[]>([]);
 
-  const [kpis, setKpis] = useState<{ total: number; active: number; inactive: number; pendingPayment: number } | null>(null);
+  const [kpis, setKpis] = useState<StudentCardStats | null>(null);
+  // The cards read a database function (migration 0123); if it is missing they show dashes, not a spinner forever.
+  const [kpisFailed, setKpisFailed] = useState(false);
 
   const canManage = perms?.can("COACHING_MANAGE_ENROLLMENTS") ?? false;
 
@@ -90,17 +93,10 @@ export function CoachingStudentsPage() {
   const loadKpis = useCallback(async () => {
     if (!facilityId) return;
     try {
-      const [totalPage, activePage] = await Promise.all([
-        getCoachingService().listEnrollments({ facilityId, limit: 1 }),
-        getCoachingService().listEnrollments({ facilityId, filters: { status: "ACTIVE" }, limit: 1 }),
-      ]);
-      // Payment Pending needs a real per-row status, not just a count — page through active
-      // enrollments (bounded) to count PENDING/PARTIAL rather than adding a new aggregate RPC.
-      const activeRows = await getCoachingService().listEnrollments({ facilityId, filters: { status: "ACTIVE" }, limit: 200 });
-      const pendingPayment = activeRows.enrollments.filter((e) => e.paymentStatus === "PENDING" || e.paymentStatus === "PARTIAL").length;
-      setKpis({ total: totalPage.totalCount, active: activePage.totalCount, inactive: totalPage.totalCount - activePage.totalCount, pendingPayment });
+      setKpis(await getCoachingService().getStudentCardStats(facilityId));
     } catch {
       setKpis(null);
+      setKpisFailed(true);
     }
   }, [facilityId]);
 
@@ -165,14 +161,14 @@ export function CoachingStudentsPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {!kpis ? (
+        {!kpis && !kpisFailed ? (
           Array.from({ length: 4 }).map((_, i) => <MembershipStatCardSkeleton key={i} compact />)
         ) : (
           <>
-            <MembershipStatCard icon={Users} iconBg="bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-400" value={String(kpis.total)} label="Total Students" index={0} compact />
-            <MembershipStatCard icon={GraduationCap} iconBg="bg-success/15" iconColor="text-success" value={String(kpis.active)} label="Active Students" index={1} compact />
-            <MembershipStatCard icon={PauseCircle} iconBg="bg-warning/15" iconColor="text-warning" value={String(kpis.inactive)} label="Inactive Students" index={2} compact />
-            <MembershipStatCard icon={IndianRupee} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" value={String(kpis.pendingPayment)} label="Pending Payment" index={3} compact />
+            <MembershipStatCard icon={Users} iconBg="bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-400" value={kpis ? String(kpis.totalStudents) : "—"} label="Total Students" sub="All student records" index={0} compact />
+            <MembershipStatCard icon={GraduationCap} iconBg="bg-success/15" iconColor="text-success" value={kpis ? String(kpis.enrolledStudents) : "—"} label="Enrolled Students" sub="Currently enrolled" index={1} compact />
+            <MembershipStatCard icon={Wallet} iconBg="bg-warning/15" iconColor="text-warning" value={kpis ? money(kpis.revenueMinor) : "—"} label="Revenue Collected" sub="This month" index={2} compact />
+            <MembershipStatCard icon={IndianRupee} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" value={kpis ? money(kpis.pendingMinor) : "—"} label="Payments Pending" sub="Needs follow-up" index={3} compact />
           </>
         )}
       </div>

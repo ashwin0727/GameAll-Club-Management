@@ -18,6 +18,7 @@ import type {
   CoachingEvent,
   CoachingInsights,
   CoachingOverview,
+  StudentCardStats,
   CoachingReports,
   CreateEnrollmentInput,
   CreateProgramInput,
@@ -114,6 +115,17 @@ export class SupabaseCoachingService {
       if (!totalError && total !== null && total !== undefined) overview.kpis.revenueTotalMinor = Number(total);
     } catch {
       // leave it undefined
+    }
+    // Total Coaches + this month's Coaching Expense (migration 0121). Missing leaves both undefined (a dash).
+    try {
+      const { data: stats, error: statsError } = await this.supabase.rpc("get_coaching_card_stats" as never, { p_facility_id: facilityId } as never);
+      if (!statsError && stats) {
+        const j = stats as unknown as { totalCoaches?: number; coachingExpenseMinor?: number };
+        overview.kpis.totalCoaches = Number(j.totalCoaches ?? 0);
+        overview.kpis.coachingExpenseMinor = Number(j.coachingExpenseMinor ?? 0);
+      }
+    } catch {
+      // leave both undefined
     }
     return overview;
   }
@@ -356,10 +368,35 @@ export class SupabaseCoachingService {
     };
   }
 
+  /** Students page cards (migration 0123). Throws when the function is missing so the page can show dashes. */
+  async getStudentCardStats(facilityId: string): Promise<StudentCardStats> {
+    const { data, error } = await this.supabase.rpc("get_student_card_stats" as never, { p_facility_id: facilityId } as never);
+    if (error || !data) throw mapError(error);
+    const j = data as unknown as StudentCardStats;
+    return {
+      totalStudents: Number(j.totalStudents ?? 0),
+      enrolledStudents: Number(j.enrolledStudents ?? 0),
+      revenueMinor: Number(j.revenueMinor ?? 0),
+      pendingMinor: Number(j.pendingMinor ?? 0),
+    };
+  }
+
   async getProgramInsights(facilityId: string): Promise<ProgramInsights> {
     const { data, error } = await this.supabase.rpc("get_program_insights", { p_facility_id: facilityId });
     if (error || !data) throw mapError(error);
-    return data as unknown as ProgramInsights;
+    const insights = data as unknown as ProgramInsights;
+    // Active Programs + Available Seats (migration 0122). A missing function leaves both undefined (a dash).
+    try {
+      const { data: stats, error: statsError } = await this.supabase.rpc("get_program_card_stats" as never, { p_facility_id: facilityId } as never);
+      if (!statsError && stats) {
+        const j = stats as unknown as { activePrograms?: number; availableSeats?: number };
+        insights.activePrograms = Number(j.activePrograms ?? 0);
+        insights.availableSeats = Number(j.availableSeats ?? 0);
+      }
+    } catch {
+      // leave both undefined
+    }
+    return insights;
   }
 
   async getProgram(programId: string): Promise<ProgramDetail> {

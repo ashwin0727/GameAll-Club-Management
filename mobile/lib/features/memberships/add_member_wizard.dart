@@ -301,3 +301,75 @@ List<String> addMemberPlanFeatures(MembershipPlan plan, String billingInterval) 
   if (m != null) return (code: m.group(1)!, number: m.group(2)!.replaceAll(RegExp(r'\D'), ''));
   return (code: '+91', number: stored.replaceAll(RegExp(r'\D'), ''));
 }
+
+// ── Billing periods ──────────────────────────────────────────────────────
+
+/// Whole months in a billing period: 30 → 1, 90 → 3, 180 → 6, 365 → 12. Null for a custom length under
+/// four weeks, which stays a plain number of days.
+int? billingPeriodMonths(int durationDays) => durationDays >= 28 ? ((durationDays / 30).round()).clamp(1, 1 << 30) : null;
+
+/// A period starting on [from], ending where the next one begins: the same day next month (14 Oct → 14 Nov).
+/// Month ends clamp the way Razorpay and Postgres do (31 Jan + 1 month = 28 Feb).
+DateTime addBillingPeriod(DateTime from, int durationDays) {
+  final months = billingPeriodMonths(durationDays);
+  if (months == null) return DateTime(from.year, from.month, from.day + durationDays);
+  final total = from.month - 1 + months;
+  final year = from.year + total ~/ 12;
+  final month = total % 12 + 1;
+  final lastDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, from.day > lastDay ? lastDay : from.day);
+}
+
+/// The last day of the first period — the "Plan End Date" shown while a membership is being set up.
+DateTime periodEndDate(DateTime start, int durationDays) {
+  final next = addBillingPeriod(start, durationDays);
+  return DateTime(next.year, next.month, next.day - 1);
+}
+
+/// What is saved as the membership fee, registration fee: the fee is ALWAYS the plan's price (it is what
+/// AutoPay charges every cycle); anything on top — the registration / joining fee, or a higher amount typed
+/// under "Edit Amount" — is a one-time extra in the registration fee, so it is never repeated.
+({int feeInr, int registrationInr}) membershipFeeSplit({
+  required int planPriceInr,
+  required int gstAmountInr,
+  required int registrationInr,
+  required int paymentAmountInr,
+}) =>
+    (
+      feeInr: planPriceInr,
+      registrationInr: paymentAmountInr > 0 ? (paymentAmountInr - planPriceInr - gstAmountInr).clamp(0, 1 << 30) : registrationInr,
+    );
+
+/// How the member's AutoPay is doing, in words an owner can act on.
+({String label, String detail}) autoPayStatusLabel(String status) => switch (status) {
+      'created' => (label: 'Awaiting authorisation', detail: "The member hasn't approved the payment link yet. Charging starts once they do."),
+      'authenticated' => (label: 'Authorised', detail: 'The member approved AutoPay; the first charge is being processed.'),
+      'active' => (label: 'Active', detail: 'Charged automatically each cycle on the same day of the month.'),
+      'pending' => (label: 'Payment failed — retrying', detail: 'The last charge failed. Razorpay is retrying; the member may need to check their account.'),
+      'halted' => (label: 'Stopped — payment failed', detail: 'Retries ran out. The member must authorise again or pay another way.'),
+      'cancelled' => (label: 'Cancelled', detail: 'AutoPay was stopped. The membership runs to its paid-until date.'),
+      'completed' => (label: 'Completed', detail: 'AutoPay ran its full course.'),
+      _ => (label: status, detail: ''),
+    };
+
+/// "every month", "every 3 months", "every year".
+String autoPayCadence(int? intervalMonths) {
+  if (intervalMonths == null || intervalMonths <= 1) return 'every month';
+  if (intervalMonths == 12) return 'every year';
+  if (intervalMonths % 12 == 0) return 'every ${intervalMonths ~/ 12} years';
+  return 'every $intervalMonths months';
+}
+
+/// A subscription that has already collected a charge is active, whatever the last event said — Razorpay can
+/// deliver "authenticated" after "charged", and older rows were left on the earlier status.
+String effectiveAutoPayStatus(String status, int chargeCount) =>
+    (status == 'authenticated' || status == 'created') && chargeCount > 0 ? 'active' : status;
+
+/// The date the next AutoPay charge is due: shown whenever AutoPay is running — charging, retrying, or
+/// authorised with the first charge already collected. Razorpay's own date when we have it, else the
+/// membership's next payment date. Null before the first charge and once AutoPay has stopped.
+DateTime? autoPayNextCharge({required String status, required int chargeCount, required DateTime? nextChargeDate, required DateTime membershipEndDate}) {
+  final s = effectiveAutoPayStatus(status, chargeCount);
+  if (s != 'active' && s != 'pending') return null;
+  return nextChargeDate ?? membershipEndDate;
+}

@@ -529,6 +529,10 @@ export interface Database {
           charge_count: number;
           current_start: string | null;
           current_end: string | null;
+          /** Months per billing cycle (1, 3, 6, 12) — the plan's interval. */
+          interval_months: number | null;
+          /** The one-time extras (registration fee, GST) taken with the first payment. */
+          one_time_inr: number;
           created_at: string;
           updated_at: string;
         };
@@ -2812,6 +2816,8 @@ export interface Database {
           p_amount_inr: number;
           p_short_url?: string | null;
           p_razorpay_customer_id?: string | null;
+          p_interval_months?: number | null;
+          p_one_time_inr?: number;
         };
         Returns: Database["public"]["Tables"]["membership_subscriptions"]["Row"];
       };

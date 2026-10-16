@@ -179,6 +179,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
     }
     queryClient.invalidateQueries({ queryKey: ["membership-plans-all"] });
     queryClient.invalidateQueries({ queryKey: ["membership-list"] });
+    queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
     queryClient.invalidateQueries({ queryKey: ["membership-dashboard-rows"] });
   }
   function refreshSlots() {

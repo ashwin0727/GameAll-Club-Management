@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exception.dart';
-import '../../features/coaching/coaching_hub.dart' show todaysActiveCount;
+import '../../features/coaching/coaching_hub.dart' show ProgramCardStats, StudentCardStats, todaysActiveCount;
 import '../models/coaching.dart';
 
 /// Coaching Management — mirrors src/services/coaching/supabase-coaching.service.ts.
@@ -31,6 +31,24 @@ class CoachingRepository {
   Map<String, dynamic> _obj(dynamic data) => (data as Map).cast<String, dynamic>();
 
   // ── Overview / reports ──────────────────────────────────────────────────
+  /// Programs tab cards (migration 0122). Null when the function is not there yet — the tab shows dashes.
+  Future<ProgramCardStats?> getProgramCardStats(String facilityId) async {
+    try {
+      return ProgramCardStats.fromJson(_obj(await _client.rpc('get_program_card_stats', params: {'p_facility_id': facilityId})));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Students tab cards (migration 0123). Null when the function is not there yet — the tab shows dashes.
+  Future<StudentCardStats?> getStudentCardStats(String facilityId) async {
+    try {
+      return StudentCardStats.fromJson(_obj(await _client.rpc('get_student_card_stats', params: {'p_facility_id': facilityId})));
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<CoachingOverview> getOverview(String facilityId) async {
     try {
       final data = await _client.rpc('get_coaching_overview', params: {'p_facility_id': facilityId});
@@ -55,6 +73,16 @@ class CoachingRepository {
         if (total is num) overview = overview.withRevenueTotal(total.toInt());
       } catch (_) {
         // leave it null
+      }
+      // Total Coaches + this month's Coaching Expense (migration 0121). Missing leaves both null (a dash).
+      try {
+        final stats = _obj(await _client.rpc('get_coaching_card_stats', params: {'p_facility_id': facilityId}));
+        overview = overview.withCardStats(
+          totalCoaches: (stats['totalCoaches'] as num?)?.toInt(),
+          coachingExpenseMinor: (stats['coachingExpenseMinor'] as num?)?.toInt(),
+        );
+      } catch (_) {
+        // leave both null
       }
       return overview;
     } catch (e) {
@@ -139,8 +167,13 @@ class CoachingRepository {
     String? bio,
     int? hourlyRateMinor,
     CoachStatus status = CoachStatus.active,
+    List<String>? sportIds,
+    List<String>? expertiseLevels,
+    int? defaultSessionDurationMinutes,
+    String? dateOfBirth,
   }) async {
     try {
+      // Every parameter is sent (like the web does), so the call can only ever match the one add_coach.
       final row = await _client.rpc('add_coach', params: {
         'p_facility_id': facilityId,
         'p_user_id': userId,
@@ -151,6 +184,10 @@ class CoachingRepository {
         'p_hourly_rate_minor': hourlyRateMinor,
         'p_status': status.toJson(),
         'p_joined_on': null,
+        'p_sport_ids': sportIds,
+        'p_expertise_levels': expertiseLevels,
+        'p_default_session_duration_minutes': defaultSessionDurationMinutes,
+        'p_date_of_birth': dateOfBirth,
       });
       return _obj(row)['id'] as String;
     } catch (e) {

@@ -174,6 +174,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: 'Membership Schedule',
                   onTap: () => context.push(AppRoutes.membershipSchedule)),
               _NavRow(
+                  icon: Icons.style_outlined,
+                  label: 'Membership Plan',
+                  // The Plans tab of the Memberships hub (web: /memberships/v1/plans).
+                  onTap: () => context.push('${AppRoutes.memberships}?tab=plans')),
+              _NavRow(
                   icon: Icons.event_repeat_outlined,
                   label: 'Membership Sessions',
                   onTap: () => context.push(AppRoutes.membershipSessions)),

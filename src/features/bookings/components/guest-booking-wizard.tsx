@@ -15,9 +15,10 @@ import { getBookingService } from "@/services/bookings";
 import { getPricingService } from "@/services/pricing";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { computeAvailableSlots } from "@/features/bookings/slots";
+import { hoursBetween, mergeRuns, toggleSlot } from "@/features/bookings/slot-selection";
 import { formatCurrency } from "@/features/pricing/money";
-import { usePaymentCheckout } from "@/features/payments/use-payment-checkout";
-import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
+import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
+import { SelectField } from "@/components/shared/select-field";
 import { ServiceError } from "@/services/shared/service-error";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { MembershipSessionSlot } from "@/features/membership-sessions/types";
@@ -53,6 +54,8 @@ function isMembershipBlocked(s: TimeSlot, membershipSlots: MembershipSessionSlot
 
 const selectCls =
   "h-11 w-full appearance-none rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+// SelectField draws its own list (rounded, themed) instead of the browser's square blue one.
+const selectFieldCls = "h-11 rounded-lg border border-input bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-primary/30";
 
 export function GuestBookingWizard() {
   const router = useRouter();
@@ -67,7 +70,8 @@ export function GuestBookingWizard() {
   const [facilitySportId, setFacilitySportId] = useState("");
   const [courtId, setCourtId] = useState("");
   const [date, setDate] = useState(() => new Date());
-  const [slot, setSlot] = useState<TimeSlot | null>(null);
+  // Any number of slots can be picked; touching ones become one booking (see mergeRuns).
+  const [selected, setSelected] = useState<TimeSlot[]>([]);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [membershipSlots, setMembershipSlots] = useState<MembershipSessionSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -80,12 +84,14 @@ export function GuestBookingWizard() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [notes, setNotes] = useState("");
 
-  const [priceMinor, setPriceMinor] = useState<number | null>(null);
+  // Hourly price resolved per selected slot (it can differ by time of day), keyed by the slot's start.
+  const [priceByStart, setPriceByStart] = useState<Record<string, number | null>>({});
+  const [bookedRuns, setBookedRuns] = useState<{ startTime: string; endTime: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [booked, setBooked] = useState<Booking | null>(null);
-  const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
-  const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
+  // "Pay Online": the booking exists and a payment link is being shared with the player, who pays on their own phone.
+  const [linkBooking, setLinkBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (facilityLoading) return;
@@ -155,112 +161,94 @@ export function GuestBookingWizard() {
     };
   }, [facility, courtId, date]);
 
-  // Resolve the hourly price for the chosen slot.
+  // Resolve the hourly price for every chosen slot.
   useEffect(() => {
-    if (!facility || !facilitySportId || !slot) {
-      setPriceMinor(null);
+    if (!facility || !facilitySportId || selected.length === 0) {
+      setPriceByStart({});
       return;
     }
     let cancelled = false;
-    getPricingService()
-      .resolvePrice(facility.id, facilitySportId, courtId || null, date, localHHMM(slot.startTime))
-      .then((rule) => !cancelled && setPriceMinor(rule?.amountMinor ?? null))
-      .catch(() => !cancelled && setPriceMinor(null));
+    Promise.all(
+      selected.map((sl) =>
+        getPricingService()
+          .resolvePrice(facility.id, facilitySportId, courtId || null, date, localHHMM(sl.startTime))
+          .then((rule) => [sl.startTime, rule?.amountMinor ?? null] as const)
+          .catch(() => [sl.startTime, null] as const),
+      ),
+    ).then((pairs) => !cancelled && setPriceByStart(Object.fromEntries(pairs)));
     return () => {
       cancelled = true;
     };
-  }, [facility, facilitySportId, courtId, date, slot]);
+  }, [facility, facilitySportId, courtId, date, selected]);
 
   const currency = "INR";
-  const durationMs = slot ? new Date(slot.endTime).getTime() - new Date(slot.startTime).getTime() : 0;
-  const hours = durationMs / 3_600_000;
-  const totalMinor = priceMinor == null ? null : Math.round(priceMinor * hours);
+  const runs = useMemo(() => mergeRuns(selected), [selected]);
+  const hours = selected.reduce((sum, sl) => sum + hoursBetween(sl.startTime, sl.endTime), 0);
+  // The total is the sum of each slot's own hourly price; unknown if any slot has no price rule.
+  const priced = selected.length > 0 && selected.every((sl) => typeof priceByStart[sl.startTime] === "number");
+  const totalMinor = priced
+    ? Math.round(selected.reduce((sum, sl) => sum + (priceByStart[sl.startTime] as number) * hoursBetween(sl.startTime, sl.endTime), 0))
+    : null;
+  const priceMinor = totalMinor != null && hours > 0 ? Math.round(totalMinor / hours) : null;
+  const timeLabel = runs.length === 0 ? "—" : runs.map((r) => `${hhmm(r.startTime)} – ${hhmm(r.endTime)}`).join(", ");
+  const hoursLabel = `${hours} Hour${hours === 1 ? "" : "s"}`;
+  // Online payment settles one booking; several separate time ranges are paid at the venue.
+  const onlineAllowed = runs.length <= 1;
 
   const canNext = useCallback(() => {
-    if (step === 0) return !!courtId && !!slot;
+    if (step === 0) return !!courtId && selected.length > 0;
     if (step === 1) return guestName.trim().length >= 2 && guestPhone.trim().length >= 6;
     return true;
-  }, [step, courtId, slot, guestName, guestPhone]);
+  }, [step, courtId, selected, guestName, guestPhone]);
 
   async function confirm() {
-    if (!facility || !courtId || !slot) return;
+    if (!facility || !courtId || runs.length === 0) return;
     setSubmitting(true);
     setError(null);
+    const online = payMode === "online" && onlineAllowed;
+    const created: Booking[] = [];
     try {
       const extra = guestEmail.trim() ? `Email: ${guestEmail.trim()}` : "";
       const finalNotes = [notes.trim(), extra].filter(Boolean).join(" · ") || null;
-      const b = await getBookingService().createBooking({
-        facilityId: facility.id,
-        courtId,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        customerType: "GUEST",
-        guestName: guestName.trim(),
-        guestPhone: guestPhone.trim() || null,
-        notes: finalNotes,
-        paymentStatus: "PENDING",
-        partySize: Math.max(1, Number(players) || 1),
-        paymentMethod: payMode === "online" ? "Online (Razorpay)" : paymentMethod,
-      });
-
-      if (payMode === "online") {
-        setSubmitting(false);
-        setPaymentState("processing");
-        const result = await startCheckout(
-          { facilityId: facility.id, sourceType: "GUEST_BOOKING", bookingId: b.id },
-          {
-            description: `${sportName} · ${court?.name ?? "Court"}`,
-            prefill: { name: guestName.trim(), contact: guestPhone.trim() || undefined, email: guestEmail.trim() || undefined },
-          },
+      // One booking per continuous range, created one after another so a clash on a later range stops there.
+      for (const run of runs) {
+        created.push(
+          await getBookingService().createBooking({
+            facilityId: facility.id,
+            courtId,
+            startTime: run.startTime,
+            endTime: run.endTime,
+            customerType: "GUEST",
+            guestName: guestName.trim(),
+            guestPhone: guestPhone.trim() || null,
+            notes: finalNotes,
+            paymentStatus: "PENDING",
+            partySize: Math.max(1, Number(players) || 1),
+            paymentMethod: online ? "Online (Razorpay)" : paymentMethod,
+          }),
         );
-        if (result.status === "cancelled") {
-          setPaymentState(null);
-          return;
-        }
-        setPaymentState(result);
-        if (result.status === "settled") {
-          setBooked({ ...b, status: "confirmed", paymentStatus: "PAID" });
-        }
+      }
+      const b = created[0]!;
+
+      if (online) {
+        // The player is not here: no checkout opens on this screen. The panel makes the payment link for this
+        // booking (amount taken from the booking on the server) and the player pays from it.
+        setLinkBooking(b);
+        setBookedRuns(runs.map((r) => ({ startTime: r.startTime, endTime: r.endTime })));
         return;
       }
 
       setBooked(b);
+      setBookedRuns(created.map((x) => ({ startTime: x.startTime, endTime: x.endTime })));
     } catch (err) {
-      setError(err instanceof ServiceError ? err.message : "Unable to create this booking.");
+      const msg = err instanceof ServiceError ? err.message : "Unable to create this booking.";
+      setError(
+        created.length > 0
+          ? `${msg} ${created.length} of ${runs.length} time ranges were already booked (${created.map((x) => `${hhmm(x.startTime)} – ${hhmm(x.endTime)}`).join(", ")}) — check the calendar.`
+          : msg,
+      );
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function onCheckAgain() {
-    if (!paymentState || typeof paymentState === "string" || !("paymentOrderId" in paymentState)) return;
-    const result = await checkAgain(paymentState.paymentOrderId);
-    setPaymentState(result);
-    if (result.status === "settled" && booked == null && slot && court) {
-      setBooked({
-        id: "",
-        facilityId: facility!.id,
-        courtId,
-        facilitySportId: null,
-        memberId: null,
-        customerType: "GUEST",
-        guestPlayerId: null,
-        guestName: guestName.trim(),
-        guestPhone: guestPhone.trim() || null,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        status: "confirmed",
-        amountMinor: totalMinor,
-        currency,
-        paymentStatus: "PAID",
-        cancellationReason: null,
-        notes: null,
-        partySize: Math.max(1, Number(players) || 1),
-        paymentMethod: "Online (Razorpay)",
-        createdBy: "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
     }
   }
 
@@ -275,7 +263,8 @@ export function GuestBookingWizard() {
         </span>
         <h1 className="text-xl font-semibold">Booking confirmed</h1>
         <p className="text-sm text-muted-foreground">
-          {sportName} · {court?.name} · {fmtDateLong(date)} · {hhmm(booked.startTime)} – {hhmm(booked.endTime)}
+          {sportName} · {court?.name} · {fmtDateLong(date)} ·{" "}
+          {(bookedRuns.length > 0 ? bookedRuns : [booked]).map((r) => `${hhmm(r.startTime)} – ${hhmm(r.endTime)}`).join(", ")}
         </p>
         <p className="text-sm text-muted-foreground">
           {booked.paymentStatus === "PAID"
@@ -291,13 +280,13 @@ export function GuestBookingWizard() {
             onClick={() => {
               setBooked(null);
               setStep(0);
-              setSlot(null);
+              setSelected([]);
               setGuestName("");
               setGuestPhone("");
               setGuestEmail("");
               setNotes("");
               setPayMode("offline");
-              setPaymentState(null);
+              setLinkBooking(null);
             }}
           >
             New Booking
@@ -345,32 +334,28 @@ export function GuestBookingWizard() {
           {step === 0 && (
             <div className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-3">
-                <label className="space-y-1">
+                <div className="space-y-1">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Trophy className="h-3.5 w-3.5" /> Sport</span>
-                  <select
+                  <SelectField
                     value={facilitySportId}
-                    onChange={(e) => {
-                      setFacilitySportId(e.target.value);
+                    onValueChange={(v) => {
+                      setFacilitySportId(v);
                       setCourtId("");
-                      setSlot(null);
+                      setSelected([]);
                     }}
-                    className={selectCls}
-                  >
-                    {facilitySports.map((fs) => {
-                      const s = sports.find((sp) => sp.id === fs.sportId);
-                      return (
-                        <option key={fs.id} value={fs.id}>
-                          {fs.customSportName ?? s?.name ?? "Sport"}
-                        </option>
-                      );
+                    ariaLabel="Sport"
+                    className={selectFieldCls}
+                    options={facilitySports.map((fs) => {
+                      const sp = sports.find((x) => x.id === fs.sportId);
+                      return { value: fs.id, label: fs.customSportName ?? sp?.name ?? "Sport" };
                     })}
-                  </select>
-                </label>
+                  />
+                </div>
                 <label className="space-y-1">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> Location</span>
-                  <select value={facility.id} disabled className={cn(selectCls, "opacity-70")}>
-                    <option value={facility.id}>{facility.name}</option>
-                  </select>
+                  <div className={cn(selectFieldCls, "flex w-full items-center opacity-70")} aria-label="Location">
+                    <span className="truncate">{facility.name}</span>
+                  </div>
                 </label>
                 <label className="space-y-1">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Date</span>
@@ -382,7 +367,7 @@ export function GuestBookingWizard() {
                       const [y, m, d] = e.target.value.split("-").map(Number);
                       if (y && m && d) {
                         setDate(new Date(y, m - 1, d));
-                        setSlot(null);
+                        setSelected([]);
                       }
                     }}
                     className={selectCls}
@@ -404,7 +389,7 @@ export function GuestBookingWizard() {
                           type="button"
                           onClick={() => {
                             setCourtId(c.id);
-                            setSlot(null);
+                            setSelected([]);
                           }}
                           className={cn(
                             "stat-enter relative overflow-hidden rounded-lg border p-0 text-left transition hover:-translate-y-0.5",
@@ -433,7 +418,10 @@ export function GuestBookingWizard() {
 
               {courtId && (
                 <div>
-                  <p className="mb-2 text-sm font-semibold">Select Time Slot</p>
+                  <p className="mb-2 text-sm font-semibold">
+                    Select Time Slot{selected.length > 0 ? ` (${selected.length} selected)` : ""}
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">Tap several to book more than one hour.</span>
+                  </p>
                   {slotsLoading ? (
                     <p className="text-sm text-muted-foreground">Loading availability…</p>
                   ) : slots.length === 0 ? (
@@ -441,7 +429,7 @@ export function GuestBookingWizard() {
                   ) : (
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {slots.map((s, i) => {
-                        const active = slot?.startTime === s.startTime;
+                        const active = selected.some((x) => x.startTime === s.startTime);
                         const blocked = isMembershipBlocked(s, membershipSlots);
                         const bookable = s.available && !blocked;
                         const label = blocked ? "Blocked" : s.available ? "Available" : "Booked";
@@ -450,7 +438,8 @@ export function GuestBookingWizard() {
                             key={s.startTime}
                             type="button"
                             disabled={!bookable}
-                            onClick={() => setSlot(s)}
+                            onClick={() => setSelected((cur) => toggleSlot(cur, s))}
+                            aria-pressed={active}
                             style={{ "--stat-delay": `${120 + i * 22}ms` } as React.CSSProperties}
                             className={cn(
                               "stat-enter rounded-lg border px-3 py-2 text-center transition",
@@ -484,13 +473,16 @@ export function GuestBookingWizard() {
                 </div>
               )}
 
-              {slot && (
-                <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-foreground">
+              {selected.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-foreground">
                   <Clock className="h-4 w-4 text-success" />
                   Selected Time: <span className="font-medium">{fmtDateLong(date)}</span> ·{" "}
                   <span className="font-medium text-success">
-                    {hhmm(slot.startTime)} – {hhmm(slot.endTime)} ({hours} Hour{hours === 1 ? "" : "s"})
+                    {timeLabel} ({hoursLabel})
                   </span>
+                  <button type="button" className="ml-auto text-xs text-muted-foreground underline" onClick={() => setSelected([])}>
+                    Clear
+                  </button>
                 </div>
               )}
             </div>
@@ -532,8 +524,8 @@ export function GuestBookingWizard() {
                 <Row label="Location" value={facility.name} />
                 <Row label="Court" value={court?.name ?? "—"} />
                 <Row label="Date" value={fmtDateLong(date)} />
-                <Row label="Time" value={slot ? `${hhmm(slot.startTime)} – ${hhmm(slot.endTime)}` : "—"} />
-                <Row label="Duration" value={`${hours} Hour${hours === 1 ? "" : "s"}`} />
+                <Row label="Time" value={timeLabel} />
+                <Row label="Duration" value={hoursLabel} />
                 <Row label="Players" value={players} />
                 {notes && <Row label="Notes" value={notes} />}
                 <Row label="Total" value={totalMinor == null ? "—" : formatCurrency(totalMinor, currency)} />
@@ -545,18 +537,19 @@ export function GuestBookingWizard() {
             <div className="space-y-4">
               <p className="text-sm font-semibold">Payment</p>
 
-              {paymentState ? (
-                <PaymentStatusPanel
-                  state={paymentState}
-                  settledLabel="Booking Confirmed"
-                  resourceLabel="booking"
-                  isCheckingAgain={isPaying}
-                  onCheckAgain={onCheckAgain}
-                  onRetry={() => {
-                    setPaymentState(null);
-                    void confirm();
-                  }}
-                />
+              {linkBooking ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Booking created for {sportName} · {court?.name} · {fmtDateLong(date)} · {timeLabel}. It is confirmed once the payment is received.
+                  </p>
+                  <BookingPaymentLinkPanel
+                    facilityId={facility.id}
+                    bookingId={linkBooking.id}
+                    guestName={guestName}
+                    guestPhone={guestPhone.trim() || null}
+                    description={`${sportName} · ${court?.name ?? "Court"} · ${fmtDateLong(date)}, ${timeLabel}`}
+                  />
+                </div>
               ) : (
                 <>
                   <div className="space-y-2">
@@ -581,28 +574,29 @@ export function GuestBookingWizard() {
                         payMode === "online" ? "border-primary bg-primary/5" : "border-border",
                       )}
                     >
-                      <input type="radio" name="pay-mode" className="mt-0.5" checked={payMode === "online"} onChange={() => setPayMode("online")} />
+                      <input type="radio" name="pay-mode" className="mt-0.5" checked={payMode === "online" && onlineAllowed} disabled={!onlineAllowed} onChange={() => setPayMode("online")} />
                       <span>
-                        <span className="font-medium">Pay online now</span>
+                        <span className="font-medium">Pay Online</span>
                         <span className="block text-xs text-muted-foreground">
-                          Collect {totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} now via Razorpay (UPI / card / net
-                          banking). The booking is confirmed as Paid once the payment settles.
+                          {onlineAllowed
+                            ? `Get a payment link for ${totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} to share with the player. They pay on their own phone (UPI / card / net banking) and the booking is confirmed as Paid once the payment goes through.`
+                            : "Online payment covers one continuous time range. You picked separate time ranges, so each is booked and paid at the venue."}
                         </span>
                       </span>
                     </label>
                   </div>
 
-                  {payMode === "offline" && (
-                    <label className="block max-w-xs space-y-1 text-sm">
+                  {(payMode === "offline" || !onlineAllowed) && (
+                    <div className="block max-w-xs space-y-1 text-sm">
                       <span className="text-xs text-muted-foreground">Payment method (for your records)</span>
-                      <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className={selectCls}>
-                        {["Cash", "UPI", "Card", "Bank Transfer", "Other"].map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                      <SelectField
+                        value={paymentMethod}
+                        onValueChange={setPaymentMethod}
+                        ariaLabel="Payment method"
+                        className={selectFieldCls}
+                        options={["Cash", "UPI", "Card", "Bank Transfer", "Other"].map((m) => ({ value: m, label: m }))}
+                      />
+                    </div>
                   )}
                   {error && <p className="text-sm text-destructive">{error}</p>}
                 </>
@@ -622,8 +616,8 @@ export function GuestBookingWizard() {
             <SummaryRow icon={MapPin} label="Location" value={facility.name} />
             <SummaryRow icon={MapPin} label="Court" value={court?.name ?? "—"} />
             <SummaryRow icon={CalendarDays} label="Date" value={fmtDateLong(date)} />
-            <SummaryRow icon={Clock} label="Time" value={slot ? `${hhmm(slot.startTime)} – ${hhmm(slot.endTime)}` : "—"} />
-            <SummaryRow icon={Clock} label="Duration" value={slot ? `${hours} Hour${hours === 1 ? "" : "s"}` : "—"} />
+            <SummaryRow icon={Clock} label="Time" value={timeLabel} />
+            <SummaryRow icon={Clock} label="Duration" value={selected.length > 0 ? hoursLabel : "—"} />
           </dl>
           <div className="mt-4 border-t border-border pt-3">
             <p className="text-sm font-semibold">Price Details</p>
@@ -639,9 +633,9 @@ export function GuestBookingWizard() {
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-secondary/40 p-2.5 text-xs">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <div>
-              <p className="font-medium">{payMode === "online" ? "Pay online now" : "Pay at the venue"}</p>
+              <p className="font-medium">{payMode === "online" ? "Pay online" : "Pay at the venue"}</p>
               <p className="text-muted-foreground">
-                {payMode === "online" ? "Secure Razorpay checkout — UPI, card, net banking" : "Payment is collected offline"}
+                {payMode === "online" ? "A secure Razorpay payment link is sent to the player" : "Payment is collected offline"}
               </p>
             </div>
           </div>
@@ -655,7 +649,7 @@ export function GuestBookingWizard() {
             Cancel
           </Button>
         ) : (
-          <Button type="button" variant="outline" disabled={isPaying} onClick={() => setStep((s) => s - 1)}>
+          <Button type="button" variant="outline" disabled={linkBooking != null} onClick={() => setStep((s) => s - 1)}>
             Back
           </Button>
         )}
@@ -663,17 +657,13 @@ export function GuestBookingWizard() {
           <Button type="button" onClick={() => setStep((s) => s + 1)} disabled={!canNext()}>
             Next: {STEPS[step + 1]} <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
-        ) : paymentState ? (
+        ) : linkBooking ? (
           <Button type="button" variant="outline" onClick={() => router.push("/calendar")}>
             Go to Calendar
           </Button>
         ) : (
-          <Button type="button" onClick={confirm} disabled={submitting || isPaying}>
-            {submitting || isPaying
-              ? "Processing…"
-              : payMode === "online"
-                ? "Pay & Confirm"
-                : "Confirm Booking"}
+          <Button type="button" onClick={confirm} disabled={submitting}>
+            {submitting ? "Processing…" : payMode === "online" && onlineAllowed ? "Create Payment Link" : "Confirm Booking"}
           </Button>
         )}
       </div>

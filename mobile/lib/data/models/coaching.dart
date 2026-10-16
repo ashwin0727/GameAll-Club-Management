@@ -160,6 +160,8 @@ class CoachingOverview {
     required this.upcomingSessionsCount,
     required this.revenueThisMonthMinor,
     this.revenueTotalMinor,
+    this.totalCoaches,
+    this.coachingExpenseMinor,
     required this.upcomingSessions,
     required this.programs,
     required this.studentsByProgram,
@@ -180,6 +182,12 @@ class CoachingOverview {
 
   /// Everything ever collected for coaching; null until migration 0115 is applied.
   final int? revenueTotalMinor;
+
+  /// All coaches, any status; null until migration 0121 is applied.
+  final int? totalCoaches;
+
+  /// This month's recorded expenses in the "Coaching" category; null until migration 0121 is applied.
+  final int? coachingExpenseMinor;
   final List<UpcomingSession> upcomingSessions;
   final List<OverviewProgram> programs;
   final List<StudentsByProgram> studentsByProgram;
@@ -197,6 +205,8 @@ class CoachingOverview {
         upcomingSessionsCount: upcomingSessionsCount,
         revenueThisMonthMinor: revenueThisMonthMinor,
         revenueTotalMinor: minor,
+        totalCoaches: totalCoaches,
+        coachingExpenseMinor: coachingExpenseMinor,
         upcomingSessions: upcomingSessions,
         programs: programs,
         studentsByProgram: studentsByProgram,
@@ -214,6 +224,28 @@ class CoachingOverview {
         upcomingSessionsCount: upcomingSessionsCount,
         revenueThisMonthMinor: revenueThisMonthMinor,
         revenueTotalMinor: revenueTotalMinor,
+        totalCoaches: totalCoaches,
+        coachingExpenseMinor: coachingExpenseMinor,
+        upcomingSessions: upcomingSessions,
+        programs: programs,
+        studentsByProgram: studentsByProgram,
+        studentGrowth: studentGrowth,
+        recentEnrollments: recentEnrollments,
+      );
+
+  /// The same overview with the Total Coaches / Coaching Expense card figures.
+  CoachingOverview withCardStats({int? totalCoaches, int? coachingExpenseMinor}) => CoachingOverview(
+        activeStudents: activeStudents,
+        activePrograms: activePrograms,
+        activeCoaches: activeCoaches,
+        coachesOnLeave: coachesOnLeave,
+        sessionsThisMonth: sessionsThisMonth,
+        activeSessions: activeSessions,
+        upcomingSessionsCount: upcomingSessionsCount,
+        revenueThisMonthMinor: revenueThisMonthMinor,
+        revenueTotalMinor: revenueTotalMinor,
+        totalCoaches: totalCoaches,
+        coachingExpenseMinor: coachingExpenseMinor,
         upcomingSessions: upcomingSessions,
         programs: programs,
         studentsByProgram: studentsByProgram,
@@ -506,12 +538,21 @@ class CoachDetail {
 }
 
 class CoachCandidate {
-  const CoachCandidate({required this.userId, required this.fullName, this.title});
+  const CoachCandidate({required this.userId, required this.fullName, this.title, this.email, this.phone, this.avatarUrl});
   final String userId;
   final String fullName;
   final String? title;
-  factory CoachCandidate.fromJson(Map<String, dynamic> j) =>
-      CoachCandidate(userId: j['user_id'] as String, fullName: j['full_name'] as String, title: j['title'] as String?);
+  final String? email;
+  final String? phone;
+  final String? avatarUrl;
+  factory CoachCandidate.fromJson(Map<String, dynamic> j) => CoachCandidate(
+        userId: j['user_id'] as String,
+        fullName: j['full_name'] as String,
+        title: j['title'] as String?,
+        email: j['email'] as String?,
+        phone: j['phone'] as String?,
+        avatarUrl: j['avatar_url'] as String?,
+      );
 }
 
 class CoachOption {

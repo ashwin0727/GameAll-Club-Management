@@ -113,7 +113,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
 
   DateTime? get _endDate {
     final days = _detail?.membership.durationDays;
-    return days == null || days <= 0 ? null : DateTime(_startDate.year, _startDate.month, _startDate.day + days - 1);
+    return days == null || days <= 0 ? null : periodEndDate(_startDate, days);
   }
 
   Future<void> _save() async {

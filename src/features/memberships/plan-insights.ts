@@ -1,4 +1,5 @@
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, addMonths, format, parseISO } from "date-fns";
+import type { MembershipBatch } from "@/features/membership-sessions/types";
 import type { MembershipListRow, MembershipPlan } from "@/features/memberships/types";
 
 export type PlanBand = "Monthly" | "3 Months" | "6 Months" | "1 Year" | "Others";
@@ -80,16 +81,26 @@ export interface PlanStats {
   totalPlans: number;
   activePlans: number;
   totalMembers: number;
-  /** What the current roster bills per month, each plan's price spread over its length. */
+  /** What the plans bring in per month when every seat is taken: each plan's monthly price × the capacity of its slots, summed. */
   monthlyRevenueEstInr: number;
 }
 
-export function planStats(plans: MembershipPlan[], rows: MembershipListRow[]): PlanStats {
-  const counts = memberCountByPlan(rows);
-  const monthlyRevenueEstInr = plans.reduce(
-    (sum, p) => sum + monthlyEquivalentInr(p.priceInr, p.durationDays) * (counts.get(p.id) ?? 0),
-    0,
-  );
+/** Seats a plan offers: the capacity of its active slots added up (0 when it reserves none). */
+export function planCapacity(batches: MembershipBatch[], planId: string): number {
+  return batches.filter((b) => b.isActive && b.planId === planId).reduce((sum, b) => sum + Math.max(b.capacity, 0), 0);
+}
+
+/**
+ * Estimated MONTHLY revenue across the plans: each plan's price per month × its seats. A monthly plan priced
+ * ₹1,000 with 8 seats is worth ₹8,000 a month, however many members have joined so far; a 3-month plan at
+ * ₹3,000 counts ₹1,000 a month per seat.
+ */
+export function estimatedMonthlyRevenueInr(plans: MembershipPlan[], batches: MembershipBatch[]): number {
+  return plans.reduce((sum, p) => sum + monthlyEquivalentInr(p.priceInr, p.durationDays) * planCapacity(batches, p.id), 0);
+}
+
+export function planStats(plans: MembershipPlan[], rows: MembershipListRow[], batches: MembershipBatch[] = []): PlanStats {
+  const monthlyRevenueEstInr = estimatedMonthlyRevenueInr(plans, batches);
   return {
     totalPlans: plans.length,
     activePlans: plans.filter((p) => p.isActive).length,
@@ -141,12 +152,28 @@ export function planBadges(plans: MembershipPlan[], rows: MembershipListRow[]): 
 // "31 Jan + 1 month" even means).
 // ─────────────────────────────────────────────────────────────────────────
 
-/** The date the next charge is due — `startDateIso` plus the billing interval, in days. */
-export function nextBillingDate(startDateIso: string, billingIntervalDays: number): string {
-  return format(addDays(parseISO(startDateIso), billingIntervalDays), "yyyy-MM-dd");
+/** Whole months in a billing period: 30 → 1, 90 → 3, 180 → 6, 365 → 12. Null for a custom length under four weeks. */
+export function billingPeriodMonths(durationDays: number): number | null {
+  return durationDays >= 28 ? Math.max(1, Math.round(durationDays / 30)) : null;
 }
 
-/** The [start, end] of the billing period that begins on `startDateIso` — end is inclusive. */
+/** A period that starts on `from`, ending where the next one begins: the same day next month (14 Oct → 14 Nov). */
+export function addBillingPeriod(from: Date, durationDays: number): Date {
+  const months = billingPeriodMonths(durationDays);
+  return months === null ? addDays(from, durationDays) : addMonths(from, months);
+}
+
+/** The date the next charge is due — the same day of the month, one billing interval on (14 Oct → 14 Nov → 14 Dec). */
+export function nextBillingDate(startDateIso: string, billingIntervalDays: number): string {
+  return format(addBillingPeriod(parseISO(startDateIso), billingIntervalDays), "yyyy-MM-dd");
+}
+
+/** The [start, end] of the billing period that begins on `startDateIso` — end is inclusive (the day before the next charge). */
 export function currentBillingPeriod(startDateIso: string, billingIntervalDays: number): { start: string; end: string } {
-  return { start: startDateIso, end: format(addDays(parseISO(startDateIso), billingIntervalDays - 1), "yyyy-MM-dd") };
+  return { start: startDateIso, end: format(addDays(addBillingPeriod(parseISO(startDateIso), billingIntervalDays), -1), "yyyy-MM-dd") };
+}
+
+/** The last day of the first period, as a Date — the "Plan End Date" shown while a membership is being set up. */
+export function periodEndDate(startDateIso: string, billingIntervalDays: number): Date {
+  return addDays(addBillingPeriod(parseISO(startDateIso), billingIntervalDays), -1);
 }

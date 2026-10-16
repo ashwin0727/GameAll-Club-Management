@@ -10,7 +10,7 @@
 // Configure in the Razorpay Dashboard → Settings → Webhooks:
 //   URL: https://<project-ref>.supabase.co/functions/v1/razorpay-webhook
 //   Events: payment.authorized, payment.captured, payment.failed, order.paid,
-//     plus payment_link.paid / .cancelled / .expired (coaching enrollment links)
+//     plus payment_link.paid / .cancelled / .expired (guest-booking and coaching enrollment links)
 //   Secret: a value ONLY known to Razorpay and this function — set it as
 //     `supabase secrets set RAZORPAY_WEBHOOK_SECRET=...`. This is NOT the
 //     same value as RAZORPAY_KEY_SECRET.
@@ -322,14 +322,38 @@ async function processCoachingSubscriptionEvent(
   return true;
 }
 
-// payment_link.paid settles a coaching enrollment's one-time fee;
-// .cancelled / .expired just close the link. Links GameAll didn't create for a
-// coaching enrollment are acknowledged and ignored.
+// payment_link.paid settles the thing the link was made for: a guest booking's "Pay Online" link (through the
+// same apply_payment_verification gate as a checkout payment) or a coaching enrollment's one-time fee;
+// .cancelled / .expired just close the link. Links GameAll didn't create are acknowledged and ignored.
 async function processPaymentLinkEvent(supabase: SupabaseClient, payload: WebhookPayload): Promise<void> {
   const link = payload.payload?.payment_link?.entity;
   if (!link?.id) {
     console.log("[razorpay-webhook] payment_link event carried no link entity", { eventType: payload.event });
     return;
+  }
+
+  // A guest booking's payment link? (apply_booking_payment_link_event answers false when it isn't ours.)
+  {
+    const payment = payload.payload?.payment?.entity;
+    const event = payload.event.replace("payment_link.", "");
+    const { data: handled, error } = await supabase.rpc("apply_booking_payment_link_event", {
+      p_razorpay_payment_link_id: link.id,
+      p_event: event,
+      p_razorpay_order_id: payment?.order_id ?? null,
+      p_razorpay_payment_id: payment?.id ?? null,
+      p_amount_minor: payment?.amount ?? null,
+      p_currency: payment?.currency ?? null,
+    });
+    if (error) {
+      // 23514 = amount/currency/order mismatch or a different payment already recorded: it can never succeed
+      // on retry, so log loudly and acknowledge rather than have Razorpay retry it forever.
+      if (error.code === "23514") {
+        console.error("[razorpay-webhook] booking payment link event rejected", { linkId: link.id, code: error.code, message: error.message });
+        return;
+      }
+      throw new Error(`apply_booking_payment_link_event failed: ${error.message}`);
+    }
+    if (handled) return;
   }
 
   if (payload.event === "payment_link.paid") {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, CheckCircle2, ClipboardList, IndianRupee, Star, UserPlus, Users, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarPlus, CheckCircle2, ClipboardList, IndianRupee, Star, UserPlus, Users, UsersRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -103,7 +103,6 @@ export function CoachingOverviewPage() {
     );
   }
 
-  const totalStudents = data ? data.studentsByProgram.reduce((s, p) => s + p.students, 0) : 0;
 
   return (
     <div className="space-y-4">
@@ -122,40 +121,42 @@ export function CoachingOverviewPage() {
         ) : (
           <>
             <MembershipStatCard
+              icon={Users}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-400"
+              value={data.kpis.totalCoaches === undefined ? "—" : String(data.kpis.totalCoaches)}
+              label="Total Coaches"
+              sub="All coaches"
+              index={0}
+              compact
+            />
+            <MembershipStatCard
               icon={UsersRound}
               iconBg="bg-success/15"
               iconColor="text-success"
               value={String(data.kpis.activeCoaches)}
               label="Active Coaches"
-              sub={data.kpis.coachesOnLeave > 0 ? `${data.kpis.coachesOnLeave} on leave` : undefined}
-              index={0}
-              compact
-            />
-            <MembershipStatCard
-              icon={Users}
-              iconBg="bg-blue-500/15"
-              iconColor="text-blue-600 dark:text-blue-400"
-              value={String(totalStudents)}
-              label="Total Students"
+              sub={data.kpis.coachesOnLeave > 0 ? `Currently active · ${data.kpis.coachesOnLeave} on leave` : "Currently active"}
               index={1}
               compact
             />
             <MembershipStatCard
-              icon={ClipboardList}
-              iconBg="bg-purple-500/15"
-              iconColor="text-purple-600 dark:text-purple-400"
-              value={String(data.kpis.activeSessions ?? 0)}
-              label="Active Sessions"
-              sub="Today"
+              icon={IndianRupee}
+              iconBg="bg-warning/15"
+              iconColor="text-warning"
+              value={data.kpis.coachingExpenseMinor === undefined ? "—" : money(data.kpis.coachingExpenseMinor)}
+              label="Coaching Expense"
+              sub="This month"
               index={2}
               compact
             />
             <MembershipStatCard
-              icon={Star}
-              iconBg="bg-warning/15"
-              iconColor="text-warning"
-              value={data.kpis.revenueTotalMinor === undefined ? "—" : money(data.kpis.revenueTotalMinor)}
-              label="Overall Coaching Revenue"
+              icon={CalendarClock}
+              iconBg="bg-purple-500/15"
+              iconColor="text-purple-600 dark:text-purple-400"
+              value={String(data.kpis.upcomingSessions)}
+              label="Scheduled Sessions"
+              sub="Upcoming"
               index={3}
               compact
             />

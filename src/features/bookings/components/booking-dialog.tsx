@@ -14,6 +14,7 @@ import type { GuestPlayer } from "@/features/guests/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import { ServiceError } from "@/services/shared/service-error";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -238,7 +239,7 @@ export function BookingDialog({
         <div className="space-y-4">
           {!initialCourtId && (
             <div className="grid grid-cols-2 gap-3">
-              <select
+              <DropdownSelect
                 aria-label="Sport"
                 value={facilitySportId}
                 onChange={(e) => {
@@ -257,8 +258,8 @@ export function BookingDialog({
                     </option>
                   );
                 })}
-              </select>
-              <select
+              </DropdownSelect>
+              <DropdownSelect
                 aria-label="Court"
                 value={courtId}
                 onChange={(e) => {
@@ -274,7 +275,7 @@ export function BookingDialog({
                     {a.name}
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             </div>
           )}
 

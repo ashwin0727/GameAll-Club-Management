@@ -10,6 +10,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
 import type { BillingStatus, EnrollmentBilling } from "@/features/coaching/types";
 import { fmtDate, money } from "@/features/coaching/components/shared";
+import { chargesLeft, nextPaymentDate, upcomingCharges } from "@/features/coaching/billing-schedule";
 
 const STATUS_LABEL: Record<BillingStatus, string> = {
   CREATED: "Awaiting payment",
@@ -155,8 +156,41 @@ export function EnrollmentBillingCard({
             {isSubscription
               ? `Monthly auto-pay · ${money(billing.amountMinor)} per month · ${billing.chargeCount} of ${billing.totalCycles} charged`
               : `Payment link · ${money(billing.amountMinor)}`}
-            {isSubscription && billing.currentEnd ? ` · next cycle ends ${fmtDate(billing.currentEnd)}` : ""}
           </p>
+          {isSubscription && (
+            <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted-foreground">Next payment</dt>
+                <dd className="font-medium">{nextPaymentDate(billing) ? fmtDate(nextPaymentDate(billing)!) : "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Charges left</dt>
+                <dd className="font-medium">
+                  {chargesLeft(billing)} of {billing.totalCycles}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Total for the program</dt>
+                <dd className="font-medium">{money(billing.amountMinor * billing.totalCycles)}</dd>
+              </div>
+            </dl>
+          )}
+          {isSubscription && upcomingCharges(billing).length > 0 && (
+            <div className="rounded-md border border-border">
+              <p className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">Upcoming payments</p>
+              <ul className="divide-y divide-border">
+                {upcomingCharges(billing).map((d, i) => (
+                  <li key={d} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span>
+                      {money(billing.amountMinor)} · due {fmtDate(d)}
+                      {i === 0 ? " (next)" : ""}
+                    </span>
+                    <Badge variant="outline">Not paid yet</Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {live && billing.shortUrl && (
             <div className="flex items-center gap-2">
               <Input readOnly value={billing.shortUrl} className="flex-1 bg-card text-xs" />

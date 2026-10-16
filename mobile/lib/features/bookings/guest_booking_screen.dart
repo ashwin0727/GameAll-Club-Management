@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
+import '../payments/booking_payment_link_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_shadows.dart';
@@ -15,7 +16,6 @@ import '../../data/models/booking.dart';
 import '../../data/models/guest.dart';
 import '../../data/models/membership_session.dart';
 import '../../data/models/operating_hours.dart';
-import '../../data/models/payment.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/models/playing_area.dart';
@@ -25,8 +25,6 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
-import '../payments/payment_checkout_controller.dart';
-import '../payments/payment_status_panel.dart';
 
 const _steps = ['Court & Time', 'Guest Details', 'Review & Payment'];
 
@@ -166,10 +164,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   bool _submitting = false;
   String? _error;
   List<Booking> _booked = [];
-  Booking? _pendingBooking; // created, awaiting online payment
-  CheckoutResult? _paymentState;
-  bool _isPaying = false;
-  bool _isCheckingAgain = false;
+  // "Pay Online" with the player's payment link still unpaid when the staff member closed the sheet.
+  bool _awaitingLink = false;
 
   @override
   void initState() {
@@ -390,38 +386,27 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       }
 
       if (_payMode == 'online' && created.length == 1) {
-        _pendingBooking = created.first;
-        if (mounted) {
-          setState(() {
-            _submitting = false;
-            _isPaying = true;
-          });
-        }
-        try {
-          final result = await ref.read(paymentCheckoutControllerProvider).startCheckout(
-                CreatePaymentOrderInput(
-                  facilityId: _facilityId!,
-                  sourceType: PaymentSourceType.guestBooking,
-                  bookingId: created.first.id,
-                ),
-                contactName: _name.text.trim(),
-                contactPhone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-              );
-          if (!mounted) return;
-          if (result is CheckoutCancelled) {
-            setState(() => _paymentState = null);
-          } else {
-            setState(() => _paymentState = result);
-            if (result is CheckoutSettled) {
-              _booked = [created.first.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid)];
-            }
-          }
-        } on AppException catch (e) {
-          if (mounted) setState(() => _error = e.message);
-        } finally {
-          if (mounted) setState(() => _isPaying = false);
-        }
-        if (mounted && _booked.isNotEmpty) await _showConfirmedSheet();
+        // The player is not here, so no checkout opens on this phone. A one-time payment link is made for the
+        // booking (amount from the booking itself, server-side) and shared; the sheet watches for the payment.
+        final booking = created.first;
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        final courtName = _areas.where((a) => a.id == booking.courtId).map((a) => a.name).join();
+        final paid = await showBookingPaymentLinkSheet(
+          context,
+          facilityId: _facilityId!,
+          bookingId: booking.id,
+          guestName: _name.text.trim(),
+          guestPhone: phone.isEmpty ? null : phone,
+          description:
+              '${_sportName.isEmpty ? 'Court' : _sportName} · ${courtName.isEmpty ? 'Court' : courtName} · ${_dateLong(_date)}, ${_startTime == null || _endTime == null ? '' : '${_hhmm(_startTime!)} – ${_hhmm(_endTime!)}'}',
+        );
+        if (!mounted) return;
+        setState(() {
+          _awaitingLink = !paid;
+          _booked = [paid ? booking.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid) : booking];
+        });
+        await _showConfirmedSheet();
         return;
       }
 
@@ -435,21 +420,6 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  Future<void> _checkAgain(String paymentOrderId) async {
-    setState(() => _isCheckingAgain = true);
-    try {
-      final result = await ref.read(paymentCheckoutControllerProvider).checkAgain(paymentOrderId);
-      if (!mounted) return;
-      setState(() => _paymentState = result);
-      if (result is CheckoutSettled && _pendingBooking != null) {
-        _booked = [_pendingBooking!.copyWith(status: BookingStatus.confirmed, paymentStatus: PaymentStatus.paid)];
-      }
-    } finally {
-      if (mounted) setState(() => _isCheckingAgain = false);
-    }
-    if (mounted && _booked.isNotEmpty) await _showConfirmedSheet();
   }
 
   /// Slides the confirmation up from the bottom, then pops back to the list.
@@ -480,6 +450,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             ? null
             : (_grandTotalMinor! / 100).round(),
         paid: paid,
+        awaitingLink: _awaitingLink,
       ),
     );
     if (mounted) Navigator.of(context).pop(true);
@@ -537,17 +508,12 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         onPressed: _canNext ? () => setState(() => _step++) : null,
       );
     }
-    if (_paymentState != null) {
-      return AuthGradientButton(
-        label: 'Go to Bookings',
-        onPressed: () => Navigator.of(context).pop(true),
-      );
-    }
+    final online = _payMode == 'online' && _selectedCourtIds.length == 1;
     return AuthGradientButton(
-      label: _payMode == 'online' ? 'Pay & Confirm' : 'Confirm Booking',
+      label: online ? 'Create Payment Link' : 'Confirm Booking',
       loadingLabel: 'Processing…',
-      isLoading: _submitting || _isPaying,
-      onPressed: (_submitting || _isPaying) ? null : _confirm,
+      isLoading: _submitting,
+      onPressed: _submitting ? null : _confirm,
     );
   }
 
@@ -1249,30 +1215,6 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         ? 'the amount'
         : Formatters.currencyInr((_grandTotalMinor! / 100).round());
     final multiCourt = _selectedCourtIds.length > 1;
-    if (_paymentState != null) {
-      return _sectionCard(
-        title: 'Payment',
-        icon: Icons.payments_outlined,
-        children: [
-          PaymentStatusPanel(
-            state: _paymentState,
-            settledLabel: 'Booking Confirmed',
-            resourceLabel: 'booking',
-            isCheckingAgain: _isCheckingAgain,
-            onCheckAgain: _paymentState is CheckoutPending
-                ? () => _checkAgain(
-                    (_paymentState as CheckoutPending).paymentOrderId)
-                : null,
-            onRetry: _paymentState is CheckoutFailed
-                ? () {
-                    setState(() => _paymentState = null);
-                    _confirm();
-                  }
-                : null,
-          ),
-        ],
-      );
-    }
     Widget option(String mode, String title, String subtitle,
         {bool disabled = false}) {
       final selected = _payMode == mode && !disabled;
@@ -1344,10 +1286,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             'Collect $amount at the venue. Booking is created with payment status Pending.'),
         option(
           'online',
-          'Pay online now',
+          'Pay Online',
           multiCourt
               ? 'Only available when booking a single court at a time.'
-              : 'Collect $amount now via Razorpay (UPI / card / net banking). Confirmed as Paid once it settles.',
+              : 'Get a payment link for $amount to share with the player. They pay on their own phone (UPI / card / net banking) and the booking is confirmed as Paid once it goes through.',
           disabled: multiCourt,
         ),
         if (_payMode == 'offline') ...[
@@ -1612,6 +1554,7 @@ class _BookingConfirmedSheet extends StatelessWidget {
     required this.time,
     required this.totalInr,
     required this.paid,
+    this.awaitingLink = false,
   });
 
   final String sport;
@@ -1620,6 +1563,9 @@ class _BookingConfirmedSheet extends StatelessWidget {
   final String time;
   final int? totalInr;
   final bool paid;
+
+  /// Created with "Pay Online" but the player has not paid the link yet.
+  final bool awaitingLink;
 
   @override
   Widget build(BuildContext context) {
@@ -1653,8 +1599,8 @@ class _BookingConfirmedSheet extends StatelessWidget {
                       color: t.onAccent(t.primary), size: 24),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const Expanded(
-                  child: Text('Booking confirmed',
+                Expanded(
+                  child: Text(awaitingLink ? 'Booking created' : 'Booking confirmed',
                       style: TextStyle(
                           fontSize: 18, fontWeight: FontWeight.w800)),
                 ),
@@ -1690,7 +1636,9 @@ class _BookingConfirmedSheet extends StatelessWidget {
             Text(
               paid
                   ? 'Payment received online — nothing to collect at the venue.'
-                  : 'Payment is to be collected offline at the venue.',
+                  : awaitingLink
+                      ? 'Waiting for the player to pay the link. The booking is confirmed automatically once they do — open it from Guest Bookings to share the link again.'
+                      : 'Payment is to be collected offline at the venue.',
               style: TextStyle(fontSize: 12, color: t.textSecondary),
             ),
             const SizedBox(height: AppSpacing.lg),

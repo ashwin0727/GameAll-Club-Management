@@ -6,6 +6,7 @@ import type { PeriodDraft } from "@/features/pricing/components/types";
 import { TimeSelect } from "@/features/operating-hours/components/time-select";
 import { PRICING_UNIT_LABEL } from "@/features/pricing/money";
 import { cn } from "@/lib/utils";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DAY_TYPE_OPTIONS: { value: PeriodDraft["dayType"]; label: string }[] = [
   { value: "ALL_DAYS", label: "All days" },
@@ -31,7 +32,7 @@ export function PricingPeriodRow({
   return (
     <div className="space-y-2 rounded-lg border border-border p-3">
       <div className="flex items-center gap-2">
-        <select
+        <DropdownSelect
           aria-label="Applies to"
           value={period.dayType}
           onChange={(e) => onChange({ ...period, dayType: e.target.value as PeriodDraft["dayType"] })}
@@ -42,7 +43,7 @@ export function PricingPeriodRow({
               {option.label}
             </option>
           ))}
-        </select>
+        </DropdownSelect>
 
         <button
           type="button"

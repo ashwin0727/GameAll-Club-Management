@@ -476,6 +476,46 @@ class CreateMembershipFullInput {
 /// Razorpay-hosted UPI AutoPay mandate authorisation — returned by the
 /// `create-membership-subscription` Edge Function. [shortUrl] is the page
 /// the member opens to approve the recurring mandate.
+/// A membership's AutoPay: what is charged each cycle, how often, and when the next charge falls.
+class MembershipAutoPay {
+  const MembershipAutoPay({
+    required this.status,
+    required this.amountInr,
+    required this.intervalMonths,
+    required this.oneTimeInr,
+    required this.chargeCount,
+    required this.nextChargeDate,
+    required this.shortUrl,
+  });
+
+  /// created · authenticated · active · pending · halted · cancelled · completed
+  final String status;
+
+  /// Charged every cycle: the plan's price.
+  final int amountInr;
+
+  /// Months between charges (1, 3, 6, 12); null if unknown.
+  final int? intervalMonths;
+
+  /// Taken once with the first payment (registration fee, GST) — never repeated.
+  final int oneTimeInr;
+  final int chargeCount;
+
+  /// The date the next charge is due, once Razorpay has scheduled it.
+  final DateTime? nextChargeDate;
+  final String? shortUrl;
+
+  factory MembershipAutoPay.fromJson(Map<String, dynamic> j) => MembershipAutoPay(
+        status: j['status'] as String? ?? 'created',
+        amountInr: (j['amount_inr'] as num?)?.toInt() ?? 0,
+        intervalMonths: (j['interval_months'] as num?)?.toInt(),
+        oneTimeInr: (j['one_time_inr'] as num?)?.toInt() ?? 0,
+        chargeCount: (j['charge_count'] as num?)?.toInt() ?? 0,
+        nextChargeDate: j['current_end'] == null ? null : DateTime.tryParse(j['current_end'] as String),
+        shortUrl: j['short_url'] as String?,
+      );
+}
+
 class MembershipSubscriptionInfo {
   const MembershipSubscriptionInfo({required this.subscriptionId, required this.shortUrl, required this.keyId});
 

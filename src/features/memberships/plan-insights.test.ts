@@ -6,6 +6,7 @@ import {
   memberCountByPlan,
   monthlyEquivalentInr,
   nextBillingDate,
+  periodEndDate,
   planBadges,
   planBand,
   planFeatures,
@@ -13,7 +14,9 @@ import {
   planTagline,
   splitPlanName,
 } from "@/features/memberships/plan-insights";
+import type { MembershipBatch } from "@/features/membership-sessions/types";
 import type { MembershipListRow, MembershipPlan } from "@/features/memberships/types";
+import { format } from "date-fns";
 
 function plan(overrides: Partial<MembershipPlan>): MembershipPlan {
   return {
@@ -145,11 +148,18 @@ describe("memberCountByPlan / planStats", () => {
     expect(stats.totalMembers).toBe(2);
   });
 
-  it("estimates monthly revenue from each plan's per-month price times its roster", () => {
-    const plans = [plan({ id: "p1", priceInr: 2500, durationDays: 30 }), plan({ id: "p2", priceInr: 7000, durationDays: 90 })];
-    const rows = [row({ planId: "p1" }), row({ planId: "p2" }), row({ planId: "p2" })];
-    // 2500 * 1 + 2333 * 2
-    expect(planStats(plans, rows).monthlyRevenueEstInr).toBe(2500 + 2333 * 2);
+  it("estimates monthly revenue as each plan's monthly price times its seats, whoever has joined so far", () => {
+    const plans = [
+      plan({ id: "p1", priceInr: 1000, durationDays: 30 }),
+      plan({ id: "p2", priceInr: 1500, durationDays: 90 }),
+      plan({ id: "p3", priceInr: 900, durationDays: 30 }),
+    ];
+    const batch = (planId: string | null, capacity: number, isActive = true) =>
+      ({ id: `${planId}-${capacity}`, planId, capacity, isActive }) as MembershipBatch;
+    const batches = [batch("p1", 8), batch("p2", 5), batch("p2", 5), batch("p2", 99, false), batch(null, 40)];
+    // 1000 × 8 + (1500 ÷ 3 = 500) × (5 + 5) + 900 × 0 (no slots)
+    expect(planStats(plans, [row({ planId: "p1" })], batches).monthlyRevenueEstInr).toBe(8000 + 5000);
+    expect(planStats(plans, [], []).monthlyRevenueEstInr).toBe(0);
   });
 });
 
@@ -205,26 +215,35 @@ describe("billingIntervalLabel", () => {
   });
 });
 
-describe("nextBillingDate / currentBillingPeriod — plain day-count arithmetic", () => {
-  it("adds the interval as days, not calendar months, so month-end starts land correctly", () => {
-    // 31 Jan + 30 days = 2 Mar (not "31 Feb"), 28 Feb 2026 (non-leap) + 30 days = 30 Mar.
-    expect(nextBillingDate("2026-01-31", 30)).toBe("2026-03-02");
-    expect(nextBillingDate("2026-02-28", 30)).toBe("2026-03-30");
+describe("nextBillingDate / currentBillingPeriod — calendar months", () => {
+  it("is the same day next month: 14 Oct → 14 Nov → 14 Dec → 14 Jan", () => {
+    expect(nextBillingDate("2026-10-14", 30)).toBe("2026-11-14");
+    expect(nextBillingDate("2026-11-14", 30)).toBe("2026-12-14");
+    expect(nextBillingDate("2026-12-14", 30)).toBe("2027-01-14");
   });
 
-  it("handles a leap-year February correctly", () => {
-    // 2028 is a leap year — 1 Feb + 29 days = 1 Mar, crossing the leap day.
-    expect(nextBillingDate("2028-02-01", 29)).toBe("2028-03-01");
+  it("clamps at month end the way Razorpay does", () => {
+    expect(nextBillingDate("2026-01-31", 30)).toBe("2026-02-28");
+    expect(nextBillingDate("2028-01-31", 30)).toBe("2028-02-29");
   });
 
   it("covers the 1/3/6/12-month billing intervals", () => {
     expect(nextBillingDate("2026-09-01", 30)).toBe("2026-10-01");
-    expect(nextBillingDate("2026-09-01", 90)).toBe("2026-11-30");
-    expect(nextBillingDate("2026-09-01", 180)).toBe("2027-02-28");
+    expect(nextBillingDate("2026-09-01", 90)).toBe("2026-12-01");
+    expect(nextBillingDate("2026-09-01", 180)).toBe("2027-03-01");
     expect(nextBillingDate("2026-09-01", 365)).toBe("2027-09-01");
   });
 
+  it("keeps a custom period under four weeks as plain days", () => {
+    expect(nextBillingDate("2026-09-01", 10)).toBe("2026-09-11");
+  });
+
   it("gives the current billing period as an inclusive [start, end] range", () => {
-    expect(currentBillingPeriod("2026-09-01", 30)).toEqual({ start: "2026-09-01", end: "2026-09-30" });
+    expect(currentBillingPeriod("2026-10-14", 30)).toEqual({ start: "2026-10-14", end: "2026-11-13" });
+  });
+
+  it("periodEndDate is the last day of the first period", () => {
+    expect(format(periodEndDate("2026-10-14", 30), "yyyy-MM-dd")).toBe("2026-11-13");
+    expect(format(periodEndDate("2026-10-14", 90), "yyyy-MM-dd")).toBe("2027-01-13");
   });
 });

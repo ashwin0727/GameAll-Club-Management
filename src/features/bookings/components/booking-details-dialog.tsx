@@ -13,6 +13,7 @@ import type { PlayingArea } from "@/features/courts-setup/types";
 import { ServiceError } from "@/services/shared/service-error";
 import { usePaymentCheckout, type CheckoutResult } from "@/features/payments/use-payment-checkout";
 import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
+import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -51,21 +52,29 @@ export function BookingDetailsDialog({
   const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
   const [cancelRefundNote, setCancelRefundNote] = useState<string | null>(null);
   const { startCheckout, checkAgain, isProcessing: isPaying } = usePaymentCheckout();
+  // A guest is not at the counter, so "Pay Online" for them is a payment link to share, not a checkout.
+  const [showLink, setShowLink] = useState(false);
+  useEffect(() => {
+    if (!open) setShowLink(false);
+  }, [open]);
 
   if (!booking) return null;
 
   async function payNow() {
     setError(null);
+    if (booking!.customerType === "GUEST") {
+      setShowLink(true);
+      return;
+    }
     setPaymentState("processing");
     const result = await startCheckout(
       {
         facilityId,
-        sourceType: booking!.customerType === "MEMBER" ? "MEMBER_BOOKING" : "GUEST_BOOKING",
+        sourceType: "MEMBER_BOOKING", // guests are handled by the payment link above
         bookingId: booking!.id,
       },
       {
         description: `${sportName} · ${court?.name ?? "Court"}`,
-        prefill: booking!.customerType === "GUEST" ? { name: booking!.guestName ?? undefined, contact: booking!.guestPhone ?? undefined } : undefined,
       },
     );
     setPaymentState(result.status === "cancelled" ? null : result);
@@ -189,6 +198,16 @@ export function BookingDetailsDialog({
                 <p className="capitalize">{booking.status}</p>
               </div>
             </div>
+            {showLink && booking.customerType === "GUEST" && booking.paymentStatus !== "PAID" && (
+              <BookingPaymentLinkPanel
+                facilityId={facilityId}
+                bookingId={booking.id}
+                guestName={booking.guestName ?? ""}
+                guestPhone={booking.guestPhone}
+                description={`${sportName} · ${court?.name ?? "Court"} · ${new Date(booking.startTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`}
+                onPaid={() => onChanged({ ...booking, status: "confirmed", paymentStatus: "PAID" })}
+              />
+            )}
             {paymentState && (
               <PaymentStatusPanel
                 state={paymentState}
@@ -253,7 +272,7 @@ export function BookingDetailsDialog({
               <>
                 {booking.paymentStatus === "PENDING" && (
                   <Button type="button" onClick={payNow} disabled={isPaying || isWorking}>
-                    {isPaying ? "Processing…" : "Pay Now"}
+                    {isPaying ? "Processing…" : booking.customerType === "GUEST" ? "Pay Online" : "Pay Now"}
                   </Button>
                 )}
                 <Button type="button" variant="outline" onClick={() => setMode("reschedule")} disabled={isWorking || isPaying}>

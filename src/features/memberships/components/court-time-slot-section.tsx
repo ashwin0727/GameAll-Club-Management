@@ -16,6 +16,7 @@ import {
   type NewSlotDraft,
   type SlotSelection,
 } from "@/features/memberships/slot-form";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const selectCls = "h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm";
 
@@ -112,7 +113,7 @@ export function CourtTimeSlotSection({
         Court Time Slot <span className="font-normal">(optional — reserves this court/time for the member)</span>
       </p>
 
-      <select
+      <DropdownSelect
         aria-label="Sport"
         value={facilitySportId}
         onChange={(e) => pickSport(e.target.value)}
@@ -127,7 +128,7 @@ export function CourtTimeSlotSection({
             </option>
           );
         })}
-      </select>
+      </DropdownSelect>
 
       {facilitySportId && (
         <div className="space-y-2">
@@ -179,7 +180,7 @@ export function CourtTimeSlotSection({
 
           {draft && (
             <div className="ml-6 space-y-2">
-              <select
+              <DropdownSelect
                 aria-label="Court"
                 value={draft.courtId}
                 onChange={(e) => setDraft({ courtId: e.target.value })}
@@ -191,7 +192,7 @@ export function CourtTimeSlotSection({
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
 
               <div className="flex flex-wrap items-center gap-2">
                 {DAY_OPTIONS.map((d) => (

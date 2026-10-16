@@ -15,6 +15,7 @@ import type { AffectedBooking, MaintenanceIssueCategory, MaintenancePriority } f
 import { getFacilityService } from "@/services/facility";
 import { getMaintenanceService, type FacilityStaffOption } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const STEPS = ["Issue Details", "Schedule", "Assignment", "Review"] as const;
 const PRIORITIES: MaintenancePriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -184,25 +185,25 @@ export function CreateTicketWizard() {
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
                 <span className="text-xs text-muted-foreground">Court *</span>
-                <select value={courtId} onChange={(e) => setCourtId(e.target.value)} className={selectCls}>
+                <DropdownSelect value={courtId} onChange={(e) => setCourtId(e.target.value)} className={selectCls}>
                   <option value="">Select court</option>
                   {courts.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} — {c.sportName}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
               </label>
               <label className="space-y-1">
                 <span className="text-xs text-muted-foreground">Issue Category *</span>
-                <select value={issueCategoryId} onChange={(e) => setIssueCategoryId(e.target.value)} className={selectCls}>
+                <DropdownSelect value={issueCategoryId} onChange={(e) => setIssueCategoryId(e.target.value)} className={selectCls}>
                   <option value="">Select issue type</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </DropdownSelect>
               </label>
             </div>
 
@@ -285,14 +286,14 @@ export function CreateTicketWizard() {
           <div className="space-y-4">
             <label className="space-y-1">
               <span className="text-xs text-muted-foreground">Assign Staff</span>
-              <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={selectCls}>
+              <DropdownSelect value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={selectCls}>
                 <option value="">Unassigned</option>
                 {staff.map((s) => (
                   <option key={s.userId} value={s.userId}>
                     {s.fullName} ({s.role})
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             </label>
             <label className="space-y-1">
               <span className="text-xs text-muted-foreground">Estimated Repair Cost (₹)</span>

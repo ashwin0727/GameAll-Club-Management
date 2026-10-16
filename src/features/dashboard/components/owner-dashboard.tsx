@@ -42,6 +42,7 @@ import type {
 import { useUiStore } from "@/stores/ui-store";
 import { courtsNow, type ActivityStatus, type CourtNow } from "@/features/dashboard/court-activity";
 import { cn, formatCurrencyINR } from "@/lib/utils";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 /** The Home page always reports on today. */
 const PRESET: DateRangePreset = "TODAY";
@@ -659,7 +660,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           delay={540}
           loading={revenueLoading}
           action={
-            <select
+            <DropdownSelect
               aria-label="Revenue month"
               value={revenueMonthOffset}
               disabled={revenueLoading}
@@ -671,7 +672,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           }
         >
           <RevenueOverviewPanel overview={summary.revenueOverview} />

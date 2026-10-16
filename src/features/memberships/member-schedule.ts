@@ -171,3 +171,25 @@ export function weekDates(anchor: Date): Date[] {
   const start = startOfWeek(anchor);
   return Array.from({ length: 7 }, (_, i) => addDays(start, i));
 }
+
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * When the member has slots on the visible court(s) but none is drawn in the dates on screen, a sentence
+ * saying when they actually play — otherwise null. A range that simply has no member slot looks the same
+ * as a broken calendar, so this says which days to look at.
+ */
+export function slotsOutsideRange(
+  slots: MemberBatchSlot[],
+  visibleCourtIds: string[],
+  days: Date[],
+  columns: { blocks: ScheduleBlock[] }[],
+): string | null {
+  const own = slots.filter((s) => visibleCourtIds.includes(s.courtId));
+  if (own.length === 0 || days.length === 0) return null;
+  if (columns.some((c) => c.blocks.some((b) => b.kind === "MEMBER" || b.kind === "CLOSED"))) return null;
+  const played = [...new Set(own.flatMap((s) => s.daysOfWeek))].sort((a, b) => a - b);
+  const names = played.map((d) => WEEKDAY_NAMES[d]).filter(Boolean).join(", ");
+  const times = preferredTimeRanges(own).map((t) => `${clock(t.startTime)}–${clock(t.endTime)}`).join(", ");
+  return `This member's slot is on ${names} (${times}) — none of those days fall in the selected dates. Pick a range that includes them.`;
+}

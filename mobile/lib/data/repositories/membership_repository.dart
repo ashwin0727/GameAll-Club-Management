@@ -420,6 +420,20 @@ class MembershipRepository {
     return MembershipSubscriptionInfo.fromJson(data.cast<String, dynamic>());
   }
 
+  /// The membership's AutoPay, or null when it has none.
+  Future<MembershipAutoPay?> getMembershipAutoPay(String membershipId) async {
+    try {
+      final row = await _client
+          .from('membership_subscriptions')
+          .select('status, amount_inr, interval_months, one_time_inr, charge_count, current_end, short_url')
+          .eq('membership_id', membershipId)
+          .maybeSingle();
+      return row == null ? null : MembershipAutoPay.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   /// Cancels the Razorpay mandate behind a membership — used when a payment link was generated but
   /// the member then paid another way. Mirrors `cancelMembershipSubscription` on the web.
   Future<void> cancelMembershipSubscription(String membershipId) async {

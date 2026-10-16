@@ -9,8 +9,14 @@
 //   • the public /join/<facilityId> page (anon key) — which has already
 //     created the membership via public_start_membership_signup.
 //
-// The amount is ALWAYS read server-side from the membership's plan /
-// monthly_price_inr — the client's value is never trusted. Uses the service
+// WHAT IS CHARGED (see _shared/membership-billing.ts):
+//   • every cycle — the PLAN's price ("Price per billing cycle") on the plan's own interval
+//     (1 month → monthly, 3 months → every 3 months, 12 months → yearly);
+//   • once, with the first payment only — the registration / joining fee and GST the owner added on
+//     top. Razorpay add-ons carry these; they never recur.
+// Razorpay anchors the schedule to the day the first payment is made.
+//
+// Everything is read server-side — the client's amount is never trusted. Uses the service
 // role because the public flow has no user session; every read is
 // explicitly scoped to the membership id passed in.
 //
@@ -24,6 +30,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { billingCycle, oneTimeItems, razorpayAddons, recurringAmountInr } from "../_shared/membership-billing.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -41,18 +48,6 @@ interface Req {
   membershipId: string;
   /** How many billing cycles to authorise the mandate for. Default: ~10 years of the membership's own cadence. */
   totalCount?: number;
-}
-
-/**
- * Map the membership's Duration (duration_days, the value chosen on the
- * Create Membership form: 30 / 90 / 180 / 365) to a Razorpay plan cadence.
- * Razorpay has no "quarterly" — 3 / 6 months are `monthly` with an interval.
- */
-function billingCycle(durationDays: number): { period: "monthly" | "yearly"; interval: number; label: string } {
-  const d = durationDays > 0 ? durationDays : 30;
-  if (d >= 360) return { period: "yearly", interval: Math.max(1, Math.round(d / 365)), label: "yearly" };
-  const months = Math.max(1, Math.round(d / 30));
-  return { period: "monthly", interval: months, label: months === 1 ? "monthly" : `every ${months} months` };
 }
 
 async function razorpay(path: string, keyId: string, keySecret: string, body: unknown) {
@@ -95,7 +90,7 @@ Deno.serve(async (req) => {
   const { data: membership, error: mErr } = await supabase
     .from("memberships")
     .select(
-      "id, facility_id, member_id, plan_id, name, monthly_price_inr, duration_days, membership_plans(name, price_inr, duration_days)",
+      "id, facility_id, member_id, plan_id, name, monthly_price_inr, membership_fee_inr, registration_fee_inr, gst_percent, duration_days, membership_plans(name, price_inr, duration_days)",
     )
     .eq("id", payload.membershipId)
     .maybeSingle();
@@ -111,26 +106,52 @@ Deno.serve(async (req) => {
     return jsonResponse({ subscriptionId: existing.razorpay_subscription_id, shortUrl: existing.short_url, keyId, reused: true }, 200);
   }
 
-  const plan = (membership as { membership_plans?: { name?: string; price_inr?: number; duration_days?: number } }).membership_plans;
-  const amountInr = membership.monthly_price_inr ?? plan?.price_inr ?? 0;
+  // The plan behind the membership. Memberships made through the full form carry the plan's NAME, not
+  // its id, so look it up by name when there is no plan_id — and link it for next time.
+  type PlanRow = { id: string; name: string; price_inr: number; duration_days: number };
+  let plan: PlanRow | null = null;
+  if (membership.plan_id) {
+    const { data } = await supabase.from("membership_plans").select("id, name, price_inr, duration_days").eq("id", membership.plan_id).maybeSingle();
+    plan = (data as PlanRow | null) ?? null;
+  } else if ((membership as { name?: string }).name) {
+    const { data } = await supabase
+      .from("membership_plans")
+      .select("id, name, price_inr, duration_days")
+      .eq("facility_id", membership.facility_id)
+      .ilike("name", (membership as { name: string }).name.trim());
+    const matches = (data as PlanRow[] | null) ?? [];
+    if (matches.length === 1) {
+      plan = matches[0]!;
+      await supabase.from("memberships").update({ plan_id: plan.id }).eq("id", membership.id);
+    }
+  }
+
+  // Every cycle: the plan's price. A membership with no plan behind it falls back to its own fee —
+  // never to monthly_price_inr or a payment total, which can carry one-time extras.
+  const m = membership as { membership_fee_inr?: number; registration_fee_inr?: number; gst_percent?: number; duration_days?: number; name?: string };
+  const amountInr = recurringAmountInr(plan?.price_inr, m.membership_fee_inr);
   if (amountInr <= 0) return jsonResponse({ error: "This plan has no recurring price." }, 400);
   const amountMinor = amountInr * 100;
 
-  // Bill on the membership's own Duration cadence — a 1-year membership must
-  // charge yearly on Razorpay, not monthly.
-  const durationDays = (membership as { duration_days?: number }).duration_days ?? plan?.duration_days ?? 30;
+  // The plan's own billing interval — a 3-month plan renews every 3 months, a 1-year plan yearly.
+  const durationDays = plan?.duration_days ?? m.duration_days ?? 30;
   const cycle = billingCycle(durationDays);
   // ~10 years of cover, in the plan's own cadence, capped to Razorpay's max.
   const defaultCycles = cycle.period === "yearly" ? Math.ceil(10 / cycle.interval) : Math.ceil(120 / cycle.interval);
   const totalCount = Math.min(Math.max(payload.totalCount ?? defaultCycles, 1), 1200);
-  const planLabel = (membership as { name?: string }).name ?? plan?.name ?? "Membership";
+  const planLabel = plan?.name ?? m.name ?? "Membership";
+
+  // Charged once, with the first payment only: registration / joining fee and GST.
+  const extras = oneTimeItems({ recurringInr: amountInr, registrationFeeInr: m.registration_fee_inr, gstPercent: m.gst_percent });
+  const addons = razorpayAddons(extras);
+  const oneTimeInr = extras.reduce((sum, i) => sum + i.amountInr, 0);
 
   try {
     const rzpPlan = await razorpay("/plans", keyId, keySecret, {
       period: cycle.period,
       interval: cycle.interval,
       item: { name: `${planLabel} · ${cycle.label}`, amount: amountMinor, currency: "INR" },
-      notes: { facility_id: membership.facility_id, plan_id: membership.plan_id, duration_days: String(durationDays) },
+      notes: { facility_id: membership.facility_id, plan_id: plan?.id ?? membership.plan_id, duration_days: String(durationDays) },
     });
 
     const subscription = await razorpay("/subscriptions", keyId, keySecret, {
@@ -138,6 +159,7 @@ Deno.serve(async (req) => {
       total_count: totalCount,
       quantity: 1,
       customer_notify: 1,
+      ...(addons.length > 0 ? { addons } : {}),
       notes: { membership_id: membership.id, facility_id: membership.facility_id },
     });
 
@@ -148,6 +170,8 @@ Deno.serve(async (req) => {
       p_amount_inr: amountInr,
       p_short_url: subscription.short_url ?? null,
       p_razorpay_customer_id: subscription.customer_id ?? null,
+      p_interval_months: cycle.months,
+      p_one_time_inr: oneTimeInr,
     });
     if (recErr) {
       console.error("[create-membership-subscription] record_membership_subscription failed", recErr.message);

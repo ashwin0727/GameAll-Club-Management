@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, Check, ChevronRight, Info } from "lucide-react";
-import { addDays, format, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { periodEndDate } from "@/features/memberships/plan-insights";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -147,7 +148,7 @@ export function EditMemberPage({ membershipId }: { membershipId: string }) {
   const slots: PlanSlot[] = useMemo(() => slotsOf(detail), [detail]);
   const endDate = useMemo(() => {
     const days = detail?.membership.durationDays;
-    return startDate && days ? addDays(parseISO(startDate), days - 1) : null;
+    return startDate && days ? periodEndDate(startDate, days) : null;
   }, [startDate, detail]);
 
   async function save() {
@@ -182,7 +183,7 @@ export function EditMemberPage({ membershipId }: { membershipId: string }) {
         discoverySource: detail.discoverySource ?? undefined,
         notes: notes.trim() || undefined,
       });
-      for (const key of ["membership-list", "membership-summary", "membership-dashboard-rows", "membership-detail"]) {
+      for (const key of ["membership-list", "membership-summary", "membership-dashboard-rows", "membership-detail", "member-schedules"]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }
       router.push("/memberships/v1");

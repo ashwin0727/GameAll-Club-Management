@@ -22,6 +22,38 @@ class PaymentRepository {
 
   final SupabaseClient _client;
 
+  /// "Pay Online" for a guest booking made by staff: creates (or returns the still-open) ONE-TIME Razorpay
+  /// payment link for the booking. The amount is the booking's own server-side price — never sent from here.
+  Future<BookingPaymentLink> createBookingPaymentLink({required String facilityId, required String bookingId}) =>
+      _bookingPaymentLink('create', facilityId, bookingId);
+
+  /// Asks Razorpay whether the link was paid and settles it if so (the webhook is the normal path).
+  Future<BookingPaymentLink> checkBookingPaymentLink({required String facilityId, required String bookingId}) =>
+      _bookingPaymentLink('status', facilityId, bookingId);
+
+  /// Closes an unpaid link so it can no longer be paid.
+  Future<BookingPaymentLink> cancelBookingPaymentLink({required String facilityId, required String bookingId}) =>
+      _bookingPaymentLink('cancel', facilityId, bookingId);
+
+  Future<BookingPaymentLink> _bookingPaymentLink(String action, String facilityId, String bookingId) async {
+    final FunctionResponse response;
+    try {
+      response = await _client.functions.invoke(
+        'create-booking-payment-link',
+        body: {'action': action, 'facilityId': facilityId, 'bookingId': bookingId},
+      );
+    } on FunctionsHttpException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] is String) {
+        throw AppException(AppErrorCode.paymentOrderError, details['error'] as String);
+      }
+      throw AppException(AppErrorCode.paymentGatewayError);
+    } on FunctionException {
+      throw AppException(AppErrorCode.paymentGatewayError);
+    }
+    return BookingPaymentLink.fromJson((response.data as Map).cast<String, dynamic>(), fallbackBookingId: bookingId);
+  }
+
   Future<PaymentOrderCheckoutInfo> createPaymentOrder(CreatePaymentOrderInput input) async {
     final FunctionResponse response;
     try {

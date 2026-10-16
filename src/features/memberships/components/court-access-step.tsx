@@ -9,6 +9,7 @@ import { windowsForDay } from "@/features/bookings/slots";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import type { OperatingSchedule } from "@/features/operating-hours/types";
 import { cn } from "@/lib/utils";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** The default day set — Mon-Fri, same as DAY_PRESETS' own "weekdays" entry — used only to seed
@@ -261,7 +262,7 @@ export function CourtAccessStep({
                       <TimeField value={w.endTime} onChange={(v) => updateWindow(w.id, { endTime: v })} ariaLabel="End time" />
 
                       {draft.courtIds.length > 1 && (
-                        <select
+                        <DropdownSelect
                           value={w.courtId}
                           onChange={(e) => updateWindow(w.id, { courtId: e.target.value })}
                           aria-label="Court"
@@ -272,7 +273,7 @@ export function CourtAccessStep({
                               {courts.find((c) => c.id === id)?.name ?? id}
                             </option>
                           ))}
-                        </select>
+                        </DropdownSelect>
                       )}
 
                       {/* Only selected days show (nothing greyed-out for the rest) — that keeps

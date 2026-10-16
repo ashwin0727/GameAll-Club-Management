@@ -18,6 +18,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const selectCls = "h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm";
 
@@ -212,7 +213,7 @@ export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Court
-            <select
+            <DropdownSelect
               value={courtId}
               onChange={(e) => {
                 setCourtId(e.target.value);
@@ -225,7 +226,7 @@ export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
                   {a.name}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           </label>
           <label className="space-y-1.5 text-xs text-muted-foreground">
             Date

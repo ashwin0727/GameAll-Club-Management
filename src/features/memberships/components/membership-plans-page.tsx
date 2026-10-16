@@ -71,7 +71,7 @@ export function MembershipPlansPage() {
   const plans = useMemo(() => (allPlans ? plansForSport(allPlans, batches, activeSportId) : null), [allPlans, batches, activeSportId]);
   const rows = useMemo(() => membershipRowsForSport(allRows, batches, activeSportId), [allRows, batches, activeSportId]);
 
-  const stats = plans ? planStats(plans, rows) : null;
+  const stats = plans ? planStats(plans, rows, batches) : null;
   const badges = useMemo(() => (plans ? planBadges(plans, rows) : new Map()), [plans, rows]);
   const popular = (plans ?? []).filter((p) => p.isActive).slice(0, 4);
 
@@ -188,7 +188,7 @@ export function MembershipPlansPage() {
               iconColor="text-warning"
               value={inr(stats.monthlyRevenueEstInr)}
               label="Monthly Revenue (Est.)"
-              sub="From current plan members"
+              sub="Overall Plans"
               index={3}
               className={GLASS}
               compact

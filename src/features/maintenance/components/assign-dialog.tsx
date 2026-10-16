@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getMaintenanceService, type FacilityStaffOption } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 export function AssignDialog({
   open,
@@ -54,7 +55,7 @@ export function AssignDialog({
         <DialogHeader>
           <DialogTitle>Assign to Staff</DialogTitle>
         </DialogHeader>
-        <select
+        <DropdownSelect
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
           className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
@@ -65,7 +66,7 @@ export function AssignDialog({
               {s.fullName} ({s.role})
             </option>
           ))}
-        </select>
+        </DropdownSelect>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

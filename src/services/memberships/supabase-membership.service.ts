@@ -20,6 +20,7 @@ import type {
   MembershipPlanInput,
   MembershipRevenuePoint,
   MembershipSubscriptionInfo,
+  MembershipAutoPay,
   MemberScheduleRow,
   MemberStats,
   RevenueGranularity,
@@ -401,6 +402,25 @@ export class SupabaseMembershipService implements MembershipService {
     if (error) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
     if (!data || "error" in data) throw new ServiceError("PAYMENT_GATEWAY_ERROR");
     return { subscriptionId: data.subscriptionId, shortUrl: data.shortUrl, keyId: data.keyId };
+  }
+
+  async getMembershipAutoPay(membershipId: string): Promise<MembershipAutoPay | null> {
+    const { data, error } = await this.supabase
+      .from("membership_subscriptions")
+      .select("status, amount_inr, interval_months, one_time_inr, charge_count, current_end, short_url")
+      .eq("membership_id", membershipId)
+      .maybeSingle();
+    if (error) throw mapSupabaseError(error);
+    if (!data) return null;
+    return {
+      status: data.status,
+      amountInr: data.amount_inr,
+      intervalMonths: data.interval_months,
+      oneTimeInr: data.one_time_inr ?? 0,
+      chargeCount: data.charge_count,
+      nextChargeDate: data.current_end,
+      shortUrl: data.short_url,
+    };
   }
 
   async cancelMembershipSubscription(membershipId: string): Promise<void> {

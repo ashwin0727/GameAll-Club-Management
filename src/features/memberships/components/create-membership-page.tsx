@@ -15,6 +15,7 @@ import type { Member } from "@/features/members/types";
 import type { MembershipPaymentMode, MembershipPlan, MembershipType } from "@/features/memberships/types";
 import { CourtTimeSlotSection } from "@/features/memberships/components/court-time-slot-section";
 import { validateSlotSelection, toNewBatchPayload, ALL_DAYS, type SlotSelection } from "@/features/memberships/slot-form";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DURATIONS = [
   { label: "1 Month", days: 30 },
@@ -281,6 +282,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
           notes: notes.trim() || undefined,
         });
         queryClient.invalidateQueries({ queryKey: ["membership-list"] });
+        queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
         queryClient.invalidateQueries({ queryKey: ["membership-summary"] });
         router.push(`/memberships/${membershipId}`);
       } catch (err) {
@@ -320,6 +322,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
       });
 
       queryClient.invalidateQueries({ queryKey: ["membership-list"] });
+      queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
       queryClient.invalidateQueries({ queryKey: ["membership-summary"] });
       queryClient.invalidateQueries({ queryKey: ["membership-revenue"] });
 
@@ -403,14 +406,14 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={selectCls} />
           </Field>
           <Field label="Gender">
-            <select value={gender} onChange={(e) => setGender(e.target.value)} className={selectCls}>
+            <DropdownSelect value={gender} onChange={(e) => setGender(e.target.value)} className={selectCls}>
               <option value="">Select gender</option>
               {GENDERS.map((g) => (
                 <option key={g} value={g}>
                   {g}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           </Field>
           <Field label="Address">
             <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter complete address" />
@@ -427,14 +430,14 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
               label="Plan"
               hint={planId ? "Fee and duration are set by the plan" : "Or leave as Custom and enter the fee below"}
             >
-              <select value={planId} onChange={(e) => applyPlan(e.target.value)} className={selectCls}>
+              <DropdownSelect value={planId} onChange={(e) => applyPlan(e.target.value)} className={selectCls}>
                 <option value="">Custom (no plan)</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} — ₹{p.priceInr.toLocaleString("en-IN")} · {p.durationDays} days
                   </option>
                 ))}
-              </select>
+              </DropdownSelect>
             </Field>
           )}
           <Field label="Membership Name" required hint="e.g., Premium Membership">
@@ -454,7 +457,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={selectCls} />
           </Field>
           <Field label="Duration" required hint={planId && !isEdit ? "Set by the plan" : "e.g., 3 Months, 6 Months, 1 Year"}>
-            <select
+            <DropdownSelect
               value={durationDays}
               onChange={(e) => setDurationDays(Number(e.target.value))}
               disabled={!!planId && !isEdit}
@@ -469,7 +472,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
               {planId && !DURATIONS.some((d) => d.days === durationDays) && durationDays > 0 && (
                 <option value={durationDays}>{durationDays} days</option>
               )}
-            </select>
+            </DropdownSelect>
           </Field>
           <div className="sm:col-span-2">
             {facilityId && (
@@ -637,14 +640,14 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             )}
           </Field>
           <Field label="How did you find us?">
-            <select value={discovery} onChange={(e) => setDiscovery(e.target.value)} className={selectCls}>
+            <DropdownSelect value={discovery} onChange={(e) => setDiscovery(e.target.value)} className={selectCls}>
               <option value="">Select an option</option>
               {DISCOVERY.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>
               ))}
-            </select>
+            </DropdownSelect>
           </Field>
           <Field label="Notes">
             <textarea

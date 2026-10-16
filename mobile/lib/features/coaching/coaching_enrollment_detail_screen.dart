@@ -245,7 +245,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: [
-                  Expanded(child: Text(coachMoney(p.amountMinor), style: AppTypography.rowTitle(context))),
+                  Expanded(child: Text('${coachMoney(p.amountMinor)} · Paid', style: AppTypography.rowTitle(context))),
                   Text('${coachDateTime(p.paidAt)}${p.method != null ? ' · ${p.method}' : ''}',
                       style: AppTypography.caption(context)),
                 ],

@@ -62,6 +62,7 @@ import {
   type PlanWizardStep,
 } from "@/features/memberships/create-plan-wizard";
 import { cn } from "@/lib/utils";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const PANEL_TINT = "#EAF9F1";
 
@@ -778,7 +779,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                       />
                     </Field>
                     <Field label="Billing Frequency">
-                      <select
+                      <DropdownSelect
                         disabled
                         className={cn(
                           inputClass,
@@ -786,7 +787,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                         )}
                       >
                         <option>Auto-renewal</option>
-                      </select>
+                      </DropdownSelect>
                     </Field>
                   </div>
 

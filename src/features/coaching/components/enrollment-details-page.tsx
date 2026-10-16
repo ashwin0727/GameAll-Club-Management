@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -217,7 +218,10 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
             <ul className="divide-y divide-border">
               {e.payments.map((p) => (
                 <li key={p.id} className="flex items-center justify-between p-3 text-sm">
-                  <span>{money(p.amountMinor)}</span>
+                  <span className="flex items-center gap-2">
+                    {money(p.amountMinor)}
+                    <Badge variant="success">Paid</Badge>
+                  </span>
                   <span className="text-muted-foreground">
                     {fmtDate(p.paidAt)}
                     {p.method ? ` · ${p.method}` : ""}

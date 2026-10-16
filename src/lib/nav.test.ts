@@ -21,7 +21,7 @@ describe("sidebar menu structure", () => {
   it("has exactly the agreed items in each section", () => {
     expect(labelsIn("main")).toEqual(["Home", "Calendar", "Tournaments"]);
     expect(labelsIn("guest")).toEqual(["Guest Booking", "Guest Players"]);
-    expect(labelsIn("memberships")).toEqual(["Dashboard", "Membership Schedule", "Membership Sessions", "Members"]);
+    expect(labelsIn("memberships")).toEqual(["Dashboard", "Membership Schedule", "Membership Plan", "Membership Sessions", "Members"]);
     expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Report"]);
     expect(labelsIn("maintenance")).toEqual(["Maintenance", "Maintenance Tracker", "Issue Category"]);
     expect(labelsIn("staff")).toEqual(["Staff", "Roles & Permission", "Access History"]);
@@ -57,6 +57,11 @@ describe("activeHrefFor — the most specific entry wins", () => {
     expect(activeHrefFor("/coaching/students/new", hrefs)).toBe("/coaching/students");
     expect(activeHrefFor("/maintenance/tickets/42", hrefs)).toBe("/maintenance/tickets");
     expect(activeHrefFor("/inventory/purchase-orders/7", hrefs)).toBe("/inventory/purchase-orders");
+  });
+
+  it("keeps Membership Plan distinct from Dashboard, including a plan detail page", () => {
+    expect(activeHrefFor("/memberships/v1/plans", hrefs)).toBe("/memberships/v1/plans");
+    expect(activeHrefFor("/memberships/v1/plans/abc", hrefs)).toBe("/memberships/v1/plans");
   });
 
   it("keeps Members, Dashboard and Membership Schedule distinct", () => {

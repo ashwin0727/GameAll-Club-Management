@@ -16,11 +16,11 @@ import {
 import { getBookingService } from "@/services/bookings";
 import { getRefundService } from "@/services/refunds";
 import { ServiceError } from "@/services/shared/service-error";
-import { usePaymentCheckout } from "@/features/payments/use-payment-checkout";
-import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
+import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
 import { formatCurrency } from "@/features/pricing/money";
 import { buildBookingDocument, openPrintable } from "@/features/bookings/booking-document";
 import type { GuestBookingRow } from "@/features/bookings/types";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const METHODS = ["Cash", "UPI", "Card", "Bank Transfer", "Other"];
 
@@ -355,8 +355,8 @@ function CompleteDialog({
   const [mode, setMode] = useState<"offline" | "online">("offline");
   const [method, setMethod] = useState("Cash");
   const [amount, setAmount] = useState(row.amountMinor != null ? String(row.amountMinor / 100) : "");
-  const [paymentState, setPaymentState] = useState<PaymentStatusPanelState | null>(null);
-  const { startCheckout, isProcessing } = usePaymentCheckout();
+  // "Pay Online" = a payment link for the player to pay on their own phone; the booking is completed once it is paid.
+  const [showLink, setShowLink] = useState(false);
 
   async function run() {
     setBusy(true);
@@ -366,18 +366,10 @@ function CompleteDialog({
         if (mode === "offline") {
           await getBookingService().recordGuestBookingPayment(row.bookingId, method, Math.round((Number(amount) || 0) * 100));
         } else {
+          // No checkout on this screen — the player is not here. Show the link to share instead.
           setBusy(false);
-          setPaymentState("processing");
-          const result = await startCheckout(
-            { facilityId, sourceType: "GUEST_BOOKING", bookingId: row.bookingId },
-            { description: `${row.sportName ?? "Court"} · ${row.courtName}`, prefill: { name: row.guestName, contact: row.guestPhone ?? undefined } },
-          );
-          if (result.status === "cancelled") {
-            setPaymentState(null);
-            return;
-          }
-          setPaymentState(result);
-          if (result.status !== "settled") return;
+          setShowLink(true);
+          return;
         }
       }
       await getBookingService().completeGuestBooking(row.bookingId);
@@ -389,7 +381,7 @@ function CompleteDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(o) => !o && !busy && !isProcessing && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Mark as Completed</DialogTitle>
@@ -398,8 +390,24 @@ function CompleteDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {paymentState ? (
-          <PaymentStatusPanel state={paymentState} settledLabel="Payment received" resourceLabel="booking" />
+        {showLink ? (
+          <BookingPaymentLinkPanel
+            facilityId={facilityId}
+            bookingId={row.bookingId}
+            guestName={row.guestName}
+            guestPhone={row.guestPhone}
+            description={`${row.sportName ?? "Court"} · ${row.courtName}`}
+            onPaid={() => {
+              setBusy(true);
+              void getBookingService()
+                .completeGuestBooking(row.bookingId)
+                .then(onDone)
+                .catch((e) => {
+                  setError(e instanceof ServiceError ? e.message : "Paid, but unable to mark the booking completed.");
+                  setBusy(false);
+                });
+            }}
+          />
         ) : alreadyPaid ? null : (
           <div className="space-y-3">
             <div className="space-y-2 text-sm">
@@ -413,8 +421,8 @@ function CompleteDialog({
               <label className={"flex items-start gap-2 rounded-lg border p-2 " + (mode === "online" ? "border-primary" : "border-border")}>
                 <input type="radio" className="mt-0.5" checked={mode === "online"} onChange={() => setMode("online")} />
                 <span>
-                  Collect online now
-                  <span className="block text-xs text-muted-foreground">Razorpay checkout — {money(row.amountMinor, row.currency)}</span>
+                  Pay Online
+                  <span className="block text-xs text-muted-foreground">Send the player a payment link — {money(row.amountMinor, row.currency)}</span>
                 </span>
               </label>
             </div>
@@ -422,11 +430,11 @@ function CompleteDialog({
               <div className="grid grid-cols-2 gap-2">
                 <label className="space-y-1 text-xs text-muted-foreground">
                   Method
-                  <select value={method} onChange={(e) => setMethod(e.target.value)} className="h-9 w-full rounded-md border border-input bg-secondary/60 px-2 text-sm">
+                  <DropdownSelect value={method} onChange={(e) => setMethod(e.target.value)} className="h-9 w-full rounded-md border border-input bg-secondary/60 px-2 text-sm">
                     {METHODS.map((m) => (
                       <option key={m}>{m}</option>
                     ))}
-                  </select>
+                  </DropdownSelect>
                 </label>
                 <label className="space-y-1 text-xs text-muted-foreground">
                   Amount (₹)
@@ -439,12 +447,12 @@ function CompleteDialog({
 
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={busy || isProcessing} onClick={onClose}>
-            {paymentState ? "Close" : "Cancel"}
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+            {showLink ? "Close" : "Cancel"}
           </Button>
-          {!paymentState && (
-            <Button type="button" disabled={busy || isProcessing} onClick={run}>
-              {busy || isProcessing ? "Working…" : alreadyPaid ? "Mark Completed" : mode === "online" ? "Collect & Complete" : "Record & Complete"}
+          {!showLink && (
+            <Button type="button" disabled={busy} onClick={run}>
+              {busy ? "Working…" : alreadyPaid ? "Mark Completed" : mode === "online" ? "Create Payment Link" : "Record & Complete"}
             </Button>
           )}
         </DialogFooter>

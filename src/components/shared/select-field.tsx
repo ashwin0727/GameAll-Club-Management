@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 export interface SelectOption {
   value: string;
   label: string;
+  /** Shown greyed out and cannot be picked (a placeholder row, or an unavailable choice). */
+  disabled?: boolean;
 }
 
 /**
@@ -25,6 +27,7 @@ export function SelectField({
   className,
   wrapperClassName,
   placement = "bottom",
+  disabled = false,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -38,6 +41,7 @@ export function SelectField({
    * that clips its overflow, since a list opening downward would be cut off there.
    */
   placement?: "bottom" | "top";
+  disabled?: boolean;
 }) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -64,6 +68,7 @@ export function SelectField({
   }
 
   function pick(v: string) {
+    if (options.find((o) => o.value === v)?.disabled) return;
     onValueChange(v);
     setOpen(false);
   }
@@ -77,6 +82,7 @@ export function SelectField({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
+        disabled={disabled}
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -97,6 +103,7 @@ export function SelectField({
           className,
           "pr-11",
           open && "bg-[var(--light-page-bg)] dark:bg-card",
+          disabled && "cursor-not-allowed opacity-60",
         )}
       >
         <span className="truncate">{selected?.label ?? ""}</span>
@@ -113,6 +120,8 @@ export function SelectField({
         <ul
           id={listId}
           role="listbox"
+          // A <label> around the field would otherwise forward this click to the button and reopen the list.
+          onClick={(e) => e.preventDefault()}
           className={cn(
             "absolute left-0 z-50 max-h-64 w-max min-w-full max-w-[320px] overflow-auto rounded-[10px] border border-border bg-white p-1 shadow-lg dark:bg-popover",
             placement === "top" ? "bottom-full mb-1" : "top-full mt-1",
@@ -123,6 +132,10 @@ export function SelectField({
               key={o.value}
               role="option"
               aria-selected={o.value === value}
+              aria-disabled={o.disabled || undefined}
+              ref={(el) => {
+                if (el && i === active) el.scrollIntoView?.({ block: "nearest" });
+              }}
               // mousedown, so the pick lands before anything can steal focus.
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -130,12 +143,13 @@ export function SelectField({
               }}
               onMouseEnter={() => setActive(i)}
               className={cn(
-                "cursor-pointer rounded-[8px] px-3 py-2 text-sm",
+                "rounded-[8px] px-3 py-2 text-sm",
+                o.disabled ? "cursor-not-allowed text-muted-foreground/60" : "cursor-pointer",
                 // Unselected rows are plain white; the chosen one carries the page tint; hover is a light mint.
                 o.value === value
                   ? "bg-[var(--light-page-bg)] font-semibold text-foreground dark:bg-accent/60"
                   : "bg-white text-foreground/90 dark:bg-transparent",
-                i === active && o.value !== value && "bg-[#E9F9F3] dark:bg-accent",
+                i === active && o.value !== value && !o.disabled && "bg-[#E9F9F3] dark:bg-accent",
               )}
             >
               {o.label}

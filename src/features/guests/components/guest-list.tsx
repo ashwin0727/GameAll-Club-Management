@@ -8,6 +8,7 @@ import { getGuestService } from "@/services/guests";
 import type { GuestPlayer } from "@/features/guests/types";
 import { GuestFormDialog } from "@/features/guests/components/guest-form-dialog";
 import { GuestProfileDialog } from "@/features/guests/components/guest-profile-dialog";
+import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 export function GuestList() {
   const { data: facility, isLoading: facilityLoading, isError: facilityError } = useFacility();
@@ -83,7 +84,7 @@ export function GuestList() {
             onChange={(e) => setQuery(e.target.value)}
             className="h-11 w-full max-w-sm rounded-md border border-input bg-secondary/60 px-3 text-sm"
           />
-          <select
+          <DropdownSelect
             aria-label="Status filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "ACTIVE" | "INACTIVE" | "")}
@@ -92,7 +93,7 @@ export function GuestList() {
             <option value="ACTIVE">Active</option>
             <option value="INACTIVE">Inactive</option>
             <option value="">All</option>
-          </select>
+          </DropdownSelect>
         </div>
         <Button type="button" onClick={() => setAddOpen(true)}>
           + Add Guest

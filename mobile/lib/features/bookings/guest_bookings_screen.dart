@@ -7,12 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/page_transitions.dart';
+import '../payments/booking_payment_link_sheet.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/guest_booking_dashboard.dart';
-import '../../data/models/payment.dart';
 import '../../data/models/refund.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_dropdown.dart';
@@ -21,8 +21,6 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
-import '../payments/payment_checkout_controller.dart';
-import '../payments/payment_status_panel.dart';
 import 'booking_status_presentation.dart';
 import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
@@ -920,7 +918,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
             children: [
               for (final opt in const [
                 ('offline', 'Payment collected offline'),
-                ('online', 'Collect online (Razorpay)'),
+                ('online', 'Pay Online (payment link)'),
               ])
                 InkWell(
                   onTap: () => setSt(() => mode = opt.$1),
@@ -985,31 +983,18 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
               ((double.tryParse(amount.text.trim()) ?? 0) * 100).round(),
             );
       } else {
-        final result = await ref
-            .read(paymentCheckoutControllerProvider)
-            .startCheckout(
-              CreatePaymentOrderInput(
-                facilityId: facilityId,
-                sourceType: PaymentSourceType.guestBooking,
-                bookingId: bookingId,
-              ),
-              contactName: guestName,
-              contactPhone: guestPhone,
-            );
-        if (result is CheckoutCancelled) return;
-        if (result is! CheckoutSettled) {
-          if (mounted) {
-            await showDialog<void>(
-              context: context,
-              builder: (_) => AlertDialog(
-                content: PaymentStatusPanel(
-                  state: result,
-                  settledLabel: 'Payment received',
-                  resourceLabel: 'booking',
-                ),
-              ),
-            );
-          }
+        // The player is not here: share a payment link for the booking instead of opening a checkout.
+        if (!mounted) return;
+        final paid = await showBookingPaymentLinkSheet(
+          context,
+          facilityId: facilityId,
+          bookingId: bookingId,
+          guestName: guestName ?? '',
+          guestPhone: guestPhone,
+          description: label,
+        );
+        if (!paid) {
+          // Still waiting on the player — the booking stays as it is and can be completed once the link is paid.
           _reload();
           return;
         }
