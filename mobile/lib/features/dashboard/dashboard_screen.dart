@@ -405,7 +405,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Filter by period',
+                  Text('Filter by Period',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -414,7 +414,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   optionTile('This month', 0),
                   optionTile('Last month', 1),
                   const SizedBox(height: AppSpacing.md),
-                  Text('Or pick a month',
+                  Text('Or Pick a Month',
                       style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
@@ -455,7 +455,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: () => Navigator.pop(sheetContext, staged),
-                      child: const Text('Show results'),
+                      child: const Text('Show Results'),
                     ),
                   ),
                 ],
@@ -680,7 +680,7 @@ class _DashboardBody extends StatelessWidget {
         // ── THIS WEEK ─────────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
         _DashSection(
-          title: 'This week',
+          title: 'This Week',
           child: _WeekBarsCard(points: summary.revenueOverview.points),
         ),
 
@@ -959,7 +959,7 @@ class _LiveNowCardState extends State<_LiveNowCard> {
                                           color: tokens.primary,
                                           shape: BoxShape.circle)),
                                   const SizedBox(width: 5),
-                                  const Text('Live now',
+                                  const Text('Live Now',
                                       style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w800,
@@ -1511,7 +1511,7 @@ class _NeedsYouSection extends StatelessWidget {
     final tokens = context.tokens;
     final n = count > 0 ? count : (obligations.length + attention.length);
     return _DashSection(
-      title: 'Needs you',
+      title: 'Needs You',
       trailing: Text('$n item${n == 1 ? '' : 's'}',
           style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
       child: Column(
@@ -1640,10 +1640,10 @@ class _OnCourtNowSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return _DashSection(
-      title: 'On court now',
+      title: 'On Court Now',
       trailing: GestureDetector(
         onTap: () => context.push(AppRoutes.bookings),
-        child: Text('See timeline',
+        child: Text('See Timeline',
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -1733,7 +1733,7 @@ class _EmptySlotsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return _DashSection(
-      title: 'Free slots left today',
+      title: 'Free Slots Left Today',
       child: SizedBox(
         height: 118,
         child: ListView.separated(
@@ -1971,10 +1971,10 @@ class _RecentActivitySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return _DashSection(
-      title: 'Recent activity',
+      title: 'Recent Activity',
       trailing: GestureDetector(
         onTap: () => context.push(AppRoutes.financeTransactions),
-        child: Text('See all',
+        child: Text('See All',
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -2095,7 +2095,7 @@ class _ShareLinkCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Share your booking link',
+                Text('Share Your Booking Link',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -2217,7 +2217,7 @@ class _ExpiringMembershipCard extends StatelessWidget {
                           color: onC),
                     ),
                     const SizedBox(height: 1),
-                    Text('Tap to review and renew',
+                    Text('Tap to Review and Renew',
                         style: TextStyle(
                             color: onC.withValues(alpha: 0.75),
                             fontSize: 11)),
@@ -2424,7 +2424,7 @@ class _RevenueOverviewCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               Divider(height: 1, color: tokens.borderColor),
               const SizedBox(height: AppSpacing.md),
-              Text('Where it came from',
+              Text('Where It Came From',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,

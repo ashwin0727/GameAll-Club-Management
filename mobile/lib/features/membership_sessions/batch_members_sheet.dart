@@ -148,7 +148,7 @@ class _BatchMembersSheetState extends ConsumerState<BatchMembersSheet> {
                   TextField(
                     controller: _queryController,
                     onChanged: _onQueryChanged,
-                    decoration: const InputDecoration(labelText: 'Search members to assign', hintText: 'Name or phone'),
+                    decoration: const InputDecoration(labelText: 'Search Members to Assign', hintText: 'Name or phone'),
                   ),
                   if (_results.isNotEmpty)
                     ..._results.map(

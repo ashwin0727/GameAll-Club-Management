@@ -175,7 +175,7 @@ class _PotentialMembersScreenState extends ConsumerState<PotentialMembersScreen>
                     FilledButton.icon(
                       onPressed: _copySelected,
                       icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Copy numbers + link'),
+                      label: const Text('Copy Numbers + Link'),
                     ),
                   ],
                 ),

@@ -159,13 +159,13 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                             decoration: const InputDecoration(labelText: 'Email address *'),
                           ),
                           const SizedBox(height: AppSpacing.sm),
-                          TextField(controller: _phone, decoration: const InputDecoration(labelText: 'Phone number')),
+                          TextField(controller: _phone, decoration: const InputDecoration(labelText: 'Phone Number')),
                           const SizedBox(height: AppSpacing.sm),
                           TextField(
                             controller: _notes,
                             maxLines: 3,
                             maxLength: 500,
-                            decoration: const InputDecoration(labelText: 'Notes (optional)'),
+                            decoration: const InputDecoration(labelText: 'Notes (Optional)'),
                           ),
                         ] else if (_step == 1) ...[
                           const Text('Access & Role', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -229,7 +229,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                               PrimaryButton(label: 'Next', isLoading: false, onPressed: _next)
                             else
                               PrimaryButton(
-                                label: 'Add staff member',
+                                label: 'Add Staff Member',
                                 loadingLabel: 'Adding…',
                                 isLoading: _busy,
                                 onPressed: _submit,
@@ -292,7 +292,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                             icon: const Icon(Icons.copy, size: 18),
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: r.temporaryPassword!));
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password copied')));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password Copied')));
                             },
                           ),
                         ],
@@ -311,7 +311,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
               onPressed: () => context.pushReplacement('/users-roles/staff/${r.userId}'),
             ),
             const SizedBox(height: AppSpacing.sm),
-            SecondaryButton(label: 'Back to staff', onPressed: () => context.pop()),
+            SecondaryButton(label: 'Back to Staff', onPressed: () => context.pop()),
           ],
         ),
       ),

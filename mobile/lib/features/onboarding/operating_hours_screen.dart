@@ -16,6 +16,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
+import 'operating_hours_summary.dart';
 import 'operating_hours_validation.dart';
 
 class _OverrideEntry {
@@ -46,6 +47,11 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
   final Map<String, Map<int, String>> _overrideErrors = {};
   bool _isSubmitting = false;
   String? _submitError;
+  // Off by default: the facility-hours editor stays folded away and each court's hours are customized below.
+  // On = every court uses the facility hours, so per-court customization is hidden (and dropped on save).
+  bool _useSameHours = false;
+  // Edits since the last save, for the Saved / Unsaved status next to the button.
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -141,6 +147,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
 
   void _updateDay(int dayOfWeek, OperatingDay Function(OperatingDay) update) {
     setState(() {
+      _dirty = true;
       _days = _days.map((d) => d.dayOfWeek == dayOfWeek ? withComputedOvernight(update(d)) : d).toList();
       _dayErrors = Map.of(_dayErrors)..remove(dayOfWeek);
     });
@@ -148,6 +155,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
 
   void _updateOverrideDay(String areaId, int dayOfWeek, OperatingDay Function(OperatingDay) update) {
     setState(() {
+      _dirty = true;
       final entry = _overrides[areaId]!;
       entry.days = entry.days.map((d) => d.dayOfWeek == dayOfWeek ? withComputedOvernight(update(d)) : d).toList();
       _overrideErrors[areaId] = Map.of(_overrideErrors[areaId] ?? {})..remove(dayOfWeek);
@@ -179,6 +187,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     );
     if (targets == null || targets.isEmpty) return;
     setState(() {
+      _dirty = true;
       _days = _days
           .map((d) => targets.contains(d.dayOfWeek)
               ? withComputedOvernight(d.copyWith(isClosed: source.isClosed, is24Hours: source.is24Hours, slots: source.slots))
@@ -190,6 +199,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
 
   void _applyQuickSetup(String preset) {
     setState(() {
+      _dirty = true;
       switch (preset) {
         case 'everyday':
           _days = _days
@@ -217,7 +227,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     final dayErrors = validateSchedule(_days);
     final overrideErrors = <String, Map<int, String>>{};
     for (final entry in _overrides.entries) {
-      if (entry.value.active) {
+      if (entry.value.active && !_useSameHours) {
         overrideErrors[entry.key] = validateSchedule(entry.value.days);
       }
     }
@@ -241,9 +251,9 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
       for (final area in _areas) {
         final entry = _overrides[area.id];
         if (entry == null) continue;
-        if (entry.active) {
+        if (entry.active && !_useSameHours) {
           await hoursRepo.savePlayingAreaSchedule(area.id, _facilityId!, entry.days);
-        } else if (entry.initiallyActive) {
+        } else if (entry.initiallyActive || entry.active) {
           await hoursRepo.deletePlayingAreaOverride(area.id);
         }
       }
@@ -252,6 +262,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
           .updateOnboardingStep(_facilityId!, OnboardingStep.payments);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
+      setState(() => _dirty = false);
       context.push(AppRoutes.onboardingPayments);
     } on AppException catch (e) {
       if (!mounted) return;
@@ -289,50 +300,101 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
       subtitle: "Bookings can't be made outside these hours. Set one pattern, "
           'then override any day.',
       onBack: () => context.go(AppRoutes.onboardingPricing),
-      footer: AuthGradientButton(
-        label: 'Next · payments  ›',
-        loadingLabel: 'Saving…',
-        isLoading: _isSubmitting,
-        onPressed: _submit,
+      // The final Operating Hours, the Saved status and Continue stay pinned to the bottom.
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _HoursSummary(
+            groups: groupOperatingDays(_days),
+            areaCount: _areas.length,
+            customizedCount: _useSameHours ? 0 : _overrides.values.where((o) => o.active).length,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _dirty ? 'Unsaved changes' : 'Saved',
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          AuthGradientButton(
+            label: 'Next · payments  ›',
+            loadingLabel: 'Saving…',
+            isLoading: _isSubmitting,
+            onPressed: _submit,
+          ),
+        ],
       ),
       children: [
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            _QuickSetupChip(label: 'Everyday, same hours', onTap: () => _applyQuickSetup('everyday')),
-            _QuickSetupChip(label: 'Weekdays only', onTap: () => _applyQuickSetup('weekdays')),
-            _QuickSetupChip(label: 'Open 24 hours', onTap: () => _applyQuickSetup('24hours')),
-          ],
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Facility Operating Hours', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              const Text(
+                'These hours will apply to all courts and turfs by default.',
+                style: TextStyle(fontSize: 11, color: AppColors.muted),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _useSameHours,
+                onChanged: (v) => setState(() {
+                  _useSameHours = v ?? false;
+                  _dirty = true;
+                }),
+                title: const Text('Use the same hours for all courts and turfs'),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.xl),
-        if (_submitError != null) ...[
-          Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
+        if (_useSameHours) ...[
           const SizedBox(height: AppSpacing.md),
+          Text('Quick Setup', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _QuickSetupChip(label: 'Everyday, same hours', onTap: () => _applyQuickSetup('everyday')),
+              _QuickSetupChip(label: 'Weekdays Only', onTap: () => _applyQuickSetup('weekdays')),
+              _QuickSetupChip(label: 'Open 24 Hours', onTap: () => _applyQuickSetup('24hours')),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ...displayOrder.map((dow) {
+            // A schedule row missing a day used to throw a StateError out of build and leave the body blank.
+            final day = _days.where((d) => d.dayOfWeek == dow).firstOrNull ?? OperatingDay.defaultOpen(dow);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: _DayCard(
+                label: dayLabels[dow],
+                day: day,
+                error: _dayErrors[dow],
+                onChange: (update) => _updateDay(dow, update),
+                onPickTime: (slot, isStart, onChanged) => _pickTime(slot, isStart, onChanged),
+                onCopyRequest: () => _copyDayTo(dow),
+              ),
+            );
+          }),
         ],
-        ...displayOrder.map((dow) {
-                      // A schedule row missing a day used to throw a
-                      // StateError out of build and leave the body blank.
-                      final day = _days.where((d) => d.dayOfWeek == dow).firstOrNull ??
-                          OperatingDay.defaultOpen(dow);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: _DayCard(
-                          label: dayLabels[dow],
-                          day: day,
-                          error: _dayErrors[dow],
-                          onChange: (update) => _updateDay(dow, update),
-                          onPickTime: (slot, isStart, onChanged) => _pickTime(slot, isStart, onChanged),
-                          onCopyRequest: () => _copyDayTo(dow),
-                        ),
-                      );
-                    }),
-                    if (_areas.isNotEmpty) ...[
+        if (_submitError != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
+        ],
+                    if (!_useSameHours && _areas.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.lg),
-                      Text('Customize individual court/turf hours', style: Theme.of(context).textTheme.titleMedium),
+                      Text('Customize Individual Court/Turf Hours', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: AppSpacing.xs),
                       const Text(
-                        'By default, all courts and turfs use the facility hours above.',
+                        'By default, all courts and turfs use the facility hours.',
                         style: TextStyle(fontSize: 11, color: AppColors.muted),
                       ),
                       const SizedBox(height: AppSpacing.md),
@@ -359,8 +421,14 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                                 area: area,
                                 entry: _overrides[area.id]!,
                                 errors: _overrideErrors[area.id] ?? {},
-                                onCustomize: () => setState(() => _overrides[area.id]!.active = true),
-                                onUseFacilityHours: () => setState(() => _overrides[area.id]!.active = false),
+                                onCustomize: () => setState(() {
+                                  _dirty = true;
+                                  _overrides[area.id]!.active = true;
+                                }),
+                                onUseFacilityHours: () => setState(() {
+                                  _dirty = true;
+                                  _overrides[area.id]!.active = false;
+                                }),
                                 onDayChange: (dow, update) => _updateOverrideDay(area.id, dow, update),
                                 onPickTime: _pickTime,
                               )),
@@ -370,6 +438,50 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                       }),
                     ],
       ],
+    );
+  }
+}
+
+/// The final Operating Hours — grouped days and how many courts follow them — pinned above Continue.
+class _HoursSummary extends StatelessWidget {
+  const _HoursSummary({required this.groups, required this.areaCount, required this.customizedCount});
+
+  final List<OperatingHoursGroup> groups;
+  final int areaCount;
+  final int customizedCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Operating Hours', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+          const SizedBox(height: 4),
+          for (final g in groups)
+            Text.rich(
+              TextSpan(children: [
+                TextSpan(text: '${g.label}  ', style: const TextStyle(fontWeight: FontWeight.w600)),
+                TextSpan(text: g.description, style: const TextStyle(color: AppColors.muted)),
+              ]),
+              style: const TextStyle(fontSize: 12),
+            ),
+          const SizedBox(height: 4),
+          Text(
+            customizedCount == 0
+                ? '$areaCount playing areas · all follow facility hours'
+                : '$areaCount playing areas · $customizedCount with custom hours',
+            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -417,7 +529,7 @@ class _PlayingAreaOverrideCard extends StatelessWidget {
               children: [
                 Expanded(child: Text(area.name, style: Theme.of(context).textTheme.titleSmall)),
                 if (entry.active)
-                  TextButton(onPressed: onUseFacilityHours, child: const Text('Use facility hours'))
+                  TextButton(onPressed: onUseFacilityHours, child: const Text('Use Facility Hours'))
                 else
                   OutlinedButton(onPressed: onCustomize, child: const Text('Customize')),
               ],
@@ -497,7 +609,7 @@ class _DayCard extends StatelessWidget {
         if (isOpen) ...[
           Row(
             children: [
-              const Text('Open 24 hours', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+              const Text('Open 24 Hours', style: TextStyle(fontSize: 11, color: AppColors.muted)),
               Switch(value: day.is24Hours, onChanged: (value) => onChange((d) => d.copyWith(is24Hours: value))),
             ],
           ),
@@ -548,7 +660,7 @@ class _DayCard extends StatelessWidget {
             }),
             TextButton.icon(
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add another time slot'),
+              label: const Text('Add Another Time Slot'),
               onPressed: () => onChange(
                 (d) => d.copyWith(
                   slots: [

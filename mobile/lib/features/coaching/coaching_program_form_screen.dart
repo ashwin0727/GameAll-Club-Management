@@ -287,7 +287,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Program name')),
+            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Program Name')),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
@@ -346,19 +346,19 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
             ),
             if (_pricingMode == 'PAID') ...[
               const SizedBox(height: AppSpacing.sm),
-              Text('Fee type', style: Theme.of(context).textTheme.labelMedium),
+              Text('Fee Type', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: AppSpacing.xs),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
                   ChoiceChip(
-                    label: const Text('One-time payment'),
+                    label: const Text('One-Time Payment'),
                     selected: _feeType == 'ONE_TIME',
                     onSelected: (_) => setState(() => _feeType = 'ONE_TIME'),
                   ),
                   ChoiceChip(
-                    label: const Text('Monthly payment'),
+                    label: const Text('Monthly Payment'),
                     selected: _feeType == 'MONTHLY',
                     onSelected: (_) => setState(() => _feeType = 'MONTHLY'),
                   ),
@@ -392,7 +392,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
             Text('A fee is an obligation — it becomes revenue only when a payment is recorded.',
                 style: TextStyle(fontSize: 11, color: context.tokens.textSecondary)),
             const SizedBox(height: AppSpacing.sm),
-            TextField(controller: _description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description (optional)')),
+            TextField(controller: _description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description (Optional)')),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(_error!, style: TextStyle(color: context.tokens.destructive)),
@@ -422,7 +422,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         style: TextStyle(fontSize: 11, color: context.tokens.textSecondary),
       ),
       const SizedBox(height: AppSpacing.sm),
-      TextField(controller: _batchName, decoration: const InputDecoration(labelText: 'Batch name')),
+      TextField(controller: _batchName, decoration: const InputDecoration(labelText: 'Batch Name')),
       const SizedBox(height: AppSpacing.sm),
       Wrap(
         spacing: AppSpacing.xs,
@@ -462,7 +462,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
         isExpanded: true,
         decoration: const InputDecoration(labelText: 'Coach'),
         items: [
-          const DropdownMenuItem(value: null, child: Text('No specific coach')),
+          const DropdownMenuItem(value: null, child: Text('No Specific Coach')),
           ..._coaches.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name, overflow: TextOverflow.ellipsis))),
         ],
         onChanged: (v) => setState(() => _coachId = v),

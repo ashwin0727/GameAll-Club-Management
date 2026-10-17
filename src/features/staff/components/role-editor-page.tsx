@@ -90,7 +90,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
       <div className="space-y-3">
         <p className="text-sm text-destructive">{error}</p>
         <Button variant="outline" onClick={() => void load()}>
-          Try again
+          Try Again
         </Button>
       </div>
     );
@@ -201,7 +201,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="r-name" className="text-xs font-medium">
-                Role name
+                Role Name
               </Label>
               <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} disabled={existing?.isSystem} />
               {existing?.isSystem && (
@@ -253,7 +253,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
                 <h3 className="text-sm font-semibold">{activeModule} permissions</h3>
                 <div className="flex gap-1.5">
                   <Button type="button" size="sm" variant="outline" onClick={() => setModule(activeModule, true)}>
-                    Select all
+                    Select All
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => setModule(activeModule, false)}>
                     Clear

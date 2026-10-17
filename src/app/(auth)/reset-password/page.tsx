@@ -21,7 +21,7 @@ export default async function ResetPasswordPage() {
 
   return (
     <AuthCard
-      title="Choose a new password"
+      title="Choose a New Password"
       subtitle={
         user
           ? "Pick a password you haven't used on this account before."

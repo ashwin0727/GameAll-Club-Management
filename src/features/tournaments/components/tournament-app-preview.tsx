@@ -85,7 +85,7 @@ export function TournamentAppPreview({
       </div>
 
       {images.length > 1 && (
-        <div className="flex items-center gap-2" role="tablist" aria-label="Tournament app screenshots">
+        <div className="flex items-center gap-2" role="tablist" aria-label="Tournament App Screenshots">
           {images.map((img, i) => (
             <button
               key={img.src}

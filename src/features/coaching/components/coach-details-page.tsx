@@ -432,7 +432,7 @@ function EditCoachDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit coach</DialogTitle>
+          <DialogTitle>Edit Coach</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex items-center gap-3">
@@ -474,7 +474,7 @@ function EditCoachDialog({
             </div>
           </F>
           <div className="grid grid-cols-2 gap-3">
-            <F label="Experience (years)">
+            <F label="Experience (Years)">
               <Input type="number" min="0" step="0.5" value={experience} onChange={(e) => setExperience(e.target.value)} />
             </F>
             <F label="Default Session Duration">

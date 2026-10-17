@@ -78,14 +78,14 @@ export function GuestList() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 gap-2">
           <input
-            aria-label="Search guests"
+            aria-label="Search Guests"
             placeholder="Search by name or phone"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-11 w-full max-w-sm rounded-md border border-input bg-secondary/60 px-3 text-sm"
           />
           <DropdownSelect
-            aria-label="Status filter"
+            aria-label="Status Filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "ACTIVE" | "INACTIVE" | "")}
             className="h-11 rounded-md border border-input bg-secondary/60 px-3 text-sm"

@@ -187,7 +187,7 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
                   Row(
                     children: [
                       Expanded(
-                        child: Text('Total collected', style: AppTypography.secondary(context)),
+                        child: Text('Total Collected', style: AppTypography.secondary(context)),
                       ),
                       Text(
                         // Display sum of the server's own per-payment figures —

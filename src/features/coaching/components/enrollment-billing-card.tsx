@@ -226,7 +226,7 @@ export function EnrollmentBillingCard({
               disabled={busy}
               onClick={() => void run(() => getCoachingService().createEnrollmentBilling(enrollmentId), "Could not generate a new link.")}
             >
-              Generate a new link
+              Generate a New Link
             </Button>
           )}
         </>

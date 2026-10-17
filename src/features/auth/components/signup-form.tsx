@@ -54,7 +54,7 @@ export function SignupForm() {
 
       <TextField
         id="signup-name"
-        label="Full name"
+        label="Full Name"
         autoComplete="name"
         enterKeyHint="next"
         placeholder="Ravi Kumar"
@@ -64,7 +64,7 @@ export function SignupForm() {
 
       <TextField
         id="signup-email"
-        label="Business email"
+        label="Business Email"
         type="email"
         inputMode="email"
         autoComplete="email"
@@ -89,7 +89,7 @@ export function SignupForm() {
 
       <PasswordInput
         id="signup-confirm-password"
-        label="Confirm password"
+        label="Confirm Password"
         autoComplete="new-password"
         enterKeyHint="done"
         placeholder="Re-enter your password"

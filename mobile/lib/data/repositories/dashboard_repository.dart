@@ -339,7 +339,7 @@ class DashboardRepository {
                 endTime: DateTime.parse('${e.value['session_date']}T${e.value['end_time']}'),
                 status: 'confirmed',
                 type: ScheduleBlockType.session,
-                label: 'Membership session',
+                label: 'Membership Session',
               ),
             ),
       ];

@@ -281,7 +281,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Receive goods', style: Theme.of(ctx).textTheme.headlineSmall),
+              Text('Receive Goods', style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.sm),
               ...pending.map((l) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
@@ -302,7 +302,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
                   )),
               const SizedBox(height: AppSpacing.md),
               PrimaryButton(
-                label: 'Confirm receipt',
+                label: 'Confirm Receipt',
                 onPressed: () {
                   final receipts = <({String lineId, int quantity})>[];
                   for (final l in pending) {
@@ -351,7 +351,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Record payment', style: Theme.of(ctx).textTheme.headlineSmall),
+              Text('Record Payment', style: Theme.of(ctx).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
               Text('${invMoney(po.outstandingMinor)} outstanding', style: AppTypography.caption(context)),
               const SizedBox(height: AppSpacing.sm),
@@ -362,11 +362,11 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
                 decoration: const InputDecoration(labelText: 'Amount (₹)'),
               ),
               const SizedBox(height: AppSpacing.sm),
-              TextField(controller: methodController, decoration: const InputDecoration(labelText: 'Method (optional)')),
+              TextField(controller: methodController, decoration: const InputDecoration(labelText: 'Method (Optional)')),
               const SizedBox(height: AppSpacing.sm),
-              TextField(controller: referenceController, decoration: const InputDecoration(labelText: 'Reference (optional)')),
+              TextField(controller: referenceController, decoration: const InputDecoration(labelText: 'Reference (Optional)')),
               const SizedBox(height: AppSpacing.md),
-              PrimaryButton(label: 'Record payment', onPressed: () => Navigator.of(ctx).pop(true)),
+              PrimaryButton(label: 'Record Payment', onPressed: () => Navigator.of(ctx).pop(true)),
             ],
           ),
         ),
@@ -400,7 +400,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel purchase order'),
+        title: const Text('Cancel Purchase Order'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -410,7 +410,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Keep order')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Keep Order')),
           TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Cancel Order')),
         ],
       ),

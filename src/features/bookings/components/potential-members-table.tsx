@@ -83,7 +83,7 @@ export function PotentialMembersTable({
         <thead className="border-b border-border text-left text-xs text-muted-foreground">
           <tr>
             <th className="w-10 px-4 py-3">
-              <Checkbox checked={pageAll} indeterminate={pageSome} onChange={onTogglePage} label="Select all guests on this page" />
+              <Checkbox checked={pageAll} indeterminate={pageSome} onChange={onTogglePage} label="Select All Guests on This Page" />
             </th>
             <th className="px-4 py-3 font-medium">Guest</th>
             <th className="px-4 py-3 font-medium">Contact</th>

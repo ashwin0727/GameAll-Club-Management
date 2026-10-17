@@ -181,9 +181,9 @@ export function RecordPaymentPage({ sourceId }: { sourceId: string }) {
             value={obligation.description}
           />
           <DetailRow label="Source" value={SOURCE_LABEL[obligation.sourceType]} />
-          <DetailRow label="Total amount" value={formatCurrency(obligation.totalMinor, "INR")} />
+          <DetailRow label="Total Amount" value={formatCurrency(obligation.totalMinor, "INR")} />
           {obligation.paidMinor > 0 && (
-            <DetailRow label="Already paid" value={formatCurrency(obligation.paidMinor, "INR")} />
+            <DetailRow label="Already Paid" value={formatCurrency(obligation.paidMinor, "INR")} />
           )}
           <div className="flex items-baseline justify-between gap-4 border-t border-border pt-2.5">
             <dt className="font-semibold">Amount Due</dt>

@@ -162,7 +162,7 @@ export function AssignMembershipDialog({
             <div className="space-y-2">
               <p className="text-sm font-medium">Start date</p>
               <input
-                aria-label="Start date"
+                aria-label="Start Date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -181,7 +181,7 @@ export function AssignMembershipDialog({
               <p className="mb-1 text-sm font-medium">Payment</p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant={paymentPaid ? "default" : "outline"} size="sm" onClick={() => setPaymentPaid(true)}>
-                  Paid (cash/manual)
+                  Paid (Cash/Manual)
                 </Button>
                 <Button type="button" variant={!paymentPaid ? "default" : "outline"} size="sm" onClick={() => setPaymentPaid(false)}>
                   Pending

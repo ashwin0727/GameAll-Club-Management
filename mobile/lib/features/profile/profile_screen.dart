@@ -67,7 +67,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _soon() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+      ..showSnackBar(const SnackBar(content: Text('Coming Soon')));
   }
 
   Future<void> _confirmSignOut() async {
@@ -83,7 +83,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: context.tokens.destructive),
-            child: const Text('Sign out'),
+            child: const Text('Sign Out'),
           ),
         ],
       ),
@@ -296,28 +296,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _GroupCard(children: [
               _NavRow(
                   icon: Icons.storefront_outlined,
-                  label: 'Facility details',
+                  label: 'Facility Details',
                   onTap: () => _facilityDetailsSheet(facility)),
               _NavRow(
                   icon: Icons.sports_tennis_outlined,
-                  label: 'Sports & courts',
+                  label: 'Sports & Courts',
                   trailing: _courts == null ? null : '$_courts',
                   trailingLoading: _courts == null,
                   onTap: _soon),
               _NavRow(
                   icon: Icons.schedule_outlined,
-                  label: 'Operating hours',
+                  label: 'Operating Hours',
                   onTap: _soon),
               _NavRow(
                   icon: Icons.tune_rounded,
-                  label: 'Pricing rules',
+                  label: 'Pricing Rules',
                   trailing:
                       _pricingRules == null ? null : '$_pricingRules active',
                   trailingLoading: _pricingRules == null,
                   onTap: _soon),
               _NavRow(
                   icon: Icons.link_rounded,
-                  label: 'Public booking & join links',
+                  label: 'Public Booking & Join Links',
                   onTap: () => _joinLinkSheet(facility)),
             ]),
             const SizedBox(height: AppSpacing.xl),
@@ -326,7 +326,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _GroupCard(children: [
               _NavRow(
                 icon: Icons.account_balance_wallet_outlined,
-                label: 'Payments & payouts',
+                label: 'Payments & Payouts',
                 trailing: paymentsLive ? 'Live' : 'Set up',
                 trailingTone: paymentsLive ? t.primary : t.warning,
                 trailingDot: paymentsLive,
@@ -334,7 +334,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               _NavRow(
                   icon: Icons.receipt_long_outlined,
-                  label: 'Invoices & tax',
+                  label: 'Invoices & Tax',
                   onTap: _soon),
               // Labelled for where it actually lands — there is no
               // expense-categories screen; this is the Expenses list.
@@ -344,16 +344,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onTap: () => context.push(AppRoutes.financeExpenses)),
               _NavRow(
                   icon: Icons.pending_actions_outlined,
-                  label: 'Pending payments',
+                  label: 'Pending Payments',
                   onTap: () =>
                       context.push(AppRoutes.financePendingPayments)),
               _NavRow(
                   icon: Icons.point_of_sale_outlined,
-                  label: 'Daily closing',
+                  label: 'Daily Closing',
                   onTap: () => context.push(AppRoutes.financeDailyClosing)),
               _NavRow(
                   icon: Icons.trending_up_rounded,
-                  label: 'Profit & loss',
+                  label: 'Profit & Loss',
                   onTap: () => context.push(AppRoutes.financeProfitLoss)),
             ]),
             const SizedBox(height: AppSpacing.xl),
@@ -383,11 +383,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _GroupCard(children: [
               _NavRow(
                   icon: Icons.help_outline_rounded,
-                  label: 'Help centre',
+                  label: 'Help Centre',
                   onTap: _soon),
               _NavRow(
                   icon: Icons.chat_bubble_outline_rounded,
-                  label: 'Contact us',
+                  label: 'Contact Us',
                   onTap: _contact),
               _NavRow(
                   icon: Icons.star_outline_rounded,
@@ -498,7 +498,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Facility details',
+              const Text('Facility Details',
                   style:
                       TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: AppSpacing.md),
@@ -570,7 +570,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Public booking & join link',
+              const Text('Public Booking & Join Link',
                   style:
                       TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
@@ -597,7 +597,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         Clipboard.setData(ClipboardData(text: link));
                         Navigator.pop(sheet);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Link copied')));
+                            const SnackBar(content: Text('Link Copied')));
                       },
                       icon: const Icon(Icons.copy_rounded, size: 16),
                       label: const Text('Copy'),
@@ -982,7 +982,7 @@ class _SignOutButton extends StatelessWidget {
             children: [
               Icon(Icons.logout_rounded, size: 18, color: t.destructive),
               const SizedBox(width: AppSpacing.sm),
-              Text('Sign out',
+              Text('Sign Out',
                   style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,

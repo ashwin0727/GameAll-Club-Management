@@ -119,14 +119,14 @@ function PhotoUpload({ preview, onChange }: { preview: string | null; onChange: 
         <span className="text-xs font-semibold text-foreground">{preview ? "Change Photo" : "Upload Photo"}</span>
         <span className="text-[11px] text-muted-foreground">JPG, PNG (Max 2MB)</span>
         {error && <span className="text-[11px] text-destructive">{error}</span>}
-        <input type="file" accept="image/png,image/jpeg" onChange={pick} className="sr-only" aria-label="Upload photo" />
+        <input type="file" accept="image/png,image/jpeg" onChange={pick} className="sr-only" aria-label="Upload Photo" />
       </label>
 
       {preview && (
         <button
           type="button"
           onClick={remove}
-          aria-label="Remove photo"
+          aria-label="Remove Photo"
           className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-white shadow-sm ring-2 ring-card transition-opacity hover:opacity-90"
         >
           <X className="h-3.5 w-3.5" aria-hidden />
@@ -815,7 +815,7 @@ export function AddMemberWizardPage() {
             <div className="flex items-start gap-2.5 border-t border-border pt-4">
               <input
                 type="checkbox"
-                aria-label="Send welcome message to member"
+                aria-label="Send Welcome Message to Member"
                 checked={draft.sendWelcome}
                 onChange={(e) => set("sendWelcome", e.target.checked)}
                 className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-[#0B7A55]"

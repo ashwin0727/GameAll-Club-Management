@@ -131,7 +131,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                   const SizedBox(height: AppSpacing.md),
                 ],
                 AppTextField(
-                  label: 'Your name',
+                  label: 'Your Name',
                   controller: _name,
                   textInputAction: TextInputAction.next,
                   prefixIcon: const Icon(Icons.person_outline),
@@ -139,7 +139,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppTextField(
-                  label: 'Work email',
+                  label: 'Work Email',
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
@@ -163,7 +163,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                 PasswordStrengthMeter(password: _password.text),
                 const SizedBox(height: AppSpacing.lg),
                 AppTextField(
-                  label: 'Confirm password',
+                  label: 'Confirm Password',
                   controller: _confirmPassword,
                   obscureText: _obscureConfirm,
                   textInputAction: TextInputAction.done,
@@ -186,8 +186,8 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
               ],
               bottom: [
                 AuthGradientButton(
-                  label: 'Create account',
-                  loadingLabel: 'Creating account…',
+                  label: 'Create Account',
+                  loadingLabel: 'Creating Account…',
                   isLoading: _isSubmitting,
                   onPressed: _submit,
                 ),
@@ -195,7 +195,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                 const AuthOrDivider(),
                 const SizedBox(height: AppSpacing.lg),
                 AuthOutlineButton(
-                  label: 'Sign up with mobile number',
+                  label: 'Sign up with Mobile Number',
                   icon: Icons.smartphone_outlined,
                   onPressed: () => showComingSoon(context, 'Mobile sign-up'),
                 ),

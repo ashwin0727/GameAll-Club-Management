@@ -89,7 +89,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
       <div className="space-y-3">
         <p className="text-sm text-destructive">{error ?? "Unable to load this staff member."}</p>
         <Button variant="outline" onClick={() => void load()}>
-          Try again
+          Try Again
         </Button>
       </div>
     );
@@ -142,7 +142,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
               <Row label="Email" value={detail.email} />
               <Row label="Phone" value={detail.phone ?? "—"} />
               <Row label="Joined" value={fmtDate(a?.joinedAt ?? null)} />
-              <Row label="Last active" value={fmtDate(a?.lastLoginAt ?? null)} />
+              <Row label="Last Active" value={fmtDate(a?.lastLoginAt ?? null)} />
             </dl>
           </div>
         </div>
@@ -193,7 +193,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
           <Card className="space-y-3 p-4 lg:col-span-2">
             <h2 className="text-sm font-semibold">About</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              <Row label="Full name" value={detail.fullName} />
+              <Row label="Full Name" value={detail.fullName} />
               <Row label="Email" value={detail.email} />
               <Row label="Phone" value={detail.phone ?? "—"} />
               <Row label="Role" value={a?.roleName ?? "—"} />
@@ -219,7 +219,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
                     disabled={busy}
                     onClick={() => run(() => getStaffService().removeFacilityAccess(f.facilityId, userId))}
                   >
-                    Remove access
+                    Remove Access
                   </Button>
                 )}
               </div>
@@ -285,7 +285,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
               disabled={busy || notesDraft === (a?.notes ?? "")}
               onClick={() => run(() => getStaffService().updateProfile(facilityId!, userId, { notes: notesDraft.trim() || null }))}
             >
-              Save notes
+              Save Notes
             </Button>
           )}
         </Card>
@@ -294,7 +294,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
       <Dialog open={changeRole} onOpenChange={setChangeRole}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change role</DialogTitle>
+            <DialogTitle>Change Role</DialogTitle>
             <DialogDescription>
               Permissions are recalculated immediately. You can only assign a role whose permissions you hold yourself.
             </DialogDescription>
@@ -421,7 +421,7 @@ function EditProfileDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit profile</DialogTitle>
+          <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex items-center gap-3">

@@ -138,7 +138,7 @@ class _State extends ConsumerState<MaintenanceCourtScheduleScreen> {
                           const SizedBox(height: AppSpacing.xs),
                           AppCard(
                             child: entry.value.isEmpty
-                                ? Text('Available all day', style: Theme.of(context).textTheme.bodySmall)
+                                ? Text('Available All Day', style: Theme.of(context).textTheme.bodySmall)
                                 : Column(
                                     children: [
                                       for (final s in entry.value)

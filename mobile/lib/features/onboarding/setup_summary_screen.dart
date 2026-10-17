@@ -189,7 +189,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 _NextRow(
                   icon: Icons.link,
-                  title: 'Your booking link is live',
+                  title: 'Your Booking Link Is Live',
                   subtitle: _bookingLink,
                   trailing: 'Copy',
                   onTap: _copyLink,
@@ -197,7 +197,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
                 const SizedBox(height: AppSpacing.md),
                 _NextRow(
                   icon: Icons.card_membership_outlined,
-                  title: 'Create a membership plan',
+                  title: 'Create a Membership Plan',
                   subtitle: 'Recommended next · 2 min',
                   chevron: true,
                   onTap: () => context.go(AppRoutes.membershipsNew),
@@ -205,7 +205,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
                 const SizedBox(height: AppSpacing.md),
                 _NextRow(
                   icon: Icons.group_add_outlined,
-                  title: 'Invite your front-desk staff',
+                  title: 'Invite Your Front-Desk Staff',
                   subtitle: 'They get their own login',
                   chevron: true,
                   onTap: () => context.go(AppRoutes.profile),
@@ -221,7 +221,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg2, AppSpacing.md, AppSpacing.lg2, AppSpacing.lg),
           child: AuthGradientButton(
-            label: 'Open my dashboard',
+            label: 'Open My Dashboard',
             onPressed: () => context.go(AppRoutes.dashboard),
           ),
         ),

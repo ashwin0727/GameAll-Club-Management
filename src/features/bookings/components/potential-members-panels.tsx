@@ -14,14 +14,14 @@ export const BOOKING_COUNT_OPTIONS = [
 ];
 
 export const LAST_BOOKING_OPTIONS: { value: LastBookingFilter; label: string }[] = [
-  { value: "any", label: "Any time" },
-  { value: "7", label: "Last 7 days" },
-  { value: "30", label: "Last 30 days" },
-  { value: "90", label: "Last 90 days" },
+  { value: "any", label: "Any Time" },
+  { value: "7", label: "Last 7 Days" },
+  { value: "30", label: "Last 30 Days" },
+  { value: "90", label: "Last 90 Days" },
 ];
 
 export const TOTAL_SPENT_OPTIONS = [
-  { value: "0", label: "Any amount" },
+  { value: "0", label: "Any Amount" },
   { value: "100000", label: "₹1,000 or more" },
   { value: "500000", label: "₹5,000 or more" },
   { value: "1000000", label: "₹10,000 or more" },
@@ -111,7 +111,7 @@ export function PotentialMembersPanels({
               )}
             </button>
             <button type="button" onClick={onClearSelection} className="w-full text-center text-xs text-muted-foreground hover:text-foreground">
-              Clear selection
+              Clear Selection
             </button>
           </div>
         )}

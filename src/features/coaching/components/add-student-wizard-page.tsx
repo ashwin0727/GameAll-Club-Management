@@ -874,7 +874,7 @@ export function AddStudentWizardPage() {
                         </Select>
                       </Field>
                     </div>
-                    <Field label="Reference (optional)">
+                    <Field label="Reference (Optional)">
                       <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} />
                     </Field>
                     <div className="flex gap-2">

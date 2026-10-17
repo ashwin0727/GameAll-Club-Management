@@ -76,7 +76,7 @@ export function TopbarSearch({ role }: { role: Role }) {
         ref={inputRef}
         type="text"
         role="combobox"
-        aria-label="Search pages"
+        aria-label="Search Pages"
         aria-expanded={open && results.length > 0}
         aria-controls="topbar-search-results"
         placeholder="Search anything..."

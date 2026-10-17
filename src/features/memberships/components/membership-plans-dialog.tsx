@@ -117,7 +117,7 @@ export function MembershipPlansDialog({
             <div className="space-y-2 rounded-md border border-dashed border-border p-3">
               <p className="text-sm font-medium">Add a plan</p>
               <input
-                aria-label="Plan name"
+                aria-label="Plan Name"
                 placeholder="e.g. Monthly, Quarterly, Annual"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -133,7 +133,7 @@ export function MembershipPlansDialog({
                   className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm"
                 />
                 <input
-                  aria-label="Duration (days)"
+                  aria-label="Duration (Days)"
                   placeholder="Duration (days)"
                   inputMode="numeric"
                   value={durationDays}

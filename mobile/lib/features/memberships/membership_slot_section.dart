@@ -172,7 +172,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Court time slot',
+          Text('Court Time Slot',
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -185,7 +185,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
             initialValue: _facilitySportId.isEmpty ? null : _facilitySportId,
             decoration: const InputDecoration(labelText: 'Sport'),
             items: [
-              const DropdownMenuItem(value: '', child: Text('No time slot')),
+              const DropdownMenuItem(value: '', child: Text('No Time Slot')),
               for (final fs in _facilitySports)
                 DropdownMenuItem(value: fs.id, child: Text(_sportLabel(fs))),
             ],
@@ -196,7 +196,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
             _OptionCard(
               selected: value is SlotNone,
               onTap: () => widget.onChanged(const SlotNone()),
-              child: Text('No reserved slot',
+              child: Text('No Reserved Slot',
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -220,7 +220,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
                 children: [
                   Icon(Icons.add, size: 16, color: tokens.violet),
                   const SizedBox(width: 6),
-                  Text('Create a new slot',
+                  Text('Create a New Slot',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -326,7 +326,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
             initialValue: draft.courtId.isEmpty ? null : draft.courtId,
             decoration: const InputDecoration(labelText: 'Court'),
             items: [
-              const DropdownMenuItem(value: '', child: Text('Select court')),
+              const DropdownMenuItem(value: '', child: Text('Select Court')),
               for (final c in _courtsForSport)
                 DropdownMenuItem(value: c.id, child: Text(c.name)),
             ],

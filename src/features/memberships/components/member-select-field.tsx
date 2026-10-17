@@ -136,7 +136,7 @@ export function MemberSelectField({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search members…"
-            aria-label="Search members"
+            aria-label="Search Members"
             onKeyDown={(e) => {
               if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                 e.preventDefault();

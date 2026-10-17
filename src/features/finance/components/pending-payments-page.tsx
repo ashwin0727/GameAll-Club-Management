@@ -209,12 +209,12 @@ export function PendingPaymentsPage() {
             />
           </FilterField>
 
-          <FilterField label="Sort by" className="w-[10rem]">
+          <FilterField label="Sort By" className="w-[10rem]">
             <FilterSelect
               value={sort}
               onChange={(v) => setSort(v as ObligationSort)}
               options={[
-                { value: "DUE_DATE", label: "Oldest first" },
+                { value: "DUE_DATE", label: "Oldest First" },
                 { value: "AMOUNT", label: "Largest" },
                 { value: "CUSTOMER", label: "Customer" },
                 { value: "NEWEST", label: "Newest" },
@@ -258,7 +258,7 @@ export function PendingPaymentsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search customer, phone, booking or membership ID…"
-            aria-label="Search pending payments"
+            aria-label="Search Pending Payments"
             className="h-11 pl-9"
           />
         </div>
@@ -270,7 +270,7 @@ export function PendingPaymentsPage() {
             <p className="text-sm font-semibold text-destructive">Unable to load pending payments</p>
             <p className="mt-1 text-sm text-muted-foreground">{error}</p>
             <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
-              Try again
+              Try Again
             </Button>
           </div>
         ) : obligations === null ? (
@@ -391,7 +391,7 @@ export function PendingPaymentsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Previous page"
+                aria-label="Previous Page"
                 disabled={page === 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
@@ -404,7 +404,7 @@ export function PendingPaymentsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Next page"
+                aria-label="Next Page"
                 disabled={page + 1 >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

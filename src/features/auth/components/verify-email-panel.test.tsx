@@ -71,7 +71,7 @@ describe("VerifyEmailPanel", () => {
 
     expect(screen.getByText("Current email")).toBeInTheDocument();
     expect(screen.getByText(EMAIL)).toBeInTheDocument();
-    expect(screen.getByLabelText("New email address")).toBeInTheDocument();
+    expect(screen.getByLabelText("New Email Address")).toBeInTheDocument();
   });
 
   it("restarts at signup when the password is no longer in memory", async () => {
@@ -81,7 +81,7 @@ describe("VerifyEmailPanel", () => {
     renderWithProviders(<VerifyEmailPanel />);
 
     await user.click(screen.getByRole("button", { name: "Change Email" }));
-    await user.type(screen.getByLabelText("New email address"), "new@yourturf.com");
+    await user.type(screen.getByLabelText("New Email Address"), "new@yourturf.com");
     await user.click(screen.getByRole("button", { name: "Update Email" }));
 
     // A reload clears the in-memory signup, so the correction cannot be
@@ -100,7 +100,7 @@ describe("VerifyEmailPanel", () => {
     renderWithProviders(<VerifyEmailPanel />);
 
     await user.click(screen.getByRole("button", { name: "Change Email" }));
-    await user.type(screen.getByLabelText("New email address"), "owner@");
+    await user.type(screen.getByLabelText("New Email Address"), "owner@");
     await user.click(screen.getByRole("button", { name: "Update Email" }));
 
     expect(

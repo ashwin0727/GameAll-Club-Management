@@ -182,17 +182,17 @@ export function AddStaffPage() {
           <>
             <h2 className="text-sm font-semibold">Basic Information</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="s-name" label="Full name" required>
+              <Field id="s-name" label="Full Name" required>
                 <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" />
               </Field>
-              <Field id="s-email" label="Email address" required>
+              <Field id="s-email" label="Email Address" required>
                 <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
               </Field>
-              <Field id="s-phone" label="Phone number">
+              <Field id="s-phone" label="Phone Number">
                 <Input id="s-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
               </Field>
             </div>
-            <Field id="s-notes" label="Notes (optional)">
+            <Field id="s-notes" label="Notes (Optional)">
               <Textarea id="s-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} placeholder="Any notes about this staff member…" />
             </Field>
           </>
@@ -233,12 +233,12 @@ export function AddStaffPage() {
           <>
             <h2 className="text-sm font-semibold">Review &amp; Invite</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-              <Review label="Full name" value={fullName} />
+              <Review label="Full Name" value={fullName} />
               <Review label="Email" value={email} />
               <Review label="Phone" value={phone || "—"} />
               <Review label="Role" value={selectedRole?.name ?? "—"} />
               <Review label="Facility" value={perms.facilityName} />
-              <Review label="Primary facility" value={isPrimary ? "Yes" : "No"} />
+              <Review label="Primary Facility" value={isPrimary ? "Yes" : "No"} />
             </dl>
             <p className="text-xs text-muted-foreground">
               An account will be created with a one-time password you&apos;ll share with them. They must set their own

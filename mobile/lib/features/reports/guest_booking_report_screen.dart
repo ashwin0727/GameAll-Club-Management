@@ -148,7 +148,7 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
                         alignment: Alignment.centerLeft,
                         child: TextButton(
                           onPressed: () => context.push(AppRoutes.financePendingPayments),
-                          child: const Text('Collect outstanding'),
+                          child: const Text('Collect Outstanding'),
                         ),
                       ),
                     ],

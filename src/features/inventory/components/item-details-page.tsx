@@ -137,7 +137,7 @@ export function ItemDetailsPage({ itemId }: { itemId: string }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Current Stock" value={`${d.currentStock} ${d.unit}`} />
         <Stat label="Reorder Level" value={String(d.reorderLevel)} />
-        <Stat label="Unit Cost (avg)" value={money(d.unitCostMinor)} />
+        <Stat label="Unit Cost (Avg)" value={money(d.unitCostMinor)} />
         <Stat label="Stock Value" value={money(d.inventoryValueMinor)} />
       </div>
 
@@ -148,8 +148,8 @@ export function ItemDetailsPage({ itemId }: { itemId: string }) {
           <Card className="p-4">
             <h2 className="text-sm font-semibold">Details</h2>
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <Row label="Preferred vendor" value={d.preferredVendorName ?? "—"} />
-              <Row label="Default cost" value={d.defaultUnitCostMinor != null ? money(d.defaultUnitCostMinor) : "—"} />
+              <Row label="Preferred Vendor" value={d.preferredVendorName ?? "—"} />
+              <Row label="Default Cost" value={d.defaultUnitCostMinor != null ? money(d.defaultUnitCostMinor) : "—"} />
               <Row label="Created" value={fmtDate(d.createdAt)} />
               <Row label="Updated" value={fmtDate(d.updatedAt)} />
             </dl>
@@ -158,10 +158,10 @@ export function ItemDetailsPage({ itemId }: { itemId: string }) {
           <Card className="p-4">
             <h2 className="text-sm font-semibold">Movement Stats</h2>
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <Row label="Total in" value={String(d.stats.totalInQty)} />
-              <Row label="Total out" value={String(d.stats.totalOutQty)} />
-              <Row label="Last stock in" value={fmtDate(d.stats.lastStockInAt)} />
-              <Row label="Last stock out" value={fmtDate(d.stats.lastStockOutAt)} />
+              <Row label="Total In" value={String(d.stats.totalInQty)} />
+              <Row label="Total Out" value={String(d.stats.totalOutQty)} />
+              <Row label="Last Stock In" value={fmtDate(d.stats.lastStockInAt)} />
+              <Row label="Last Stock Out" value={fmtDate(d.stats.lastStockOutAt)} />
             </dl>
           </Card>
         </div>
@@ -329,17 +329,17 @@ function EditItemDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit item</DialogTitle>
+          <DialogTitle>Edit Item</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <F label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></F>
           <F label="SKU"><Input value={sku} onChange={(e) => setSku(e.target.value)} /></F>
           <F label="Brand"><Input value={brand} onChange={(e) => setBrand(e.target.value)} /></F>
           <F label="Unit"><Input value={unit} onChange={(e) => setUnit(e.target.value)} /></F>
-          <F label="Reorder level">
+          <F label="Reorder Level">
             <Input type="number" min="0" step="1" value={reorder} onChange={(e) => setReorder(e.target.value)} />
           </F>
-          <F label="Default unit cost (₹)">
+          <F label="Default Unit Cost (₹)">
             <Input type="number" min="0" step="0.01" value={defaultCost} onChange={(e) => setDefaultCost(e.target.value)} />
           </F>
           <F label="Category">

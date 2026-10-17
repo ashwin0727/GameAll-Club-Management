@@ -208,7 +208,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                             children: [
                               Text('Guest', style: Theme.of(context).textTheme.titleSmall),
                               const SizedBox(height: AppSpacing.sm),
-                              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Full name')),
+                              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Full Name')),
                               const SizedBox(height: AppSpacing.sm),
                               TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
                               const SizedBox(height: AppSpacing.sm),
@@ -223,7 +223,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Court & time', style: Theme.of(context).textTheme.titleSmall),
+                              Text('Court & Time', style: Theme.of(context).textTheme.titleSmall),
                               const SizedBox(height: AppSpacing.xs),
                               Text(
                                 'Currently $_sportName · ${_court?.name} · ${Formatters.dateShort(_booking!.startTime)} · ${_clock(_booking!.startTime)} – ${_clock(_booking!.endTime)}',
@@ -266,7 +266,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                               ),
                               if (_timeChanged) ...[
                                 const SizedBox(height: AppSpacing.sm),
-                                Text('Pick a new slot', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+                                Text('Pick a New Slot', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
                                 const SizedBox(height: AppSpacing.xs),
                                 if (_slotsLoading)
                                   const Center(child: Padding(padding: EdgeInsets.all(AppSpacing.md), child: CircularProgressIndicator()))

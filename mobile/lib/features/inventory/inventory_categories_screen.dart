@@ -80,7 +80,7 @@ class _InventoryCategoriesScreenState extends ConsumerState<InventoryCategoriesS
                 TextField(
                   controller: descController,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Description (optional)'),
+                  decoration: const InputDecoration(labelText: 'Description (Optional)'),
                 ),
                 if (existing != null)
                   SwitchListTile(

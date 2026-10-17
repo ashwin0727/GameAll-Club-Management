@@ -76,7 +76,7 @@ export function CoachAvailabilityEditor({
           size="sm"
           onClick={() => onChange([...windows, { dayOfWeek: 1, startTime: "16:00", endTime: "20:00" }])}
         >
-          Add window
+          Add Window
         </Button>
       )}
     </div>

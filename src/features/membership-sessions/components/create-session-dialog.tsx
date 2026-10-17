@@ -119,7 +119,7 @@ export function CreateSessionDialog({
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Session name</Label>
+            <Label>Session Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Evening Badminton" />
           </div>
           <div className="grid grid-cols-2 gap-2">

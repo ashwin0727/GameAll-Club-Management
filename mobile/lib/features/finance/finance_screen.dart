@@ -241,7 +241,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                             title: 'Recent Transactions',
                             trailing: TextButton(
                               onPressed: () => context.push(AppRoutes.financeTransactions),
-                              child: const Text('View all'),
+                              child: const Text('View All'),
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -565,7 +565,7 @@ class _Delta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pct == null) {
-      return Text('vs last period', style: AppTypography.caption(context));
+      return Text('Vs last period', style: AppTypography.caption(context));
     }
     final good = invert ? pct! <= 0 : pct! >= 0;
     final colour = good ? context.tokens.success : context.tokens.destructive;

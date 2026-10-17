@@ -246,7 +246,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                 children: [
                   _heading(context, 1, 'Basic Information', "Enter the coach's personal and contact details."),
                   Wrap(spacing: AppSpacing.sm, children: [
-                    ChoiceChip(label: const Text('Existing staff member'), selected: !_newPerson, onSelected: (_) => setState(() => _newPerson = false)),
+                    ChoiceChip(label: const Text('Existing Staff Member'), selected: !_newPerson, onSelected: (_) => setState(() => _newPerson = false)),
                     ChoiceChip(label: const Text('+ New person'), selected: _newPerson, onSelected: (_) => setState(() => _newPerson = true)),
                   ]),
                   const SizedBox(height: AppSpacing.md),
@@ -316,7 +316,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                       controller: _customDuration,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(labelText: 'Custom duration (minutes)', hintText: 'e.g. 75'),
+                      decoration: const InputDecoration(labelText: 'Custom Duration (Minutes)', hintText: 'e.g. 75'),
                     ),
                   ],
                   const SizedBox(height: AppSpacing.sm),
@@ -381,7 +381,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
     return [
       AppDropdown<String>(
         initialValue: _userId,
-        decoration: const InputDecoration(labelText: 'Staff member'),
+        decoration: const InputDecoration(labelText: 'Staff Member'),
         items: _candidates.isEmpty
             ? const [DropdownMenuItem(value: null, child: Text('Every staff member is already a coach'))]
             : _candidates
@@ -474,7 +474,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
         initialValue: _roleId,
         decoration: const InputDecoration(labelText: 'Role *'),
         items: _roles.isEmpty
-            ? const [DropdownMenuItem(value: null, child: Text('No roles available'))]
+            ? const [DropdownMenuItem(value: null, child: Text('No Roles Available'))]
             : _roles.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))).toList(),
         onChanged: (v) => setState(() => _roleId = v),
       ),

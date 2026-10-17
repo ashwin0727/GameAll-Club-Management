@@ -259,7 +259,7 @@ export function TransactionsList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search transaction ID, description…"
-            aria-label="Search transactions"
+            aria-label="Search Transactions"
             className="h-11 pl-9"
           />
         </div>
@@ -396,7 +396,7 @@ export function TransactionsList() {
             </p>
             <div className="flex items-center gap-1">
               <PageButton
-                label="Previous page"
+                label="Previous Page"
                 disabled={page === 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
@@ -427,7 +427,7 @@ export function TransactionsList() {
               )}
 
               <PageButton
-                label="Next page"
+                label="Next Page"
                 disabled={page + 1 >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

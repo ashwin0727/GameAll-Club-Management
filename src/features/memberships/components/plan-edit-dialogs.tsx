@@ -145,7 +145,7 @@ export function EditPlanDialog({
             <input type="checkbox" checked={showBadge} onChange={(e) => setShowBadge(e.target.checked)} className="h-4 w-4 accent-[#0B7A55]" />
             Show a badge on this plan
           </label>
-          {showBadge && <Input value={badge} onChange={(e) => setBadge(e.target.value.slice(0, 20))} className="h-9 w-40" aria-label="Badge text" />}
+          {showBadge && <Input value={badge} onChange={(e) => setBadge(e.target.value.slice(0, 20))} className="h-9 w-40" aria-label="Badge Text" />}
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex justify-end gap-3">
@@ -233,7 +233,7 @@ export function EditBenefitsDialog({
             }}
             placeholder="Add a benefit, e.g. Free locker"
           />
-          <button type="button" className={BTN_OUTLINE} onClick={add} aria-label="Add benefit">
+          <button type="button" className={BTN_OUTLINE} onClick={add} aria-label="Add Benefit">
             <Plus className="h-4 w-4" />
           </button>
         </div>
@@ -383,10 +383,10 @@ export function EditSlotsDialog({
                     </div>
                   </Field>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Start time">
+                    <Field label="Start Time">
                       <Input type="time" value={d.start} onChange={(e) => update(i, { start: e.target.value })} />
                     </Field>
-                    <Field label="End time">
+                    <Field label="End Time">
                       <Input type="time" value={d.end} onChange={(e) => update(i, { end: e.target.value })} />
                     </Field>
                   </div>

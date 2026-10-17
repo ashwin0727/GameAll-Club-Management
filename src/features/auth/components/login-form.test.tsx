@@ -6,7 +6,7 @@ import { failing, installFakeAuthService, renderWithProviders } from "@/test/har
 import { routerMock, setSearchParams } from "@/test/router-mock";
 
 async function signIn(user: ReturnType<typeof userEvent.setup>, password = "TurfCourt2026") {
-  await user.type(screen.getByLabelText("Email address"), "owner@yourturf.com");
+  await user.type(screen.getByLabelText("Email Address"), "owner@yourturf.com");
   await user.type(screen.getByLabelText("Password"), password);
   await user.click(screen.getByRole("button", { name: "Sign In" }));
 }
@@ -17,7 +17,7 @@ describe("LoginForm", () => {
     installFakeAuthService();
     renderWithProviders(<LoginForm />);
 
-    await user.click(screen.getByLabelText("Email address"));
+    await user.click(screen.getByLabelText("Email Address"));
     await user.tab();
 
     expect(await screen.findByText("Email address is required")).toBeInTheDocument();

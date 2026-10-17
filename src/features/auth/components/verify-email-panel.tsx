@@ -122,7 +122,7 @@ export function VerifyEmailPanel() {
 
         <TextField
           id="change-email"
-          label="New email address"
+          label="New Email Address"
           type="email"
           inputMode="email"
           autoComplete="email"

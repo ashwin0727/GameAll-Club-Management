@@ -21,7 +21,7 @@ describe("ForgotPasswordForm", () => {
     const service = installFakeAuthService();
     renderWithProviders(<ForgotPasswordForm />);
 
-    await user.type(screen.getByLabelText("Registered email address"), "owner.com");
+    await user.type(screen.getByLabelText("Registered Email Address"), "owner.com");
     await user.click(screen.getByRole("button", { name: "Send Reset Link" }));
 
     expect(
@@ -35,13 +35,13 @@ describe("ForgotPasswordForm", () => {
     const service = installFakeAuthService();
     renderWithProviders(<ForgotPasswordForm />);
 
-    await user.type(screen.getByLabelText("Registered email address"), "owner@yourturf.com");
+    await user.type(screen.getByLabelText("Registered Email Address"), "owner@yourturf.com");
     await user.click(screen.getByRole("button", { name: "Send Reset Link" }));
 
     await waitFor(() =>
       expect(service.resetPassword).toHaveBeenCalledWith({ email: "owner@yourturf.com" }),
     );
-    expect(await screen.findByText("Check your inbox")).toBeInTheDocument();
+    expect(await screen.findByText("Check Your Inbox")).toBeInTheDocument();
     expect(screen.getByText(/If an account exists for/)).toBeInTheDocument();
   });
 
@@ -52,12 +52,12 @@ describe("ForgotPasswordForm", () => {
     });
     renderWithProviders(<ForgotPasswordForm />);
 
-    await user.type(screen.getByLabelText("Registered email address"), "owner@yourturf.com");
+    await user.type(screen.getByLabelText("Registered Email Address"), "owner@yourturf.com");
     await user.click(screen.getByRole("button", { name: "Send Reset Link" }));
 
     expect(
       await screen.findByText("Network error. Check your connection and try again."),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Check your inbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("Check Your Inbox")).not.toBeInTheDocument();
   });
 });

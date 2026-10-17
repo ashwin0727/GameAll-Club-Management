@@ -152,7 +152,7 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
         content: const Text('The student will no longer be able to pay through it.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel it')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel It')),
         ],
       ),
     );
@@ -163,7 +163,7 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
 
   void _copy(String url) {
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link Copied')));
   }
 
   Widget _fact(BuildContext context, String label, String value) => Padding(
@@ -257,7 +257,7 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
                   padding: const EdgeInsets.only(top: AppSpacing.sm),
                   child: FilledButton(
                     onPressed: _busy ? null : () => _run(() => repo.createEnrollmentBilling(widget.enrollmentId)),
-                    child: const Text('Generate a new link'),
+                    child: const Text('Generate a New Link'),
                   ),
                 ),
             ] else ...[

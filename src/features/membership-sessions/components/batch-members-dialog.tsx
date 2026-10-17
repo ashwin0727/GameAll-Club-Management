@@ -133,7 +133,7 @@ export function BatchMembersDialog({
 
             <div className="space-y-2">
               <input
-                aria-label="Search members to assign"
+                aria-label="Search Members to Assign"
                 placeholder="Search by name or phone"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

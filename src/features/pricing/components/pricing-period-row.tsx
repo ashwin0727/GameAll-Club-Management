@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
 
 const DAY_TYPE_OPTIONS: { value: PeriodDraft["dayType"]; label: string }[] = [
-  { value: "ALL_DAYS", label: "All days" },
+  { value: "ALL_DAYS", label: "All Days" },
   { value: "WEEKDAYS", label: "Weekdays" },
   { value: "WEEKENDS", label: "Weekends" },
 ];
@@ -33,7 +33,7 @@ export function PricingPeriodRow({
     <div className="space-y-2 rounded-lg border border-border p-3">
       <div className="flex items-center gap-2">
         <DropdownSelect
-          aria-label="Applies to"
+          aria-label="Applies To"
           value={period.dayType}
           onChange={(e) => onChange({ ...period, dayType: e.target.value as PeriodDraft["dayType"] })}
           className="h-11 flex-1 rounded-md border border-input bg-secondary/60 px-2 text-sm"
@@ -61,8 +61,8 @@ export function PricingPeriodRow({
 
       {!period.coversFullDay && (
         <div className="grid grid-cols-2 gap-2">
-          <TimeSelect aria-label="Period start time" value={period.startTime} onChange={(v) => onChange({ ...period, startTime: v })} />
-          <TimeSelect aria-label="Period end time" value={period.endTime} onChange={(v) => onChange({ ...period, endTime: v })} />
+          <TimeSelect aria-label="Period Start Time" value={period.startTime} onChange={(v) => onChange({ ...period, startTime: v })} />
+          <TimeSelect aria-label="Period End Time" value={period.endTime} onChange={(v) => onChange({ ...period, endTime: v })} />
         </div>
       )}
 
@@ -83,7 +83,11 @@ export function PricingPeriodRow({
         )}
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && (
+        <p data-pricing-error className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -317,13 +317,13 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Record payment'),
+        title: const Text('Record Payment'),
         content: Text(
           "Mark this billing cycle as paid for ${row.memberName}. Use this when you've collected the payment outside the app.",
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Record payment')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Record Payment')),
         ],
       ),
     );
@@ -332,7 +332,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     try {
       await ref.read(membershipRepositoryProvider).recordMembershipPayment(row.membershipId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment recorded')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Recorded')));
       _refresh();
     } on AppException catch (e) {
       if (!mounted) return;
@@ -364,7 +364,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
     }
     final url = '${base.replaceAll(RegExp(r'/+$'), '')}/join/$facilityId';
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership sign-up link copied')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership Sign-Up Link Copied')));
   }
 
   int get _totalPages => (_list.totalCount / _perPage).ceil().clamp(1, 1 << 30);
@@ -575,7 +575,7 @@ class _SummaryGrid extends StatelessWidget {
         accentColor: tokens.destructive,
       ),
       AppMetricCard(
-        label: 'Revenue (this month)',
+        label: 'Revenue (This Month)',
         value: Formatters.currencyInr(summary.revenueInr),
         countTo: summary.revenueInr,
         formatValue: (v) => Formatters.currencyInr(v.round()),
@@ -679,7 +679,7 @@ class _MembershipRowCard extends StatelessWidget {
                       children: [
                         Icon(Icons.visibility_outlined, size: 18),
                         SizedBox(width: AppSpacing.sm),
-                        Text('View details'),
+                        Text('View Details'),
                       ],
                     ),
                   ),
@@ -690,7 +690,7 @@ class _MembershipRowCard extends StatelessWidget {
                         children: [
                           Icon(Icons.payments_outlined, size: 18),
                           SizedBox(width: AppSpacing.sm),
-                          Text('Record payment'),
+                          Text('Record Payment'),
                         ],
                       ),
                     ),
@@ -700,7 +700,7 @@ class _MembershipRowCard extends StatelessWidget {
                       children: [
                         Icon(Icons.delete_outline, size: 18, color: tokens.destructive),
                         const SizedBox(width: AppSpacing.sm),
-                        Text('Delete member', style: TextStyle(color: tokens.destructive)),
+                        Text('Delete Member', style: TextStyle(color: tokens.destructive)),
                       ],
                     ),
                   ),

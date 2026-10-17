@@ -417,7 +417,7 @@ export function ProgramWizardPage() {
                     <Input type="date" min={form.startDate} value={form.customEndDate} onChange={(e) => form.setCustomEndDate(e.target.value)} />
                   </Field>
                 ) : (
-                  <Field label="End Date (computed)">
+                  <Field label="End Date (Computed)">
                     <Input type="date" value={form.endDate} disabled />
                   </Field>
                 )}
@@ -426,7 +426,7 @@ export function ProgramWizardPage() {
                 <Field label="Max Capacity" required>
                   <Input type="number" min="1" step="1" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.maxCapacity} onChange={(e) => form.setMaxCapacity(e.target.value)} />
                 </Field>
-                <Field label="Minimum Students (optional)">
+                <Field label="Minimum Students (Optional)">
                   <Input type="number" min="0" step="1" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.minCapacity} onChange={(e) => form.setMinCapacity(e.target.value)} />
                 </Field>
               </div>
@@ -437,7 +437,7 @@ export function ProgramWizardPage() {
                   ))}
                 </div>
               </Field>
-              <Field label="Session Format (optional)">
+              <Field label="Session Format (Optional)">
                 <Input value={form.sessionFormat} onChange={(e) => form.setSessionFormat(e.target.value)} placeholder="e.g. On-court group drills" />
               </Field>
             </>
@@ -613,7 +613,7 @@ export function ProgramWizardPage() {
                 <Field label="Early Bird Discount (₹, optional)">
                   <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.earlyBirdDiscount} onChange={(e) => form.setEarlyBirdDiscount(e.target.value)} />
                 </Field>
-                <Field label="Discount Valid Till (optional)">
+                <Field label="Discount Valid Till (Optional)">
                   <Input type="date" value={form.discountValidTill} onChange={(e) => form.setDiscountValidTill(e.target.value)} />
                 </Field>
               </div>
@@ -626,7 +626,7 @@ export function ProgramWizardPage() {
                   <Input type="number" min="0" max="100" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.taxPercent} onChange={(e) => form.setTaxPercent(e.target.value)} />
                 </Field>
               )}
-              <Field label="Payment Notes (optional)">
+              <Field label="Payment Notes (Optional)">
                 <Textarea rows={2} value={form.paymentNotes} onChange={(e) => form.setPaymentNotes(e.target.value)} />
               </Field>
 

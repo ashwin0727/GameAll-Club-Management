@@ -334,7 +334,7 @@ export function MembershipsPage() {
           ))}
         </DropdownSelect>
         <DropdownSelect
-          aria-label="Membership type"
+          aria-label="Membership Type"
           value={planId}
           onChange={(e) => setPlanId(e.target.value)}
           className="h-9 rounded-md border border-input bg-secondary/60 px-2 text-sm"
@@ -347,7 +347,7 @@ export function MembershipsPage() {
           ))}
         </DropdownSelect>
         <DropdownSelect
-          aria-label="Sort by"
+          aria-label="Sort By"
           value={sort}
           onChange={(e) => setSort(e.target.value as MembershipListSort)}
           className="h-9 rounded-md border border-input bg-secondary/60 px-2 text-sm"
@@ -449,7 +449,7 @@ export function MembershipsPage() {
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+                              <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -542,7 +542,7 @@ export function MembershipsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record payment</DialogTitle>
+            <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
               Mark this billing cycle as paid for{" "}
               <span className="font-medium text-foreground">{payTarget?.name}</span>. Use this when you&apos;ve collected

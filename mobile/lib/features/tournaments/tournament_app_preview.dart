@@ -83,14 +83,14 @@ class _TournamentAppPreviewState extends State<TournamentAppPreview> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 600),
               child: current == null
-                  ? const _Fallback(key: ValueKey('fallback'), label: 'App preview coming soon')
+                  ? const _Fallback(key: ValueKey('fallback'), label: 'App Preview Coming Soon')
                   : Image.asset(
                       current.asset,
                       key: ValueKey(current.asset),
                       fit: BoxFit.contain,
                       semanticLabel: 'GameAll Tournament Management — ${current.label}',
                       errorBuilder: (context, error, stack) =>
-                          const _Fallback(key: ValueKey('fallback'), label: 'App preview coming soon'),
+                          const _Fallback(key: ValueKey('fallback'), label: 'App Preview Coming Soon'),
                     ),
             ),
           ),

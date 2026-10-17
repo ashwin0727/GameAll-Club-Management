@@ -62,7 +62,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Check your email', style: Theme.of(context).textTheme.headlineSmall),
+        Text('Check Your Email', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: AppSpacing.xs),
         Text(
           'If an account exists for ${_email.text.trim()}, we\'ve sent a link to reset your password.',
@@ -79,7 +79,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Reset your password', style: Theme.of(context).textTheme.headlineSmall),
+          Text('Reset Your Password', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: AppSpacing.xs),
           const Text("Enter your account email and we'll send you a reset link."),
           const SizedBox(height: AppSpacing.xl),

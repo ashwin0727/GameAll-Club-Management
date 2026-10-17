@@ -188,8 +188,8 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
             <Row label="Program" value={e.programName} />
             <Row label="Batch" value={e.batchName ?? "—"} />
             <Row label="Coach" value={e.coachName ?? "—"} />
-            <Row label="Start date" value={fmtDate(e.startDate)} />
-            <Row label="End date" value={fmtDate(e.endDate)} />
+            <Row label="Start Date" value={fmtDate(e.startDate)} />
+            <Row label="End Date" value={fmtDate(e.endDate)} />
             <Row label="Pricing" value={e.pricingType} />
             <Row label="Enrolled" value={fmtDate(e.createdAt)} />
           </dl>
@@ -259,7 +259,7 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
             <h3 className="text-sm font-semibold">Progress Notes</h3>
             {canProgress && (
               <Button size="sm" variant="outline" onClick={() => setDialog("progress")}>
-                Add note
+                Add Note
               </Button>
             )}
           </div>
@@ -367,18 +367,18 @@ function EditEnrollmentDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit enrollment</DialogTitle>
+          <DialogTitle>Edit Enrollment</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Start date">
+            <Field label="Start Date">
               <Input type="date" value={startDate} onChange={(ev) => setStartDate(ev.target.value)} />
             </Field>
-            <Field label="End date">
+            <Field label="End Date">
               <Input type="date" value={endDate} onChange={(ev) => setEndDate(ev.target.value)} />
             </Field>
           </div>
-          <Field label="Sessions in package">
+          <Field label="Sessions in Package">
             <Input type="number" min="1" step="1" value={sessionsTotal} onChange={(ev) => setSessionsTotal(ev.target.value)} />
           </Field>
           {canPrice && enrollment.pricingType !== "MEMBERSHIP_INCLUDED" && (
@@ -450,7 +450,7 @@ function CancelEnrollmentDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={onClose}>
-            Keep enrollment
+            Keep Enrollment
           </Button>
           <Button variant="destructive" disabled={busy} onClick={() => void submit()}>
             {busy ? "Cancelling…" : "Cancel Coaching"}
@@ -501,10 +501,10 @@ function AddProgressDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add progress note</DialogTitle>
+          <DialogTitle>Add Progress Note</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Field label="Skill or goal (optional)">
+          <Field label="Skill or Goal (Optional)">
             <Input value={skill} onChange={(e) => setSkill(e.target.value)} />
           </Field>
           <Field label="Note">

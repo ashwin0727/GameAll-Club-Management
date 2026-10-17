@@ -182,7 +182,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       return;
     }
     Clipboard.setData(ClipboardData(text: '${base.replaceAll(RegExp(r'/+$'), '')}/join/${d.facilityId}'));
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership sign-up link copied')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membership Sign-Up Link Copied')));
   }
 
   @override
@@ -213,12 +213,12 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
               onSelected: _confirm,
               itemBuilder: (context) => [
                 if (d.displayStatus == MembershipListStatus.paymentIncomplete && d.membership.rawStatus != 'cancelled')
-                  const PopupMenuItem(value: 'record', child: Text('Record payment')),
+                  const PopupMenuItem(value: 'record', child: Text('Record Payment')),
                 if (d.displayStatus == MembershipListStatus.active && d.membership.rawStatus != 'cancelled')
-                  const PopupMenuItem(value: 'cancel', child: Text('Cancel membership')),
+                  const PopupMenuItem(value: 'cancel', child: Text('Cancel Membership')),
                 PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete member', style: TextStyle(color: context.tokens.destructive)),
+                  child: Text('Delete Member', style: TextStyle(color: context.tokens.destructive)),
                 ),
               ],
             ),
@@ -360,7 +360,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
       _sectionCard(context, 'Membership Link', [
         Text('Share this link with players so they can register on their own.', style: AppTypography.caption(context)),
         const SizedBox(height: AppSpacing.sm),
-        SecondaryButton(label: 'Copy sign-up link', onPressed: _shareLink),
+        SecondaryButton(label: 'Copy Sign-Up Link', onPressed: _shareLink),
       ]),
       const SizedBox(height: AppSpacing.md),
 

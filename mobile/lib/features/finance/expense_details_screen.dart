@@ -155,7 +155,7 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
                 ? ErrorView(message: _error!, onRetry: _load)
                 : _expense == null
                     ? const EmptyStateView(
-                        title: 'Not found',
+                        title: 'Not Found',
                         message: 'This expense could not be found.',
                       )
                     : _body(_expense!),
@@ -230,12 +230,12 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
           if (_receiptUrl != null) ...[
             const SizedBox(height: AppSpacing.sm),
             GhostButton(
-              label: 'View receipt',
+              label: 'View Receipt',
               onPressed: () => launchUrl(Uri.parse(_receiptUrl!), mode: LaunchMode.externalApplication),
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          Text('Payment history', style: AppTypography.rowTitle(context)),
+          Text('Payment History', style: AppTypography.rowTitle(context)),
           const SizedBox(height: AppSpacing.sm),
           if (e.payments.isEmpty)
             Text('No payments recorded yet.', style: AppTypography.secondary(context))
@@ -265,14 +265,14 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
             const SizedBox(height: AppSpacing.lg),
             if (e.paymentStatus != ExpensePaymentStatus.paid)
               PrimaryButton(
-                label: 'Mark paid',
+                label: 'Mark Paid',
                 isLoading: false,
                 onPressed: _busy ? null : _markPaid,
               ),
             const SizedBox(height: AppSpacing.sm),
             SecondaryButton(label: 'Edit', onPressed: _busy ? null : _edit),
             const SizedBox(height: AppSpacing.sm),
-            DangerButton(label: 'Void expense', onPressed: _busy ? null : _void),
+            DangerButton(label: 'Void Expense', onPressed: _busy ? null : _void),
           ],
           const SizedBox(height: AppSpacing.xl),
         ],

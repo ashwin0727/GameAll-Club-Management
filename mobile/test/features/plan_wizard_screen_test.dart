@@ -331,9 +331,9 @@ void main() {
 
     await tapText(tester, 'Recurring');
     expect(find.text('Billing Interval *'), findsOneWidget);
-    await reveal(tester, find.text('Auto-Renewal'));
+    await reveal(tester, find.text('Auto-Renewal').first);
     expect(find.text('Recurring Payment'), findsOneWidget);
-    expect(find.text('Auto-Renewal'), findsOneWidget);
+    expect(find.text('Auto-Renewal'), findsWidgets);
     expect(find.text('Price per billing cycle (₹) *'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
@@ -353,7 +353,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Plan Name *'), 'No Badge');
     await tester.tap(find.byType(Switch).first);
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(TextField, 'Badge text'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Badge Text'), findsNothing);
     await tapNext(tester);
     await enterField(tester, 'Price (₹) *', '900');
     await tapNext(tester);

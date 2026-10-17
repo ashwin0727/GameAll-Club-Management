@@ -346,7 +346,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
     return (
       <div className="mx-auto max-w-lg space-y-4 text-center">
         <Check className="mx-auto h-10 w-10 text-success" />
-        <h1 className="text-lg font-semibold">Membership created</h1>
+        <h1 className="text-lg font-semibold">Membership Created</h1>
         {mandateUrl ? (
           <>
             <p className="text-sm text-muted-foreground">Send this UPI AutoPay link to the member:</p>

@@ -378,7 +378,7 @@ function TodaysBookingsCard({ blocks, delay }: { blocks: { block: ScheduleBlock;
                     <td className="py-2 text-right">
                       <Link
                         href="/calendar"
-                        aria-label="Open bookings"
+                        aria-label="Open Bookings"
                         className="inline-flex text-muted-foreground hover:text-foreground"
                       >
                         <MoreHorizontal className="h-4 w-4" />
@@ -661,7 +661,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           loading={revenueLoading}
           action={
             <DropdownSelect
-              aria-label="Revenue month"
+              aria-label="Revenue Month"
               value={revenueMonthOffset}
               disabled={revenueLoading}
               onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
@@ -763,7 +763,7 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
             preserveAspectRatio="none"
             className="absolute inset-0 h-full w-full"
             role="img"
-            aria-label="Revenue trend for the month"
+            aria-label="Revenue Trend for the Month"
           >
             <defs>
               <linearGradient id="revenue-fill" x1="0" x2="0" y1="0" y2="1">

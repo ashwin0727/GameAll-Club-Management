@@ -211,7 +211,7 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
                       top: BorderSide(color: context.tokens.borderColor)),
                 ),
                 child: AuthGradientButton(
-                  label: 'Create maintenance ticket',
+                  label: 'Create Maintenance Ticket',
                   loadingLabel: 'Creating…',
                   isLoading: _submitting,
                   onPressed: _valid && !_submitting ? _submit : null,
@@ -244,7 +244,7 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
               child: AppDropdown<String>(
                 initialValue: _courtId,
                 isExpanded: true,
-                hint: const Text('Select court'),
+                hint: const Text('Select Court'),
                 items: [
                   for (final c in _courts)
                     DropdownMenuItem(value: c.id, child: Text('${c.name} — ${c.sportName}'))
@@ -261,7 +261,7 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
               child: AppDropdown<String>(
                 initialValue: _categoryId,
                 isExpanded: true,
-                hint: const Text('Select category'),
+                hint: const Text('Select Category'),
                 items: [
                   for (final c in _categories)
                     DropdownMenuItem(value: c.id, child: Text(c.name))
@@ -294,7 +294,7 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
           accent: accent,
           children: [
             _ToggleRow(
-              title: 'Schedule maintenance now',
+              title: 'Schedule Maintenance Now',
               subtitle: 'Blocks this court\'s time out on the calendar.',
               value: _schedule,
               onChanged: (v) {

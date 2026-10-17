@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function SignupPage() {
   return (
     <AuthCard
-      title="Create your account"
+      title="Create Your Account"
       subtitle="Start managing your sports facility smarter."
       footer={
         <>

@@ -158,7 +158,7 @@ export function ExpensesPage() {
     () =>
       summary
         ? [
-            { label: "Total (period)", value: summary.totalMinor, accent: "text-foreground" },
+            { label: "Total (Period)", value: summary.totalMinor, accent: "text-foreground" },
             { label: "This Month", value: summary.thisMonthMinor, accent: "text-foreground" },
             { label: "This Week", value: summary.thisWeekMinor, accent: "text-foreground" },
             {
@@ -209,15 +209,15 @@ export function ExpensesPage() {
             <FilterSelect
               value={categoryId}
               onChange={setCategoryId}
-              options={[{ value: ALL, label: "All categories" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+              options={[{ value: ALL, label: "All Categories" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
             />
           </FilterField>
-          <FilterField label="Payment status" className="w-[10rem]">
+          <FilterField label="Payment Status" className="w-[10rem]">
             <FilterSelect
               value={paymentStatus}
               onChange={setPaymentStatus}
               options={[
-                { value: ALL, label: "Any status" },
+                { value: ALL, label: "Any Status" },
                 { value: "PAID", label: "Paid" },
                 { value: "PARTIAL", label: "Partial" },
                 { value: "PENDING", label: "Unpaid" },
@@ -228,7 +228,7 @@ export function ExpensesPage() {
             <FilterSelect
               value={paymentMethod}
               onChange={setPaymentMethod}
-              options={[{ value: ALL, label: "Any method" }, ...methods.map((m) => ({ value: m, label: m }))]}
+              options={[{ value: ALL, label: "Any Method" }, ...methods.map((m) => ({ value: m, label: m }))]}
             />
           </FilterField>
           <FilterField label="Min ₹" className="w-[7rem]">
@@ -276,7 +276,7 @@ export function ExpensesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search vendor, reference or notes…"
-            aria-label="Search expenses"
+            aria-label="Search Expenses"
             className="h-11 pl-9"
           />
         </div>
@@ -288,7 +288,7 @@ export function ExpensesPage() {
             <p className="text-sm font-semibold text-destructive">Unable to load expenses</p>
             <p className="mt-1 text-sm text-muted-foreground">{error}</p>
             <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
-              Try again
+              Try Again
             </Button>
           </div>
         ) : expenses === null ? (
@@ -414,7 +414,7 @@ export function ExpensesPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Previous page"
+                aria-label="Previous Page"
                 disabled={page === 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
@@ -427,7 +427,7 @@ export function ExpensesPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                aria-label="Next page"
+                aria-label="Next Page"
                 disabled={page + 1 >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

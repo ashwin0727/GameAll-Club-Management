@@ -14,7 +14,7 @@ export function changePct(current: number, previous: number | null): number | nu
  * facility (for expenses / money owed a rise is bad — pass `invert`).
  */
 export function KpiDelta({ pct, invert }: { pct: number | null; invert?: boolean }) {
-  if (pct === null) return <span className="text-muted-foreground">vs last period</span>;
+  if (pct === null) return <span className="text-muted-foreground">Vs last period</span>;
   const good = invert ? pct <= 0 : pct >= 0;
   const Icon = pct >= 0 ? TrendingUp : TrendingDown;
   return (

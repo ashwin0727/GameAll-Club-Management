@@ -264,7 +264,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
             type="text"
-            aria-label="Search members"
+            aria-label="Search Members"
             placeholder="Search by name, phone or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -316,7 +316,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
               <th className="w-10 px-4 py-3">
                 <input
                   type="checkbox"
-                  aria-label="Select all on this page"
+                  aria-label="Select All on This Page"
                   checked={pageAllSelected}
                   onChange={(e) =>
                     setSelected((prev) => {
@@ -450,7 +450,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
         <div className="flex items-center gap-1">
           <button
             type="button"
-            aria-label="Previous page"
+            aria-label="Previous Page"
             disabled={safePage <= 1}
             onClick={() => setPage(safePage - 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-input transition-colors hover:bg-accent disabled:opacity-40"
@@ -477,7 +477,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
           ))}
           <button
             type="button"
-            aria-label="Next page"
+            aria-label="Next Page"
             disabled={safePage >= pages}
             onClick={() => setPage(safePage + 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-input transition-colors hover:bg-accent disabled:opacity-40"

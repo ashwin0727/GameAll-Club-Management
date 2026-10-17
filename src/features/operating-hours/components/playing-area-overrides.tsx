@@ -34,7 +34,7 @@ export function PlayingAreaOverrides({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold">Customize individual court/turf hours</h3>
+        <h3 className="text-sm font-semibold">Customize Individual Court/Turf Hours</h3>
         <p className="text-xs text-muted-foreground">
           By default, all courts and turfs use the facility hours.
         </p>
@@ -65,7 +65,7 @@ export function PlayingAreaOverrides({
                           className="h-9 px-2 text-xs"
                           onClick={() => onUseFacilityHours(area.id)}
                         >
-                          Use facility hours
+                          Use Facility Hours
                         </Button>
                       ) : (
                         <Button

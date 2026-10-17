@@ -99,23 +99,23 @@ class _GuestFormSheetState extends ConsumerState<GuestFormSheet> {
           children: [
             Text(widget.guest != null ? 'Edit Guest' : 'Add Guest', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full name')),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full Name')),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _phoneController,
-              decoration: const InputDecoration(labelText: 'Mobile number (optional)'),
+              decoration: const InputDecoration(labelText: 'Mobile Number (Optional)'),
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email (optional)'),
+              decoration: const InputDecoration(labelText: 'Email (Optional)'),
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _notesController,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              decoration: const InputDecoration(labelText: 'Notes (Optional)'),
               maxLines: 3,
             ),
             if (widget.guest != null) ...[

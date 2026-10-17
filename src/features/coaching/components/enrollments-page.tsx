@@ -103,7 +103,7 @@ export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: strin
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search students…"
-              aria-label="Search enrollments"
+              aria-label="Search Enrollments"
               className="h-10 pl-9"
             />
           </div>

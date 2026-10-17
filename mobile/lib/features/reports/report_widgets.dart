@@ -126,7 +126,7 @@ class _KpiDelta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pct == null) {
-      return Text('vs last period', style: AppTypography.caption(context));
+      return Text('Vs last period', style: AppTypography.caption(context));
     }
     final good = invert ? pct! <= 0 : pct! >= 0;
     final colour = good ? context.tokens.success : context.tokens.destructive;

@@ -626,7 +626,7 @@ function EditProgramDetailsDialog({ program, onClose, onSaved }: { program: Prog
                 <Input type="date" min={start} value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
               </Field>
             ) : (
-              <Field label="End Date (computed)">
+              <Field label="End Date (Computed)">
                 <Input type="date" value={endDate} disabled />
               </Field>
             )}
@@ -635,7 +635,7 @@ function EditProgramDetailsDialog({ program, onClose, onSaved }: { program: Prog
             <Field label="Max Capacity">
               <Input type="number" min="1" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={maxCapacity} onChange={(e) => setMaxCapacity(e.target.value)} />
             </Field>
-            <Field label="Minimum Students (optional)">
+            <Field label="Minimum Students (Optional)">
               <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={minCapacity} onChange={(e) => setMinCapacity(e.target.value)} />
             </Field>
           </div>
@@ -646,7 +646,7 @@ function EditProgramDetailsDialog({ program, onClose, onSaved }: { program: Prog
               ))}
             </div>
           </Field>
-          <Field label="Session Format (optional)">
+          <Field label="Session Format (Optional)">
             <Input value={sessionFormat} onChange={(e) => setSessionFormat(e.target.value)} placeholder="e.g. On-court group drills" />
           </Field>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -750,7 +750,7 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
             <Field label="Early Bird Discount (₹, optional)">
               <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={earlyBirdDiscount} onChange={(e) => setEarlyBirdDiscount(e.target.value)} />
             </Field>
-            <Field label="Discount Valid Till (optional)">
+            <Field label="Discount Valid Till (Optional)">
               <Input type="date" value={discountValidTill} onChange={(e) => setDiscountValidTill(e.target.value)} />
             </Field>
           </div>
@@ -763,7 +763,7 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
               <Input type="number" min="0" max="100" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={taxPercent} onChange={(e) => setTaxPercent(e.target.value)} />
             </Field>
           )}
-          <Field label="Payment Notes (optional)">
+          <Field label="Payment Notes (Optional)">
             <Textarea rows={2} value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
           </Field>
 

@@ -231,14 +231,14 @@ export function CourtTimeSlotSection({
 
               <div className="grid grid-cols-3 gap-2">
                 <input
-                  aria-label="Start time"
+                  aria-label="Start Time"
                   type="time"
                   value={draft.startTime}
                   onChange={(e) => setDraft({ startTime: e.target.value })}
                   className={selectCls}
                 />
                 <input
-                  aria-label="End time"
+                  aria-label="End Time"
                   type="time"
                   value={draft.endTime}
                   onChange={(e) => setDraft({ endTime: e.target.value })}

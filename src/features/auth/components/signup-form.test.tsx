@@ -12,10 +12,10 @@ const VALID = {
 };
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Full name"), VALID.name);
-  await user.type(screen.getByLabelText("Business email"), VALID.email);
+  await user.type(screen.getByLabelText("Full Name"), VALID.name);
+  await user.type(screen.getByLabelText("Business Email"), VALID.email);
   await user.type(screen.getByLabelText("Password"), VALID.password);
-  await user.type(screen.getByLabelText("Confirm password"), VALID.password);
+  await user.type(screen.getByLabelText("Confirm Password"), VALID.password);
 }
 
 describe("SignupForm", () => {
@@ -36,7 +36,7 @@ describe("SignupForm", () => {
     installFakeAuthService();
     renderWithProviders(<SignupForm />);
 
-    await user.click(screen.getByLabelText("Full name"));
+    await user.click(screen.getByLabelText("Full Name"));
     await user.tab();
 
     expect(await screen.findByText("Enter your full name")).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe("SignupForm", () => {
     installFakeAuthService();
     renderWithProviders(<SignupForm />);
 
-    await user.type(screen.getByLabelText("Business email"), "owner@");
+    await user.type(screen.getByLabelText("Business Email"), "owner@");
     await user.tab();
 
     expect(
@@ -74,7 +74,7 @@ describe("SignupForm", () => {
     renderWithProviders(<SignupForm />);
 
     await user.type(screen.getByLabelText("Password"), VALID.password);
-    await user.type(screen.getByLabelText("Confirm password"), "TurfCourt2027");
+    await user.type(screen.getByLabelText("Confirm Password"), "TurfCourt2027");
     await user.tab();
 
     expect(await screen.findByText("Passwords do not match")).toBeInTheDocument();

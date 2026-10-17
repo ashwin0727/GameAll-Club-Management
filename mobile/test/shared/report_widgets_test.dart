@@ -67,7 +67,7 @@ void main() {
       expect(find.text('205'), findsOneWidget);
       // delta shows a % figure as text, not colour alone
       expect(find.textContaining('12'), findsWidgets);
-      expect(find.text('vs last period'), findsOneWidget); // the KPI with no pct
+      expect(find.text('Vs last period'), findsOneWidget); // the KPI with no pct
     });
   });
 

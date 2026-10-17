@@ -62,7 +62,7 @@ function changePct(current: number, previous: number): number | null {
 }
 
 function Delta({ pct, invert }: { pct: number | null; invert?: boolean }) {
-  if (pct === null) return <span className="text-[11px] text-muted-foreground">vs last period</span>;
+  if (pct === null) return <span className="text-[11px] text-muted-foreground">Vs last period</span>;
   // For expenses and money owed, a rise is bad news — the arrow follows the
   // number but the colour follows what it means for the facility.
   const good = invert ? pct <= 0 : pct >= 0;
@@ -257,7 +257,7 @@ export function FinanceDashboard() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">Revenue Trend</h2>
             <Select value={granularity} onValueChange={(v) => setGranularity(v as RevenueTrendGranularity)}>
-              <SelectTrigger className="h-9 w-32" aria-label="Trend granularity">
+              <SelectTrigger className="h-9 w-32" aria-label="Trend Granularity">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

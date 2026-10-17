@@ -215,7 +215,7 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Membership batches',
+                const Text('Membership Batches',
                     style:
                         TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
@@ -339,7 +339,7 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
                 ],
                 const SizedBox(height: AppSpacing.lg),
                 AuthGradientButton(
-                  label: 'Add batch',
+                  label: 'Add Batch',
                   loadingLabel: 'Saving…',
                   isLoading: _isSaving,
                   onPressed: _addBatch,

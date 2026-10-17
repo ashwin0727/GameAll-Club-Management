@@ -250,7 +250,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
             {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
             <div className="grid grid-cols-2 gap-4 pt-1 lg:grid-cols-4">
               <Stat icon={CalendarDays} tone="bg-success/15 text-success" value={durationLabel(plan.durationDays)} label="Duration" />
-              <Stat icon={IndianRupee} tone="bg-warning/20 text-warning" value={inr(perMonth)} label="Price / month" />
+              <Stat icon={IndianRupee} tone="bg-warning/20 text-warning" value={inr(perMonth)} label="Price / Month" />
               <Stat icon={Wallet} tone="bg-blue-500/15 text-blue-600 dark:text-blue-400" value={String(slots.length)} label={slots.length === 1 ? "Time slot" : "Time slots"} />
               <Stat icon={Users} tone="bg-destructive/15 text-destructive" value={String(activeMembers)} label="Active Members" />
             </div>
@@ -268,7 +268,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label="More actions"
+                  aria-label="More Actions"
                   disabled={busy}
                   className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent"
                 >
@@ -590,7 +590,7 @@ function PlanMembersTab({
         <div className="flex items-center justify-center gap-2">
           <button
             type="button"
-            aria-label="Previous page"
+            aria-label="Previous Page"
             disabled={view.page === 1}
             onClick={() => setPage(view.page - 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-input disabled:opacity-40"
@@ -613,7 +613,7 @@ function PlanMembersTab({
           ))}
           <button
             type="button"
-            aria-label="Next page"
+            aria-label="Next Page"
             disabled={view.page === view.pages}
             onClick={() => setPage(view.page + 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-input disabled:opacity-40"

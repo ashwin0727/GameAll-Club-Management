@@ -87,3 +87,16 @@ describe("facilityDetailsSchema", () => {
     }
   });
 });
+
+describe("businessPhone", () => {
+  const base = { facilityName: "Arena", facilityType: "BADMINTON", addressLine: "1 Main St", area: "Adyar", city: "Chennai", state: "Tamil Nadu", pinCode: "600020" };
+  const msg = (phone: string) => facilityDetailsSchema.safeParse({ ...base, businessPhone: phone }).error?.issues[0]?.message;
+
+  it("is required", () => expect(msg("")).toBe("Phone number is required"));
+  it("needs exactly 10 digits", () => expect(msg("98765")).toBe("Enter a valid 10-digit mobile number"));
+  it("must start with 6, 7, 8 or 9", () => expect(msg("1234567890")).toBe("Mobile number must start with 6, 7, 8 or 9"));
+  it("accepts a valid mobile, with or without +91", () => {
+    expect(msg("9876543210")).toBeUndefined();
+    expect(msg("+919876543210")).toBeUndefined();
+  });
+});

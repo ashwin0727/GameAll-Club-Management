@@ -52,17 +52,17 @@ const FEATURES = [
 const WHY_SEPARATE = [
   {
     icon: Rocket,
-    title: "Built for match day",
+    title: "Built for Match Day",
     body: "A focused organizer tool with draws, live scoring and brackets — designed for the pace of a live event.",
   },
   {
     icon: ShieldCheck,
-    title: "Your facility stays clean",
+    title: "Your Facility Stays Clean",
     body: "Bookings, memberships and finance keep working exactly as they do today, with no tournament clutter.",
   },
   {
     icon: GitFork,
-    title: "Independent updates",
+    title: "Independent Updates",
     body: "The tournament team ships new formats and features on its own schedule without disrupting operations here.",
   },
 ] as const;

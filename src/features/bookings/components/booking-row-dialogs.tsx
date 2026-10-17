@@ -107,7 +107,7 @@ export function CancelBookingDialog({
 
   return (
     <DialogShell
-      title="Cancel booking"
+      title="Cancel Booking"
       description={
         paid
           ? "This booking is paid. Cancelling it requests a refund according to your cancellation policy."
@@ -122,7 +122,7 @@ export function CancelBookingDialog({
         ) : (
           <>
             <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
-              Keep booking
+              Keep Booking
             </Button>
             <Button type="button" variant="destructive" onClick={confirm} disabled={busy}>
               {busy ? "Cancelling…" : "Cancel booking"}
@@ -217,7 +217,7 @@ export function ChangeCourtDialog({
 
   return (
     <DialogShell
-      title="Change court"
+      title="Change Court"
       description={`Same time, different court: ${when}`}
       onClose={onClose}
       footer={
@@ -313,7 +313,7 @@ export function MarkPaymentDialog({
 
   return (
     <DialogShell
-      title="Mark payment"
+      title="Mark Payment"
       description={
         booking.amountMinor != null
           ? `Booking total ${formatCurrency(booking.amountMinor, booking.currency)}. Record what you collected.`
@@ -401,7 +401,7 @@ export function DuplicateBookingDialog({
 
   return (
     <DialogShell
-      title="Duplicate booking"
+      title="Duplicate Booking"
       description="Creates a new pending booking for the same guest and court, with the same length."
       onClose={onClose}
       footer={
@@ -460,10 +460,10 @@ export function PaymentDetailsDialog({
       }
     >
       <div className="grid grid-cols-2 gap-3">
-        <Row label="Payment status" value={<span className="capitalize">{booking.paymentStatus.toLowerCase()}</span>} />
+        <Row label="Payment Status" value={<span className="capitalize">{booking.paymentStatus.toLowerCase()}</span>} />
         <Row label="Amount" value={booking.amountMinor != null ? formatCurrency(booking.amountMinor, booking.currency) : "—"} />
         <Row label="Method" value={booking.paymentMethod ?? "—"} />
-        <Row label="Booking status" value={<span className="capitalize">{booking.status}</span>} />
+        <Row label="Booking Status" value={<span className="capitalize">{booking.status}</span>} />
       </div>
       {refundView && paid && (
         <p className="text-sm text-muted-foreground">
@@ -478,7 +478,7 @@ export function PaymentDetailsDialog({
 export function CancellationReasonDialog({ booking, onClose }: { booking: Booking; onClose: () => void }) {
   return (
     <DialogShell
-      title="Cancellation reason"
+      title="Cancellation Reason"
       onClose={onClose}
       footer={
         <Button type="button" onClick={onClose}>

@@ -35,7 +35,7 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
   const dataKey = points.map((p) => `${p.date}:${p.grossMinor}`).join(",");
 
   return (
-    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue trend chart">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue Trend Chart">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>

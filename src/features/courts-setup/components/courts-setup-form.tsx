@@ -35,7 +35,7 @@ type LoadState = "loading" | "ready" | "forbidden";
 
 const DEBOUNCE_MS = 400;
 
-export function CourtsSetupForm() {
+export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDelayMs?: number } = {}) {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const completeCourts = useOnboardingStore((s) => s.completeCourts);
@@ -155,7 +155,7 @@ export function CourtsSetupForm() {
       persistArea(id).catch(() => {
         setSaveError("Unable to save your changes. Please try again.");
       });
-    }, DEBOUNCE_MS);
+    }, autosaveDelayMs);
   }
 
   useEffect(() => {
@@ -318,7 +318,7 @@ export function CourtsSetupForm() {
   }
 
   if (loadState === "forbidden") {
-    return <ErrorState title="Access denied" message="You don't have access to this facility." />;
+    return <ErrorState title="Access Denied" message="You don't have access to this facility." />;
   }
 
   if (!facility) return null;

@@ -5,6 +5,7 @@ import { BadgeCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/form/select-field";
 import { TextField } from "@/features/auth/components/text-field";
+import { sanitizePhoneDigits } from "@/features/coaching/add-coach-validation";
 import { FACILITY_TYPE_OPTIONS } from "@/features/onboarding/constants";
 import type { FacilityDetailsInput } from "@/features/onboarding/validation";
 
@@ -59,11 +60,17 @@ export function FacilityInformationSection({
         id="business-phone"
         label="Business Contact Number"
         type="tel"
-        inputMode="tel"
-        placeholder="+91 XXXXX XXXXX"
+        inputMode="numeric"
+        maxLength={10}
+        placeholder="98765 43210"
         hint="The facility's own contact number — it doesn't have to match your personal number."
         error={errors.businessPhone?.message}
-        {...register("businessPhone")}
+        {...register("businessPhone", {
+          // Digits only, capped at 10 — a pasted "+91 98765-43210" or a stray letter never lands in the field.
+          onChange: (e) => {
+            e.target.value = sanitizePhoneDigits(e.target.value.replace(/^\s*\+?91(?=\d{10}\s*$)/, ""));
+          },
+        })}
       />
 
       <div className="space-y-2">

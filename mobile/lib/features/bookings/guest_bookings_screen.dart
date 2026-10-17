@@ -292,7 +292,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                             tmpFrom = _defaultFrom();
                             tmpTo = DateTime.now();
                           }),
-                          child: const Text('Clear all'),
+                          child: const Text('Clear All'),
                         ),
                     ],
                   ),
@@ -374,7 +374,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                   group('PAYMENT', _payOptions, tmpPay),
                   const SizedBox(height: AppSpacing.xl),
                   AuthGradientButton(
-                    label: 'Show results',
+                    label: 'Show Results',
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       setState(() {
@@ -655,7 +655,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Cancel booking'),
+          title: const Text('Cancel Booking'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,7 +663,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
               TextField(
                 controller: reason,
                 decoration: const InputDecoration(
-                  labelText: 'Reason (optional)',
+                  labelText: 'Reason (Optional)',
                 ),
               ),
               if (r.paymentStatus == 'PAID') ...[
@@ -671,14 +671,14 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   value: refund,
                   onChanged: (v) => setSt(() => refund = v ?? false),
-                  title: const Text('Issue a refund'),
+                  title: const Text('Issue a Refund'),
                 ),
                 if (refund)
                   TextField(
                     controller: amount,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Refund amount (₹)',
+                      labelText: 'Refund Amount (₹)',
                     ),
                   ),
               ],
@@ -742,7 +742,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           controller: email,
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
-            labelText: 'Guest email',
+            labelText: 'Guest Email',
             hintText: 'guest@example.com',
           ),
         ),
@@ -783,7 +783,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Duplicate booking'),
+          title: const Text('Duplicate Booking'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1019,7 +1019,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Record payment'),
+        title: const Text('Record Payment'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1031,7 +1031,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
             const SizedBox(height: AppSpacing.sm),
             AppDropdown<String>(
               initialValue: method.text,
-              decoration: const InputDecoration(labelText: 'Payment method'),
+              decoration: const InputDecoration(labelText: 'Payment Method'),
               items: const [
                 'Cash',
                 'UPI',
@@ -1045,7 +1045,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
               controller: amount,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Amount received (₹)',
+                labelText: 'Amount Received (₹)',
               ),
             ),
           ],
@@ -1057,7 +1057,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Record payment'),
+            child: const Text('Record Payment'),
           ),
         ],
       ),
@@ -1383,7 +1383,7 @@ class _OverviewCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _MiniStat(
-                        label: 'Avg / booking',
+                        label: 'Avg / Booking',
                         value: Formatters.currencyInr(
                           (s.avgPerBookingMinor / 100).round(),
                         ),

@@ -80,10 +80,10 @@ export function ProfitLossPage() {
     () =>
       pnl
         ? [
-            { label: "Court booking revenue", value: pnl.bookingRevenueMinor },
-            { label: "Membership revenue", value: pnl.membershipRevenueMinor },
-            { label: "Guest booking revenue", value: pnl.guestBookingRevenueMinor },
-            { label: "Other revenue", value: pnl.otherRevenueMinor },
+            { label: "Court Booking Revenue", value: pnl.bookingRevenueMinor },
+            { label: "Membership Revenue", value: pnl.membershipRevenueMinor },
+            { label: "Guest Booking Revenue", value: pnl.guestBookingRevenueMinor },
+            { label: "Other Revenue", value: pnl.otherRevenueMinor },
           ].filter((r) => r.value !== 0)
         : [],
     [pnl],
@@ -139,7 +139,7 @@ export function ProfitLossPage() {
       ) : (
         <>
           <Card className="p-4">
-            <h2 className="mb-2 text-sm font-semibold">Revenue vs expenses</h2>
+            <h2 className="mb-2 text-sm font-semibold">Revenue vs Expenses</h2>
             {trend === null ? <ChartSkeleton className="h-72" /> : <PnlTrendChart points={trend} />}
           </Card>
 
@@ -161,7 +161,7 @@ export function ProfitLossPage() {
             </Card>
 
             <Card className="space-y-2 p-4">
-              <h2 className="text-sm font-semibold">Expenses by category</h2>
+              <h2 className="text-sm font-semibold">Expenses by Category</h2>
               <dl className="space-y-1.5 text-sm">
                 {pnl.expenseByCategory.length === 0 ? (
                   <p className="text-muted-foreground">No expenses recorded in this period.</p>

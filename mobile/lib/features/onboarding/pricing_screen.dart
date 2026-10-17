@@ -17,10 +17,11 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
+import 'pricing_summary.dart';
 import 'pricing_validation.dart';
 
 const List<({String value, String label})> _dayTypeOptions = [
-  (value: 'ALL_DAYS', label: 'All days'),
+  (value: 'ALL_DAYS', label: 'All Days'),
   (value: 'WEEKDAYS', label: 'Weekdays'),
   (value: 'WEEKENDS', label: 'Weekends'),
 ];
@@ -81,6 +82,98 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
       }
     }
     super.dispose();
+  }
+
+  /// A period as the summary shows it — the amount comes from what is typed in the field right now, so the summary
+  /// follows every keystroke.
+  SummaryPeriod _summaryPeriod(_PeriodState p) => SummaryPeriod(
+        dayType: p.draft.dayType,
+        coversFullDay: p.draft.coversFullDay,
+        startTime: p.draft.startTime,
+        endTime: p.draft.endTime,
+        amountInr: num.tryParse(p.amountController.text.trim()) ?? 0,
+      );
+
+  /// Pricing Summary — each sport's rate, courts/turfs with their own pricing, identical ones shown once.
+  Widget _pricingSummary(BuildContext context) {
+    var priced = 0;
+    var custom = 0;
+    final rows = <Widget>[];
+    for (final fs in _facilitySports) {
+      final sport = _sports.where((x) => x.id == fs.sportId).firstOrNull;
+      final areas = _areas.where((a) => a.facilitySportId == fs.id).toList();
+      final label = playingAreaLabelFor(sport?.code ?? 'OTHER');
+      final defaults = (_defaultPeriods[fs.id] ?? const <_PeriodState>[]).map(_summaryPeriod).toList();
+      final customized = [
+        for (final a in areas)
+          if (_overrides[a.id]?.active ?? false) CustomizedArea(a.name, _overrides[a.id]!.periods.map(_summaryPeriod).toList()),
+      ];
+      final blocks = sportSummaryBlocks(defaults: defaults, customized: customized, areaCount: areas.length, areaLabel: label);
+      if (defaults.any((p) => p.isPriced) || customized.any((c) => c.periods.any((p) => p.isPriced))) priced++;
+      custom += customized.length;
+
+      Widget periodLines(List<SummaryPeriod> periods) => periods.isEmpty
+          ? const Text('Not Set', style: TextStyle(fontSize: 12, color: AppColors.muted))
+          : Column(
+              children: [
+                for (final p in periods)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(periodLabel(p), style: const TextStyle(fontSize: 12, color: AppColors.muted))),
+                        Text('${Formatters.currencyInr(p.amountInr)} / hour', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(fs.customSportName ?? sport?.name ?? 'Sport', style: const TextStyle(fontWeight: FontWeight.w700))),
+                Text('${areas.length} ${areas.length == 1 ? label : '${label}s'}', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+              ],
+            ),
+            const SizedBox(height: 2),
+            for (final b in blocks)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 4),
+                padding: b.indented ? const EdgeInsets.only(left: AppSpacing.sm) : EdgeInsets.zero,
+                decoration: b.indented ? const BoxDecoration(border: Border(left: BorderSide(color: AppColors.border, width: 2))) : null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (b.title != null) Text(b.title!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    periodLines(b.periods),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ));
+    }
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Pricing Summary', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.md),
+          ...rows,
+          const Divider(),
+          Text(
+            '${_facilitySports.length} Sports · ${_areas.length} Playing Areas · $priced priced${custom > 0 ? ' · $custom custom' : ''}',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+        ],
+      ),
+    );
   }
 
   _PeriodState _newPeriod({
@@ -184,12 +277,34 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     period.draft.amountMinor = rupees == null ? 0 : (rupees * 100).round();
   }
 
+  /// True when the sport's own rate isn't needed: it has courts, every one is customized with a real price, and the
+  /// default itself was left blank. Mirrors the web, where a sport whose courts all have their own pricing doesn't
+  /// also need a default rate.
+  bool _defaultNotNeeded(String facilitySportId) {
+    final areas = _areas.where((a) => a.facilitySportId == facilitySportId).toList();
+    if (areas.isEmpty) return false;
+    final everyCourtPriced = areas.every((a) {
+      final o = _overrides[a.id];
+      if (o == null || !o.active || o.periods.isEmpty) return false;
+      return o.periods.every((p) => (num.tryParse(p.amountController.text.trim()) ?? 0) > 0);
+    });
+    final defaultBlank = (_defaultPeriods[facilitySportId] ?? const <_PeriodState>[]).every((p) => (num.tryParse(p.amountController.text.trim()) ?? 0) <= 0);
+    return everyCourtPriced && defaultBlank;
+  }
+
   bool _validateAll() {
     var isValid = true;
     setState(() {
       // Operating hours are set on the *next* step now, so there is nothing
       // to cross-check pricing periods against here.
-      for (final periods in _defaultPeriods.values) {
+      for (final entry in _defaultPeriods.entries) {
+        final periods = entry.value;
+        if (_defaultNotNeeded(entry.key)) {
+          for (final p in periods) {
+            p.error = null;
+          }
+          continue;
+        }
         for (final p in periods) {
           _syncAmount(p);
           p.error = validatePricingPeriod(p.draft);
@@ -222,13 +337,14 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
 
   Future<void> _submit() async {
     if (!_validateAll()) {
-      setState(() => _submitError = 'Fix the highlighted pricing periods before continuing.');
+      setState(() => _submitError = 'Some pricing needs attention — fix the highlighted periods, then continue.');
       return;
     }
 
     final rules = <PricingRule>[];
     for (final fs in _facilitySports) {
       for (final p in _defaultPeriods[fs.id] ?? []) {
+        if (_defaultNotNeeded(fs.id)) break;
         rules.add(
           PricingRule(
             facilitySportId: fs.id,
@@ -303,7 +419,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     if (_isLoading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 2,
-        title: 'Set your pricing',
+        title: 'Set Your Pricing',
         onBack: () => context.go(AppRoutes.onboardingSportsCourts),
         footer: const SizedBox.shrink(),
         children: [
@@ -318,20 +434,27 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     }
     return OnboardingScaffold(
       stepIndex: 2,
-      title: 'Set your pricing',
+      title: 'Set Your Pricing',
       subtitle: 'Define how much guests pay to use your courts and turfs.',
       onBack: () => context.go(AppRoutes.onboardingSportsCourts),
-      footer: AuthGradientButton(
-        label: 'Next · operating hours  ›',
-        loadingLabel: 'Saving…',
-        isLoading: _isSubmitting,
-        onPressed: _submit,
+      // The error sits beside the button: the field at fault is usually far above, off screen.
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_submitError != null) ...[
+            Text(_submitError!, style: const TextStyle(color: AppColors.destructive, fontSize: 12)),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          AuthGradientButton(
+            label: 'Next · operating hours  ›',
+            loadingLabel: 'Saving…',
+            isLoading: _isSubmitting,
+            onPressed: _submit,
+          ),
+        ],
       ),
       children: [
-        if (_submitError != null) ...[
-          Text(_submitError!, style: const TextStyle(color: AppColors.destructive)),
-          const SizedBox(height: AppSpacing.md),
-        ],
         ..._facilitySports.map((fs) {
                       final sport = _sports.where((s) => s.id == fs.sportId).firstOrNull;
                       final areasForSport = _areas.where((a) => a.facilitySportId == fs.id).toList();
@@ -384,7 +507,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                                               if (o.active)
                                                 TextButton(
                                                   onPressed: () => setState(() => o.active = false),
-                                                  child: const Text('Use default rate'),
+                                                  child: const Text('Use Default Rate'),
                                                 )
                                               else
                                                 OutlinedButton(
@@ -417,6 +540,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                         ),
                       );
                     }),
+        _pricingSummary(context),
       ],
     );
   }
@@ -468,7 +592,7 @@ class _PeriodsEditor extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Full day', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                        const Text('Full Day', style: TextStyle(fontSize: 11, color: AppColors.muted)),
                         Switch(
                           value: p.draft.coversFullDay,
                           onChanged: (v) {
@@ -518,7 +642,7 @@ class _PeriodsEditor extends StatelessWidget {
                     controller: p.amountController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
-                      labelText: 'Rate (₹ / hour)',
+                      labelText: 'Rate (₹ / Hour)',
                       isDense: true,
                     ),
                   ),
@@ -534,7 +658,7 @@ class _PeriodsEditor extends StatelessWidget {
         }),
         TextButton.icon(
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Add another period'),
+          label: const Text('Add Another Period'),
           onPressed: onAdd,
         ),
       ],

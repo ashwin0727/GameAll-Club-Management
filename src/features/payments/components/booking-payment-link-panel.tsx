@@ -139,7 +139,7 @@ export function BookingPaymentLinkPanel({
         <p className="font-medium text-destructive">{error ?? "Could not create the payment link."}</p>
         <p className="text-muted-foreground">The booking is saved. You can try again, or collect payment at the venue.</p>
         <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void create()}>
-          Try again
+          Try Again
         </Button>
       </div>
     );
@@ -176,7 +176,7 @@ export function BookingPaymentLinkPanel({
         <>
           <p className="text-muted-foreground">This link can no longer be paid. Generate a new one to collect {amountLabel}.</p>
           <Button type="button" size="sm" disabled={busy} onClick={() => void create()}>
-            Generate a new link
+            Generate a New Link
           </Button>
         </>
       ) : (
@@ -206,7 +206,7 @@ export function BookingPaymentLinkPanel({
               {checking ? "Checking…" : "Check payment status"}
             </Button>
             <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void cancelLink()}>
-              Cancel link
+              Cancel Link
             </Button>
           </div>
           {link.expiresAt && <p className="text-xs text-muted-foreground">Valid until {new Date(link.expiresAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}.</p>}

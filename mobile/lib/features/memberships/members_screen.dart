@@ -509,7 +509,7 @@ class _MembersTabState extends State<_MembersTab> {
     final header = <Widget>[
         _HeroStatCard(
           icon: Icons.groups_rounded,
-          title: 'Total members',
+          title: 'Total Members',
           value: '${c.total}',
           figs: [
             (value: '${c.active}', label: 'active'),
@@ -575,7 +575,7 @@ class _MembersTabState extends State<_MembersTab> {
           Align(
             alignment: Alignment.centerLeft,
             child: InputChip(
-              label: const Text('Expiring in 30 days'),
+              label: const Text('Expiring in 30 Days'),
               onDeleted: () => setState(() => _expiringOnly = false),
             ),
           ),
@@ -603,7 +603,7 @@ class _MembersTabState extends State<_MembersTab> {
                     onPressed: widget.onNew,
                     style: FilledButton.styleFrom(
                         backgroundColor: tokens.violet),
-                    child: const Text('Add a member'),
+                    child: const Text('Add a Member'),
                   ),
                 ],
               ],

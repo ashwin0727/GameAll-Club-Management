@@ -9,7 +9,7 @@ import { AuthFormSkeleton, AuthFooterLinkSkeleton } from "@/features/auth/compon
 export default function SignupLoading() {
   return (
     <AuthCard
-      title="Create your account"
+      title="Create Your Account"
       subtitle="Start managing your sports facility smarter."
       footer={<AuthFooterLinkSkeleton />}
     >

@@ -296,8 +296,8 @@ export function CourtAccessStep({
                           <button
                             type="button"
                             onClick={() => updateWindow(w.id, { daysOfWeek: [...draft.playingDays].sort() })}
-                            aria-label="Restore all playing days"
-                            title="Restore all playing days"
+                            aria-label="Restore All Playing Days"
+                            title="Restore All Playing Days"
                             className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-accent hover:text-foreground"
                           >
                             <Plus className="h-3 w-3" aria-hidden />
@@ -308,7 +308,7 @@ export function CourtAccessStep({
                       <button
                         type="button"
                         onClick={() => removeWindow(w.id)}
-                        aria-label="Remove this time slot"
+                        aria-label="Remove This Time Slot"
                         className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />

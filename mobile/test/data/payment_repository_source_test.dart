@@ -21,7 +21,7 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/payment_repository.dart').readAsStringSync();
+    source = File('lib/data/repositories/payment_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   group('PaymentRepository.createPaymentOrder', () {
@@ -35,7 +35,8 @@ void main() {
     });
 
     test('the request body sends exactly the source fields the RPC/Edge Function accept', () {
-      final bodyMatch = RegExp(r'body: \{([\s\S]*?)\},\n\s*\);').firstMatch(source);
+      // The create-razorpay-order call's own body (the file also holds the booking payment-link and verify calls).
+      final bodyMatch = RegExp(r"'create-razorpay-order',\s*body: \{([\s\S]*?)\},\n\s*\);").firstMatch(source);
       expect(bodyMatch, isNotNull, reason: 'expected an inline body: { ... } map literal');
       final bodyFields = RegExp(r"'(\w+)':").allMatches(bodyMatch!.group(1)!).map((m) => m.group(1)).toSet();
       expect(bodyFields, {'facilityId', 'sourceType', 'bookingId', 'membershipSessionBookingId', 'memberId', 'planId'});
@@ -52,9 +53,9 @@ void main() {
       // same try/catch shape is repeated for verifyPaymentOrder,
       // reconcilePaymentOrder (Phase 4), and settlePaymentOrder (Phase 5), so
       // across the whole file there are 2 occurrences per method x 4 methods
-      // = 8.
+      // = 8, plus 2 in the guest-booking payment-link call.
       final gatewayThrows = RegExp(r'throw AppException\(AppErrorCode\.paymentGatewayError\);').allMatches(source).length;
-      expect(gatewayThrows, 8);
+      expect(gatewayThrows, 10);
     });
 
     test('every thrown error is the app\'s own AppException type, never a raw object', () {

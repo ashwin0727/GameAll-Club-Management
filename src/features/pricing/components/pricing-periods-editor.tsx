@@ -40,13 +40,17 @@ export function PricingPeriodsEditor({
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">Default Rate</label>
         <AmountInput
-          aria-label="Default rate"
+          aria-label="Default Rate"
           value={first.amountInput}
           onChange={(v) => onChangePeriods([{ ...first, amountInput: v }])}
           currency={currency}
           unitLabel={PRICING_UNIT_LABEL.PER_HOUR!}
         />
-        {errors?.[0] && <p className="text-xs text-destructive">{errors[0]}</p>}
+        {errors?.[0] && (
+          <p data-pricing-error className="text-xs text-destructive">
+            {errors[0]}
+          </p>
+        )}
         <Button type="button" variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => onToggleAdvanced(true)}>
           Advanced pricing (weekday/weekend, peak hours) →
         </Button>
@@ -84,7 +88,7 @@ export function PricingPeriodsEditor({
             onToggleAdvanced(false);
           }}
         >
-          Use simple pricing
+          Use Simple Pricing
         </Button>
       </div>
     </div>

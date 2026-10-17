@@ -61,7 +61,7 @@ export function LoginForm() {
 
       <TextField
         id="login-email"
-        label="Email address"
+        label="Email Address"
         type="email"
         inputMode="email"
         autoComplete="email"

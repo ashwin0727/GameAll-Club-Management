@@ -195,7 +195,7 @@ export function MembershipBatchesDialog({
               <div className="space-y-2 rounded-md border border-dashed border-border p-3">
                 <p className="text-sm font-medium">Add a batch</p>
                 <input
-                  aria-label="Batch name"
+                  aria-label="Batch Name"
                   placeholder="e.g. Evening Badminton"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -264,8 +264,8 @@ export function MembershipBatchesDialog({
                   ))}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <input aria-label="Start time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm" />
-                  <input aria-label="End time" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm" />
+                  <input aria-label="Start Time" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm" />
+                  <input aria-label="End Time" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm" />
                   <input aria-label="Capacity" placeholder="Capacity" inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} className="h-10 rounded-md border border-input bg-secondary/60 px-3 text-sm" />
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}

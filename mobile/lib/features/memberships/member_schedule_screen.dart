@@ -241,7 +241,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Select member', style: AppTypography.caption(context)),
+                    Text('Select Member', style: AppTypography.caption(context)),
                     Text(m.fullName, style: AppTypography.rowTitle(context)),
                     Text(m.phone, style: AppTypography.caption(context)),
                   ],
@@ -322,7 +322,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
             ),
             const SizedBox(height: AppSpacing.xs),
             if (slots.isEmpty && guests.isEmpty)
-              Text('No slots', style: AppTypography.caption(context))
+              Text('No Slots', style: AppTypography.caption(context))
             else ...[
               for (final s in slots)
                 _entry(t.primary, '${s.startTime} – ${s.endTime}', '${s.batchName.isEmpty ? 'Member slot' : s.batchName} · ${s.courtName}'),
@@ -404,7 +404,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
             OutlinedButton.icon(
               onPressed: () => Navigator.of(context).push(AppPageRoute(builder: (_) => MembershipDetailScreen(membershipId: m.membershipId!))),
               icon: const Icon(Icons.history, size: 18),
-              label: const Text('View membership & history'),
+              label: const Text('View Membership & History'),
             ),
           ],
         ],

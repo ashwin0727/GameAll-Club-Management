@@ -197,7 +197,7 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+              <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -333,7 +333,7 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
                         <td className="px-4 py-2.5 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" aria-label="Member actions">
+                              <Button type="button" variant="ghost" size="icon" aria-label="Member Actions">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -559,7 +559,7 @@ function AddMemberButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add member to session</DialogTitle>
+            <DialogTitle>Add Member to Session</DialogTitle>
           </DialogHeader>
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a member by name or phone…" autoFocus />
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -779,12 +779,12 @@ function ReleaseGuestSlotsDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Release guest slots for today</DialogTitle>
+          <DialogTitle>Release Guest Slots for Today</DialogTitle>
         </DialogHeader>
         {detail.runsToday ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Up to <span className="font-medium text-foreground">{maxRelease}</span> unused slot(s) can be released for guest booking today.
+              Up to <span className="font-medium text-foreground">{maxRelease}</span> Unused slot(s) can be released for guest booking today.
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Slots to release</label>

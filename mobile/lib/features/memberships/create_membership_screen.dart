@@ -623,7 +623,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                   isExpanded: true,
                   items: [
                     const DropdownMenuItem(
-                        value: '', child: Text('Custom (no plan)')),
+                        value: '', child: Text('Custom (No Plan)')),
                     ..._plans.map((p) => DropdownMenuItem(
                           value: p.id,
                           child: Text(
@@ -861,7 +861,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AppTextField(
-                            label: 'Search member (optional)',
+                            label: 'Search Member (Optional)',
                             controller: _referralQuery),
                         for (final r in _referralResults)
                           ListTile(
@@ -1462,10 +1462,10 @@ class _MembershipSummarySheet extends StatelessWidget {
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: mandateUrl!));
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Link copied')));
+                        const SnackBar(content: Text('Link Copied')));
                   },
                   icon: const Icon(Icons.copy_rounded, size: 16),
-                  label: const Text('Copy link'),
+                  label: const Text('Copy Link'),
                 ),
               ),
             ] else if (mandateFailed) ...[
@@ -1478,7 +1478,7 @@ class _MembershipSummarySheet extends StatelessWidget {
             ],
             const SizedBox(height: AppSpacing.lg),
             AuthGradientButton(
-              label: 'Back to members',
+              label: 'Back to Members',
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],

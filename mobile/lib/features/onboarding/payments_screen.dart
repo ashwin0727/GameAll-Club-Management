@@ -114,7 +114,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     if (_loading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 4,
-        title: 'Get paid online',
+        title: 'Get Paid Online',
         footer: const SizedBox.shrink(),
         children: [
           SizedBox(
@@ -129,7 +129,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
 
     return OnboardingScaffold(
       stepIndex: 4,
-      title: 'Get paid online',
+      title: 'Get Paid Online',
       subtitle: 'Connect Razorpay so guests can pay when they book. Cash and '
           'pay-at-venue bookings work without this.',
       onBack: () => context.go(AppRoutes.onboardingOperatingHours),
@@ -143,7 +143,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
               onPressed: _finish,
             )
           : _GhostButton(
-              label: 'Do this later',
+              label: 'Do This Later',
               loading: _finishing,
               onTap: _finish,
             ),
@@ -163,9 +163,9 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.lg),
-        const _NeedRow(icon: Icons.account_balance_outlined, label: 'Bank account for payouts', tag: 'Required'),
+        const _NeedRow(icon: Icons.account_balance_outlined, label: 'Bank Account for Payouts', tag: 'Required'),
         const _NeedRow(icon: Icons.badge_outlined, label: 'PAN and GSTIN', tag: 'Required'),
-        const _NeedRow(icon: Icons.description_outlined, label: 'Cancellation policy', tag: 'Optional'),
+        const _NeedRow(icon: Icons.description_outlined, label: 'Cancellation Policy', tag: 'Optional'),
         const SizedBox(height: AppSpacing.xl),
         const _InfoBanner(
           'Verification usually clears in a day. Until then you can still take '

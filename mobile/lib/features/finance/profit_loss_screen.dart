@@ -131,17 +131,17 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
     if (p.totalRevenueMinor == 0 && p.totalExpenseMinor == 0) {
       return const [
         EmptyStateView(
-          title: 'Not enough financial data',
+          title: 'Not Enough Financial Data',
           message: 'There is no recognised revenue or recorded expense in this period.',
         ),
       ];
     }
 
     final revenueRows = <({String label, int value})>[
-      (label: 'Court booking revenue', value: p.bookingRevenueMinor),
-      (label: 'Membership revenue', value: p.membershipRevenueMinor),
-      (label: 'Guest booking revenue', value: p.guestBookingRevenueMinor),
-      (label: 'Other revenue', value: p.otherRevenueMinor),
+      (label: 'Court Booking Revenue', value: p.bookingRevenueMinor),
+      (label: 'Membership Revenue', value: p.membershipRevenueMinor),
+      (label: 'Guest Booking Revenue', value: p.guestBookingRevenueMinor),
+      (label: 'Other Revenue', value: p.otherRevenueMinor),
     ].where((r) => r.value != 0).toList();
 
     final profitColor = p.netProfitMinor < 0 ? tokens.destructive : tokens.success;
@@ -212,7 +212,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text('Net operating profit / loss',
+              child: Text('Net Operating Profit / Loss',
                   style: TextStyle(
                       fontSize: 14, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
             ),

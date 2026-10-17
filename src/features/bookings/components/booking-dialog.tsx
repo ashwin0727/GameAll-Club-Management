@@ -350,14 +350,14 @@ export function BookingDialog({
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-3">
                       <input
-                        aria-label="New guest name"
+                        aria-label="New Guest Name"
                         placeholder="Guest name"
                         value={newGuestName}
                         onChange={(e) => setNewGuestName(e.target.value)}
                         className="h-11 rounded-md border border-input bg-secondary/60 px-3 text-sm"
                       />
                       <input
-                        aria-label="New guest phone"
+                        aria-label="New Guest Phone"
                         placeholder="Phone (optional)"
                         value={newGuestPhone}
                         onChange={(e) => setNewGuestPhone(e.target.value)}
@@ -376,7 +376,7 @@ export function BookingDialog({
                 ) : (
                   <div className="space-y-2">
                     <input
-                      aria-label="Search guests"
+                      aria-label="Search Guests"
                       placeholder="Search by name or phone"
                       value={guestQuery}
                       onChange={(e) => setGuestQuery(e.target.value)}
@@ -414,7 +414,7 @@ export function BookingDialog({
               ) : (
                 <div className="space-y-2">
                   <input
-                    aria-label="Search members"
+                    aria-label="Search Members"
                     placeholder="Search by name or phone"
                     value={memberQuery}
                     onChange={(e) => setMemberQuery(e.target.value)}

@@ -157,7 +157,7 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
                 label: p.status.label,
                 tone: p.status == ProgramStatus.active ? StatusTone.success : StatusTone.neutral,
               ),
-              if (p.isMembershipIncluded) const StatusBadge(label: 'Membership-included', tone: StatusTone.info),
+              if (p.isMembershipIncluded) const StatusBadge(label: 'Membership-Included', tone: StatusTone.info),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

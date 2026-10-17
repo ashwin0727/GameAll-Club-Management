@@ -137,7 +137,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reopen this day'),
+        title: const Text('Reopen This Day'),
         content: TextField(
           controller: _reasonController,
           maxLines: 2,
@@ -209,7 +209,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                         const SizedBox(height: AppSpacing.md),
                         if (_summary != null) ..._sections(_summary!),
                         const SizedBox(height: AppSpacing.xl),
-                        const ReportSectionHeader(title: 'Recent closings'),
+                        const ReportSectionHeader(title: 'Recent Closings'),
                         const SizedBox(height: AppSpacing.sm),
                         if (_history.isEmpty)
                           _EmptyRow(
@@ -335,13 +335,13 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                 decoration: InputDecoration(
-                  labelText: 'Opening cash float (₹)',
+                  labelText: 'Opening Cash Float (₹)',
                   hintText: (s.openingCashMinor / 100).toStringAsFixed(2),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
               AuthGradientButton(
-                label: 'Open day',
+                label: 'Open Day',
                 loadingLabel: 'Opening…',
                 isLoading: _busy,
                 onPressed: _busy
@@ -367,7 +367,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                 enabled: !closed,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                decoration: const InputDecoration(labelText: 'Actual cash counted (₹)'),
+                decoration: const InputDecoration(labelText: 'Actual Cash Counted (₹)'),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -386,7 +386,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                   controller: _reasonController,
                   maxLines: 2,
                   decoration: const InputDecoration(
-                    labelText: 'Variance reason',
+                    labelText: 'Variance Reason',
                     hintText: 'e.g. cash shortage, expense not recorded…',
                   ),
                 ),
@@ -397,12 +397,12 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                   Text('Reason: ${s.varianceReason}', style: AppTypography.caption(context)),
                 const SizedBox(height: AppSpacing.sm),
                 SecondaryButton(
-                  label: 'Reopen day',
+                  label: 'Reopen Day',
                   onPressed: _busy ? null : () => _reopenDialog(s.closingId!),
                 ),
               ] else
                 AuthGradientButton(
-                  label: 'Complete closing',
+                  label: 'Complete Closing',
                   loadingLabel: 'Closing…',
                   isLoading: _busy,
                   onPressed: (_busy || _actualController.text.trim().isEmpty)

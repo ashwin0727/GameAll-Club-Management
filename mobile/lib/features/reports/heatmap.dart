@@ -77,8 +77,11 @@ class Heatmap extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        // A Wrap, not a Row: the legend is wider than a narrow phone and must drop to a second line, not overflow.
+        Wrap(
+          alignment: WrapAlignment.end,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          runSpacing: AppSpacing.xs,
           children: [
             Text('Lower demand', style: AppTypography.caption(context)),
             const SizedBox(width: AppSpacing.sm),

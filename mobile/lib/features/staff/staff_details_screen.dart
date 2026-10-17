@@ -222,7 +222,7 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
                         for (final p in _catalog.where((p) => p.module == mod && held.contains(p.key)))
                           StatusBadge(label: p.label, tone: p.isDangerous ? StatusTone.warning : StatusTone.neutral),
                         if (!_catalog.any((p) => p.module == mod && held.contains(p.key)))
-                          Text('No access', style: AppTypography.caption(context)),
+                          Text('No Access', style: AppTypography.caption(context)),
                       ],
                     ),
                   ],
@@ -253,12 +253,12 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
                     controller: _notesController,
                     maxLines: 5,
                     enabled: session.can('USERS_EDIT'),
-                    decoration: const InputDecoration(labelText: 'Internal notes'),
+                    decoration: const InputDecoration(labelText: 'Internal Notes'),
                   ),
                   if (session.can('USERS_EDIT')) ...[
                     const SizedBox(height: AppSpacing.sm),
                     SecondaryButton(
-                      label: 'Save notes',
+                      label: 'Save Notes',
                       onPressed: _busy
                           ? null
                           : () => _run(() => ref.read(staffRepositoryProvider).updateProfile(

@@ -82,7 +82,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(
                   AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xs),
-              child: Text('Record payment',
+              child: Text('Record Payment',
                   style: TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w800)),
             ),
@@ -107,7 +107,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Payment recorded')));
+          ..showSnackBar(const SnackBar(content: Text('Payment Recorded')));
       }
     } on AppException catch (e) {
       if (mounted) {
@@ -146,7 +146,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Member deleted')));
+          ..showSnackBar(const SnackBar(content: Text('Member Deleted')));
         Navigator.of(context).pop(true);
       }
     } on AppException catch (e) {
@@ -249,7 +249,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                         Border(top: BorderSide(color: tokens.borderColor)),
                   ),
                   child: AuthGradientButton(
-                      label: 'Edit membership', onPressed: _edit),
+                      label: 'Edit Membership', onPressed: _edit),
                 ),
               ),
       ),
@@ -445,7 +445,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                         child:
                             CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.payments_outlined, size: 16),
-                label: const Text('Record payment'),
+                label: const Text('Record Payment'),
               ),
             ),
           ),

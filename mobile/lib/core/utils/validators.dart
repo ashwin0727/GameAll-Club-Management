@@ -49,6 +49,16 @@ class Validators {
     return null;
   }
 
+  /// An Indian mobile number: required, exactly 10 digits, starting 6–9 (a pasted "+91" prefix is ignored) — the
+  /// same rules as the member / student / coach phone fields.
+  static String? mobile(String? value) {
+    final digits = (value?.trim() ?? '').replaceAll(RegExp(r'^\+91'), '');
+    if (digits.isEmpty) return 'Phone number is required.';
+    if (!_tenDigitPhone.hasMatch(digits)) return 'Enter a valid 10-digit mobile number.';
+    if (!RegExp(r'^[6-9]').hasMatch(digits)) return 'Mobile number must start with 6, 7, 8 or 9.';
+    return null;
+  }
+
   /// Phone as an optional field (e.g. a guest player) — same 10-digit rule
   /// as [phone], but empty is valid.
   static String? optionalPhone(String? value) {

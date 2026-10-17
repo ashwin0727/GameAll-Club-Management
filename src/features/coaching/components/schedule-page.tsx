@@ -97,7 +97,7 @@ export function SchedulePage() {
           <Button
             variant="outline"
             size="sm"
-            aria-label="Previous week"
+            aria-label="Previous Week"
             onClick={() => setWeekStart((w) => new Date(w.getFullYear(), w.getMonth(), w.getDate() - 7))}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -108,7 +108,7 @@ export function SchedulePage() {
           <Button
             variant="outline"
             size="sm"
-            aria-label="Next week"
+            aria-label="Next Week"
             onClick={() => setWeekStart((w) => new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7))}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />

@@ -36,15 +36,21 @@ function installAuth() {
   return auth;
 }
 
+/** Fills every required field. Values are pasted rather than typed key by key: one event per field keeps the test
+ *  fast (and independent of how busy the machine is), and the form's own field handling still runs on each paste. */
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Facility Name"), VALID.facilityName);
-  await user.type(screen.getByLabelText("Business Contact Number"), VALID.businessPhone);
-  await user.type(screen.getByLabelText("Address"), VALID.addressLine);
-  await user.type(screen.getByLabelText("Area / Locality"), VALID.area);
-  await user.type(screen.getByLabelText("City"), VALID.city);
+  async function fill(label: string, value: string) {
+    await user.click(screen.getByLabelText(label));
+    await user.paste(value);
+  }
+  await fill("Facility Name", VALID.facilityName);
+  await fill("Business Contact Number", VALID.businessPhone);
+  await fill("Address", VALID.addressLine);
+  await fill("Area / Locality", VALID.area);
+  await fill("City", VALID.city);
   await user.click(screen.getByRole("combobox", { name: /state/i }));
   await user.click(await screen.findByRole("option", { name: "Tamil Nadu" }));
-  await user.type(screen.getByLabelText("PIN Code"), VALID.pinCode);
+  await fill("PIN Code", VALID.pinCode);
 }
 
 describe("FacilityDetailsForm", () => {
@@ -62,7 +68,7 @@ describe("FacilityDetailsForm", () => {
   });
 
   it("reports an empty facility name on blur", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     installAuth();
     renderWithProviders(<FacilityDetailsForm />);
 
@@ -73,7 +79,7 @@ describe("FacilityDetailsForm", () => {
   });
 
   it("requires a custom type when Other is selected", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     installAuth();
     renderWithProviders(<FacilityDetailsForm />);
 
@@ -84,7 +90,7 @@ describe("FacilityDetailsForm", () => {
   });
 
   it("saves the facility and navigates to Sports Setup on submit", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     installAuth();
     renderWithProviders(<FacilityDetailsForm />);
 
@@ -98,7 +104,7 @@ describe("FacilityDetailsForm", () => {
   });
 
   it("restores a previously entered draft after remounting", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     installAuth();
     const { unmount } = renderWithProviders(<FacilityDetailsForm />);
 

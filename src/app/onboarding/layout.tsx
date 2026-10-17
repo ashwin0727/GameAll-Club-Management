@@ -1,11 +1,10 @@
 // src/app/onboarding/layout.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { OnboardingProgress } from "@/features/onboarding/components/onboarding-progress";
-import { LeaveConfirmDialog } from "@/features/onboarding/components/leave-confirm-dialog";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 
 const PREVIOUS_STEP_PATH: Record<string, string> = {
@@ -20,19 +19,6 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const pathname = usePathname();
   const currentStep = useOnboardingStore((s) => s.currentStep);
-  const draft = useOnboardingStore((s) => s.draft);
-  const selectedSportIds = useOnboardingStore((s) => s.selectedSportIds);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
-  // `draft` and `selectedSportIds` are never cleared once their own step
-  // completes, so they stay populated for the rest of onboarding. Only warn
-  // while on the steps that actually own that in-progress state (Facility,
-  // Sports) — later steps (e.g. Courts, which persists incrementally and has
-  // no zustand draft of its own) would otherwise always trip the confirm
-  // dialog off leftover state from steps that already completed.
-  const isEarlyStep = pathname === "/onboarding/facility" || pathname === "/onboarding/sports";
-  const hasUnsavedProgress =
-    isEarlyStep && (Object.values(draft).some((value) => Boolean(value)) || selectedSportIds.length > 0);
   const previousStepPath = PREVIOUS_STEP_PATH[pathname ?? ""] ?? "/dashboard";
 
   // The store uses skipHydration so the client's first render matches the
@@ -44,11 +30,8 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
     useOnboardingStore.persist.rehydrate();
   }, []);
 
+  // Back always goes straight to the previous step — progress is saved as you go, so there is nothing to confirm.
   function handleBack() {
-    if (hasUnsavedProgress) {
-      setConfirmOpen(true);
-      return;
-    }
     router.replace(previousStepPath);
   }
 
@@ -70,11 +53,6 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
 
       <main className="mx-auto max-w-[1000px] px-5 py-10 sm:px-8">{children}</main>
 
-      <LeaveConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        onLeave={() => router.replace(previousStepPath)}
-      />
     </div>
   );
 }

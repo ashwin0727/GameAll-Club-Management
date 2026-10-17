@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function LoginPage() {
   return (
     <AuthCard
-      title="Welcome back"
+      title="Welcome Back"
       subtitle="Sign in to manage your facility."
       footer={
         <>

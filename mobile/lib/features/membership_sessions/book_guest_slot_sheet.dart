@@ -164,11 +164,11 @@ class _BookGuestSlotSheetState extends ConsumerState<BookGuestSlotSheet> {
                 trailing: TextButton(onPressed: () => setState(() => _selectedGuest = null), child: const Text('Change')),
               )
             else if (_showNewGuestForm) ...[
-              TextField(controller: _newNameController, decoration: const InputDecoration(labelText: 'Guest name')),
+              TextField(controller: _newNameController, decoration: const InputDecoration(labelText: 'Guest Name')),
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: _newPhoneController,
-                decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                decoration: const InputDecoration(labelText: 'Phone (Optional)'),
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -183,7 +183,7 @@ class _BookGuestSlotSheetState extends ConsumerState<BookGuestSlotSheet> {
               TextField(
                 controller: _queryController,
                 onChanged: _search,
-                decoration: const InputDecoration(labelText: 'Search guests', hintText: 'Name or phone'),
+                decoration: const InputDecoration(labelText: 'Search Guests', hintText: 'Name or phone'),
               ),
               ..._results.map(
                 (g) => ListTile(

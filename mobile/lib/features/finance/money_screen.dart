@@ -153,7 +153,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Filter by period',
+                  Text('Filter by Period',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -165,7 +165,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                   optionTile('Last 6 months', _MoneyRangeChoice.last6Months),
                   optionTile('This year', _MoneyRangeChoice.thisYear),
                   const SizedBox(height: AppSpacing.md),
-                  Text('Or pick a month',
+                  Text('Or Pick a Month',
                       style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
@@ -214,7 +214,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                     child: FilledButton(
                       onPressed: () => Navigator.pop(
                           sheetContext, (choice: staged, month: stagedMonth)),
-                      child: const Text('Show results'),
+                      child: const Text('Show Results'),
                     ),
                   ),
                 ],
@@ -577,7 +577,7 @@ class _NetCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _LegendRow(
               color: tokens.primary,
-              label: 'Court bookings',
+              label: 'Court Bookings',
               amount: financeAmount(courts)),
           _LegendRow(
               color: tokens.violet,
@@ -585,12 +585,12 @@ class _NetCard extends StatelessWidget {
               amount: financeAmount(memberships)),
           _LegendRow(
               color: grey.withValues(alpha: 0.5),
-              label: 'Session seats',
+              label: 'Session Seats',
               amount: financeAmount(sessions.toInt())),
           const SizedBox(height: 2),
           _LegendRow(
             color: tokens.destructive,
-            label: 'Expenses & refunds',
+            label: 'Expenses & Refunds',
             amount: '−${financeAmount(expensesAndRefunds)}',
             amountColor: tokens.destructive,
             muted: true,
@@ -817,7 +817,7 @@ class _MethodsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('How you got paid',
+          Text('How You Got Paid',
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,

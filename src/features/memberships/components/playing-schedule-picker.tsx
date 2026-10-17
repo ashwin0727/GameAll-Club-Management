@@ -176,7 +176,7 @@ export function PlayingSchedulePicker({
             ariaLabel="Court"
             value={value.courtId}
             onValueChange={(v) => onChange({ ...value, courtId: v })}
-            options={courtOptions.length > 0 ? courtOptions : [{ value: "", label: "No courts" }]}
+            options={courtOptions.length > 0 ? courtOptions : [{ value: "", label: "No Courts" }]}
             className="h-9 rounded-lg border border-input bg-card px-3 text-sm outline-none transition-colors hover:border-foreground/30"
           />
         </div>

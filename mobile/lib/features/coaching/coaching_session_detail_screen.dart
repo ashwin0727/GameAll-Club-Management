@@ -217,7 +217,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
             Text(s.notes ?? 'No session notes yet.', style: AppTypography.body(context)),
             if (s.objectiveResult != null && s.objectiveResult!.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text('Objective result', style: AppTypography.caption(context)),
+              Text('Objective Result', style: AppTypography.caption(context)),
               Text(s.objectiveResult!, style: AppTypography.body(context)),
             ],
           ],
@@ -325,15 +325,15 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Complete session'),
+        title: const Text('Complete Session'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Records completion and coach notes. Student attendance is not tracked.'),
             const SizedBox(height: AppSpacing.sm),
-            TextField(controller: controllers[0], decoration: const InputDecoration(labelText: 'Session notes (optional)'), maxLines: 2),
+            TextField(controller: controllers[0], decoration: const InputDecoration(labelText: 'Session Notes (Optional)'), maxLines: 2),
             const SizedBox(height: AppSpacing.sm),
-            TextField(controller: controllers[1], decoration: const InputDecoration(labelText: 'Objective result (optional)')),
+            TextField(controller: controllers[1], decoration: const InputDecoration(labelText: 'Objective Result (Optional)')),
           ],
         ),
         actions: [
@@ -360,7 +360,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel session'),
+        title: const Text('Cancel Session'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -370,8 +370,8 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep session')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel session')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep Session')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Session')),
         ],
       ),
     );
@@ -578,7 +578,7 @@ class _ProgressNoteSheetState extends State<_ProgressNoteSheet> {
           children: [
             Text('Progress note — ${widget.studentName}', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _skill, decoration: const InputDecoration(labelText: 'Skill or goal (optional)')),
+            TextField(controller: _skill, decoration: const InputDecoration(labelText: 'Skill or Goal (Optional)')),
             const SizedBox(height: AppSpacing.sm),
             TextField(controller: _note, maxLines: 3, decoration: const InputDecoration(labelText: 'Note')),
             const SizedBox(height: AppSpacing.sm),
@@ -598,7 +598,7 @@ class _ProgressNoteSheetState extends State<_ProgressNoteSheet> {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Save note',
+              label: 'Save Note',
               onPressed: () {
                 if (_note.text.trim().isEmpty) {
                   setState(() => _error = 'Enter a progress note.');

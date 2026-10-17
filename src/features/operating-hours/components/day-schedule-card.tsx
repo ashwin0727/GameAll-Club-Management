@@ -71,7 +71,7 @@ export function DayScheduleCard({
         <div className="flex items-center gap-2">
           {isOpen && showCopy && (
             <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onCopyRequest}>
-              Copy hours
+              Copy Hours
             </Button>
           )}
           <button
@@ -98,7 +98,7 @@ export function DayScheduleCard({
             type="button"
             role="checkbox"
             aria-checked={day.is24Hours}
-            aria-label="Open 24 hours"
+            aria-label="Open 24 Hours"
             onClick={() => set24Hours(!day.is24Hours)}
             className="flex h-11 items-center gap-2 text-sm"
           >
@@ -110,7 +110,7 @@ export function DayScheduleCard({
             >
               {day.is24Hours ? "✓" : ""}
             </span>
-            Open 24 hours
+            Open 24 Hours
           </button>
 
           {!day.is24Hours && (
@@ -146,7 +146,7 @@ export function DayScheduleCard({
                       className="h-9 px-2 text-xs text-destructive"
                       onClick={() => removeSlot(index)}
                     >
-                      Remove slot
+                      Remove Slot
                     </Button>
                   )}
                 </div>

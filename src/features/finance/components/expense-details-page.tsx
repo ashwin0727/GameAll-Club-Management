@@ -88,7 +88,7 @@ export function ExpenseDetailsPage({ expenseId }: { expenseId: string }) {
       <div className="space-y-3">
         <p className="text-sm text-destructive">{error ?? "Unable to load this expense."}</p>
         <Button variant="outline" onClick={() => void load()}>
-          Try again
+          Try Again
         </Button>
       </div>
     );
@@ -168,12 +168,12 @@ export function ExpenseDetailsPage({ expenseId }: { expenseId: string }) {
               accent={outstanding > 0 ? "text-warning" : undefined}
             />
             <Detail label="Tax / GST" value={expense.taxMinor ? formatCurrency(expense.taxMinor, expense.currency) : "—"} />
-            <Detail label="Payment method" value={expense.paymentMethod ?? "—"} />
-            <Detail label="Due date" value={fmtDate(expense.dueOn)} />
+            <Detail label="Payment Method" value={expense.paymentMethod ?? "—"} />
+            <Detail label="Due Date" value={fmtDate(expense.dueOn)} />
             <Detail label="Vendor / Payee" value={expense.vendor ?? "—"} />
             <Detail label="Reference" value={expense.reference ?? "—"} />
-            <Detail label="Recorded by" value={expense.createdByName ?? "—"} />
-            <Detail label="Recorded at" value={fmtDate(expense.createdAt)} />
+            <Detail label="Recorded By" value={expense.createdByName ?? "—"} />
+            <Detail label="Recorded At" value={fmtDate(expense.createdAt)} />
           </dl>
           {expense.notes && (
             <div>
@@ -210,7 +210,7 @@ export function ExpenseDetailsPage({ expenseId }: { expenseId: string }) {
         </Card>
 
         <Card className="space-y-3 p-4">
-          <h2 className="text-sm font-semibold">Payment history</h2>
+          <h2 className="text-sm font-semibold">Payment History</h2>
           {expense.payments.length === 0 ? (
             <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
           ) : (
@@ -302,7 +302,7 @@ function EditExpenseDialog({ expense, onSaved }: { expense: ExpenseDetail; onSav
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit expense</DialogTitle>
+            <DialogTitle>Edit Expense</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -329,7 +329,7 @@ function EditExpenseDialog({ expense, onSaved }: { expense: ExpenseDetail; onSav
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ee-date" className="text-xs font-medium">
-                  Expense date
+                  Expense Date
                 </Label>
                 <Input id="ee-date" type="date" value={spentOn} onChange={(e) => setSpentOn(e.target.value)} />
               </div>

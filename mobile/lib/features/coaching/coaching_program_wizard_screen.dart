@@ -518,7 +518,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
                 ? Image.memory(Uint8List.fromList(_imageBytes!), fit: BoxFit.cover)
                 : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Icon(Icons.add_photo_alternate_outlined, color: t.textSecondary),
-                    Text('Tap to upload an image', style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                    Text('Tap to Upload an Image', style: TextStyle(fontSize: 12, color: t.textSecondary)),
                   ]),
           ),
         ),
@@ -603,7 +603,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
       ]),
       _hint(t, _sportName == null ? 'What this program covers, shown to students.' : 'What this $_sportName program covers, shown to students.'),
       _gap(),
-      TextField(controller: _sessionFormat, decoration: const InputDecoration(labelText: 'Session Format (optional)', hintText: 'e.g. On-court group drills')),
+      TextField(controller: _sessionFormat, decoration: const InputDecoration(labelText: 'Session Format (Optional)', hintText: 'e.g. On-court group drills')),
     ];
   }
 
@@ -644,14 +644,14 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Coach'),
           items: [
-            const DropdownMenuItem(value: null, child: Text('No specific coach')),
+            const DropdownMenuItem(value: null, child: Text('No Specific Coach')),
             for (final c in _coaches) DropdownMenuItem(value: c.id, child: Text(c.name, overflow: TextOverflow.ellipsis)),
           ],
           onChanged: (v) => setState(() => _coachId = v),
         ),
         _gap(AppSpacing.sm),
         Row(children: [
-          Expanded(child: TextField(controller: _batchName, decoration: const InputDecoration(labelText: 'Batch name', hintText: 'e.g. Morning Batch'))),
+          Expanded(child: TextField(controller: _batchName, decoration: const InputDecoration(labelText: 'Batch Name', hintText: 'e.g. Morning Batch'))),
           const SizedBox(width: AppSpacing.sm),
           OutlinedButton(onPressed: _canAddBatch ? _addBatch : null, child: const Text('Add Batch')),
         ]),
@@ -728,7 +728,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
       _switchRow('Apply Tax (GST)', _tax, (v) => setState(() => _tax = v)),
       if (_tax) _num(_taxPercent, 'Tax Percent', decimal: true),
       _gap(AppSpacing.sm),
-      TextField(controller: _paymentNotes, maxLines: 2, decoration: const InputDecoration(labelText: 'Payment Notes (optional)')),
+      TextField(controller: _paymentNotes, maxLines: 2, decoration: const InputDecoration(labelText: 'Payment Notes (Optional)')),
       _gap(),
       Container(
         padding: const EdgeInsets.all(AppSpacing.md),

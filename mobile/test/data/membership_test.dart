@@ -270,8 +270,8 @@ void main() {
         'notes': null,
         'slot': null,
         'timeline': [
-          {'label': 'Membership created', 'actor': 'Arun Kumar', 'at': '2026-05-24T11:20:00Z'},
-          {'label': 'Payment received', 'actor': 'upi', 'at': '2026-05-24T11:23:00Z'},
+          {'label': 'Membership Created', 'actor': 'Arun Kumar', 'at': '2026-05-24T11:20:00Z'},
+          {'label': 'Payment Received', 'actor': 'upi', 'at': '2026-05-24T11:23:00Z'},
         ],
       });
 
@@ -282,7 +282,7 @@ void main() {
       expect(d.payment!.transactionId, 'UPI/4123/5598/2026');
       expect(d.referralName, 'Sneha Reddy');
       expect(d.timeline, hasLength(2));
-      expect(d.timeline.first.label, 'Membership created');
+      expect(d.timeline.first.label, 'Membership Created');
     });
   });
 }

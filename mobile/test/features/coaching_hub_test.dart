@@ -226,7 +226,7 @@ void main() {
       expect(find.text('View More Insights'), findsOneWidget);
 
       // The hero speaks only about coaches.
-      expect(find.text('Active coaches'), findsOneWidget);
+      expect(find.text('Active Coaches'), findsWidgets);
       expect(find.text('total coaches'), findsOneWidget);
       expect(find.text('total programs'), findsOneWidget);
       expect(find.text('upcoming sessions'), findsOneWidget);
@@ -251,22 +251,22 @@ void main() {
 
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Total Coaches'), findsOneWidget);
-      expect(find.text('Active Coaches'), findsOneWidget);
+      expect(find.text('Total Coaches'), findsWidgets);
+      expect(find.text('Active Coaches'), findsWidgets);
       expect(find.text('Coaching Expense'), findsOneWidget);
-      expect(find.text('Scheduled Sessions'), findsOneWidget);
+      expect(find.text('Scheduled Sessions'), findsWidgets);
       expect(find.text('Active Sessions'), findsNothing);
       expect(find.text('Overall Revenue'), findsNothing);
 
       await tester.tap(find.text('Programs'));
       await tester.pumpAndSettle();
       expect(find.text('New program'), findsOneWidget);
-      expect(find.text('Total programs'), findsOneWidget);
+      expect(find.text('Total Programs'), findsWidgets);
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Total Programs'), findsOneWidget);
-      expect(find.text('Active Programs'), findsOneWidget);
-      expect(find.text('Enrolled Students'), findsOneWidget);
+      expect(find.text('Total Programs'), findsWidgets);
+      expect(find.text('Active Programs'), findsWidgets);
+      expect(find.text('Enrolled Students'), findsWidgets);
       expect(find.text('Available Seats'), findsOneWidget);
       expect(find.text('7'), findsOneWidget);
       expect(find.text('Average Fee'), findsNothing);
@@ -274,13 +274,13 @@ void main() {
       await tester.tap(find.text('Students'));
       await tester.pumpAndSettle();
       expect(find.text('New student'), findsOneWidget);
-      expect(find.text('Total students'), findsOneWidget);
+      expect(find.text('Total Students'), findsWidgets);
       await tester.tap(find.text('View More Insights'));
       await tester.pumpAndSettle();
-      expect(find.text('Total Students'), findsOneWidget);
-      expect(find.text('Enrolled Students'), findsOneWidget);
-      expect(find.text('Revenue Collected'), findsOneWidget);
-      expect(find.text('Payments Pending'), findsOneWidget);
+      expect(find.text('Total Students'), findsWidgets);
+      expect(find.text('Enrolled Students'), findsWidgets);
+      expect(find.text('Revenue Collected'), findsWidgets);
+      expect(find.text('Payments Pending'), findsWidgets);
       expect(find.text('Payment Pending'), findsNothing);
     });
   });

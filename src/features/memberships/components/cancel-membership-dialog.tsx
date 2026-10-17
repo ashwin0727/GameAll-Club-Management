@@ -66,7 +66,7 @@ export function CancelMembershipDialog({
         <div className="space-y-3 text-sm">
           <p className="text-muted-foreground">{planName}</p>
           <div className="space-y-2">
-            <Label htmlFor="refund_amount">Refund amount (optional)</Label>
+            <Label htmlFor="refund_amount">Refund Amount (Optional)</Label>
             <Input
               id="refund_amount"
               type="number"

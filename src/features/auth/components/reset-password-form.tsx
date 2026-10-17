@@ -67,7 +67,7 @@ export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
       <div>
         <PasswordInput
           id="reset-password"
-          label="New password"
+          label="New Password"
           autoComplete="new-password"
           enterKeyHint="next"
           placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
@@ -79,7 +79,7 @@ export function ResetPasswordForm({ hasSession }: { hasSession: boolean }) {
 
       <PasswordInput
         id="reset-confirm-password"
-        label="Confirm new password"
+        label="Confirm New Password"
         autoComplete="new-password"
         enterKeyHint="go"
         placeholder="Re-enter your new password"

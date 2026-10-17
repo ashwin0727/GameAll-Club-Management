@@ -94,6 +94,8 @@ export function PricingForm() {
   const [copyDialogSportId, setCopyDialogSportId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Shown beside Continue when something blocks it — the offending field can be far above the button.
+  const [attention, setAttention] = useState<string | null>(null);
   const [dirtyToken, setDirtyToken] = useState(0);
 
   const currency = "INR";
@@ -269,16 +271,30 @@ export function PricingForm() {
       const sport = nextState[fs.id]!;
       const sportRules = periodsToRules(sport.periods, fs.id, undefined, currency);
       const sportResult = validatePricingRules(sportRules, operatingDays ?? undefined);
-      if (sportRules.length === 0) sportResult.ruleErrors.push("Set a rate for this sport.");
 
+      // Individual pricing only counts while it is switched on — a hidden override can't block Continue (or be
+      // saved) behind the user's back.
+      const areasForSport = playingAreas.filter((a) => a.facilitySportId === fs.id);
+      const useOverrides = sport.customizeAreas;
       const overrides = { ...sport.overrides };
+      let everyAreaPriced = useOverrides && areasForSport.length > 0;
       for (const [areaId, override] of Object.entries(overrides)) {
+        if (!useOverrides) continue;
         const areaRules = periodsToRules(override.periods, fs.id, areaId, currency);
         const areaResult = validatePricingRules(areaRules, operatingDays ?? undefined);
         overrides[areaId] = { ...override, errors: areaResult.ruleErrors.length > 0 ? areaResult.ruleErrors : areaResult.overlapError ? [areaResult.overlapError] : [] };
         if (!areaResult.isValid || areaRules.length === 0) hasErrors = true;
         allRules.push(...areaRules);
       }
+      if (useOverrides) {
+        for (const area of areasForSport) {
+          const o = overrides[area.id];
+          if (!o?.active || periodsToRules(o.periods, fs.id, area.id, currency).length === 0) everyAreaPriced = false;
+        }
+      }
+
+      // The sport's own rate is only required when some court still relies on it.
+      if (sportRules.length === 0 && !everyAreaPriced) sportResult.ruleErrors.push("Set a rate for this sport.");
 
       const errors = sportResult.ruleErrors.length > 0 ? sportResult.ruleErrors : sportResult.overlapError ? [sportResult.overlapError] : [];
       nextState[fs.id] = { ...sport, overrides, errors };
@@ -287,7 +303,13 @@ export function PricingForm() {
     }
 
     setSportState(nextState);
-    if (hasErrors) return;
+    if (hasErrors) {
+      setAttention("Some pricing needs attention — fix the highlighted fields above, then continue.");
+      // Take the user to the first problem instead of leaving Continue looking dead.
+      requestAnimationFrame(() => document.querySelector("[data-pricing-error]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      return;
+    }
+    setAttention(null);
 
     setIsSaving(true);
     setSaveError(null);
@@ -321,7 +343,7 @@ export function PricingForm() {
   }
 
   if (loadState === "forbidden") {
-    return <ErrorState title="Access denied" message="You don't have access to this facility." />;
+    return <ErrorState title="Access Denied" message="You don't have access to this facility." />;
   }
 
   if (!facility) return null;
@@ -335,6 +357,10 @@ export function PricingForm() {
       areaLabel: label,
       areaCount: areasForSport.length,
       periods: sportState[fs.id]?.periods ?? [],
+      // Each court/turf with its own pricing — what it really charges instead of the sport's rate.
+      customized: areasForSport
+        .filter((a) => sportState[fs.id]?.customizeAreas && sportState[fs.id]?.overrides[a.id]?.active)
+        .map((a) => ({ areaName: a.name, periods: sportState[fs.id]!.overrides[a.id]!.periods })),
     };
   });
 
@@ -381,6 +407,8 @@ export function PricingForm() {
       </div>
 
       <PricingSummary entries={summaryEntries} currency={currency} totalPlayingAreas={playingAreas.length} />
+
+      {attention && <FormMessage>{attention}</FormMessage>}
 
       <div className="flex items-center justify-between gap-4">
         <SaveStatus dirtyToken={dirtyToken} />

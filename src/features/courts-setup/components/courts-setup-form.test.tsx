@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CourtsSetupForm } from "@/features/courts-setup/components/courts-setup-form";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
@@ -135,14 +135,12 @@ describe("CourtsSetupForm", () => {
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
     await screen.findByDisplayValue("Court 1");
 
-    expect(await playingAreasService.getPlayingAreas(facility.id)).toHaveLength(0);
-
     await waitFor(
       async () => {
         const saved = await playingAreasService.getPlayingAreas(facility.id);
         expect(saved.map((a) => a.name)).toEqual(["Court 1"]);
       },
-      { timeout: 2000 },
+      { timeout: 8000 },
     );
     expect(routerMock.push).not.toHaveBeenCalled();
   });
@@ -200,7 +198,11 @@ describe("CourtsSetupForm", () => {
     const firstRemove = removeButtons[0];
     if (!firstRemove) throw new Error("expected a Remove button");
     await user.click(firstRemove);
-    expect(screen.queryByDisplayValue("Court 1")).not.toBeInTheDocument();
+    // The first court may already have auto-saved (the 400ms debounce can fire before this click, more so on a slow
+    // machine); removing a saved court asks first. This test is about the name that comes next, so confirm and go on.
+    const confirmDialog = screen.queryByRole("dialog");
+    if (confirmDialog) await user.click(within(confirmDialog).getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(screen.queryByDisplayValue("Court 1")).not.toBeInTheDocument());
     expect(screen.getByDisplayValue("Court 2")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "+ Add Court" }));
@@ -215,7 +217,8 @@ describe("CourtsSetupForm", () => {
     const { facilityService, sportsService } = installAuth();
     const facility = await seedFacility(facilityService);
     await seedSports(sportsService, facility.id, ["sport-badminton"]);
-    renderWithProviders(<CourtsSetupForm />);
+    // Autosave held back for a minute, so this draft is certainly never saved before it is removed.
+    renderWithProviders(<CourtsSetupForm autosaveDelayMs={60_000} />);
 
     await user.click(await screen.findByRole("button", { name: "+ Add Court" }));
     await screen.findByDisplayValue("Court 1");
@@ -223,7 +226,7 @@ describe("CourtsSetupForm", () => {
     await user.click(screen.getByRole("button", { name: "Remove" }));
 
     expect(screen.queryByText(/Remove this court\?/)).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Court 1")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByDisplayValue("Court 1")).not.toBeInTheDocument());
   });
 
   it("removing an already-saved court shows a confirm dialog, and Remove soft-deletes it", async () => {

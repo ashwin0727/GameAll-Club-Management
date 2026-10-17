@@ -173,11 +173,11 @@ export function PurchaseOrderWizardPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="po-date">Order date</Label>
+                <Label htmlFor="po-date">Order Date</Label>
                 <Input id="po-date" type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="po-eta">Expected delivery (optional)</Label>
+                <Label htmlFor="po-eta">Expected Delivery (Optional)</Label>
                 <Input id="po-eta" type="date" value={expectedDelivery} onChange={(e) => setExpectedDelivery(e.target.value)} />
               </div>
             </div>
@@ -186,7 +186,7 @@ export function PurchaseOrderWizardPage() {
               <Input id="po-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="po-notes">Notes (optional)</Label>
+              <Label htmlFor="po-notes">Notes (Optional)</Label>
               <Textarea id="po-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
           </>
@@ -218,14 +218,14 @@ export function PurchaseOrderWizardPage() {
                   type="button"
                   className="col-span-2 sm:col-span-1 flex items-center justify-center text-muted-foreground hover:text-destructive"
                   onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}
-                  aria-label="Remove line"
+                  aria-label="Remove Line"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))}
             <Button type="button" variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, blankLine()])}>
-              Add line
+              Add Line
             </Button>
             <TotalsBlock {...totals} />
           </div>

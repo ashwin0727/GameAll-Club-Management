@@ -55,7 +55,7 @@ export function Topbar({ profile }: { profile: Profile }) {
   // as one continuous line across the top of the app.
   return (
     <header className="flex h-16 items-center gap-3 border-b border-border/40 bg-background px-4">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar} aria-label="Open menu">
+      <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar} aria-label="Open Menu">
         <Menu className="h-5 w-5" />
       </Button>
 
@@ -96,7 +96,7 @@ export function Topbar({ profile }: { profile: Profile }) {
       <div className="flex-1" />
 
       {/* Date */}
-      <div className={cn(CHIP, "hidden lg:flex")} aria-label="Today's date">
+      <div className={cn(CHIP, "hidden lg:flex")} aria-label="Today's Date">
         <CalendarDays className="h-4 w-4 text-muted-foreground" aria-hidden />
         <span className="whitespace-nowrap tabular-nums">{today ?? " "}</span>
       </div>

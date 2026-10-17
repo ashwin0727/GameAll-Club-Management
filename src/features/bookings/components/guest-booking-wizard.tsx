@@ -261,7 +261,7 @@ export function GuestBookingWizard() {
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15 text-success">
           <Check className="h-6 w-6" />
         </span>
-        <h1 className="text-xl font-semibold">Booking confirmed</h1>
+        <h1 className="text-xl font-semibold">Booking Confirmed</h1>
         <p className="text-sm text-muted-foreground">
           {sportName} · {court?.name} · {fmtDateLong(date)} ·{" "}
           {(bookedRuns.length > 0 ? bookedRuns : [booked]).map((r) => `${hhmm(r.startTime)} – ${hhmm(r.endTime)}`).join(", ")}

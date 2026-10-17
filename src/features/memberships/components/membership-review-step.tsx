@@ -122,9 +122,9 @@ function SummaryRow({
 }
 
 const NEXT_STEPS = [
-  { title: "Confirm and create member", sub: 'Click on "Create Member" to register the member.' },
-  { title: "Complete payment (if required)", sub: "Collect the membership fee and mark payment status." },
-  { title: "Member will be notified", sub: "A welcome message will be sent with all the details." },
+  { title: "Confirm and Create Member", sub: 'Click on "Create Member" to register the member.' },
+  { title: "Complete Payment (If Required)", sub: "Collect the membership fee and mark payment status." },
+  { title: "Member Will Be Notified", sub: "A welcome message will be sent with all the details." },
 ];
 
 /**

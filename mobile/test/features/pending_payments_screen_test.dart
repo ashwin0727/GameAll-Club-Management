@@ -100,20 +100,19 @@ void main() {
 
     // Data rendered.
     expect(find.text('Neha'), findsOneWidget);
-    expect(find.textContaining('Record'), findsWidgets);
+    expect(find.text('Collect'), findsWidgets);
 
-    // A filter chip opens its options sheet.
-    await tester.tap(find.text('All Outstanding'));
+    // The filter button opens the Filter Payments sheet.
+    await tester.tap(find.byIcon(Icons.tune_rounded));
     await tester.pumpAndSettle();
-    expect(find.text('Overdue'), findsWidgets, reason: 'tapping the status chip must open the picker sheet');
+    expect(find.text('Filter Payments'), findsOneWidget, reason: 'tapping the filter button must open the filter sheet');
+    expect(find.text('Overdue'), findsWidgets);
     await tester.tapAt(const Offset(20, 20)); // dismiss the sheet
     await tester.pumpAndSettle();
 
-    // The Record button navigates.
-    final recordButton = find.ancestor(
-      of: find.textContaining('Record ₹'),
-      matching: find.byType(ElevatedButton),
-    );
+    // The Collect button navigates to the record-payment route.
+    // The row's pill button reads "Collect" while money is outstanding.
+    final recordButton = find.text('Collect');
     expect(recordButton, findsOneWidget);
     await tester.ensureVisible(recordButton);
     await tester.pumpAndSettle();

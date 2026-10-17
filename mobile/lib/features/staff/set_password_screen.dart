@@ -64,7 +64,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Set your password'), automaticallyImplyLeading: false),
+      appBar: AppBar(title: const Text('Set Your Password'), automaticallyImplyLeading: false),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -77,13 +77,13 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
             TextField(
               controller: _password,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'New password'),
+              decoration: const InputDecoration(labelText: 'New Password'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _confirm,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Confirm new password'),
+              decoration: const InputDecoration(labelText: 'Confirm New Password'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -91,7 +91,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Set password',
+              label: 'Set Password',
               loadingLabel: 'Saving…',
               isLoading: _busy,
               onPressed: _submit,

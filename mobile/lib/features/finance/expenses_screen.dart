@@ -153,7 +153,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       context: context,
       selected: _paymentStatus?.toJson() ?? 'ALL',
       options: const [
-        (value: 'ALL', label: 'Any payment status'),
+        (value: 'ALL', label: 'Any Payment Status'),
         (value: 'PAID', label: 'Paid'),
         (value: 'PARTIAL', label: 'Partial'),
         (value: 'PENDING', label: 'Unpaid'),
@@ -425,7 +425,7 @@ class _MarkPaidButton extends StatelessWidget {
         onTap: onPressed,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-          child: Text('Mark paid',
+          child: Text('Mark Paid',
               style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
@@ -482,7 +482,7 @@ class _SummaryGrid extends StatelessWidget {
     // the grid scans at a glance instead of reading as one grey block.
     final tiles = <({String label, String value, IconData icon, Color accent})>[
       (
-        label: 'Total (period)',
+        label: 'Total (Period)',
         value: financeAmount(summary.totalMinor),
         icon: Icons.account_balance_wallet_outlined,
         accent: tokens.primary,

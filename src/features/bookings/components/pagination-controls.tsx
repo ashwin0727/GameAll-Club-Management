@@ -28,7 +28,7 @@ export function PaginationControls({
     <div className="flex items-center gap-2">
       <button
         type="button"
-        aria-label="Previous page"
+        aria-label="Previous Page"
         disabled={page <= 1}
         onClick={() => onPage(page - 1)}
         className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-input bg-card text-muted-foreground hover:text-foreground disabled:opacity-40"
@@ -59,7 +59,7 @@ export function PaginationControls({
       )}
       <button
         type="button"
-        aria-label="Next page"
+        aria-label="Next Page"
         disabled={page >= pages}
         onClick={() => onPage(page + 1)}
         className="flex h-9 w-9 items-center justify-center rounded-[8px] border border-input bg-card text-muted-foreground hover:text-foreground disabled:opacity-40"

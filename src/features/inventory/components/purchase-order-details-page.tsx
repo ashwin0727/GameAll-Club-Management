@@ -205,7 +205,7 @@ export function PurchaseOrderDetailsPage({ poId }: { poId: string }) {
             <Card className="p-4">
               <h2 className="text-sm font-semibold">Details</h2>
               <dl className="mt-3 space-y-1 text-sm">
-                <Fin label="Expected delivery" value={fmtDate(po.expectedDelivery)} />
+                <Fin label="Expected Delivery" value={fmtDate(po.expectedDelivery)} />
                 <Fin label="Reference" value={po.reference ?? "—"} />
               </dl>
               {po.invoicePath && (
@@ -329,7 +329,7 @@ function ReceiveDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Receive goods</DialogTitle>
+          <DialogTitle>Receive Goods</DialogTitle>
           <DialogDescription>Enter what arrived. This moves stock and updates the average cost.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -403,7 +403,7 @@ function PayDialog({ po, onClose, onDone }: { po: PurchaseOrderDetail; onClose: 
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record payment</DialogTitle>
+          <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
             {po.poNumber} · {money(po.financials.outstandingMinor)} outstanding
           </DialogDescription>
@@ -414,15 +414,15 @@ function PayDialog({ po, onClose, onDone }: { po: PurchaseOrderDetail; onClose: 
             <Input id="pay-amt" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pay-date">Paid on</Label>
+            <Label htmlFor="pay-date">Paid On</Label>
             <Input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pay-method">Method (optional)</Label>
+            <Label htmlFor="pay-method">Method (Optional)</Label>
             <Input id="pay-method" value={method} onChange={(e) => setMethod(e.target.value)} placeholder="Bank transfer, UPI, cash…" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="pay-ref">Reference (optional)</Label>
+            <Label htmlFor="pay-ref">Reference (Optional)</Label>
             <Input id="pay-ref" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -465,7 +465,7 @@ function CancelDialog({ poId, onClose, onDone }: { poId: string; onClose: () => 
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel purchase order</DialogTitle>
+          <DialogTitle>Cancel Purchase Order</DialogTitle>
           <DialogDescription>
             This cannot be undone. If nothing has been received, the linked expense is voided.
           </DialogDescription>
@@ -479,7 +479,7 @@ function CancelDialog({ poId, onClose, onDone }: { poId: string; onClose: () => 
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={onClose}>
-            Keep order
+            Keep Order
           </Button>
           <Button variant="destructive" disabled={busy} onClick={() => void submit()}>
             {busy ? "Cancelling…" : "Cancel Order"}

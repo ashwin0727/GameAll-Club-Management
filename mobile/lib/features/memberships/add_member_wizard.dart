@@ -342,7 +342,7 @@ DateTime periodEndDate(DateTime start, int durationDays) {
 
 /// How the member's AutoPay is doing, in words an owner can act on.
 ({String label, String detail}) autoPayStatusLabel(String status) => switch (status) {
-      'created' => (label: 'Awaiting authorisation', detail: "The member hasn't approved the payment link yet. Charging starts once they do."),
+      'created' => (label: 'Awaiting Authorisation', detail: "The member hasn't approved the payment link yet. Charging starts once they do."),
       'authenticated' => (label: 'Authorised', detail: 'The member approved AutoPay; the first charge is being processed.'),
       'active' => (label: 'Active', detail: 'Charged automatically each cycle on the same day of the month.'),
       'pending' => (label: 'Payment failed — retrying', detail: 'The last charge failed. Razorpay is retrying; the member may need to check their account.'),

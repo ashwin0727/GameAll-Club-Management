@@ -286,7 +286,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xs),
-                child: Text('Filter by sport',
+                child: Text('Filter by Sport',
                     style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               ),
               tile('All sports', null),
@@ -1710,11 +1710,11 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                         ],
                       )
                     else if (_showNewGuestForm) ...[
-                      TextField(controller: _newGuestNameController, decoration: const InputDecoration(labelText: 'Guest name')),
+                      TextField(controller: _newGuestNameController, decoration: const InputDecoration(labelText: 'Guest Name')),
                       const SizedBox(height: AppSpacing.sm),
                       TextField(
                         controller: _newGuestPhoneController,
-                        decoration: const InputDecoration(labelText: 'Phone (optional)'),
+                        decoration: const InputDecoration(labelText: 'Phone (Optional)'),
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -1733,7 +1733,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                     ] else ...[
                       TextField(
                         controller: _guestQueryController,
-                        decoration: const InputDecoration(labelText: 'Search by name or phone'),
+                        decoration: const InputDecoration(labelText: 'Search by Name or Phone'),
                         onChanged: _onGuestQueryChanged,
                       ),
                       ..._guestResults.map(
@@ -1763,7 +1763,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                   ] else ...[
                     TextField(
                       controller: _memberQueryController,
-                      decoration: const InputDecoration(labelText: 'Search by name or email'),
+                      decoration: const InputDecoration(labelText: 'Search by Name or Email'),
                       onChanged: _onMemberQueryChanged,
                     ),
                     ..._memberResults.map(
@@ -1796,7 +1796,7 @@ class QuickBookingSheetState extends ConsumerState<QuickBookingSheet> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  TextField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+                  TextField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes (Optional)')),
                   if (_error != null) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Text(_error!, style: const TextStyle(color: AppColors.destructive)),
@@ -2204,7 +2204,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   color: context.tokens.primary,
                   child: PrimaryButton(
                     label: 'Pay Now',
-                    loadingLabel: 'Recording payment…',
+                    loadingLabel: 'Recording Payment…',
                     isLoading: _isPaying,
                     onPressed: _isWorking ? null : _payNow,
                   ),
@@ -2235,7 +2235,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                 ),
               ],
             ] else ...[
-              Text('New date', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
+              Text('New Date', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
               const SizedBox(height: 6),
               InkWell(
                 borderRadius: BorderRadius.circular(AppRadius.md),
@@ -2264,7 +2264,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
               ),
               if (_newDate != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text('New time', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
+                Text('New Time', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.muted)),
                 const SizedBox(height: 6),
                 Row(
                   children: [

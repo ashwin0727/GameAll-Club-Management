@@ -25,7 +25,7 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/refund_repository.dart').readAsStringSync();
+    source = File('lib/data/repositories/refund_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   group('RefundRepository.cancelBooking', () {

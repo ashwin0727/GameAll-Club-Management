@@ -4,7 +4,7 @@ import { PendingSignupProvider } from "@/features/auth/context/pending-signup";
 import { PRODUCT_TAGLINE, SUPPORTED_SPORTS } from "@/lib/constants";
 
 const HIGHLIGHTS = [
-  { Icon: CalendarCheck, label: "Court bookings without double-booking" },
+  { Icon: CalendarCheck, label: "Court Bookings Without Double-Booking" },
   { Icon: Users, label: "Members, packages and attendance" },
   { Icon: IndianRupee, label: "Payments, dues and daily collections" },
   { Icon: LayoutGrid, label: "Every sport and court in one view" },

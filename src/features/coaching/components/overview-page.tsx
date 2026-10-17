@@ -206,7 +206,7 @@ export function CoachingOverviewPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Coaching Insights</h2>
               <Select value={String(insightsDays)} onValueChange={(v) => setInsightsDays(Number(v) as 30 | 60 | 90)}>
-                <SelectTrigger className="h-8 w-[9.5rem] text-xs" aria-label="Coaching Insights time window">
+                <SelectTrigger className="h-8 w-[9.5rem] text-xs" aria-label="Coaching Insights Time Window">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

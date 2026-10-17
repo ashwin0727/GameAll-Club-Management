@@ -687,7 +687,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Guest booking link',
+                Text('Guest Booking Link',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,

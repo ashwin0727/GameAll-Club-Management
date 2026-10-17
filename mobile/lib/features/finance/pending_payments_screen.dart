@@ -226,7 +226,7 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                     Row(
                       children: [
                         const Expanded(
-                          child: Text('Filter payments',
+                          child: Text('Filter Payments',
                               style: TextStyle(
                                   fontSize: 18, fontWeight: FontWeight.w800)),
                         ),
@@ -241,7 +241,7 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                               tmpSource = null;
                               tmpSort = ObligationSort.dueDate;
                             }),
-                            child: const Text('Clear all'),
+                            child: const Text('Clear All'),
                           ),
                       ],
                     ),
@@ -258,7 +258,7 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                     group<ObligationSource?>(
                       'SOURCE',
                       [
-                        (value: null, label: 'All sources'),
+                        (value: null, label: 'All Sources'),
                         ...ObligationSource.values
                             .map((s) => (value: s, label: s.label)),
                       ],
@@ -276,7 +276,7 @@ class _PendingPaymentsScreenState extends ConsumerState<PendingPaymentsScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     AuthGradientButton(
-                      label: 'Show results',
+                      label: 'Show Results',
                       onPressed: () {
                         Navigator.pop(sheetCtx);
                         _applyFilterChange(() {
@@ -457,7 +457,7 @@ class _OutstandingHero extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Outstanding total',
+                child: Text('Outstanding Total',
                     style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -896,12 +896,12 @@ class _ErrorPanel extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Column(
           children: [
-            Text('Unable to load pending payments',
+            Text('Unable to Load Pending Payments',
                 style: AppTypography.rowTitle(context).copyWith(color: AppColors.destructive)),
             const SizedBox(height: AppSpacing.xs),
             Text(message, textAlign: TextAlign.center, style: AppTypography.secondary(context)),
             const SizedBox(height: AppSpacing.md),
-            OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+            OutlinedButton(onPressed: onRetry, child: const Text('Try Again')),
           ],
         ),
       ),

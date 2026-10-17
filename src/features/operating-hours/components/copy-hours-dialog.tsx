@@ -52,7 +52,7 @@ export function CopyHoursDialog({
           className="w-fit"
           onClick={() => setSelected(WEEKDAYS.filter((d) => d !== fromDay))}
         >
-          Copy to weekdays
+          Copy to Weekdays
         </Button>
 
         <div className="grid grid-cols-2 gap-2">

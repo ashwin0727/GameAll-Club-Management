@@ -228,7 +228,7 @@ export function BookingDetailsDialog({
         ) : (
           <div className="space-y-3 text-sm">
             <input
-              aria-label="New date"
+              aria-label="New Date"
               type="date"
               value={rescheduleDate}
               onChange={(e) => {

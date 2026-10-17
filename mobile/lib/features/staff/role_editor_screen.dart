@@ -167,7 +167,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                         TextField(
                           controller: _name,
                           enabled: _existing?.isSystem != true,
-                          decoration: const InputDecoration(labelText: 'Role name'),
+                          decoration: const InputDecoration(labelText: 'Role Name'),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         TextField(

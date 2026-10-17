@@ -87,7 +87,7 @@ export function GuestFormDialog({
         </DialogHeader>
         <div className="space-y-3">
           <input
-            aria-label="Guest name"
+            aria-label="Guest Name"
             placeholder="Full name"
             value={name}
             onChange={(e) => setName(e.target.value)}

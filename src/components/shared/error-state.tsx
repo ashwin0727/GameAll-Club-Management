@@ -11,7 +11,7 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = "Something went wrong",
+  title = "Something Went Wrong",
   message = "We couldn't load this data. Please try again.",
   onRetry,
 }: ErrorStateProps) {

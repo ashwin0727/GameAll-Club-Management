@@ -137,7 +137,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
-                    Text('Keep me signed in', style: TextStyle(color: tokens.textSecondary)),
+                    Text('Keep Me Signed In', style: TextStyle(color: tokens.textSecondary)),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => context.push(AppRoutes.forgotPassword),
@@ -151,8 +151,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               ],
               bottom: [
                 AuthGradientButton(
-                  label: 'Log in',
-                  loadingLabel: 'Signing in…',
+                  label: 'Log In',
+                  loadingLabel: 'Signing In…',
                   isLoading: _isSubmitting,
                   onPressed: _submit,
                 ),
@@ -160,7 +160,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 const AuthOrDivider(),
                 const SizedBox(height: AppSpacing.lg),
                 AuthOutlineButton(
-                  label: 'Log in with mobile OTP',
+                  label: 'Log in with Mobile OTP',
                   icon: Icons.smartphone_outlined,
                   onPressed: () => showComingSoon(context, 'Mobile OTP login'),
                 ),

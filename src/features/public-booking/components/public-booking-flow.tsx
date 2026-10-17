@@ -233,7 +233,7 @@ export function PublicBookingFlow({
     return (
       <Notice
         tone="error"
-        title="We couldn't find this venue"
+        title="We Couldn't Find This Venue"
         message="The booking link may be incorrect or no longer active."
       />
     );
@@ -243,7 +243,7 @@ export function PublicBookingFlow({
     return (
       <Notice
         tone="error"
-        title="No courts available"
+        title="No Courts Available"
         message="This venue isn't accepting online bookings right now."
       />
     );
@@ -298,7 +298,7 @@ export function PublicBookingFlow({
           >
             <div className="min-w-0">
               {formError && step === "select" && (
-                <Notice tone="error" title="That slot just went" message={formError} className="mb-4" />
+                <Notice tone="error" title="That Slot Just Went" message={formError} className="mb-4" />
               )}
 
               {step === "select" && (
@@ -371,7 +371,7 @@ export function PublicBookingFlow({
 function StepBar({ current }: { current: Step }) {
   const index = STEPS.findIndex((s) => s.id === current);
   return (
-    <ol className="flex items-center" aria-label="Booking steps">
+    <ol className="flex items-center" aria-label="Booking Steps">
       {STEPS.map((s, i) => {
         const done = i < index;
         const active = i === index;
@@ -818,7 +818,7 @@ function DetailsStep({
               value={guest.purpose || undefined}
               onValueChange={(v) => set("purpose")(v)}
             >
-              <SelectTrigger id="purpose" aria-label="Purpose of booking">
+              <SelectTrigger id="purpose" aria-label="Purpose of Booking">
                 <SelectValue placeholder="Select purpose" />
               </SelectTrigger>
               <SelectContent>
@@ -953,7 +953,7 @@ function ReviewStep({
 
   return (
     <div className="space-y-5">
-      {error && <Notice tone="error" title="We couldn't confirm that" message={error} />}
+      {error && <Notice tone="error" title="We Couldn't Confirm That" message={error} />}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <ReviewPanel title="Guest Information">
@@ -1012,7 +1012,7 @@ function ReviewStep({
           aria-describedby="terms-help"
         />
         <span id="terms-help" className="text-muted-foreground">
-          I agree to the <span className="font-medium text-primary">terms and conditions</span> and confirm
+          I agree to the <span className="font-medium text-primary">Terms and conditions</span> and confirm
           that the above details are correct.
         </span>
       </label>
@@ -1107,7 +1107,7 @@ function SummaryPanel({
 
       {/* Desktop: sticky beside the form. */}
       <aside className="sticky top-6 hidden rounded-xl border border-border p-4 lg:block">
-        <h2 className="mb-3 text-sm font-medium">Booking summary</h2>
+        <h2 className="mb-3 text-sm font-medium">Booking Summary</h2>
         {body}
       </aside>
     </>
@@ -1249,7 +1249,7 @@ function Confirmed({
     const text = `Booking ${confirmation.code} — ${confirmation.sportName} at ${confirmation.facilityName}, ${confirmation.courtName}, ${formatBookingDate(confirmation.startTime)} ${formatSlotRange(confirmation.startTime, confirmation.endTime)}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Booking confirmed", text });
+        await navigator.share({ title: "Booking Confirmed", text });
         return;
       } catch {
         // Cancelled, or the sheet is unavailable — fall through to copying.

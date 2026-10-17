@@ -148,7 +148,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Add expense', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Add Expense', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'Money the facility spent. Income is recorded against its booking or membership, not here.',
@@ -195,7 +195,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               decoration: const InputDecoration(labelText: 'Tax / GST (₹, optional)', hintText: '0'),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text('Payment status', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+            Text('Payment Status', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
             Wrap(
               spacing: AppSpacing.sm,
@@ -214,7 +214,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
                 controller: _amountPaidController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                decoration: const InputDecoration(labelText: 'Amount already paid (₹)'),
+                decoration: const InputDecoration(labelText: 'Amount Already Paid (₹)'),
               ),
             ],
             if (_paymentStatus != ExpensePaymentStatus.paid) ...[
@@ -222,13 +222,13 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
               InkWell(
                 onTap: _pickDueDate,
                 child: AppSelectField(
-                  decoration: const InputDecoration(labelText: 'Due date (optional)'),
+                  decoration: const InputDecoration(labelText: 'Due Date (Optional)'),
                   child: Text(_dueOn == null ? 'Not set' : DateFormat('d MMM yyyy').format(_dueOn!)),
                 ),
               ),
             ],
             const SizedBox(height: AppSpacing.md),
-            Text('Payment method', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
+            Text('Payment Method', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.muted)),
             const SizedBox(height: AppSpacing.xs),
             Wrap(
               spacing: AppSpacing.sm,
@@ -244,18 +244,18 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _vendorController,
-              decoration: const InputDecoration(labelText: 'Vendor (optional)'),
+              decoration: const InputDecoration(labelText: 'Vendor (Optional)'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _referenceController,
-              decoration: const InputDecoration(labelText: 'Reference (optional)', hintText: 'INV-1023'),
+              decoration: const InputDecoration(labelText: 'Reference (Optional)', hintText: 'INV-1023'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _notesController,
               maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              decoration: const InputDecoration(labelText: 'Notes (Optional)'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -263,7 +263,7 @@ class _AddExpenseSheetState extends ConsumerState<AddExpenseSheet> {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Save expense',
+              label: 'Save Expense',
               loadingLabel: 'Saving…',
               isLoading: _saving,
               onPressed: _save,

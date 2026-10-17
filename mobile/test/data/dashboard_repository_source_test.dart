@@ -16,7 +16,7 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/dashboard_repository.dart').readAsStringSync();
+    source = File('lib/data/repositories/dashboard_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   test('getDashboardSummary calls get_membership_utilization_sessions', () {

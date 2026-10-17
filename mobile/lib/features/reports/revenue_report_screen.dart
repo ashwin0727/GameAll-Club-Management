@@ -233,7 +233,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                 Text('Trend and breakdown show the whole facility.', style: AppTypography.caption(context)),
                 TextButton(
                   onPressed: () => _onFilterChanged(_filter.copyWith(facilitySportId: null, courtId: null)),
-                  child: const Text('Clear sport & court'),
+                  child: const Text('Clear Sport & Court'),
                 ),
               ],
             ),
@@ -727,7 +727,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
     if (live.isEmpty) {
       return _emptyState(context,
           icon: Icons.bar_chart_rounded,
-          title: 'No sport revenue',
+          title: 'No Sport Revenue',
           subtitle: 'Sport-wise revenue will appear once there are bookings.');
     }
     final tokens = context.tokens;
@@ -1082,7 +1082,7 @@ class _Header extends StatelessWidget {
                 children: [
                   Text('Revenue Report', style: AppTypography.heading1(context)),
                   const SizedBox(height: 2),
-                  Text('Track your earnings and payments', style: AppTypography.secondary(context)),
+                  Text('Track Your Earnings and Payments', style: AppTypography.secondary(context)),
                 ],
               ),
             ),

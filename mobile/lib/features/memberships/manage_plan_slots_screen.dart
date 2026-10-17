@@ -136,7 +136,7 @@ class _ManagePlanSlotsScreenState extends ConsumerState<ManagePlanSlotsScreen> {
             if (_tab == 1) ..._usage(tokens),
             const SizedBox(height: AppSpacing.md),
             Center(
-              child: TextButton.icon(onPressed: _addOrRemove, icon: const Icon(Icons.tune, size: 18), label: const Text('Add or remove slots')),
+              child: TextButton.icon(onPressed: _addOrRemove, icon: const Icon(Icons.tune, size: 18), label: const Text('Add or Remove Slots')),
             ),
             const SizedBox(height: AppSpacing.lg),
           ],

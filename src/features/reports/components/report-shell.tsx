@@ -64,7 +64,7 @@ export function ReportShell({
           <p className="text-sm text-muted-foreground">{errorMessage}</p>
           {onRetry && (
             <Button variant="outline" size="sm" onClick={onRetry}>
-              Try again
+              Try Again
             </Button>
           )}
         </Card>

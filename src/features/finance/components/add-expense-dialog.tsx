@@ -145,7 +145,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : (setOpen(false), reset()))}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add expense</DialogTitle>
+            <DialogTitle>Add Expense</DialogTitle>
             <DialogDescription>
               Money the facility spent. Income is recorded against its booking or membership, not here.
             </DialogDescription>
@@ -177,7 +177,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
                   placeholder="0"
                 />
               </Field>
-              <Field id="expense-date" label="Expense date">
+              <Field id="expense-date" label="Expense Date">
                 <Input id="expense-date" type="date" value={spentOn} onChange={(e) => setSpentOn(e.target.value)} />
               </Field>
             </div>
@@ -192,7 +192,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
               />
             </Field>
 
-            <Field id="expense-status" label="Payment status">
+            <Field id="expense-status" label="Payment Status">
               <div className="flex flex-wrap gap-2">
                 {(["PAID", "PARTIAL", "PENDING"] as ExpensePaymentStatus[]).map((s) => (
                   <Button
@@ -209,7 +209,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
             </Field>
 
             {paymentStatus === "PARTIAL" && (
-              <Field id="expense-paid" label="Amount already paid (₹)">
+              <Field id="expense-paid" label="Amount Already Paid (₹)">
                 <Input
                   id="expense-paid"
                   inputMode="decimal"
@@ -221,12 +221,12 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
             )}
 
             {paymentStatus !== "PAID" && (
-              <Field id="expense-due" label="Due date (optional)">
+              <Field id="expense-due" label="Due Date (Optional)">
                 <Input id="expense-due" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
               </Field>
             )}
 
-            <Field id="expense-method" label="Payment method">
+            <Field id="expense-method" label="Payment Method">
               <div className="flex flex-wrap gap-2">
                 {METHODS.map((m) => (
                   <Button
@@ -243,10 +243,10 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field id="expense-vendor" label="Vendor / Payee (optional)">
+              <Field id="expense-vendor" label="Vendor / Payee (Optional)">
                 <Input id="expense-vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
               </Field>
-              <Field id="expense-reference" label="Reference (optional)">
+              <Field id="expense-reference" label="Reference (Optional)">
                 <Input
                   id="expense-reference"
                   value={reference}
@@ -256,7 +256,7 @@ export function AddExpenseDialog({ onCreated }: { onCreated?: () => void }) {
               </Field>
             </div>
 
-            <Field id="expense-notes" label="Notes (optional)">
+            <Field id="expense-notes" label="Notes (Optional)">
               <Textarea id="expense-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </Field>
 

@@ -43,13 +43,13 @@ export function ShareBookingLink({ facilityId, triggerClassName }: { facilityId:
   return (
     <>
       <Button type="button" size="sm" variant="outline" className={triggerClassName} onClick={() => setOpen(true)}>
-        <Share2 className="mr-1.5 h-4 w-4" /> Share booking page
+        <Share2 className="mr-1.5 h-4 w-4" /> Share Booking Page
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Share your booking page</DialogTitle>
+            <DialogTitle>Share Your Booking Page</DialogTitle>
             <DialogDescription>
               Two ways to let players book. Both use the same page and the same availability.
             </DialogDescription>

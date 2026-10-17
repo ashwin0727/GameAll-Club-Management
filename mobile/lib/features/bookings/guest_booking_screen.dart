@@ -1095,7 +1095,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             decoration:
-                const InputDecoration(labelText: 'Email (optional)')),
+                const InputDecoration(labelText: 'Email (Optional)')),
         const SizedBox(height: AppSpacing.md),
         TextField(
             controller: _players,
@@ -1107,7 +1107,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             controller: _notes,
             maxLines: 2,
             decoration:
-                const InputDecoration(labelText: 'Notes (optional)')),
+                const InputDecoration(labelText: 'Notes (Optional)')),
       ],
     );
   }
@@ -1297,7 +1297,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           AppDropdown<String>(
             initialValue: _paymentMethod,
             decoration: const InputDecoration(
-                labelText: 'Payment method (for your records)'),
+                labelText: 'Payment Method (for Your Records)'),
             items: const ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Other']
                 .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                 .toList(),

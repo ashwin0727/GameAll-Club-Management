@@ -261,7 +261,7 @@ class _SportsSetupScreenState extends ConsumerState<SportsSetupScreen> {
         ),
         if (otherSelected) ...[
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(label: 'Sport name', controller: _customName),
+          AppTextField(label: 'Sport Name', controller: _customName),
         ],
         const SizedBox(height: AppSpacing.xl),
         ..._selected.map((id) {

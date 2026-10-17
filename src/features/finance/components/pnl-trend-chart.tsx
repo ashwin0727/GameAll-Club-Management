@@ -33,7 +33,7 @@ export function PnlTrendChart({ points }: { points: PnlTrendPoint[] }) {
   const dataKey = points.map((p) => `${p.date}:${p.revenueMinor}:${p.expenseMinor}:${p.netMinor}`).join(",");
 
   return (
-    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue versus expenses over time">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Revenue Versus Expenses Over Time">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />

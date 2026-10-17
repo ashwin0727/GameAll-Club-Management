@@ -209,9 +209,9 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                 if (o.facilityName != null) _DetailRow(label: 'Facility', value: o.facilityName!),
                 _DetailRow(label: isBooking ? 'Court & Time' : 'Membership', value: o.description),
                 _DetailRow(label: 'Source', value: o.sourceType.label),
-                _DetailRow(label: 'Total amount', value: financeAmount(o.totalMinor)),
+                _DetailRow(label: 'Total Amount', value: financeAmount(o.totalMinor)),
                 if (o.paidMinor > 0)
-                  _DetailRow(label: 'Already paid', value: financeAmount(o.paidMinor)),
+                  _DetailRow(label: 'Already Paid', value: financeAmount(o.paidMinor)),
                 const Divider(height: AppSpacing.lg),
                 Row(
                   children: [
@@ -287,7 +287,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                   TextField(
                     controller: _notesController,
                     maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Notes (optional)'),
+                    decoration: const InputDecoration(labelText: 'Notes (Optional)'),
                   ),
                   if (check is RecordPaymentOk && _amountMinor < o.outstandingMinor) ...[
                     const SizedBox(height: AppSpacing.sm),
@@ -300,12 +300,12 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                       child: Column(
                         children: [
                           Row(children: [
-                            Expanded(child: Text('This payment', style: AppTypography.secondary(context))),
+                            Expanded(child: Text('This Payment', style: AppTypography.secondary(context))),
                             Text(financeAmount(_amountMinor)),
                           ]),
                           const SizedBox(height: 2),
                           Row(children: [
-                            Expanded(child: Text('Remaining after payment',
+                            Expanded(child: Text('Remaining After Payment',
                                 style: AppTypography.secondary(context))),
                             Text(financeAmount(remaining),
                                 style: const TextStyle(fontWeight: FontWeight.w700)),

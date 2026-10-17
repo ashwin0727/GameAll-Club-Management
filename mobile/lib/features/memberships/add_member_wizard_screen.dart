@@ -680,7 +680,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         controlAffinity: ListTileControlAffinity.leading,
         value: _d.sendWelcome,
         onChanged: _locked ? null : (v) => setState(() => _d.sendWelcome = v ?? true),
-        title: const Text('Send welcome message to member', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        title: const Text('Send Welcome Message to Member', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         subtitle: Text('Member will receive an SMS/Email with membership details.', style: AppTypography.caption(context)),
       ),
     ];
@@ -1170,10 +1170,10 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
             OutlinedButton.icon(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: url));
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link Copied')));
               },
               icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Copy link'),
+              label: const Text('Copy Link'),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),

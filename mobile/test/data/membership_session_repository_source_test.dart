@@ -16,7 +16,7 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/membership_session_repository.dart').readAsStringSync();
+    source = File('lib/data/repositories/membership_session_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   group('MembershipSessionRepository calls the contract RPCs', () {

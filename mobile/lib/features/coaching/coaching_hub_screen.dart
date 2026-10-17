@@ -322,7 +322,7 @@ class _CoachingTabState extends State<_CoachingTab> {
     final header = <Widget>[
       HubHeroCard(
         icon: Icons.person_pin_outlined,
-        title: 'Active coaches',
+        title: 'Active Coaches',
         value: '${o.activeCoaches}',
         figs: [
           (value: '${widget.coachTotal}', label: 'total coaches'),
@@ -596,7 +596,7 @@ class _CoachFilterSheetState extends State<_CoachFilterSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Filter coaches', style: AppTypography.heading2(context)),
+            Text('Filter Coaches', style: AppTypography.heading2(context)),
             const SizedBox(height: AppSpacing.md),
             Text('Status', style: AppTypography.rowTitle(context)),
             const SizedBox(height: AppSpacing.sm),
@@ -623,7 +623,7 @@ class _CoachFilterSheetState extends State<_CoachFilterSheet> {
               ),
             ],
             const SizedBox(height: AppSpacing.md),
-            Text('Sort by', style: AppTypography.rowTitle(context)),
+            Text('Sort By', style: AppTypography.rowTitle(context)),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
@@ -684,7 +684,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
     final header = <Widget>[
       HubHeroCard(
         icon: Icons.sports_outlined,
-        title: 'Total programs',
+        title: 'Total Programs',
         value: '${stats.total}',
         figs: [
           (value: '${stats.active}', label: 'active'),
@@ -833,7 +833,7 @@ class _StudentsTabState extends State<_StudentsTab> {
     final header = <Widget>[
       HubHeroCard(
         icon: Icons.groups_rounded,
-        title: 'Total students',
+        title: 'Total Students',
         value: '${stats.total}',
         figs: [
           (value: '${stats.active}', label: 'active'),

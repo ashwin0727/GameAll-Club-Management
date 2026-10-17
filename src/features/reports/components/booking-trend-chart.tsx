@@ -21,7 +21,7 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
   const dataKey = points.map((p) => `${p.date}:${p.total}:${p.cancelled}`).join(",");
 
   return (
-    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Booking volume trend">
+    <div key={dataKey} className="h-72 w-full" role="img" aria-label="Booking Volume Trend">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>

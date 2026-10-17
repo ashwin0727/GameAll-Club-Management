@@ -108,7 +108,7 @@ class PeakHoursChart extends StatelessWidget {
           children: [
             Icon(Icons.access_time_rounded, size: 22, color: tokens.textSecondary),
             const SizedBox(height: AppSpacing.xs),
-            Text('No booking data yet',
+            Text('No Booking Data Yet',
                 style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: tokens.textPrimary)),
             const SizedBox(height: 2),
             Padding(

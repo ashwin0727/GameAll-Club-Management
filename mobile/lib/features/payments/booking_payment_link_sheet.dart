@@ -172,7 +172,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
           const SizedBox(height: AppSpacing.xs),
           Text('The booking is saved. You can try again, or collect payment at the venue.', style: TextStyle(color: tokens.textSecondary)),
           const SizedBox(height: AppSpacing.md),
-          OutlinedButton(onPressed: _create, child: const Text('Try again')),
+          OutlinedButton(onPressed: _create, child: const Text('Try Again')),
         ],
       );
     } else if (link.paid) {
@@ -180,7 +180,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
         children: [
           Icon(Icons.check_circle_rounded, size: 44, color: tokens.success),
           const SizedBox(height: AppSpacing.sm),
-          const Text('Payment received', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const Text('Payment Received', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: AppSpacing.xs),
           Text('The booking is confirmed and marked Paid. Nothing to collect at the venue.',
               textAlign: TextAlign.center, style: TextStyle(color: tokens.textSecondary)),
@@ -196,7 +196,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
           const SizedBox(height: AppSpacing.xs),
           Text('It can no longer be paid. Generate a new one to collect $_amountLabel.', style: TextStyle(color: tokens.textSecondary)),
           const SizedBox(height: AppSpacing.md),
-          FilledButton(onPressed: _busy ? null : _create, child: const Text('Generate a new link')),
+          FilledButton(onPressed: _busy ? null : _create, child: const Text('Generate a New Link')),
         ],
       );
     } else {
@@ -230,7 +230,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
                       : () async {
                           await Clipboard.setData(ClipboardData(text: url));
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link Copied')));
                           }
                         },
                   icon: const Icon(Icons.copy, size: 16),
@@ -265,7 +265,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
                   child: Text(_checking ? 'Checking…' : 'Check payment status'),
                 ),
               ),
-              TextButton(onPressed: _busy ? null : _cancel, child: const Text('Cancel link')),
+              TextButton(onPressed: _busy ? null : _cancel, child: const Text('Cancel Link')),
             ],
           ),
           if (link.expiresAt != null)
@@ -287,12 +287,12 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
                 children: [
                   const Icon(Icons.link_rounded, size: 20),
                   const SizedBox(width: AppSpacing.sm),
-                  const Expanded(child: Text('Payment link', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+                  const Expanded(child: Text('Payment Link', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
                   if (link != null && link.isOpen)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(color: tokens.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(AppRadius.pill)),
-                      child: Text('Waiting for payment', style: TextStyle(color: tokens.warning, fontSize: 12, fontWeight: FontWeight.w700)),
+                      child: Text('Waiting for Payment', style: TextStyle(color: tokens.warning, fontSize: 12, fontWeight: FontWeight.w700)),
                     ),
                 ],
               ),

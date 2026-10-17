@@ -10,7 +10,7 @@ export default function OnboardingCompletePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your facility is ready</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Your Facility Is Ready</h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">
           Review your setup before you start managing your facility.
         </p>

@@ -150,7 +150,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                   Row(
                     children: [
                       const Expanded(
-                        child: Text('Filter guest players',
+                        child: Text('Filter Guest Players',
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w800)),
                       ),
@@ -194,7 +194,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   AuthGradientButton(
-                    label: 'Show results',
+                    label: 'Show Results',
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       setState(() => _statusFilter = tmp);

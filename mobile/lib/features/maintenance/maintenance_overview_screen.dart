@@ -188,7 +188,7 @@ class _MaintenanceOverviewScreenState extends ConsumerState<MaintenanceOverviewS
                 await context.push(AppRoutes.maintenanceTickets);
                 if (mounted) _load();
               },
-              child: const Text('View all')),
+              child: const Text('View All')),
         ),
         const SizedBox(height: AppSpacing.sm),
         if (o.recentTickets.isEmpty)

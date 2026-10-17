@@ -601,7 +601,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
     final tokens = context.tokens;
     final slices = <({String label, int count, Color color})>[
       (label: 'Paid', count: a.paidCount, color: tokens.primary),
-      (label: 'Partially paid', count: a.partiallyPaidCount, color: tokens.electricBlue),
+      (label: 'Partially Paid', count: a.partiallyPaidCount, color: tokens.electricBlue),
       (label: 'Pending', count: a.pendingCount, color: tokens.warning),
     ];
     final total = slices.fold<int>(0, (sum, s) => sum + s.count);
@@ -795,12 +795,12 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
   Widget _sessionsGrid(BuildContext context, MembershipSessionAnalytics s) {
     final tokens = context.tokens;
     final tiles = <({String label, int value, IconData icon, Color accent, _SessionView group})>[
-      (label: 'Total capacity', value: s.totalCapacity, icon: Icons.groups_rounded, accent: tokens.primary, group: _SessionView.total),
-      (label: 'Member allocations', value: s.memberAllocations, icon: Icons.person_pin_rounded, accent: tokens.violet, group: _SessionView.utilized),
-      (label: 'Guest released', value: s.guestReleased, icon: Icons.no_accounts_rounded, accent: tokens.primary, group: _SessionView.total),
-      (label: 'Guest booked', value: s.guestBooked, icon: Icons.person_add_alt_1_rounded, accent: tokens.violet, group: _SessionView.utilized),
-      (label: 'Remaining released', value: s.remainingReleased, icon: Icons.person_outline_rounded, accent: tokens.warning, group: _SessionView.remaining),
-      (label: 'Unused capacity', value: s.unusedCapacity, icon: Icons.hexagon_outlined, accent: tokens.electricBlue, group: _SessionView.remaining),
+      (label: 'Total Capacity', value: s.totalCapacity, icon: Icons.groups_rounded, accent: tokens.primary, group: _SessionView.total),
+      (label: 'Member Allocations', value: s.memberAllocations, icon: Icons.person_pin_rounded, accent: tokens.violet, group: _SessionView.utilized),
+      (label: 'Guest Released', value: s.guestReleased, icon: Icons.no_accounts_rounded, accent: tokens.primary, group: _SessionView.total),
+      (label: 'Guest Booked', value: s.guestBooked, icon: Icons.person_add_alt_1_rounded, accent: tokens.violet, group: _SessionView.utilized),
+      (label: 'Remaining Released', value: s.remainingReleased, icon: Icons.person_outline_rounded, accent: tokens.warning, group: _SessionView.remaining),
+      (label: 'Unused Capacity', value: s.unusedCapacity, icon: Icons.hexagon_outlined, accent: tokens.electricBlue, group: _SessionView.remaining),
     ];
 
     Widget tile(int i) {

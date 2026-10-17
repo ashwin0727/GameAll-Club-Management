@@ -40,7 +40,7 @@ export function CalendarLegendBar({
       <div
         className="flex flex-wrap items-center gap-x-6 gap-y-2"
         role="group"
-        aria-label="Show on calendar"
+        aria-label="Show on Calendar"
       >
         {CALENDAR_KINDS.map((kind) => {
           const visible = !hidden.has(kind);

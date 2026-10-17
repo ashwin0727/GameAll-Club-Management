@@ -124,7 +124,7 @@ export function DatePicker({
           <div className="mb-2 flex items-center gap-1.5">
             <button
               type="button"
-              aria-label="Previous month"
+              aria-label="Previous Month"
               onClick={() => setMonth((m) => addMonths(m, -1))}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-accent"
             >
@@ -159,7 +159,7 @@ export function DatePicker({
 
             <button
               type="button"
-              aria-label="Next month"
+              aria-label="Next Month"
               onClick={() => setMonth((m) => addMonths(m, 1))}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded hover:bg-accent"
             >

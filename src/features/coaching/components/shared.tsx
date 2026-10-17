@@ -146,7 +146,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
           onClick={onRetry}
           className="mt-4 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent"
         >
-          Try again
+          Try Again
         </button>
       )}
     </div>

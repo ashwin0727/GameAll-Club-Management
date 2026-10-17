@@ -208,7 +208,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+                <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -236,7 +236,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
           {error ?? "Membership not found."}
           <div className="mt-4">
             <Button type="button" variant="outline" size="sm" onClick={load}>
-              Try again
+              Try Again
             </Button>
           </div>
         </Card>
@@ -292,9 +292,9 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 <Badge variant="outline">{autoPayStatusLabel(effectiveAutoPayStatus(autoPay)).label}</Badge>
               </div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <HeaderStat icon={IndianRupee} label="Charged every cycle" value={`${inr(autoPay.amountInr)} ${autoPayCadence(autoPay.intervalMonths)}`} />
-                <HeaderStat icon={CalendarDays} label="Next charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "—"} />
-                <HeaderStat icon={IdCard} label="Charges collected" value={autoPay.chargeCount} />
+                <HeaderStat icon={IndianRupee} label="Charged Every Cycle" value={`${inr(autoPay.amountInr)} ${autoPayCadence(autoPay.intervalMonths)}`} />
+                <HeaderStat icon={CalendarDays} label="Next Charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "—"} />
+                <HeaderStat icon={IdCard} label="Charges Collected" value={autoPay.chargeCount} />
                 <HeaderStat icon={IndianRupee} label="One-time, first payment only" value={autoPay.oneTimeInr > 0 ? inr(autoPay.oneTimeInr) : "None"} />
               </div>
               {autoPayNextCharge(autoPay, detail.membership.endDate) && (

@@ -49,7 +49,8 @@ export function OperatingHoursForm() {
 
   const [days, setDays] = useState<OperatingDay[]>(buildDefaultWeek());
   const [dayErrors, setDayErrors] = useState<Partial<Record<DayOfWeek, string>>>({});
-  const [applyToAll, setApplyToAll] = useState(true);
+  // Off by default: the facility hours editor stays folded away and each court's hours can be customized below.
+  const [applyToAll, setApplyToAll] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, OverrideEntry>>({});
   const [copyDialogDay, setCopyDialogDay] = useState<DayOfWeek | null>(null);
 
@@ -113,10 +114,8 @@ export function OperatingHoursForm() {
       if (cancelled) return;
 
       const nextOverrides: Record<string, OverrideEntry> = {};
-      let anyCustomized = false;
       for (const [areaId, schedule] of overrideEntries) {
         if (schedule) {
-          anyCustomized = true;
           nextOverrides[areaId] = {
             active: true,
             days: DAYS_OF_WEEK.map(
@@ -133,7 +132,6 @@ export function OperatingHoursForm() {
       setPlayingAreas(areas);
       setDays(scheduleDays);
       setOverrides(nextOverrides);
-      setApplyToAll(!anyCustomized);
       setLoadState("ready");
     })();
 
@@ -213,7 +211,7 @@ export function OperatingHoursForm() {
     let overridesValid = true;
     const nextOverrides = { ...overrides };
     for (const [areaId, entry] of Object.entries(overrides)) {
-      if (!entry.active) continue;
+      if (!entry.active || applyToAll) continue;
       const result = validateSchedule(entry.days);
       nextOverrides[areaId] = { ...entry, errors: result.dayErrors };
       if (!result.isValid) overridesValid = false;
@@ -231,7 +229,11 @@ export function OperatingHoursForm() {
       await getOperatingHoursService().saveFacilitySchedule(facility.id, days);
 
       for (const [areaId, entry] of Object.entries(overrides)) {
-        if (entry.active) {
+        if (!entry.active) continue;
+        if (applyToAll) {
+          // "Use the same hours for all courts" — a court's own hours no longer apply.
+          await getOperatingHoursService().deletePlayingAreaOverride(areaId);
+        } else {
           await getOperatingHoursService().savePlayingAreaSchedule(areaId, facility.id, entry.days);
         }
       }
@@ -259,12 +261,12 @@ export function OperatingHoursForm() {
   }
 
   if (loadState === "forbidden") {
-    return <ErrorState title="Access denied" message="You don't have access to this facility." />;
+    return <ErrorState title="Access Denied" message="You don't have access to this facility." />;
   }
 
   if (!facility) return null;
 
-  const customizedCount = Object.values(overrides).filter((o) => o.active).length;
+  const customizedCount = applyToAll ? 0 : Object.values(overrides).filter((o) => o.active).length;
   const orderedDays = DISPLAY_ORDER.map((d) => days.find((day) => day.dayOfWeek === d)).filter(
     (d): d is OperatingDay => Boolean(d),
   );
@@ -276,73 +278,89 @@ export function OperatingHoursForm() {
 
       {saveError && <FormMessage>{saveError}</FormMessage>}
 
-      <div className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
-        <div>
-          <h2 className="text-sm font-semibold">Facility Operating Hours</h2>
-          <p className="text-xs text-muted-foreground">
-            These hours will apply to all courts and turfs by default.
-          </p>
-        </div>
+      {/* Left: the hours editor. Right: the final Operating Hours, which stays in view while the page scrolls. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-8">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
+          <div>
+            <h2 className="text-sm font-semibold">Facility Operating Hours</h2>
+            <p className="text-xs text-muted-foreground">
+              These hours will apply to all courts and turfs by default.
+            </p>
+          </div>
 
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={applyToAll}
-          onClick={() => setApplyToAll((v) => !v)}
-          className="flex h-11 items-center gap-2 text-sm"
-        >
-          <span
-            className={`flex h-5 w-5 items-center justify-center rounded border ${
-              applyToAll ? "border-primary bg-primary text-primary-foreground" : "border-input"
-            }`}
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={applyToAll}
+            onClick={() => setApplyToAll((v) => !v)}
+            className="flex h-11 items-center gap-2 text-sm"
           >
-            {applyToAll ? "✓" : ""}
-          </span>
-          Use the same hours for all courts and turfs
-        </button>
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded border ${
+                applyToAll ? "border-primary bg-primary text-primary-foreground" : "border-input"
+              }`}
+            >
+              {applyToAll ? "✓" : ""}
+            </span>
+            Use the same hours for all courts and turfs
+          </button>
 
-        <QuickSetup onApply={applyPreset} />
+          {applyToAll && (
+            <>
+              <QuickSetup onApply={applyPreset} />
 
-        <div className="space-y-3">
-          {orderedDays.map((day) => (
-            <DayScheduleCard
-              key={day.dayOfWeek}
-              day={day}
-              error={dayErrors[day.dayOfWeek]}
-              onChange={updateDay}
-              onCopyRequest={() => setCopyDialogDay(day.dayOfWeek)}
-            />
-          ))}
+              <div className="space-y-3">
+                {orderedDays.map((day) => (
+                  <DayScheduleCard
+                    key={day.dayOfWeek}
+                    day={day}
+                    error={dayErrors[day.dayOfWeek]}
+                    onChange={updateDay}
+                    onCopyRequest={() => setCopyDialogDay(day.dayOfWeek)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Individual customization only when "same hours for all" is off. */}
+        {!applyToAll && (
+          <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
+            <PlayingAreaOverrides
+              facilitySports={facilitySports}
+              playingAreas={playingAreas}
+              sports={sports}
+              overrides={overrides}
+              onCustomize={handleCustomize}
+              onUseFacilityHours={handleUseFacilityHours}
+              onDayChange={handleOverrideDayChange}
+            />
+          </div>
+        )}
+
+        </div>
+
+        <aside className="lg:sticky lg:top-6" aria-label="Operating Hours Summary">
+          <ScheduleSummary days={days} playingAreaCount={playingAreas.length} customizedCount={customizedCount} />
+        </aside>
       </div>
 
-      <ScheduleSummary days={days} playingAreaCount={playingAreas.length} customizedCount={customizedCount} />
-
-      {!applyToAll && (
-        <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
-          <PlayingAreaOverrides
-            facilitySports={facilitySports}
-            playingAreas={playingAreas}
-            sports={sports}
-            overrides={overrides}
-            onCustomize={handleCustomize}
-            onUseFacilityHours={handleUseFacilityHours}
-            onDayChange={handleOverrideDayChange}
-          />
+      {/* The Saved status and Continue stay pinned to the bottom of the page. */}
+      <div className="sticky bottom-0 z-20 -mx-1 border-t border-border bg-background/95 px-1 pb-3 pt-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-4">
+          <SaveStatus dirtyToken={dirtyToken} />
+          <SubmitButton
+            type="button"
+            onClick={handleContinue}
+            pending={isSaving}
+            pendingLabel="Saving…"
+            className="w-auto sm:min-w-[10rem]"
+          >
+            Continue →
+          </SubmitButton>
         </div>
-      )}
-
-      <div className="flex items-center justify-between gap-4">
-        <SaveStatus dirtyToken={dirtyToken} />
-        <SubmitButton
-          type="button"
-          onClick={handleContinue}
-          pending={isSaving}
-          pendingLabel="Saving…"
-          className="w-auto sm:min-w-[10rem]"
-        >
-          Continue →
-        </SubmitButton>
       </div>
 
       {copyDialogDay !== null && (

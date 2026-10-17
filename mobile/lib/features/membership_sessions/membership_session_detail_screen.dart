@@ -219,7 +219,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
     final tokens = context.tokens;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Session details',
+        title: const Text('Session Details',
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           if (d != null)
@@ -239,13 +239,13 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Edit session')),
+                const PopupMenuItem(value: 'edit', child: Text('Edit Session')),
                 const PopupMenuItem(
-                    value: 'release', child: Text('Release guest slots')),
+                    value: 'release', child: Text('Release Guest Slots')),
                 const PopupMenuItem(
                     value: 'block', child: Text("Block today's occurrence")),
                 const PopupMenuItem(
-                    value: 'duplicate', child: Text('Duplicate session')),
+                    value: 'duplicate', child: Text('Duplicate Session')),
                 PopupMenuItem(
                     value: 'toggle',
                     child: Text(d.isActive
@@ -330,7 +330,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: AuthGradientButton(
-                        label: 'Release slots',
+                        label: 'Release Slots',
                         onPressed: _openReleaseGuestSlots,
                       ),
                     ),
@@ -1216,7 +1216,7 @@ class _EditSessionSheetState extends ConsumerState<_EditSessionSheet> {
           children: [
             Text('Edit Session', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.md),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Session name')),
+            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Session Name')),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.xs,
@@ -1260,7 +1260,7 @@ class _EditSessionSheetState extends ConsumerState<_EditSessionSheet> {
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Session is active'),
+              title: const Text('Session Is Active'),
               value: _active,
               onChanged: (v) => setState(() => _active = v),
             ),
@@ -1360,7 +1360,7 @@ class _ReleaseGuestSlotsSheetState extends ConsumerState<_ReleaseGuestSlotsSheet
             TextField(
               controller: _count,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Slots to release'),
+              decoration: const InputDecoration(labelText: 'Slots to Release'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.xs),

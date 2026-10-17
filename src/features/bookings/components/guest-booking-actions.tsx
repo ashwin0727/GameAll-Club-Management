@@ -74,7 +74,7 @@ export function GuestBookingActions({
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+          <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -133,7 +133,7 @@ export function GuestBookingActions({
       )}
       {action === "delete" && (
         <ConfirmDialog
-          title="Delete booking"
+          title="Delete Booking"
           description="Permanently delete this booking. This cannot be undone. Bookings with a settled payment can't be deleted — cancel & refund instead."
           confirmLabel="Delete"
           danger
@@ -275,7 +275,7 @@ function RecordSessionPaymentDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record payment</DialogTitle>
+          <DialogTitle>Record Payment</DialogTitle>
           <DialogDescription>
             {row.guestName} · {money(row.amountMinor, row.currency)}
           </DialogDescription>
@@ -504,7 +504,7 @@ function CancelDialog({
 
   return (
     <ConfirmDialog
-      title="Cancel booking"
+      title="Cancel Booking"
       description="The court frees up immediately. This can't be undone."
       confirmLabel="Cancel Booking"
       danger
@@ -667,7 +667,7 @@ function DuplicateDialog({
 
   return (
     <ConfirmDialog
-      title="Duplicate booking"
+      title="Duplicate Booking"
       description="Creates a new booking with the same guest, court and players. Pick when it should be."
       confirmLabel="Duplicate"
       busy={busy}

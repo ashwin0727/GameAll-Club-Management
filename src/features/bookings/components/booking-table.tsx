@@ -126,7 +126,7 @@ export function BookingTable({
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
               <th className="w-10 px-3 py-3">
-                <Checkbox checked={pageSelected} indeterminate={pageSome} onChange={onTogglePage} label="Select all on this page" />
+                <Checkbox checked={pageSelected} indeterminate={pageSome} onChange={onTogglePage} label="Select All on This Page" />
               </th>
               {COLUMNS.map((c) => {
                 const active = sortKey === c.key;

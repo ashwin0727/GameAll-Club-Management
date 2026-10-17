@@ -88,7 +88,7 @@ class _CancelMembershipSheetState extends ConsumerState<CancelMembershipSheet> {
             TextField(
               controller: _refundAmountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Refund amount (optional)', prefixText: '₹ '),
+              decoration: const InputDecoration(labelText: 'Refund Amount (Optional)', prefixText: '₹ '),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(

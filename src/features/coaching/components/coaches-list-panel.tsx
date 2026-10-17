@@ -144,12 +144,12 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search coach by name, sport, or phone…"
-              aria-label="Search coaches"
+              aria-label="Search Coaches"
               className="h-10 pl-9"
             />
           </div>
           <Select value={sportId} onValueChange={setSportId}>
-            <SelectTrigger className="w-[10rem]" aria-label="Filter by sport">
+            <SelectTrigger className="w-[10rem]" aria-label="Filter by Sport">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -162,7 +162,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
             </SelectContent>
           </Select>
           <Select value={status ?? ALL} onValueChange={(v) => setStatus(v === ALL ? null : (v as CoachStatus))}>
-            <SelectTrigger className="w-[10rem]" aria-label="Filter by status">
+            <SelectTrigger className="w-[10rem]" aria-label="Filter by Status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -174,7 +174,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={(v) => setSort(v as CoachSort)}>
-            <SelectTrigger className="w-[10rem]" aria-label="Sort by">
+            <SelectTrigger className="w-[10rem]" aria-label="Sort By">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -188,7 +188,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
           <div className="flex items-center gap-1 rounded-lg border border-input p-1">
             <button
               type="button"
-              aria-label="List view"
+              aria-label="List View"
               aria-pressed={view === "list"}
               onClick={() => setView("list")}
               className={`flex h-8 w-8 items-center justify-center rounded-md ${view === "list" ? "bg-success text-success-foreground" : "text-muted-foreground"}`}
@@ -197,7 +197,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
             </button>
             <button
               type="button"
-              aria-label="Grid view"
+              aria-label="Grid View"
               aria-pressed={view === "grid"}
               onClick={() => setView("grid")}
               className={`flex h-8 w-8 items-center justify-center rounded-md ${view === "grid" ? "bg-success text-success-foreground" : "text-muted-foreground"}`}

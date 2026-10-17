@@ -166,7 +166,7 @@ export function SessionDetailsPage({ sessionId }: { sessionId: string }) {
             </h3>
             {canEdit && live && s.enrolledCount < s.capacity && (
               <Button size="sm" variant="outline" onClick={() => setDialog("add-student")}>
-                Add student
+                Add Student
               </Button>
             )}
           </div>
@@ -182,7 +182,7 @@ export function SessionDetailsPage({ sessionId }: { sessionId: string }) {
                   <div className="flex items-center gap-2">
                     {canProgress && (
                       <Button size="sm" variant="ghost" onClick={() => setProgressFor({ enrollmentId: st.enrollmentId, name: st.name })}>
-                        Add progress note
+                        Add Progress Note
                       </Button>
                     )}
                     {canEdit && live && (
@@ -335,7 +335,7 @@ function RescheduleDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit session</DialogTitle>
+          <DialogTitle>Edit Session</DialogTitle>
           <DialogDescription>Every change is re-checked against courts, coaches and maintenance.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -418,7 +418,7 @@ function CancelDialog({ sessionId, onClose, onDone }: { sessionId: string; onClo
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel session</DialogTitle>
+          <DialogTitle>Cancel Session</DialogTitle>
           <DialogDescription>The session record is kept — its status becomes Cancelled.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -429,7 +429,7 @@ function CancelDialog({ sessionId, onClose, onDone }: { sessionId: string; onClo
         </div>
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={onClose}>
-            Keep session
+            Keep Session
           </Button>
           <Button variant="destructive" disabled={busy} onClick={() => void submit()}>
             {busy ? "Cancelling…" : "Cancel Session"}
@@ -462,16 +462,16 @@ function CompleteDialog({ sessionId, onClose, onDone }: { sessionId: string; onC
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Complete session</DialogTitle>
+          <DialogTitle>Complete Session</DialogTitle>
           <DialogDescription>
             Records completion and coach notes. Student attendance is not tracked.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Field label="Session notes (optional)">
+          <Field label="Session Notes (Optional)">
             <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
-          <Field label="Objective result (optional)">
+          <Field label="Objective Result (Optional)">
             <Textarea rows={2} value={result} onChange={(e) => setResult(e.target.value)} />
           </Field>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -539,7 +539,7 @@ function AddStudentDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add student</DialogTitle>
+          <DialogTitle>Add Student</DialogTitle>
           <DialogDescription>Only active enrollments in this program can be added.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -618,7 +618,7 @@ function ProgressDialog({
           <DialogTitle>Progress note — {studentName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Field label="Skill or goal (optional)">
+          <Field label="Skill or Goal (Optional)">
             <Input value={skill} onChange={(e) => setSkill(e.target.value)} placeholder="e.g. Backhand consistency" />
           </Field>
           <Field label="Note">

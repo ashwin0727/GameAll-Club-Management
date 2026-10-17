@@ -34,7 +34,7 @@ export function ForgotPasswordForm() {
           <MailCheck className="h-6 w-6 text-success" aria-hidden="true" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-base font-semibold">Check your inbox</h2>
+          <h2 className="text-base font-semibold">Check Your Inbox</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             If an account exists for{" "}
             <span className="font-medium text-foreground">{getValues("email")}</span>, reset
@@ -54,7 +54,7 @@ export function ForgotPasswordForm() {
 
       <TextField
         id="forgot-email"
-        label="Registered email address"
+        label="Registered Email Address"
         type="email"
         inputMode="email"
         autoComplete="email"

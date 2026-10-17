@@ -186,7 +186,7 @@ export function CourtUtilizationReport() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">By Court</h2>
             <Select value={courtSort} onValueChange={(v) => setCourtSort(v as CourtSort)}>
-              <SelectTrigger className="h-9 w-40" aria-label="Sort courts">
+              <SelectTrigger className="h-9 w-40" aria-label="Sort Courts">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -206,8 +206,8 @@ export function CourtUtilizationReport() {
                   caption="Court utilization"
                   columns={[
                     { key: "court", label: "Court" },
-                    { key: "available", label: "Available (h)", align: "right" },
-                    { key: "booked", label: "Booked (h)", align: "right" },
+                    { key: "available", label: "Available (H)", align: "right" },
+                    { key: "booked", label: "Booked (H)", align: "right" },
                     { key: "util", label: "Utilization", align: "right" },
                   ]}
                   rows={sortedCourts.map((c) => ({
@@ -235,8 +235,8 @@ export function CourtUtilizationReport() {
                 caption="Sport utilization"
                 columns={[
                   { key: "sport", label: "Sport" },
-                  { key: "available", label: "Available (h)", align: "right" },
-                  { key: "booked", label: "Booked (h)", align: "right" },
+                  { key: "available", label: "Available (H)", align: "right" },
+                  { key: "booked", label: "Booked (H)", align: "right" },
                   { key: "util", label: "Utilization", align: "right" },
                 ]}
                 rows={sports.map((s) => ({
@@ -264,8 +264,8 @@ export function CourtUtilizationReport() {
                 columns={[
                   { key: "hour", label: "Hour" },
                   { key: "demand", label: "Demand", align: "right" },
-                  { key: "booked", label: "Booked (min)", align: "right" },
-                  { key: "open", label: "Open (min)", align: "right" },
+                  { key: "booked", label: "Booked (Min)", align: "right" },
+                  { key: "open", label: "Open (Min)", align: "right" },
                 ]}
                 rows={peak.map((p) => ({
                   hour: formatHourLabel(p.hour),

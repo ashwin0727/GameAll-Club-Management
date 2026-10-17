@@ -132,7 +132,7 @@ export function DailyClosingPage() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="dc-date" className="text-xs text-muted-foreground">
-            Business date
+            Business Date
           </Label>
           <Input
             id="dc-date"
@@ -161,7 +161,7 @@ export function DailyClosingPage() {
               <Row label="UPI" value={s.upiCollectedMinor} />
               <Row label="Card" value={s.cardCollectedMinor} />
               <Row label="Online" value={s.onlineCollectedMinor} />
-              <Row label="Bank transfer" value={s.bankTransferCollectedMinor} />
+              <Row label="Bank Transfer" value={s.bankTransferCollectedMinor} />
               <Row label="Other" value={s.otherCollectedMinor} />
               <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
                 <dt>Total collected</dt>
@@ -171,8 +171,8 @@ export function DailyClosingPage() {
 
             <h2 className="pt-2 text-sm font-semibold">Today&apos;s expenses</h2>
             <dl className="space-y-1.5 text-sm">
-              <Row label="Cash expenses" value={s.cashExpenseMinor} />
-              <Row label="Other expenses" value={s.otherExpenseMinor} />
+              <Row label="Cash Expenses" value={s.cashExpenseMinor} />
+              <Row label="Other Expenses" value={s.otherExpenseMinor} />
               <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
                 <dt>Total expenses</dt>
                 <dd className="tabular-nums">{formatCurrency(s.totalExpenseMinor, "INR")}</dd>
@@ -187,7 +187,7 @@ export function DailyClosingPage() {
 
           <Card className="space-y-3 p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Cash reconciliation</h2>
+              <h2 className="text-sm font-semibold">Cash Reconciliation</h2>
               <Badge variant={statusTone(s.status)}>{s.status.replace("_", " ")}</Badge>
             </div>
 
@@ -198,7 +198,7 @@ export function DailyClosingPage() {
                 </p>
                 <div className="space-y-1.5">
                   <Label htmlFor="dc-opening" className="text-xs font-medium">
-                    Opening cash float (₹)
+                    Opening Cash Float (₹)
                   </Label>
                   <Input
                     id="dc-opening"
@@ -221,15 +221,15 @@ export function DailyClosingPage() {
                     )
                   }
                 >
-                  Open day
+                  Open Day
                 </Button>
               </div>
             ) : (
               <>
                 <dl className="space-y-1.5 text-sm">
-                  <Row label="Opening cash" value={s.openingCashMinor} />
-                  <Row label="Cash collections" value={s.cashCollectedMinor} />
-                  <Row label="Cash expenses" value={-s.cashExpenseMinor} />
+                  <Row label="Opening Cash" value={s.openingCashMinor} />
+                  <Row label="Cash Collections" value={s.cashCollectedMinor} />
+                  <Row label="Cash Expenses" value={-s.cashExpenseMinor} />
                   <div className="flex justify-between border-t border-border pt-1.5 font-semibold">
                     <dt>Expected cash</dt>
                     <dd className="tabular-nums">{formatCurrency(s.expectedCashMinor, "INR")}</dd>
@@ -238,7 +238,7 @@ export function DailyClosingPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="dc-actual" className="text-xs font-medium">
-                    Actual cash counted (₹)
+                    Actual Cash Counted (₹)
                   </Label>
                   <Input
                     id="dc-actual"
@@ -267,7 +267,7 @@ export function DailyClosingPage() {
                 {!closed && previewVariance != null && previewVariance !== 0 && (
                   <div className="space-y-1.5">
                     <Label htmlFor="dc-reason" className="text-xs font-medium">
-                      Variance reason
+                      Variance Reason
                     </Label>
                     <Textarea
                       id="dc-reason"
@@ -286,7 +286,7 @@ export function DailyClosingPage() {
                     )}
                     <p className="text-xs text-muted-foreground">Closed {s.closedAt ? fmtDate(s.closedAt) : ""}.</p>
                     <Button type="button" variant="outline" size="sm" onClick={() => setReopen(true)}>
-                      Reopen day
+                      Reopen Day
                     </Button>
                   </div>
                 ) : (
@@ -303,7 +303,7 @@ export function DailyClosingPage() {
                       )
                     }
                   >
-                    Complete closing
+                    Complete Closing
                   </Button>
                 )}
               </>
@@ -314,7 +314,7 @@ export function DailyClosingPage() {
 
       <Card className="p-0">
         <div className="border-b border-border p-3">
-          <h2 className="text-sm font-semibold">Recent closings</h2>
+          <h2 className="text-sm font-semibold">Recent Closings</h2>
         </div>
         {history === null ? (
           <div className="space-y-2 p-4">
@@ -335,7 +335,7 @@ export function DailyClosingPage() {
                   <th className="px-4 py-2.5 text-right font-medium">Actual</th>
                   <th className="px-4 py-2.5 text-right font-medium">Variance</th>
                   <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Closed by</th>
+                  <th className="px-4 py-2.5 font-medium">Closed By</th>
                 </tr>
               </thead>
               <tbody>
@@ -379,7 +379,7 @@ export function DailyClosingPage() {
       <Dialog open={reopen} onOpenChange={setReopen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Reopen this day</DialogTitle>
+            <DialogTitle>Reopen This Day</DialogTitle>
             <DialogDescription>
               Reopening is audited. Enter why the closed day needs to change.
             </DialogDescription>

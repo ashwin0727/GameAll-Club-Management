@@ -79,8 +79,13 @@ void main() {
     final theme = AppTheme.light();
     final tokens = theme.extension<AppColorTokens>()!;
 
-    test('uses the same brand primary as dark — one brand color, not reinterpreted per theme', () {
-      expect(theme.colorScheme.primary, AppColors.primary);
+    test('uses the brand green, deepened on the light ground so text and controls keep their contrast', () {
+      // One brand colour, one hue: the light theme's own primary token drives the colour scheme, and it is the same
+      // green as dark's — only darker, because the bright dark-ground green is unreadable on white.
+      expect(theme.colorScheme.primary, tokens.primary);
+      expect(tokens.primary, isNot(AppColors.primary));
+      expect(HSLColor.fromColor(tokens.primary).hue, closeTo(HSLColor.fromColor(AppColors.primary).hue, 12));
+      expect(tokens.primary.computeLuminance(), lessThan(AppColors.primary.computeLuminance()));
     });
 
     test('is a genuinely independent palette, not dark values inverted', () {

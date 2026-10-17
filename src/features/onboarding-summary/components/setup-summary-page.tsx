@@ -114,7 +114,7 @@ export function SetupSummaryPage() {
   }
 
   if (loadState === "forbidden") {
-    return <ErrorState title="Access denied" message="You don't have access to this facility." />;
+    return <ErrorState title="Access Denied" message="You don't have access to this facility." />;
   }
 
   if (loadState === "error" || !summary) {

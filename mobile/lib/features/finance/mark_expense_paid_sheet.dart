@@ -101,7 +101,7 @@ class _MarkExpensePaidSheetState extends ConsumerState<MarkExpensePaidSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Record expense payment', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Record Expense Payment', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.xs),
             Text(
               '${widget.expense.vendor ?? widget.expense.categoryName} · '
@@ -119,7 +119,7 @@ class _MarkExpensePaidSheetState extends ConsumerState<MarkExpensePaidSheet> {
             InkWell(
               onTap: _pickDate,
               child: AppSelectField(
-                decoration: const InputDecoration(labelText: 'Paid on'),
+                decoration: const InputDecoration(labelText: 'Paid On'),
                 child: Text(DateFormat('d MMM yyyy').format(_paidOn)),
               ),
             ),
@@ -143,7 +143,7 @@ class _MarkExpensePaidSheetState extends ConsumerState<MarkExpensePaidSheet> {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Record payment',
+              label: 'Record Payment',
               loadingLabel: 'Saving…',
               isLoading: _saving,
               onPressed: _save,

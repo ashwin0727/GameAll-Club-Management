@@ -76,7 +76,7 @@ export function GuestBookingsFilterCard({
 }) {
   return (
     <Card className="space-y-4 p-4">
-      <div className="flex gap-6 border-b border-border/60" role="tablist" aria-label="Booking view">
+      <div className="flex gap-6 border-b border-border/60" role="tablist" aria-label="Booking View">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -101,7 +101,7 @@ export function GuestBookingsFilterCard({
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
             type="text"
-            aria-label="Search bookings"
+            aria-label="Search Bookings"
             placeholder="Search by name, phone, booking ID…"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -110,7 +110,7 @@ export function GuestBookingsFilterCard({
           {search && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label="Clear Search"
               onClick={() => onSearchChange("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
             >

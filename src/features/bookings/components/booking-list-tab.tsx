@@ -259,7 +259,7 @@ export function BookingListTab({
       />
       <button
         type="button"
-        aria-label="Previous range"
+        aria-label="Previous Range"
         onClick={() => shiftRange(-1)}
         className={ICON_BTN}
       >
@@ -267,7 +267,7 @@ export function BookingListTab({
       </button>
       <button
         type="button"
-        aria-label="Next range"
+        aria-label="Next Range"
         onClick={() => shiftRange(1)}
         className={ICON_BTN}
       >
@@ -323,7 +323,7 @@ export function BookingListTab({
         />
         <input
           type="text"
-          aria-label="Search bookings"
+          aria-label="Search Bookings"
           placeholder="Search by member, phone, or reference…"
           value={filters.search}
           onChange={(e) =>
@@ -337,7 +337,7 @@ export function BookingListTab({
         {filters.search && (
           <button
             type="button"
-            aria-label="Clear search"
+            aria-label="Clear Search"
             onClick={() => setFilters((f) => ({ ...f, search: "" }))}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
           >
@@ -373,7 +373,7 @@ export function BookingListTab({
               onClick={() => exportRows(selectedRows, "-selected")}
               className="font-medium text-primary hover:underline"
             >
-              Export selected
+              Export Selected
             </button>
             <button
               type="button"
@@ -387,7 +387,7 @@ export function BookingListTab({
               onClick={() => setSelected(new Set())}
               className="ml-auto text-muted-foreground hover:text-foreground"
             >
-              Clear selection
+              Clear Selection
             </button>
           </div>
         )}

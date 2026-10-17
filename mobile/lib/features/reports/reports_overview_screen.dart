@@ -172,7 +172,7 @@ class _ReportsOverviewScreenState extends ConsumerState<ReportsOverviewScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('View all',
+          Text('View All',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: tokens.primary)),
           const SizedBox(width: 2),
           Icon(Icons.arrow_forward_rounded, size: 15, color: tokens.primary),
@@ -269,7 +269,7 @@ class _ReportsOverviewScreenState extends ConsumerState<ReportsOverviewScreen> {
   Widget _deltaChip(double? pct, {required bool invert}) {
     final tokens = context.tokens;
     if (pct == null) {
-      return Text('vs last period', style: TextStyle(fontSize: 11.5, color: tokens.textSecondary));
+      return Text('Vs last period', style: TextStyle(fontSize: 11.5, color: tokens.textSecondary));
     }
     final good = invert ? pct <= 0 : pct >= 0;
     final color = good ? tokens.success : tokens.destructive;

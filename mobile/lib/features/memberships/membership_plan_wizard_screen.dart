@@ -504,7 +504,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
           controller: _badge,
           maxLength: 24,
           onChanged: (v) => _typed(() => _d.badgeText = v),
-          decoration: const InputDecoration(labelText: 'Badge text', hintText: 'Popular'),
+          decoration: const InputDecoration(labelText: 'Badge Text', hintText: 'Popular'),
         ),
       ],
     ];
@@ -694,7 +694,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       if (recurring) ...[
         InputDecorator(
           decoration: appSelectDecoration(context, labelText: 'Billing Frequency'),
-          child: Text('Auto-renewal', style: TextStyle(color: tokens.textSecondary)),
+          child: Text('Auto-Renewal', style: TextStyle(color: tokens.textSecondary)),
         ),
         const SizedBox(height: AppSpacing.md),
         _note(Icons.all_inclusive_rounded, tokens.primary, 'Recurring Payment', 'The membership will be automatically renewed at the selected interval.'),
@@ -800,7 +800,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         'Select Courts',
         'Choose which courts members can book under this plan.',
         _loadingCourts
-            ? Text('Loading courts…', style: AppTypography.caption(context))
+            ? Text('Loading Courts…', style: AppTypography.caption(context))
             : _courts.isEmpty
                 ? Text('No active courts are set up at this facility yet.', style: AppTypography.caption(context))
                 : Column(

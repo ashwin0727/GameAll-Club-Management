@@ -142,7 +142,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: TournamentAppPreview(previews: [], autoplay: false))),
       );
       await tester.pump();
-      expect(find.text('App preview coming soon'), findsOneWidget);
+      expect(find.text('App Preview Coming Soon'), findsOneWidget);
     });
 
     testWidgets('multiple previews → one image at a time with dot controls', (tester) async {

@@ -11,7 +11,7 @@ export default function OperatingHoursPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Set your operating hours</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Set Your Operating Hours</h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">
           Choose when your facility is open for bookings and activities.
         </p>

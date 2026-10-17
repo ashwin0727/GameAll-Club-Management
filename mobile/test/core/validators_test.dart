@@ -41,6 +41,16 @@ void main() {
     });
   });
 
+  group('Validators.mobile', () {
+    test('is required', () => expect(Validators.mobile(''), 'Phone number is required.'));
+    test('needs exactly 10 digits', () => expect(Validators.mobile('98765'), isNotNull));
+    test('must start with 6, 7, 8 or 9', () => expect(Validators.mobile('1234567890'), contains('start with')));
+    test('accepts a valid mobile, with or without +91', () {
+      expect(Validators.mobile('9876543210'), isNull);
+      expect(Validators.mobile('+919876543210'), isNull);
+    });
+  });
+
   group('Validators.optionalPhone', () {
     test('is optional — empty is valid', () {
       expect(Validators.optionalPhone(''), isNull);

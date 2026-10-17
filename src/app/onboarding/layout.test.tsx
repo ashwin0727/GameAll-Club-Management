@@ -12,92 +12,33 @@ describe("OnboardingLayout", () => {
     useOnboardingStore.getState().reset();
   });
 
-  it("opens the leave-confirm dialog when going Back with unsaved progress, and Leave navigates to the previous step", async () => {
+  async function clickBack(path: string) {
     const user = userEvent.setup();
-    setPathname("/onboarding/sports");
-    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
-
+    setPathname(path);
     renderWithProviders(
       <OnboardingLayout>
         <div>content</div>
       </OnboardingLayout>,
     );
-
     await user.click(screen.getByRole("button", { name: "Back" }));
+  }
 
-    expect(await screen.findByText("Your progress has been saved.")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Leave" }));
-
+  it("goes straight from Sports back to Facility Details, with no confirmation, even with sports selected", async () => {
+    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
+    await clickBack("/onboarding/sports");
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
+    expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
   });
 
-  it("navigates straight to /dashboard with no dialog when there is no unsaved progress", async () => {
-    const user = userEvent.setup();
-    setPathname("/onboarding/facility");
-
-    renderWithProviders(
-      <OnboardingLayout>
-        <div>content</div>
-      </OnboardingLayout>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
+  it("goes straight to /dashboard from the first step, even with a draft", async () => {
+    useOnboardingStore.getState().setDraft({ facilityName: "GameAll Sports Arena" });
+    await clickBack("/onboarding/facility");
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/dashboard"));
     expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
   });
 
-  it("opens the leave-confirm dialog when the draft is empty but selectedSportIds is not", async () => {
-    const user = userEvent.setup();
-    setPathname("/onboarding/facility");
-    useOnboardingStore.getState().setSelectedSportIds(["sport_cricket"]);
-
-    renderWithProviders(
-      <OnboardingLayout>
-        <div>content</div>
-      </OnboardingLayout>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
-    expect(await screen.findByText("Your progress has been saved.")).toBeInTheDocument();
-    expect(routerMock.replace).not.toHaveBeenCalled();
-  });
-
-  it("navigates from /onboarding/courts back to /onboarding/sports when there is no unsaved progress", async () => {
-    const user = userEvent.setup();
-    setPathname("/onboarding/courts");
-
-    renderWithProviders(
-      <OnboardingLayout>
-        <div>content</div>
-      </OnboardingLayout>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
+  it("goes from Courts back to Sports", async () => {
+    await clickBack("/onboarding/courts");
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
-  });
-
-  it("does not show the confirm dialog on /onboarding/courts even though earlier steps left draft/selectedSportIds populated", async () => {
-    const user = userEvent.setup();
-    setPathname("/onboarding/courts");
-    // Facility and Sports steps never clear this state once completed —
-    // Courts persists its own data incrementally, so neither field reflects
-    // anything actually unsaved on this step.
-    useOnboardingStore.getState().setDraft({ facilityName: "GameAll Sports Arena" });
-    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
-
-    renderWithProviders(
-      <OnboardingLayout>
-        <div>content</div>
-      </OnboardingLayout>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Back" }));
-
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
-    expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
   });
 });

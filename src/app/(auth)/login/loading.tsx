@@ -9,7 +9,7 @@ import { AuthFormSkeleton, AuthFooterLinkSkeleton } from "@/features/auth/compon
 export default function LoginLoading() {
   return (
     <AuthCard
-      title="Welcome back"
+      title="Welcome Back"
       subtitle="Sign in to manage your facility."
       footer={<AuthFooterLinkSkeleton />}
     >

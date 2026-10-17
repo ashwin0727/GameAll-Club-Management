@@ -273,12 +273,12 @@ class _EmptyPlans extends StatelessWidget {
         children: [
           Icon(Icons.card_membership_outlined, size: 34, color: tokens.textSecondary),
           const SizedBox(height: AppSpacing.sm),
-          Text('No plans yet', style: TextStyle(color: tokens.textSecondary)),
+          Text('No Plans Yet', style: TextStyle(color: tokens.textSecondary)),
           const SizedBox(height: AppSpacing.md),
           FilledButton(
             onPressed: onCreate,
             style: FilledButton.styleFrom(backgroundColor: tokens.violet),
-            child: const Text('Create a plan'),
+            child: const Text('Create a Plan'),
           ),
         ],
       ),

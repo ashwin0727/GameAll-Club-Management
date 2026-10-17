@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function VerifyEmailPage() {
   return (
-    <AuthCard title="Verify your email">
+    <AuthCard title="Verify Your Email">
       <Suspense fallback={<div className="h-[380px]" />}>
         <VerifyEmailPanel />
       </Suspense>

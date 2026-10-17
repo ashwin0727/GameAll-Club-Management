@@ -344,7 +344,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
         controller: _memberQuery,
         onChanged: _onMemberQuery,
         decoration: const InputDecoration(
-          labelText: 'Search existing student',
+          labelText: 'Search Existing Student',
           hintText: 'Name, phone or email',
           prefixIcon: Icon(Icons.search),
         ),
@@ -396,12 +396,12 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
           if (picked != null) setState(() => _dateOfBirth = picked);
         },
         child: AppSelectField(
-          decoration: const InputDecoration(labelText: 'Date of birth'),
+          decoration: const InputDecoration(labelText: 'Date of Birth'),
           child: Text(_dateOfBirth == null ? '—' : DateFormat('d MMM yyyy').format(_dateOfBirth!)),
         ),
       ),
       const SizedBox(height: AppSpacing.sm),
-      TextField(controller: _notes, maxLines: 2, maxLength: 500, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+      TextField(controller: _notes, maxLines: 2, maxLength: 500, decoration: const InputDecoration(labelText: 'Notes (Optional)')),
     ];
   }
 
@@ -545,7 +545,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
                     const Divider(height: AppSpacing.lg),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Expected payment dates', style: AppTypography.rowTitle(context)),
+                      child: Text('Expected Payment Dates', style: AppTypography.rowTitle(context)),
                     ),
                     const SizedBox(height: 2),
                     Align(

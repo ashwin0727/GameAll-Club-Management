@@ -40,7 +40,7 @@ export function DateRangePicker({ value, onChange }: { value: FinanceDateRange; 
       {value.preset === "CUSTOM" && (
         <>
           <Input
-            aria-label="Start date"
+            aria-label="Start Date"
             type="date"
             value={value.startDate ?? ""}
             onChange={(e) => onChange({ ...value, startDate: e.target.value })}
@@ -48,7 +48,7 @@ export function DateRangePicker({ value, onChange }: { value: FinanceDateRange; 
           />
           <span className="text-sm text-muted-foreground">to</span>
           <Input
-            aria-label="End date"
+            aria-label="End Date"
             type="date"
             value={value.endDate ?? ""}
             onChange={(e) => onChange({ ...value, endDate: e.target.value })}

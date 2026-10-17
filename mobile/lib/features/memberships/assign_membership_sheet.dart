@@ -216,7 +216,7 @@ class _AssignMembershipSheetState extends ConsumerState<AssignMembershipSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text('Start date', style: Theme.of(context).textTheme.titleSmall),
+              Text('Start Date', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),
               OutlinedButton(onPressed: _pickStartDate, child: Text(Formatters.dateShort(_startDate))),
               if (_endDate != null) ...[

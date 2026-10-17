@@ -151,7 +151,7 @@ class _StockMovementSheetState extends ConsumerState<StockMovementSheet> {
             TextField(
               controller: _notesController,
               maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              decoration: const InputDecoration(labelText: 'Notes (Optional)'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),

@@ -114,7 +114,7 @@ export function ItemsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, SKU or brand…"
-              aria-label="Search items"
+              aria-label="Search Items"
               className="h-10 pl-9"
             />
           </div>

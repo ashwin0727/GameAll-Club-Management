@@ -88,7 +88,7 @@ class OnboardingWelcomeScreen extends ConsumerWidget {
                                 _FeatureCard(
                                   icon: Icons.people_outline,
                                   tint: tokens.violet,
-                                  title: 'Members and guests',
+                                  title: 'Members and Guests',
                                   description:
                                       'Recurring plans, coaching batches and '
                                       'walk-ins on one roster.',
@@ -97,7 +97,7 @@ class OnboardingWelcomeScreen extends ConsumerWidget {
                                 _FeatureCard(
                                   icon: Icons.credit_card,
                                   tint: tokens.primary,
-                                  title: 'Money that reconciles',
+                                  title: 'Money That Reconciles',
                                   description:
                                       'Payments, refunds and expenses land on '
                                       'one finance view automatically.',

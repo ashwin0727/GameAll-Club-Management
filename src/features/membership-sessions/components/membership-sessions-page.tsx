@@ -257,7 +257,7 @@ export function MembershipSessionsPage() {
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" aria-label="More actions">
+                              <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -297,7 +297,7 @@ export function MembershipSessionsPage() {
           <p className="text-xs text-muted-foreground">Share this link with players so they can book released slots.</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Input readOnly value={joinUrl} className="h-9 max-w-md text-xs" />
-            <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(joinUrl)}>Copy link</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(joinUrl)}>Copy Link</Button>
           </div>
         </Card>
       </div>

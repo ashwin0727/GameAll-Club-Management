@@ -131,14 +131,14 @@ export function BookGuestSlotDialog({
           ) : showNewGuestForm ? (
             <div className="space-y-2">
               <input
-                aria-label="New guest name"
+                aria-label="New Guest Name"
                 placeholder="Guest name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 className="h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm"
               />
               <input
-                aria-label="New guest phone"
+                aria-label="New Guest Phone"
                 placeholder="Phone (optional)"
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
@@ -162,7 +162,7 @@ export function BookGuestSlotDialog({
           ) : (
             <div className="space-y-2">
               <input
-                aria-label="Search guests"
+                aria-label="Search Guests"
                 placeholder="Search by name or phone"
                 value={query}
                 onChange={(e) => search(e.target.value)}

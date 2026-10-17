@@ -135,10 +135,10 @@ export function MembershipReport() {
     const rows: Array<Record<string, string | number>> = [
       { section: "Members", label: "Active", value: analytics.activeMembers },
       { section: "Members", label: "New", value: analytics.newMemberships },
-      { section: "Members", label: "Expiring soon", value: analytics.expiringSoon },
-      { section: "Payments", label: "Membership revenue", value: formatCurrency(analytics.membershipRevenueMinor, INR) },
+      { section: "Members", label: "Expiring Soon", value: analytics.expiringSoon },
+      { section: "Payments", label: "Membership Revenue", value: formatCurrency(analytics.membershipRevenueMinor, INR) },
       { section: "Payments", label: "Paid", value: analytics.paidCount },
-      { section: "Payments", label: "Partially paid", value: analytics.partiallyPaidCount },
+      { section: "Payments", label: "Partially Paid", value: analytics.partiallyPaidCount },
       { section: "Payments", label: "Pending", value: analytics.pendingCount },
       { section: "Payments", label: "Outstanding", value: formatCurrency(analytics.outstandingMinor, INR) },
       ...byType.map((r) => ({
@@ -146,12 +146,12 @@ export function MembershipReport() {
         label: `${r.membershipType} ${r.planName}`,
         value: r.count,
       })),
-      { section: "Sessions", label: "Total capacity", value: session.totalCapacity },
-      { section: "Sessions", label: "Member allocations", value: session.memberAllocations },
-      { section: "Sessions", label: "Guest released", value: session.guestReleased },
-      { section: "Sessions", label: "Guest booked", value: session.guestBooked },
-      { section: "Sessions", label: "Remaining released", value: session.remainingReleased },
-      { section: "Sessions", label: "Unused capacity", value: session.unusedCapacity },
+      { section: "Sessions", label: "Total Capacity", value: session.totalCapacity },
+      { section: "Sessions", label: "Member Allocations", value: session.memberAllocations },
+      { section: "Sessions", label: "Guest Released", value: session.guestReleased },
+      { section: "Sessions", label: "Guest Booked", value: session.guestBooked },
+      { section: "Sessions", label: "Remaining Released", value: session.remainingReleased },
+      { section: "Sessions", label: "Unused Capacity", value: session.unusedCapacity },
       { section: "Guest release", label: "Revenue", value: formatCurrency(guestRelease.revenueMinor, INR) },
     ];
     const blob = new Blob([toCsv(rows)], { type: "text/csv" });

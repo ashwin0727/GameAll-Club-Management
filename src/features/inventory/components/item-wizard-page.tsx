@@ -115,16 +115,16 @@ export function ItemWizardPage() {
       <Card className="space-y-4 p-5">
         {step === 0 && (
           <>
-            <Field label="Item name" htmlFor="it-name">
+            <Field label="Item Name" htmlFor="it-name">
               <Input id="it-name" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <Field label="SKU / Code" htmlFor="it-sku">
               <Input id="it-sku" value={sku} onChange={(e) => setSku(e.target.value)} />
             </Field>
-            <Field label="Brand (optional)" htmlFor="it-brand">
+            <Field label="Brand (Optional)" htmlFor="it-brand">
               <Input id="it-brand" value={brand} onChange={(e) => setBrand(e.target.value)} />
             </Field>
-            <Field label="Category (optional)" htmlFor="it-cat">
+            <Field label="Category (Optional)" htmlFor="it-cat">
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger id="it-cat">
                   <SelectValue />
@@ -144,13 +144,13 @@ export function ItemWizardPage() {
 
         {step === 1 && (
           <>
-            <Field label="Unit of measure" htmlFor="it-unit">
+            <Field label="Unit of Measure" htmlFor="it-unit">
               <Input id="it-unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="piece, box, litre…" />
             </Field>
-            <Field label="Reorder level" htmlFor="it-reorder">
+            <Field label="Reorder Level" htmlFor="it-reorder">
               <Input id="it-reorder" type="number" min="0" step="1" value={reorderLevel} onChange={(e) => setReorderLevel(e.target.value)} />
             </Field>
-            <Field label="Opening stock" htmlFor="it-open">
+            <Field label="Opening Stock" htmlFor="it-open">
               <Input id="it-open" type="number" min="0" step="1" value={openingStock} onChange={(e) => setOpeningStock(e.target.value)} />
             </Field>
             <Field label="Default unit cost (₹, optional)" htmlFor="it-cost">
@@ -164,7 +164,7 @@ export function ItemWizardPage() {
 
         {step === 2 && (
           <>
-            <Field label="Preferred vendor (optional)" htmlFor="it-vendor">
+            <Field label="Preferred Vendor (Optional)" htmlFor="it-vendor">
               <Select value={preferredVendorId} onValueChange={setPreferredVendorId}>
                 <SelectTrigger id="it-vendor">
                   <SelectValue />
@@ -179,7 +179,7 @@ export function ItemWizardPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Description (optional)" htmlFor="it-desc">
+            <Field label="Description (Optional)" htmlFor="it-desc">
               <Textarea id="it-desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
           </>
@@ -192,10 +192,10 @@ export function ItemWizardPage() {
             <Review label="Brand" value={brand || "—"} />
             <Review label="Category" value={categoryName} />
             <Review label="Unit" value={unit} />
-            <Review label="Reorder level" value={reorderLevel} />
-            <Review label="Opening stock" value={openingStock} />
-            <Review label="Default cost" value={defaultCost ? money(toMinorUnits(defaultCost, "INR")) : "—"} />
-            <Review label="Preferred vendor" value={vendorName} />
+            <Review label="Reorder Level" value={reorderLevel} />
+            <Review label="Opening Stock" value={openingStock} />
+            <Review label="Default Cost" value={defaultCost ? money(toMinorUnits(defaultCost, "INR")) : "—"} />
+            <Review label="Preferred Vendor" value={vendorName} />
             <Review label="Description" value={description || "—"} />
           </dl>
         )}

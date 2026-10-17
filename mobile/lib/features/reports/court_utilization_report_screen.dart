@@ -124,9 +124,9 @@ class _CourtUtilizationReportScreenState extends ConsumerState<CourtUtilizationR
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(title: const Text('Highest first'), onTap: () => Navigator.pop(ctx, _CourtSort.high)),
-            ListTile(title: const Text('Lowest first'), onTap: () => Navigator.pop(ctx, _CourtSort.low)),
-            ListTile(title: const Text('By name'), onTap: () => Navigator.pop(ctx, _CourtSort.name)),
+            ListTile(title: const Text('Highest First'), onTap: () => Navigator.pop(ctx, _CourtSort.high)),
+            ListTile(title: const Text('Lowest First'), onTap: () => Navigator.pop(ctx, _CourtSort.low)),
+            ListTile(title: const Text('By Name'), onTap: () => Navigator.pop(ctx, _CourtSort.name)),
           ],
         ),
       ),
@@ -498,7 +498,7 @@ class _OverallCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('No bookings yet',
+                            Text('No Bookings Yet',
                                 style: TextStyle(
                                     fontSize: 13, fontWeight: FontWeight.w700, color: tokens.textPrimary)),
                             const SizedBox(height: 2),
@@ -698,7 +698,7 @@ class _InsightsPlaceholder extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('No insights yet',
+              Text('No Insights Yet',
                   style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: tokens.textPrimary)),
               const SizedBox(height: 2),
               Text('As bookings come in, we\'ll highlight trends, popular hours and underutilized courts here.',

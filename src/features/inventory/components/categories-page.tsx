@@ -175,7 +175,7 @@ function CategoryDialog({
             <Input id="cat-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cat-desc">Description (optional)</Label>
+            <Label htmlFor="cat-desc">Description (Optional)</Label>
             <Textarea id="cat-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           {existing && (

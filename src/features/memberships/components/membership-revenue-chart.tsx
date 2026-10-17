@@ -103,7 +103,7 @@ export function MembershipRevenueChart({
                 <DeltaIcon className="h-3 w-3" aria-hidden />
                 {Math.abs(Math.round(revenueChangePct))}%
               </span>
-              <span className="text-xs text-muted-foreground">vs last month</span>
+              <span className="text-xs text-muted-foreground">Vs last month</span>
             </>
           )}
         </div>

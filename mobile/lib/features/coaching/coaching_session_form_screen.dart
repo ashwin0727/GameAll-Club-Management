@@ -245,9 +245,9 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                     decoration: const InputDecoration(labelText: 'Capacity'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  TextField(controller: _objective, decoration: const InputDecoration(labelText: 'Objective (optional)')),
+                  TextField(controller: _objective, decoration: const InputDecoration(labelText: 'Objective (Optional)')),
                   const SizedBox(height: AppSpacing.sm),
-                  TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+                  TextField(controller: _notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes (Optional)')),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text("Add the program's active students to the roster"),
@@ -256,7 +256,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Mark as confirmed'),
+                    title: const Text('Mark as Confirmed'),
                     value: _confirmNow,
                     onChanged: (v) => setState(() => _confirmNow = v),
                   ),

@@ -118,7 +118,7 @@ export function EnrollmentFormDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add enrollment</DialogTitle>
+          <DialogTitle>Add Enrollment</DialogTitle>
           <DialogDescription>Enrol an existing facility member into a coaching program.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -178,7 +178,7 @@ export function EnrollmentFormDialog({
             </Select>
           </F>
 
-          <F label="Coach (optional)">
+          <F label="Coach (Optional)">
             <Select value={coachId || "none"} onValueChange={(v) => setCoachId(v === "none" ? "" : v)}>
               <SelectTrigger>
                 <SelectValue />
@@ -195,16 +195,16 @@ export function EnrollmentFormDialog({
           </F>
 
           <div className="grid grid-cols-2 gap-3">
-            <F label="Start date">
+            <F label="Start Date">
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </F>
-            <F label="End date (optional)">
+            <F label="End Date (Optional)">
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </F>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <F label="Sessions in package">
+            <F label="Sessions in Package">
               <Input type="number" min="1" step="1" value={sessionsTotal} onChange={(e) => setSessionsTotal(e.target.value)} />
             </F>
             {program?.isMembershipIncluded ? (
@@ -230,7 +230,7 @@ export function EnrollmentFormDialog({
             </p>
           )}
 
-          <F label="Notes (optional)">
+          <F label="Notes (Optional)">
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </F>
 

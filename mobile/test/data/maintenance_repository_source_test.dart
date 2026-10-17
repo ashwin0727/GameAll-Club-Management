@@ -17,7 +17,7 @@ void main() {
   late String source;
 
   setUpAll(() {
-    source = File('lib/data/repositories/maintenance_repository.dart').readAsStringSync();
+    source = File('lib/data/repositories/maintenance_repository.dart').readAsStringSync().replaceAll('\r\n', '\n');
   });
 
   test('every lifecycle action calls its exact RPC name', () {

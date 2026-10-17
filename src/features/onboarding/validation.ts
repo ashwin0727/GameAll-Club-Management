@@ -20,10 +20,17 @@ export const facilityDetailsSchema = z
       .max(50, "Keep this under 50 characters")
       .optional()
       .default(""),
+    // Same rules as the phone fields elsewhere in the app: required, exactly 10 digits, starting 6–9
+    // (a stored "+91…" is still accepted).
     businessPhone: z
       .string()
       .trim()
-      .regex(/^(\+91)?[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+      .superRefine((value, ctx) => {
+        const digits = value.replace(/^\+91/, "");
+        if (!digits) ctx.addIssue({ code: "custom", message: "Phone number is required" });
+        else if (!/^\d{10}$/.test(digits)) ctx.addIssue({ code: "custom", message: "Enter a valid 10-digit mobile number" });
+        else if (!/^[6-9]/.test(digits)) ctx.addIssue({ code: "custom", message: "Mobile number must start with 6, 7, 8 or 9" });
+      }),
     addressLine: z
       .string()
       .trim()

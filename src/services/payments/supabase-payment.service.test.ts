@@ -22,7 +22,8 @@ describe("SupabasePaymentService", () => {
         body: expect.not.objectContaining({ amount: expect.anything() }),
       }),
     );
-    const call = invoke.mock.calls[0]?.[1] as { body: Record<string, unknown> };
+    // The mock takes no declared arguments; read the ones it was really called with.
+    const call = (invoke.mock.calls as unknown as [string, { body: Record<string, unknown> }][])[0]?.[1] as { body: Record<string, unknown> };
     expect(call.body).toEqual({
       facilityId: "facility-1",
       sourceType: "MEMBER_BOOKING",

@@ -63,7 +63,7 @@ export function SportPricingCard({
           <h2 className="text-sm font-semibold">{sportName}</h2>
         </div>
         <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onCopyRequest}>
-          Copy pricing
+          Copy Pricing
         </Button>
       </div>
 
@@ -101,7 +101,7 @@ export function SportPricingCard({
                   <span className="text-sm font-medium">{area.name}</span>
                   {isCustom ? (
                     <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => onUseDefaultForArea(area.id)}>
-                      Use sport default
+                      Use Sport Default
                     </Button>
                   ) : (
                     <Button type="button" variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => onCustomizeArea(area.id)}>

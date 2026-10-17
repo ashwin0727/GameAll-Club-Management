@@ -157,7 +157,7 @@ export function RecordMovementDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="mv-notes">Notes (optional)</Label>
+            <Label htmlFor="mv-notes">Notes (Optional)</Label>
             <Textarea id="mv-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 

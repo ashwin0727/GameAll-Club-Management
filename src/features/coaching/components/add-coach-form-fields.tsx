@@ -58,7 +58,7 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
 
         <div className="flex gap-2">
           <Button type="button" size="sm" variant={form.mode === "pick" ? "default" : "outline"} onClick={() => form.setMode("pick")}>
-            Existing staff member
+            Existing Staff Member
           </Button>
           <Button type="button" size="sm" variant={form.mode === "new" ? "default" : "outline"} onClick={() => form.setMode("new")}>
             + New person
@@ -68,7 +68,7 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
         {form.mode === "pick" ? (
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="coach-user">Staff member</Label>
+              <Label htmlFor="coach-user">Staff Member</Label>
               <Select value={form.userId} onValueChange={form.setUserId}>
                 <SelectTrigger id="coach-user">
                   <SelectValue placeholder="Select a staff member" />
@@ -316,7 +316,7 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
                   type="number"
                   min="1"
                   step="1"
-                  aria-label="Custom duration in minutes"
+                  aria-label="Custom Duration in Minutes"
                   placeholder="e.g. 75"
                   value={form.customDuration}
                   onChange={(e) => form.setCustomDuration(e.target.value)}

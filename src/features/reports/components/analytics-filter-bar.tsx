@@ -120,7 +120,7 @@ export function AnalyticsFilterBar({
           })
         }
       >
-        <SelectTrigger className={triggerWidth ?? "w-[160px]"} aria-label="Date range">
+        <SelectTrigger className={triggerWidth ?? "w-[160px]"} aria-label="Date Range">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -136,7 +136,7 @@ export function AnalyticsFilterBar({
         <>
           <Input
             type="date"
-            aria-label="Start date"
+            aria-label="Start Date"
             className={triggerWidth ?? "w-[150px]"}
             value={filter.startDate ?? ""}
             onChange={(e) => onChange({ ...filter, startDate: e.target.value })}
@@ -144,7 +144,7 @@ export function AnalyticsFilterBar({
           <span className="text-sm text-muted-foreground">to</span>
           <Input
             type="date"
-            aria-label="End date"
+            aria-label="End Date"
             className={triggerWidth ?? "w-[150px]"}
             value={filter.endDate ?? ""}
             onChange={(e) => onChange({ ...filter, endDate: e.target.value })}

@@ -64,7 +64,7 @@ export function MarkExpensePaidDialog({ expense, onDone }: { expense: ExpenseRow
   return (
     <>
       <Button type="button" size="sm" onClick={() => setOpen(true)}>
-        Mark paid
+        Mark Paid
       </Button>
       <Dialog
         open={open}
@@ -80,7 +80,7 @@ export function MarkExpensePaidDialog({ expense, onDone }: { expense: ExpenseRow
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Record expense payment</DialogTitle>
+            <DialogTitle>Record Expense Payment</DialogTitle>
             <DialogDescription>
               {expense.vendor ?? expense.categoryName} · {formatCurrency(outstanding, expense.currency)} outstanding
             </DialogDescription>
@@ -95,7 +95,7 @@ export function MarkExpensePaidDialog({ expense, onDone }: { expense: ExpenseRow
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="mep-date" className="text-xs font-medium">
-                Paid on
+                Paid On
               </Label>
               <Input id="mep-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
             </div>

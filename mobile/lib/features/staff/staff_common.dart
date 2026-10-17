@@ -132,7 +132,7 @@ class StaffPermissionDenied extends StatelessWidget {
             children: [
               Icon(Icons.lock_outline, size: 40, color: Theme.of(context).colorScheme.outline),
               const SizedBox(height: AppSpacing.md),
-              const Text('Access restricted', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Access Restricted', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: AppSpacing.xs),
               Text(message, textAlign: TextAlign.center, style: AppTypography.secondary(context)),
             ],

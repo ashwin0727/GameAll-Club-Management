@@ -71,7 +71,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Verify your email', style: Theme.of(context).textTheme.headlineSmall),
+              Text('Verify Your Email', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'We sent a verification link to ${widget.email}. '

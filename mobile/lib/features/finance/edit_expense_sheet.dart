@@ -119,7 +119,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Edit expense', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Edit Expense', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
             if (_categories.isNotEmpty)
               AppDropdown<String>(
@@ -146,7 +146,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                   child: InkWell(
                     onTap: _pickDate,
                     child: AppSelectField(
-                      decoration: const InputDecoration(labelText: 'Expense date'),
+                      decoration: const InputDecoration(labelText: 'Expense Date'),
                       child: Text(DateFormat('d MMM yyyy').format(_spentOn)),
                     ),
                   ),
@@ -156,18 +156,18 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _vendorController,
-              decoration: const InputDecoration(labelText: 'Vendor / Payee (optional)'),
+              decoration: const InputDecoration(labelText: 'Vendor / Payee (Optional)'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _referenceController,
-              decoration: const InputDecoration(labelText: 'Reference (optional)'),
+              decoration: const InputDecoration(labelText: 'Reference (Optional)'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextField(
               controller: _notesController,
               maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
+              decoration: const InputDecoration(labelText: 'Notes (Optional)'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -175,7 +175,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             ],
             const SizedBox(height: AppSpacing.lg),
             PrimaryButton(
-              label: 'Save changes',
+              label: 'Save Changes',
               loadingLabel: 'Saving…',
               isLoading: _saving,
               onPressed: _save,

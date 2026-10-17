@@ -24,7 +24,7 @@ export function PeakHoursChart({ rows }: { rows: PeakHourRow[] }) {
   const dataKey = rows.map((r) => `${r.hour}:${r.demandPct}`).join(",");
 
   return (
-    <div key={dataKey} className="h-64 w-full" role="img" aria-label="Peak booking hours">
+    <div key={dataKey} className="h-64 w-full" role="img" aria-label="Peak Booking Hours">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />

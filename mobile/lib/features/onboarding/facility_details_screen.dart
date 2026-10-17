@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -126,7 +126,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
             backgroundColor: const Color(0xFF07101F),
             activeControlsWidgetColor: const Color(0xFF00F08A),
           ),
-          IOSUiSettings(title: 'Adjust logo', aspectRatioLockEnabled: true),
+          IOSUiSettings(title: 'Adjust Logo', aspectRatioLockEnabled: true),
         ],
       );
       if (cropped == null) return;
@@ -271,7 +271,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: _Field(
-                  label: 'Facility name',
+                  label: 'Facility Name',
                   controller: _name,
                   textInputAction: TextInputAction.next,
                   validator: (v) => Validators.name(v),
@@ -281,7 +281,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg2),
           _Field(
-            label: 'Street address',
+            label: 'Street Address',
             controller: _addressLine,
             textInputAction: TextInputAction.next,
             validator: (v) => Validators.required(v, field: 'Address'),
@@ -301,7 +301,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _Field(
-                  label: 'PIN code',
+                  label: 'PIN Code',
                   controller: _pinCode,
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.next,
@@ -315,13 +315,15 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
             controller: _phone,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
-            validator: Validators.phone,
+            validator: Validators.mobile,
+            // Digits only, capped at 10 — a pasted "+91 98765-43210" or a stray letter never lands in the field.
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: InputDecoration(
               // Behaves like every other field: the name sits inside as a
               // hint and floats up as a label once you tap in — but "+91"
               // is a fixed prefix that's always on screen.
-              labelText: 'Number guests can call',
+              labelText: 'Number Guests Can Call',
               prefixIcon: Padding(
                 padding: const EdgeInsets.only(left: AppSpacing.lg, right: AppSpacing.sm),
                 child: Text(
@@ -352,7 +354,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
               children: [
                 AppDropdown<FacilityType>(
                   initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Facility type'),
+                  decoration: const InputDecoration(labelText: 'Facility Type'),
                   items: FacilityType.values
                       .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                       .toList(),
@@ -361,18 +363,18 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                 if (_type == FacilityType.other) ...[
                   const SizedBox(height: AppSpacing.md),
                   _Field(
-                    label: 'Specify facility type',
+                    label: 'Specify Facility Type',
                     controller: _customType,
                     validator: (v) => Validators.required(v, field: 'Facility type'),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
-                _Field(label: 'Area / locality', controller: _area),
+                _Field(label: 'Area / Locality', controller: _area),
                 const SizedBox(height: AppSpacing.md),
                 _Field(label: 'State', controller: _state),
                 const SizedBox(height: AppSpacing.md),
                 _Field(
-                  label: 'Short description',
+                  label: 'Short Description',
                   controller: _description,
                   maxLines: 3,
                 ),
@@ -549,7 +551,7 @@ class _MapPinCard extends StatelessWidget {
           if (expanded) ...[
             const SizedBox(height: AppSpacing.md),
             AppTextField(
-              label: 'Google Maps link',
+              label: 'Google Maps Link',
               controller: controller,
               keyboardType: TextInputType.url,
               onChanged: (_) => onChanged(),

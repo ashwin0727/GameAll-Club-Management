@@ -263,7 +263,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 DateField(
-                  label: 'Date of birth',
+                  label: 'Date of Birth',
                   value: _dob,
                   firstDate: DateTime(1900),
                   lastDate: DateTime.now(),

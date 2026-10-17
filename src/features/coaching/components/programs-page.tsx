@@ -291,7 +291,7 @@ export function ProgramsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search program by name…"
-                  aria-label="Search programs"
+                  aria-label="Search Programs"
                   className="h-10 pl-9"
                 />
               </div>
@@ -325,7 +325,7 @@ export function ProgramsPage() {
                 <button
                   type="button"
                   onClick={() => setView("list")}
-                  aria-label="List view"
+                  aria-label="List View"
                   className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}
                 >
                   <List className="h-4 w-4" aria-hidden />
@@ -333,7 +333,7 @@ export function ProgramsPage() {
                 <button
                   type="button"
                   onClick={() => setView("grid")}
-                  aria-label="Grid view"
+                  aria-label="Grid View"
                   className={cn("flex h-7 w-7 items-center justify-center rounded-md", view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}
                 >
                   <LayoutGrid className="h-4 w-4" aria-hidden />
@@ -417,7 +417,7 @@ export function ProgramsPage() {
                           <td className="p-3 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button type="button" aria-label="Program actions" className="rounded-md p-1.5 hover:bg-accent">
+                                <button type="button" aria-label="Program Actions" className="rounded-md p-1.5 hover:bg-accent">
                                   <MoreVertical className="h-4 w-4" aria-hidden />
                                 </button>
                               </DropdownMenuTrigger>

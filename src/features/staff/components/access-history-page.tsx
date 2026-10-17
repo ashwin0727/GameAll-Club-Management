@@ -105,7 +105,7 @@ export function AccessHistoryPage() {
             <p className="text-sm font-semibold text-destructive">Unable to load access history</p>
             <p className="mt-1 text-sm text-muted-foreground">{error}</p>
             <Button type="button" variant="outline" className="mt-4" onClick={() => void load()}>
-              Try again
+              Try Again
             </Button>
           </div>
         ) : events === null ? (
@@ -157,13 +157,13 @@ export function AccessHistoryPage() {
               Showing {page * PAGE_SIZE + 1} to {Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount} activities
             </p>
             <div className="flex items-center gap-1">
-              <Button type="button" variant="outline" size="sm" aria-label="Previous page" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <Button type="button" variant="outline" size="sm" aria-label="Previous Page" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
                 <ChevronLeft className="h-4 w-4" aria-hidden />
               </Button>
               <span className="px-2 text-xs text-muted-foreground">
                 {page + 1} / {totalPages}
               </span>
-              <Button type="button" variant="outline" size="sm" aria-label="Next page" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <Button type="button" variant="outline" size="sm" aria-label="Next Page" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </Button>
             </div>

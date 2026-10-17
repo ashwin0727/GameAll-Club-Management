@@ -58,13 +58,13 @@ void main() {
   testWidgets('name and fees are editable; price and duration are locked', (tester) async {
     final fake = await open(tester);
     expect(find.widgetWithText(TextField, 'Plan name *'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Joining fee (₹)'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Security deposit (₹)'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Joining Fee (₹)'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Security Deposit (₹)'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Price (₹)'), findsNothing);
     expect(find.byIcon(Icons.lock_outline), findsNWidgets(2));
 
     await tester.enterText(find.widgetWithText(TextField, 'Plan name *'), 'Early Morning');
-    await tester.enterText(find.widgetWithText(TextField, 'Joining fee (₹)'), '300');
+    await tester.enterText(find.widgetWithText(TextField, 'Joining Fee (₹)'), '300');
     await tester.tap(find.text('Save Changes'));
     await tester.pumpAndSettle();
     expect(fake.savedName, 'Early Morning');

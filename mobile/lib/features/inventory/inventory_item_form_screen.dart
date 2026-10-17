@@ -181,7 +181,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             else
               AppDropdown<String?>(
                 initialValue: _categoryId,
-                decoration: const InputDecoration(labelText: 'Category (optional)'),
+                decoration: const InputDecoration(labelText: 'Category (Optional)'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('None')),
                   ..._categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
@@ -194,7 +194,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             else
               AppDropdown<String?>(
                 initialValue: _preferredVendorId,
-                decoration: const InputDecoration(labelText: 'Preferred vendor (optional)'),
+                decoration: const InputDecoration(labelText: 'Preferred Vendor (Optional)'),
                 items: [
                   const DropdownMenuItem(value: null, child: Text('None')),
                   ..._vendors.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))),
@@ -216,7 +216,7 @@ class _InventoryItemFormScreenState extends ConsumerState<InventoryItemFormScree
             TextField(
               controller: _description,
               maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Description (optional)'),
+              decoration: const InputDecoration(labelText: 'Description (Optional)'),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.sm),

@@ -103,9 +103,9 @@ const inputClass =
 /** The Plan Preview's own checklist — each item ticks once its step is behind you (or, for
  *  step 2 itself, once its own required fields are filled in). */
 const WHATS_NEXT: { atStep: PlanWizardStep; label: string }[] = [
-  { atStep: 2, label: "Configure pricing and billing interval" },
-  { atStep: 3, label: "Set court access and time slots" },
-  { atStep: 4, label: "Review and publish" },
+  { atStep: 2, label: "Configure Pricing and Billing Interval" },
+  { atStep: 3, label: "Set Court Access and Time Slots" },
+  { atStep: 4, label: "Review and Publish" },
 ];
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -641,7 +641,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                   <ToggleSwitch
                     checked={draft.showBadge}
                     onChange={(v) => set("showBadge", v)}
-                    label="Show a badge on this plan"
+                    label="Show a Badge on This Plan"
                     onClass="bg-[#0B9B63]"
                   />
                 </div>
@@ -753,7 +753,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field
-                      label="Price per billing cycle (₹)"
+                      label="Price per Billing Cycle (₹)"
                       required
                       error={show("priceInr")}
                     >
