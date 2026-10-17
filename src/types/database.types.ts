@@ -4562,6 +4562,7 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["coaching_program_batches"]["Row"];
       };
+      delete_coaching_enrollment: { Args: { p_enrollment_id: string }; Returns: undefined };
       delete_coaching_program: { Args: { p_program_id: string }; Returns: undefined };
       delete_coaching_program_batch: { Args: { p_batch_id: string }; Returns: undefined };
       list_coaching_program_batches: {

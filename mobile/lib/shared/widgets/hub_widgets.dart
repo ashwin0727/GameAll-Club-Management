@@ -147,9 +147,10 @@ class HubHeroCard extends StatelessWidget {
   }
 }
 
-/// The violet pill action button that floats above the bottom nav.
-class HubCreateFab extends StatelessWidget {
-  const HubCreateFab({super.key, required this.label, required this.icon, required this.onTap});
+/// The create button of a hub (New coach / New program / New student / New membership / New plan): a compact pill
+/// that sits at the top right of the app bar, so it never covers the list or the bottom nav.
+class HubCreateAction extends StatelessWidget {
+  const HubCreateAction({super.key, required this.label, required this.icon, required this.onTap});
 
   final String label;
   final IconData icon;
@@ -158,29 +159,22 @@ class HubCreateFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    return Center(
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          color: tokens.accentSolid(tokens.violet),
-          boxShadow: [
-            BoxShadow(color: tokens.violet.withValues(alpha: 0.42), blurRadius: 20, spreadRadius: -2, offset: const Offset(0, 6)),
-          ],
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.pill), color: tokens.accentSolid(tokens.violet)),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadius.pill),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 9),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 18, color: Colors.white),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                  Icon(icon, size: 16, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
                 ],
               ),
             ),

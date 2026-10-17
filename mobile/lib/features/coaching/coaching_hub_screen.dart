@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'student_row_menu.dart';
 import 'program_row_menu.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -139,6 +140,15 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
         appBar: AppBar(
           titleSpacing: AppSpacing.lg,
           title: const Text('Coaching', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+          // The create button follows the tab and sits at the top right.
+          actions: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 130),
+              transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+              child: _fab(session) ?? const SizedBox.shrink(key: ValueKey('none')),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+          ],
           bottom: HubTabBar(controller: _tabs, labels: _labels),
         ),
         body: SafeArea(
@@ -153,22 +163,17 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
                         children: [
                           _CoachingTab(overview: _overview!, coaches: _coaches, coachTotal: _coachTotal, programTotal: _programs.totalCount, perWeek: _perWeek, onTab: _tabs.animateTo, onOpen: _go),
                           _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go, onChanged: _load),
-                          _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go),
+                          _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go, onChanged: _load),
                         ],
                       ),
                     ),
-        ),
-        floatingActionButton: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 130),
-          transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
-          child: _fab(session),
         ),
         bottomNavigationBar: const AppBottomNav(current: AppTab.coaching),
       ),
     );
   }
 
-  /// The create button follows the tab: Coaching → new coach, Programs → new program, Students →
+  /// The top-right create button follows the tab: Coaching → new coach, Programs → new program, Students →
   /// new student — each only for people allowed to do it.
   Widget? _fab(SessionState session) {
     if (_loading || _error != null) return null;
@@ -178,7 +183,7 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
       _ => ('New student', Icons.person_add_alt_1, AppRoutes.coachingStudentNew, session.can('COACHING_MANAGE_ENROLLMENTS')),
     };
     if (!allowed) return null;
-    return HubCreateFab(key: ValueKey(label), label: label, icon: icon, onTap: () => _go(route));
+    return HubCreateAction(key: ValueKey(label), label: label, icon: icon, onTap: () => _go(route));
   }
 }
 
@@ -781,7 +786,10 @@ class _ProgramsTabState extends State<_ProgramsTab> {
 // ── Students ────────────────────────────────────────────────────────────
 
 class _StudentsTab extends StatefulWidget {
-  const _StudentsTab({required this.page, required this.cardStats, required this.onOpen});
+  const _StudentsTab({required this.page, required this.cardStats, required this.onOpen, required this.onChanged});
+
+  /// Reloads the hub after a student was deleted.
+  final VoidCallback onChanged;
 
   final StudentCardStats? cardStats;
 
@@ -915,6 +923,16 @@ class _StudentsTabState extends State<_StudentsTab> {
           ],
           pill: e.status.label,
           pillColor: active ? tokens.success : tokens.textSecondary,
+          trailing: StudentRowMenu(
+            enrollmentId: e.id,
+            studentName: e.studentName,
+            programName: e.programName,
+            programId: e.programId,
+            paidMinor: e.paidMinor,
+            status: e.status,
+            onChanged: widget.onChanged,
+            onOpen: widget.onOpen,
+          ),
           onTap: () => widget.onOpen('${AppRoutes.coachingEnrollments}/${e.id}'),
         );
       },

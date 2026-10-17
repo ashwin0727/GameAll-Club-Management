@@ -373,3 +373,10 @@ DateTime? autoPayNextCharge({required String status, required int chargeCount, r
   if (s != 'active' && s != 'pending') return null;
   return nextChargeDate ?? membershipEndDate;
 }
+
+/// AutoPay that can still charge the member (set up, authorised, charging, retrying) — the kind that must be
+/// cancelled before a member can be deleted. A cancelled / completed one cannot.
+bool isAutoPayLive(String status, int chargeCount) {
+  const live = {'created', 'authenticated', 'active', 'pending', 'halted'};
+  return live.contains(effectiveAutoPayStatus(status, chargeCount));
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'delete_member_flow.dart';
 import '../../core/routing/page_transitions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -109,6 +110,19 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
   Future<void> _confirm(String kind) async {
     final d = _detail;
     if (d == null) return;
+    if (kind == 'delete') {
+      // Delete Member: confirm → (if AutoPay is running) cancel it → delete on the next try.
+      setState(() => _processing = true);
+      try {
+        final outcome = await runDeleteMemberFlow(context, ref, memberId: d.member.id, name: d.member.fullName, membershipId: d.membershipId);
+        if (!mounted) return;
+        if (outcome == DeleteMemberOutcome.deleted) context.pop();
+        if (outcome == DeleteMemberOutcome.autoPayCancelled) _load();
+      } finally {
+        if (mounted) setState(() => _processing = false);
+      }
+      return;
+    }
     final isDelete = kind == 'delete';
     final isRecord = kind == 'record';
     final title = isDelete ? 'Delete member' : isRecord ? 'Record payment' : 'Cancel membership';

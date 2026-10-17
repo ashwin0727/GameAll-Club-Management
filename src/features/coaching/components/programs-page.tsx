@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Armchair,
   BookOpen,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,7 +105,6 @@ export function ProgramsPage() {
   const [rows, setRows] = useState<ProgramRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const [insights, setInsights] = useState<ProgramInsights | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
@@ -151,15 +152,25 @@ export function ProgramsPage() {
     };
   }, [load]);
 
-  async function deleteProgram(p: ProgramRow) {
-    if (!window.confirm(`Delete "${p.name}"? This removes the program and its batches. It can't be undone.`)) return;
-    setActionError(null);
+  // The program waiting on the Delete confirmation modal, and whether the delete is running.
+  const [pendingDelete, setPendingDelete] = useState<ProgramRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function confirmDelete() {
+    const p = pendingDelete;
+    if (!p) return;
+    setDeleting(true);
     try {
       await getCoachingService().deleteProgram(p.id);
+      setPendingDelete(null);
+      toast.success("Program Deleted Successfully", { description: `"${p.name}" was removed.` });
       void load();
       void loadInsights();
     } catch (e) {
-      setActionError(e instanceof ServiceError ? e.message : "Unable to delete this program.");
+      setPendingDelete(null);
+      toast.error(e instanceof ServiceError ? e.message : "Unable to delete this program.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -253,7 +264,6 @@ export function ProgramsPage() {
           )}
       </div>
       {insightsError && <p className="text-xs text-destructive">{insightsError}</p>}
-      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-3">
@@ -420,7 +430,7 @@ export function ProgramsPage() {
                                 </DropdownMenuItem>
                                 {/* Only a program nobody has joined can be deleted. */}
                                 {canCreate && p.studentCount === 0 && (
-                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void deleteProgram(p)}>
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setPendingDelete(p)}>
                                     <Trash2 className="mr-2 h-4 w-4" aria-hidden />
                                     Delete
                                   </DropdownMenuItem>
@@ -465,6 +475,22 @@ export function ProgramsPage() {
           </Card>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDelete != null}
+        destructive
+        busy={deleting}
+        title="Delete Program"
+        description={
+          <>
+            Do you want to proceed with deleting <span className="font-semibold text-foreground">{pendingDelete?.name}</span>? The program and its batches will be
+            removed permanently. This can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Yes, Delete"
+        busyLabel="Deleting…"
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

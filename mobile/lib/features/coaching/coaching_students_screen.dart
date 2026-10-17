@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'student_row_menu.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -368,16 +369,14 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
                     ],
                   ),
                 ),
-                PopupMenuButton<String>(
-                  tooltip: 'Student actions',
-                  onSelected: (v) {
-                    if (v == 'student') context.push('${AppRoutes.coachingEnrollments}/${e.id}');
-                    if (v == 'program') context.push('${AppRoutes.coachingPrograms}/${e.programId}');
-                  },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'student', child: Text('View Student')),
-                    if (e.programId.isNotEmpty) const PopupMenuItem(value: 'program', child: Text('View Program')),
-                  ],
+                StudentRowMenu(
+                  enrollmentId: e.id,
+                  studentName: e.studentName,
+                  programName: e.programName,
+                  programId: e.programId,
+                  paidMinor: e.paidMinor,
+                  status: e.status,
+                  onChanged: _refresh,
                 ),
               ],
             ),

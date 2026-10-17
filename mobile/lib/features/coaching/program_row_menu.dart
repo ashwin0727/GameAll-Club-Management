@@ -16,13 +16,13 @@ Future<bool> confirmAndDeleteProgram(BuildContext context, WidgetRef ref, {requi
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('Delete program?'),
-      content: Text('"$name" and its batches will be removed. This can\'t be undone.'),
+      content: Text('Do you want to proceed with deleting "$name"? The program and its batches will be removed permanently. This can\'t be undone.'),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: ctx.tokens.destructive, foregroundColor: Colors.white),
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Delete'),
+          child: const Text('Yes, Delete'),
         ),
       ],
     ),
@@ -30,7 +30,7 @@ Future<bool> confirmAndDeleteProgram(BuildContext context, WidgetRef ref, {requi
   if (ok != true) return false;
   try {
     await ref.read(coachingRepositoryProvider).deleteProgram(programId);
-    if (context.mounted) showTopNotice(context, 'Program deleted');
+    if (context.mounted) showTopNotice(context, 'Program deleted successfully');
     return true;
   } on AppException catch (e) {
     if (context.mounted) showTopNotice(context, e.message, success: false);

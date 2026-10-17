@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'delete_member_flow.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -486,44 +487,16 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
   Future<void> _delete() async {
     final id = _memberId;
     if (id == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete this member?'),
-        content: Text(
-          "${_fullName.text.trim()} and this membership will be removed. "
-          'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-                backgroundColor: context.tokens.destructive),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
     setState(() => _deleting = true);
     try {
-      await ref.read(membershipRepositoryProvider).deleteMember(id);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Member deleted')));
+      final outcome = await runDeleteMemberFlow(context, ref, memberId: id, name: _fullName.text.trim(), membershipId: widget.membershipId);
+      if (!mounted) return;
+      if (outcome == DeleteMemberOutcome.deleted) {
         Navigator.of(context).pop(true);
+        return;
       }
-    } on AppException catch (e) {
-      if (mounted) {
-        setState(() {
-          _deleting = false;
-          _error = e.message;
-        });
-      }
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 

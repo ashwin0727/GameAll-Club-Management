@@ -633,6 +633,12 @@ export class SupabaseCoachingService {
     if (error) throw mapError(error);
   }
 
+  /** Removes a student's enrollment while no payment has been received on it (migration 0127). */
+  async deleteEnrollment(enrollmentId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("delete_coaching_enrollment", { p_enrollment_id: enrollmentId });
+    if (error) throw mapError(error);
+  }
+
   /** Removes a program nobody has joined (migration 0126); the database refuses one with any enrollment. */
   async deleteProgram(programId: string): Promise<void> {
     const { error } = await this.supabase.rpc("delete_coaching_program", { p_program_id: programId });

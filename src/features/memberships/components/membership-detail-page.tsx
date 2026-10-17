@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useDeleteMemberFlow } from "@/features/memberships/components/use-delete-member-flow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
@@ -115,7 +116,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [confirm, setConfirm] = useState<null | "delete" | "cancel" | "record">(null);
+  const [confirm, setConfirm] = useState<null | "cancel" | "record">(null);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -141,16 +142,14 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [membershipId]);
 
+  // Delete Member: confirm → (if AutoPay is running) cancel it → delete on the next try.
+  const deleteFlow = useDeleteMemberFlow({ onDeleted: () => router.push("/memberships"), onChanged: () => void load() });
+
   async function runAction() {
     if (!detail || !confirm) return;
     setActing(true);
     setActionError(null);
     try {
-      if (confirm === "delete") {
-        await getMembershipService().deleteMember(detail.member.id);
-        router.push("/memberships");
-        return;
-      }
       if (confirm === "record") {
         await getMembershipService().recordMembershipPayment(detail.membershipId);
       } else {
@@ -220,7 +219,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                     Cancel membership
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setActionError(null); setConfirm("delete"); }}>
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFlow.start({ memberId: detail.member.id, name: detail.member.fullName, membershipId: detail.membershipId })}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete member
                 </DropdownMenuItem>
@@ -428,14 +427,12 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirm === "delete" ? "Delete member" : confirm === "record" ? "Record payment" : "Cancel membership"}
+              {confirm === "record" ? "Record payment" : "Cancel membership"}
             </DialogTitle>
             <DialogDescription>
-              {confirm === "delete"
-                ? "Permanently remove this member. This only works when they have no bookings and no settled payments."
-                : confirm === "record"
-                  ? "Mark this billing cycle as paid. Use this when you've collected the payment outside the app; it also advances the next payment date if it had already passed."
-                  : "End this membership now. The record is kept for history."}
+              {confirm === "record"
+                ? "Mark this billing cycle as paid. Use this when you've collected the payment outside the app; it also advances the next payment date if it had already passed."
+                : "End this membership now. The record is kept for history."}
             </DialogDescription>
           </DialogHeader>
           {actionError && <p className="text-sm text-destructive">{actionError}</p>}
@@ -449,11 +446,12 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
               disabled={acting}
               onClick={runAction}
             >
-              {acting ? "Working…" : confirm === "delete" ? "Delete" : confirm === "record" ? "Record payment" : "Cancel Membership"}
+              {acting ? "Working…" : confirm === "record" ? "Record payment" : "Cancel Membership"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {deleteFlow.dialogs}
     </div>
   );
 }

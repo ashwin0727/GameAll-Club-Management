@@ -6,6 +6,7 @@ import { Link2, Plus, Users, UserCheck, UserMinus, Wallet, MoreVertical, Trash2,
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useDeleteMemberFlow } from "@/features/memberships/components/use-delete-member-flow";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -116,9 +117,6 @@ export function MembershipsPage() {
   const [accessDaysOpen, setAccessDaysOpen] = useState(false);
   const [accessDays, setAccessDays] = useState<number[]>(ALL_DAYS);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ memberId: string; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [payTarget, setPayTarget] = useState<{ id: string; name: string } | null>(null);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -171,6 +169,9 @@ export function MembershipsPage() {
     listQuery.refetch();
   }
 
+  // Delete Member: confirm → (if AutoPay is running) cancel it → delete on the next try.
+  const deleteFlow = useDeleteMemberFlow({ onDeleted: refetchAll, onChanged: refetchAll });
+
   async function confirmPayment() {
     if (!payTarget) return;
     setPaying(true);
@@ -186,20 +187,6 @@ export function MembershipsPage() {
     }
   }
 
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await getMembershipService().deleteMember(deleteTarget.memberId);
-      setDeleteTarget(null);
-      refetchAll();
-    } catch (err) {
-      setDeleteError(err instanceof ServiceError ? err.message : "Unable to delete this member.");
-    } finally {
-      setDeleting(false);
-    }
-  }
 
   async function shareLink() {
     if (!facilityId) return;
@@ -479,10 +466,7 @@ export function MembershipsPage() {
                               )}
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
-                                onClick={() => {
-                                  setDeleteError(null);
-                                  setDeleteTarget({ memberId: row.memberId, name: row.memberName });
-                                }}
+                                onClick={() => deleteFlow.start({ memberId: row.memberId, name: row.memberName, membershipId: row.membershipId })}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete member
@@ -577,47 +561,7 @@ export function MembershipsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={deleteTarget !== null}
-        onOpenChange={(o) => {
-          if (!o && !deleting) {
-            setDeleteTarget(null);
-            setDeleteError(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete member</DialogTitle>
-            <DialogDescription>
-              Permanently remove <span className="font-medium text-foreground">{deleteTarget?.name}</span>. This only
-              works for members with no bookings and no settled payments.
-            </DialogDescription>
-          </DialogHeader>
-          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={deleting}
-              onClick={() => {
-                setDeleteTarget(null);
-                setDeleteError(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleting}
-              onClick={confirmDelete}
-            >
-              {deleting ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {deleteFlow.dialogs}
     </div>
   );
 }

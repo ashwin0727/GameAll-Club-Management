@@ -197,6 +197,15 @@ class CoachingRepository {
     }
   }
 
+  /// Removes a student's enrollment while no payment has been received on it (migration 0127).
+  Future<void> deleteEnrollment(String enrollmentId) async {
+    try {
+      await _client.rpc('delete_coaching_enrollment', params: {'p_enrollment_id': enrollmentId});
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
   /// Removes a program nobody has joined (migration 0126); the database refuses one with any enrollment.
   Future<void> deleteProgram(String programId) async {
     try {

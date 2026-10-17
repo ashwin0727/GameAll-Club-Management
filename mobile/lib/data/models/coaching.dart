@@ -1074,12 +1074,15 @@ class EnrollmentRow {
     required this.priceMinor,
     required this.status,
     required this.paymentStatus,
+    this.paidMinor = 0,
     this.programId = '',
     this.studentPhone,
     this.studentAge,
     this.batchName,
     this.coachName,
   });
+  /// Money received so far — a student can only be deleted while this is 0.
+  final int paidMinor;
   final String programId;
   final String? studentPhone;
   final int? studentAge;
@@ -1105,6 +1108,7 @@ class EnrollmentRow {
         startDate: j['start_date'] as String? ?? '',
         endDate: j['end_date'] as String?,
         priceMinor: _int(j['price_minor']),
+        paidMinor: _int(j['paid_minor']),
         status: EnrollmentStatus.fromJson(j['status'] as String?),
         paymentStatus: EnrollmentPaymentStatus.fromJson(j['payment_status'] as String?),
       );

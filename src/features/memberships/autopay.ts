@@ -47,3 +47,12 @@ export function autoPayNextCharge(a: Pick<MembershipAutoPay, "status" | "chargeC
   if (status !== "active" && status !== "pending") return null;
   return a.nextChargeDate ?? membershipEndDate;
 }
+
+/**
+ * AutoPay that can still charge the member (set up, authorised, charging, retrying) — the kind that must be
+ * cancelled before a member can be deleted. A cancelled / completed one cannot.
+ */
+export function isAutoPayLive(a: Pick<MembershipAutoPay, "status" | "chargeCount">): boolean {
+  const status = effectiveAutoPayStatus(a);
+  return status === "created" || status === "authenticated" || status === "active" || status === "pending" || status === "halted";
+}

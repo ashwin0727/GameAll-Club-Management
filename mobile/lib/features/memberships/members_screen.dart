@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/hub_widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -222,18 +223,18 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         title: const Text('Memberships',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
-          OutlinedButton.icon(
+          // Icon-only so the title, this and the create button all fit on a narrow phone.
+          IconButton(
+            tooltip: 'Join link',
             onPressed: _copyJoinLink,
-            icon: const Icon(Icons.ios_share, size: 16),
-            label: const Text('Join link'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: tokens.violet,
-              side: BorderSide(color: tokens.violet.withValues(alpha: 0.6)),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              minimumSize: const Size(0, 36),
-            ),
+            icon: Icon(Icons.ios_share, size: 20, color: tokens.violet),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 130),
+            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+            child: _buildCreateAction() ?? const SizedBox.shrink(key: ValueKey('none')),
+          ),
+          const SizedBox(width: AppSpacing.lg),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
@@ -301,81 +302,20 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                     ),
                   ),
       ),
-      floatingActionButton: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 130),
-        transitionBuilder: (child, anim) =>
-            FadeTransition(opacity: anim, child: child),
-        child: _buildCreateFab(),
-      ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.members),
       ),
     );
   }
 
-  /// The primary "create" action, which changes with the active tab:
+  /// The primary "create" action (top right), which changes with the active tab:
   /// Members → new membership, Plans → new plan.
-  Widget? _buildCreateFab() {
+  Widget? _buildCreateAction() {
     if (_loading || _error != null) return null;
     final (label, icon, onTap) = switch (_tabIndex) {
       0 => ('New membership', Icons.person_add_alt_1, _openNewMembership),
       _ => ('New plan', Icons.add_card_outlined, _managePlans),
     };
-    return _CreateFab(key: ValueKey(label), label: label, icon: icon, onTap: onTap);
-  }
-}
-
-/// Violet gradient pill action button that floats above the bottom nav.
-class _CreateFab extends StatelessWidget {
-  const _CreateFab(
-      {super.key, required this.label, required this.icon, required this.onTap});
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          color: tokens.accentSolid(tokens.violet),
-          boxShadow: [
-            BoxShadow(
-              color: tokens.violet.withValues(alpha: 0.42),
-              blurRadius: 20,
-              spreadRadius: -2,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg, vertical: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 18, color: Colors.white),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(label,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    return HubCreateAction(key: ValueKey(label), label: label, icon: icon, onTap: onTap);
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoPayCadence, autoPayNextCharge, autoPayStatusLabel, effectiveAutoPayStatus } from "@/features/memberships/autopay";
+import { autoPayCadence, autoPayNextCharge, autoPayStatusLabel, effectiveAutoPayStatus, isAutoPayLive } from "@/features/memberships/autopay";
 
 describe("autoPayCadence", () => {
   it("says how often the member is charged", () => {
@@ -38,5 +38,17 @@ describe("effectiveAutoPayStatus / autoPayNextCharge", () => {
     expect(autoPayNextCharge({ status: "authenticated", chargeCount: 0, nextChargeDate: null }, "2026-11-14")).toBeNull();
     expect(autoPayNextCharge({ status: "cancelled", chargeCount: 3, nextChargeDate: "2026-12-14" }, "2026-11-14")).toBeNull();
     expect(autoPayNextCharge({ status: "halted", chargeCount: 3, nextChargeDate: null }, "2026-11-14")).toBeNull();
+  });
+});
+
+describe("isAutoPayLive", () => {
+  it("is true while AutoPay can still charge", () => {
+    for (const status of ["created", "authenticated", "active", "pending", "halted"] as const) {
+      expect(isAutoPayLive({ status, chargeCount: 0 })).toBe(true);
+    }
+  });
+  it("is false once it has stopped", () => {
+    expect(isAutoPayLive({ status: "cancelled", chargeCount: 3 })).toBe(false);
+    expect(isAutoPayLive({ status: "completed", chargeCount: 12 })).toBe(false);
   });
 });

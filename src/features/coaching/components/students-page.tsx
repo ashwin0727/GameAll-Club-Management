@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, GraduationCap, IndianRupee, LayoutGrid, List, MoreVertical, Search, Users, Wallet } from "lucide-react";
+import { ChevronRight, GraduationCap, IndianRupee, LayoutGrid, List, MoreVertical, Search, Trash2, Users, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useDeleteStudentFlow } from "@/features/coaching/components/use-delete-student-flow";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,6 +137,18 @@ export function CoachingStudentsPage() {
       cancelled = true;
     };
   }, [load]);
+
+  // Delete Student: confirm → (if payment/AutoPay is live) cancel coaching → delete on the next try.
+  const deleteFlow = useDeleteStudentFlow({
+    onDeleted: () => {
+      void load().catch(() => undefined);
+      void loadKpis();
+    },
+    onChanged: () => {
+      void load().catch(() => undefined);
+      void loadKpis();
+    },
+  });
 
   return (
     <div className="space-y-4">
@@ -285,6 +298,17 @@ export function CoachingStudentsPage() {
                             <DropdownMenuItem asChild>
                               <Link href={`/coaching/programs/${e.programId}`}>View Program</Link>
                             </DropdownMenuItem>
+                            {canManage && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() =>
+                                  deleteFlow.start({ enrollmentId: e.id, studentName: e.studentName, programName: e.programName, status: e.status, paidMinor: e.paidMinor })
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -297,6 +321,7 @@ export function CoachingStudentsPage() {
           <Pagination page={page} pageSize={PAGE_SIZE} totalCount={totalCount} onPage={setPage} unit="students" />
         </Card>
       </div>
+      {deleteFlow.dialogs}
     </div>
   );
 }

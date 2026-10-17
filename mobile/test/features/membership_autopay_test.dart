@@ -74,6 +74,18 @@ void main() {
     });
   });
 
+  group('isAutoPayLive', () {
+    test('true while AutoPay can still charge', () {
+      for (final s in ['created', 'authenticated', 'active', 'pending', 'halted']) {
+        expect(isAutoPayLive(s, 0), true, reason: s);
+      }
+    });
+    test('false once stopped', () {
+      expect(isAutoPayLive('cancelled', 3), false);
+      expect(isAutoPayLive('completed', 12), false);
+    });
+  });
+
   group('AutoPay wording', () {
     test('cadence', () {
       expect(autoPayCadence(1), 'every month');

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { EnrollmentDetail } from "@/features/coaching/types";
+import { useDeleteStudentFlow } from "@/features/coaching/components/use-delete-student-flow";
 import { EnrollmentBillingCard } from "@/features/coaching/components/enrollment-billing-card";
 import {
   ErrorState,
@@ -48,6 +50,7 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"edit" | "cancel" | "progress" | null>(null);
   const [busy, setBusy] = useState(false);
+  const router = useRouter();
 
   const load = useCallback(async () => {
     setState("loading");
@@ -60,6 +63,9 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
       setState("error");
     }
   }, [enrollmentId]);
+
+  // Delete Student: confirm → (if payment/AutoPay is live) cancel coaching → delete on the next try.
+  const deleteFlow = useDeleteStudentFlow({ onDeleted: () => router.push("/coaching/students"), onChanged: () => void load() });
 
   useEffect(() => {
     void load();
@@ -133,7 +139,19 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
             )}
             {canManage && e.status !== "CANCELLED" && e.status !== "COMPLETED" && (
               <Button size="sm" variant="outline" onClick={() => setDialog("cancel")}>
-                Cancel
+                Cancel Coaching
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() =>
+                  deleteFlow.start({ enrollmentId: e.id, studentName: e.studentName, programName: e.programName, status: e.status, paidMinor: e.paidMinor })
+                }
+              >
+                Delete Student
               </Button>
             )}
             {canManage && (
@@ -302,6 +320,7 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
           }}
         />
       )}
+      {deleteFlow.dialogs}
     </div>
   );
 }
@@ -418,7 +437,7 @@ function CancelEnrollmentDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel enrollment</DialogTitle>
+          <DialogTitle>Cancel Coaching</DialogTitle>
           <DialogDescription>
             The enrollment record is kept. Any refund is handled separately through Finance.
           </DialogDescription>
@@ -434,7 +453,7 @@ function CancelEnrollmentDialog({
             Keep enrollment
           </Button>
           <Button variant="destructive" disabled={busy} onClick={() => void submit()}>
-            {busy ? "Cancelling…" : "Cancel Enrollment"}
+            {busy ? "Cancelling…" : "Cancel Coaching"}
           </Button>
         </DialogFooter>
       </DialogContent>

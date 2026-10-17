@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'delete_member_flow.dart';
 
 import 'package:flutter/material.dart';
 import '../../core/routing/page_transitions.dart';
@@ -342,32 +343,10 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
   }
 
   Future<void> _confirmDelete(MembershipListRow row) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete member'),
-        content: Text(
-          'Permanently remove ${row.memberName}. This only works for members with no bookings and no settled payments.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: context.tokens.destructive)),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
     setState(() => _busyRowIds.add(row.membershipId));
     try {
-      await ref.read(membershipRepositoryProvider).deleteMember(row.memberId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${row.memberName} deleted')));
-      _refresh();
-    } on AppException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      final outcome = await runDeleteMemberFlow(context, ref, memberId: row.memberId, name: row.memberName, membershipId: row.membershipId);
+      if (outcome != DeleteMemberOutcome.none && mounted) _refresh();
     } finally {
       if (mounted) setState(() => _busyRowIds.remove(row.membershipId));
     }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import 'student_row_menu.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -69,6 +71,23 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
     }
   }
 
+  Future<void> _delete() async {
+    final e = _e!;
+    setState(() => _busy = true);
+    try {
+      final outcome = await runDeleteStudentFlow(context, ref,
+          enrollmentId: e.id, studentName: e.studentName, programName: e.programName, status: e.status, paidMinor: e.paidMinor);
+      if (!mounted) return;
+      if (outcome == DeleteStudentOutcome.deleted) Navigator.of(context).pop(true);
+      if (outcome == DeleteStudentOutcome.coachingCancelled) {
+        _changed = true;
+        await _load();
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
@@ -82,7 +101,17 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
         if (!didPop) Navigator.of(context).pop(_changed);
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(_e?.studentName ?? 'Enrollment')),
+        appBar: AppBar(
+          title: Text(_e?.studentName ?? 'Enrollment'),
+          actions: [
+            if (_e != null && session.can('COACHING_MANAGE_ENROLLMENTS'))
+              IconButton(
+                tooltip: 'Delete',
+                icon: Icon(Icons.delete_outline, color: context.tokens.destructive),
+                onPressed: _busy ? null : _delete,
+              ),
+          ],
+        ),
         body: SafeArea(
           child: _error != null
               ? ErrorView(message: _error!, onRetry: _load)
@@ -158,7 +187,13 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
                   child: const Text('Complete'),
                 ),
               if (canManage && e.status != EnrollmentStatus.cancelled && e.status != EnrollmentStatus.completed)
-                OutlinedButton(onPressed: _busy ? null : () => _cancel(e), child: const Text('Cancel')),
+                OutlinedButton(onPressed: _busy ? null : () => _cancel(e), child: const Text('Cancel Coaching')),
+              if (canManage)
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(foregroundColor: context.tokens.destructive),
+                  onPressed: _busy ? null : _delete,
+                  child: const Text('Delete Student'),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -297,7 +332,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel enrollment'),
+        title: const Text('Cancel Coaching'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -308,7 +343,7 @@ class _CoachingEnrollmentDetailScreenState extends ConsumerState<CoachingEnrollm
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel enrollment')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel Coaching')),
         ],
       ),
     );
