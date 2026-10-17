@@ -72,7 +72,7 @@ import '../../features/coaching/coaches_screen.dart';
 import '../../features/coaching/coach_form_screen.dart';
 import '../../features/coaching/coach_detail_screen.dart';
 import '../../features/coaching/coaching_programs_screen.dart';
-import '../../features/coaching/coaching_program_form_screen.dart';
+import '../../features/coaching/coaching_program_wizard_screen.dart';
 import '../../features/coaching/coaching_program_detail_screen.dart';
 import '../../features/coaching/coaching_schedule_screen.dart';
 import '../../features/coaching/coaching_sessions_screen.dart';
@@ -469,7 +469,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.coachingPrograms, builder: (context, state) => const CoachingProgramsScreen()),
       GoRoute(
         path: AppRoutes.coachingProgramNew,
-        pageBuilder: (context, state) => slideOver(state, const CoachingProgramFormScreen()),
+        pageBuilder: (context, state) => slideOver(state, const CoachingProgramWizardScreen()),
       ),
       GoRoute(
         path: AppRoutes.coachingProgramDetail,

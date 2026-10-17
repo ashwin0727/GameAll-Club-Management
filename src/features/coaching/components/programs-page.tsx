@@ -14,6 +14,7 @@ import {
   List,
   MoreVertical,
   Percent,
+  Trash2,
   Search,
   Star,
   UserPlus,
@@ -102,6 +103,7 @@ export function ProgramsPage() {
   const [rows, setRows] = useState<ProgramRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [insights, setInsights] = useState<ProgramInsights | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
@@ -148,6 +150,18 @@ export function ProgramsPage() {
       cancelled = true;
     };
   }, [load]);
+
+  async function deleteProgram(p: ProgramRow) {
+    if (!window.confirm(`Delete "${p.name}"? This removes the program and its batches. It can't be undone.`)) return;
+    setActionError(null);
+    try {
+      await getCoachingService().deleteProgram(p.id);
+      void load();
+      void loadInsights();
+    } catch (e) {
+      setActionError(e instanceof ServiceError ? e.message : "Unable to delete this program.");
+    }
+  }
 
   const loadInsights = useCallback(async () => {
     if (!facilityId) return;
@@ -239,6 +253,7 @@ export function ProgramsPage() {
           )}
       </div>
       {insightsError && <p className="text-xs text-destructive">{insightsError}</p>}
+      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-3">
@@ -403,6 +418,13 @@ export function ProgramsPage() {
                                 <DropdownMenuItem asChild>
                                   <Link href={`/coaching/enrollments?programId=${p.id}`}>View Enrollments</Link>
                                 </DropdownMenuItem>
+                                {/* Only a program nobody has joined can be deleted. */}
+                                {canCreate && p.studentCount === 0 && (
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void deleteProgram(p)}>
+                                    <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>

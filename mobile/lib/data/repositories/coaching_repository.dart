@@ -1,6 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exception.dart';
+import 'dart:typed_data';
+
 import '../../features/coaching/coaching_hub.dart' show ProgramCardStats, StudentCardStats, todaysActiveCount;
 import '../models/coaching.dart';
 
@@ -195,6 +197,15 @@ class CoachingRepository {
     }
   }
 
+  /// Removes a program nobody has joined (migration 0126); the database refuses one with any enrollment.
+  Future<void> deleteProgram(String programId) async {
+    try {
+      await _client.rpc('delete_coaching_program', params: {'p_program_id': programId});
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
   Future<void> updateCoach({
     required String coachId,
     String? specialization,
@@ -294,6 +305,21 @@ class CoachingRepository {
     }
   }
 
+  /// Uploads a program picture to the program-images bucket (under the signed-in user's folder) and returns its
+  /// public URL — the wizard's optional Program Image.
+  Future<String> uploadProgramImage(List<int> bytes, String fileName, String contentType) async {
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid == null) throw StateError('not signed in');
+      final safe = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final path = '$uid/${DateTime.now().microsecondsSinceEpoch}-$safe';
+      await _client.storage.from('program-images').uploadBinary(path, Uint8List.fromList(bytes), fileOptions: FileOptions(contentType: contentType));
+      return _client.storage.from('program-images').getPublicUrl(path);
+    } catch (_) {
+      throw AppException(AppErrorCode.databaseError, 'Could not upload this image. Please try again.');
+    }
+  }
+
   /// A program together with its first batch, atomically — what the web Create Program wizard submits.
   /// [batch] keys: courtId, coachId (nullable), name, daysOfWeek, startTime, endTime, capacity.
   Future<String> createProgramFull({
@@ -317,6 +343,21 @@ class CoachingRepository {
     double? taxPercent,
     String feeType = 'ONE_TIME',
     List<Map<String, dynamic>> batches = const [],
+    // What the web wizard also sets — all optional so the older one-screen form keeps working.
+    String? facilitySportId,
+    String programType = 'GROUP',
+    int? minCapacity,
+    List<String> programStructure = const [],
+    String? sessionFormat,
+    String? imageUrl,
+    String? paymentNotes,
+    bool allowWaitlist = true,
+    bool allowTrialSession = false,
+    bool autoEnrollNextBatch = false,
+    bool sendNotifications = true,
+    bool visibleInBooking = false,
+    String? enrollmentDeadline,
+    String status = 'ACTIVE',
   }) async {
     try {
       final row = await _client.rpc('create_coaching_program_full', params: {
@@ -326,12 +367,17 @@ class CoachingRepository {
         'p_age_group': ageGroup,
         'p_category': category,
         'p_description': description,
-        'p_facility_sport_id': null,
+        'p_facility_sport_id': facilitySportId,
         'p_default_duration_minutes': defaultDurationMinutes,
         'p_default_capacity': defaultCapacity,
         'p_session_count': sessionCount,
         'p_default_price_minor': defaultPriceMinor,
         'p_is_membership_included': isMembershipIncluded,
+        'p_image_url': imageUrl,
+        'p_program_type': programType,
+        'p_min_capacity': minCapacity,
+        'p_program_structure': programStructure,
+        'p_session_format': sessionFormat,
         'p_sessions_per_week': sessionsPerWeek,
         'p_start_date': startDate,
         'p_end_date': endDate,
@@ -339,7 +385,14 @@ class CoachingRepository {
         'p_early_bird_discount_minor': earlyBirdDiscountMinor,
         'p_discount_valid_till': discountValidTill,
         'p_tax_percent': taxPercent,
-        'p_status': 'ACTIVE',
+        'p_payment_notes': paymentNotes,
+        'p_allow_waitlist': allowWaitlist,
+        'p_allow_trial_session': allowTrialSession,
+        'p_auto_enroll_next_batch': autoEnrollNextBatch,
+        'p_send_notifications': sendNotifications,
+        'p_visible_in_booking': visibleInBooking,
+        'p_enrollment_deadline': enrollmentDeadline,
+        'p_status': status,
         'p_batches': batches,
       });
       final id = _obj(row)['id'] as String;

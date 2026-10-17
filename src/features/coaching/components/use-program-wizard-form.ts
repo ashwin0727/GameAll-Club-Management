@@ -33,7 +33,10 @@ const GENERIC_PROGRAM_STRUCTURE = ["Basic Techniques", "Footwork", "Game Strateg
  *  a generic list until a sport is chosen, so step 2 never shows an empty picker. */
 export function programStructurePresetsForSport(sportName: string | undefined | null): string[] {
   if (!sportName) return GENERIC_PROGRAM_STRUCTURE;
-  const key = Object.keys(PROGRAM_STRUCTURE_BY_SPORT).find((k) => sportName.toLowerCase().includes(k));
+  // Longest key first, so "Table Tennis" is table tennis and not tennis.
+  const key = Object.keys(PROGRAM_STRUCTURE_BY_SPORT)
+    .sort((a, b) => b.length - a.length)
+    .find((k) => sportName.toLowerCase().includes(k));
   return key ? PROGRAM_STRUCTURE_BY_SPORT[key]! : GENERIC_PROGRAM_STRUCTURE;
 }
 
@@ -43,7 +46,7 @@ export const SESSION_DURATIONS = [
   { value: "120", label: "2 Hours" },
   { value: "custom", label: "Custom" },
 ];
-export const SESSIONS_PER_WEEK = [1, 2, 3, 4, 5];
+export const SESSIONS_PER_WEEK = [1, 2, 3, 4, 5, 6, 7];
 /** value = weeks. "Custom" lets the owner pick an end date directly instead. */
 export const PROGRAM_DURATIONS = [
   { value: "4", label: "1 Month (4 Weeks)" },

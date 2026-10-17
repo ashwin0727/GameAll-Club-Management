@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'program_row_menu.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -151,7 +152,7 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
                         controller: _tabs,
                         children: [
                           _CoachingTab(overview: _overview!, coaches: _coaches, coachTotal: _coachTotal, programTotal: _programs.totalCount, perWeek: _perWeek, onTab: _tabs.animateTo, onOpen: _go),
-                          _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go),
+                          _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go, onChanged: _load),
                           _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go),
                         ],
                       ),
@@ -189,7 +190,7 @@ String _rupees(int minor) => Formatters.currencyInr(minor / 100);
 
 /// A list row: an icon tile, a title with up to two lines beneath, and a status pill.
 class _HubRow extends StatelessWidget {
-  const _HubRow({required this.icon, required this.color, required this.title, required this.lines, this.pill, this.pillColor, required this.onTap});
+  const _HubRow({required this.icon, required this.color, required this.title, required this.lines, this.pill, this.pillColor, this.trailing, required this.onTap});
 
   final IconData icon;
   final Color color;
@@ -197,6 +198,9 @@ class _HubRow extends StatelessWidget {
   final List<String> lines;
   final String? pill;
   final Color? pillColor;
+
+  /// Shown after the pill — e.g. a row's ⋮ menu.
+  final Widget? trailing;
   final VoidCallback onTap;
 
   @override
@@ -240,6 +244,7 @@ class _HubRow extends StatelessWidget {
                     child: Text(pill!, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: pillColor ?? tokens.primary)),
                   ),
                 ],
+                ?trailing,
               ],
             ),
           ),
@@ -641,7 +646,10 @@ class _CoachFilterSheetState extends State<_CoachFilterSheet> {
 // ── Programs ────────────────────────────────────────────────────────────
 
 class _ProgramsTab extends StatefulWidget {
-  const _ProgramsTab({required this.page, required this.cardStats, required this.onOpen});
+  const _ProgramsTab({required this.page, required this.cardStats, required this.onOpen, required this.onChanged});
+
+  /// Reloads the hub after a program was deleted.
+  final VoidCallback onChanged;
 
   final ProgramPage page;
   final ProgramCardStats? cardStats;
@@ -756,6 +764,13 @@ class _ProgramsTabState extends State<_ProgramsTab> {
           ],
           pill: p.status.label,
           pillColor: active ? tokens.success : tokens.textSecondary,
+          trailing: ProgramRowMenu(
+            programId: p.id,
+            name: p.name,
+            studentCount: p.studentCount,
+            onChanged: widget.onChanged,
+            onOpen: widget.onOpen,
+          ),
           onTap: () => widget.onOpen('${AppRoutes.coachingPrograms}/${p.id}'),
         );
       },

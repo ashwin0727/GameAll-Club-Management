@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_colors.dart';
+import 'program_row_menu.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -67,6 +69,13 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
     }
   }
 
+  Future<void> _delete() async {
+    final p = _program!;
+    if (await confirmAndDeleteProgram(context, ref, programId: p.id, name: p.name) && mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
   Future<void> _edit() async {
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => CoachingProgramFormScreen(existing: _program)),
@@ -113,6 +122,13 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
                   onPressed: _program!.isLocked ? null : _edit,
                 ),
               ),
+              // Only a program nobody has joined can be deleted.
+              if (!_program!.isLocked)
+                IconButton(
+                  tooltip: 'Delete',
+                  icon: Icon(Icons.delete_outline, color: context.tokens.destructive),
+                  onPressed: _busy ? null : _delete,
+                ),
             ],
           ],
         ),

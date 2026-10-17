@@ -633,6 +633,12 @@ export class SupabaseCoachingService {
     if (error) throw mapError(error);
   }
 
+  /** Removes a program nobody has joined (migration 0126); the database refuses one with any enrollment. */
+  async deleteProgram(programId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("delete_coaching_program", { p_program_id: programId });
+    if (error) throw mapError(error);
+  }
+
   async deleteProgramBatch(batchId: string): Promise<void> {
     const { error } = await this.supabase.rpc("delete_coaching_program_batch", { p_batch_id: batchId });
     if (error) throw mapError(error);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'program_row_menu.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -209,6 +210,16 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
                 StatusBadge(
                   label: p.status.label,
                   tone: p.status == ProgramStatus.active ? StatusTone.success : StatusTone.neutral,
+                ),
+                ProgramRowMenu(
+                  programId: p.id,
+                  name: p.name,
+                  studentCount: p.studentCount,
+                  onChanged: _load,
+                  onOpen: (route) async {
+                    final changed = await context.push<bool>(route);
+                    if (changed == true) _load();
+                  },
                 ),
               ],
             ),
