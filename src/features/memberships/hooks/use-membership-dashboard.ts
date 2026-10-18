@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getMembershipService } from "@/services/memberships";
+import { getFinanceService } from "@/services/finance";
 import type { MembershipListRow } from "@/features/memberships/types";
 
 const MEMBERSHIP_STALE_TIME = 15_000;
@@ -22,6 +23,23 @@ export function useAllMemberships(facilityId: string | null) {
         perPage: ALL_ROWS_PAGE_SIZE,
       });
       return result.rows;
+    },
+  });
+}
+
+/** Every membership balance still owed at the facility (Pending Payments' "Membership" source). */
+export function useMembershipOutstanding(facilityId: string | null) {
+  return useQuery({
+    queryKey: ["membership-outstanding", facilityId],
+    enabled: Boolean(facilityId),
+    staleTime: MEMBERSHIP_STALE_TIME,
+    queryFn: async () => {
+      const page = await getFinanceService().listPendingPayments({
+        facilityId: facilityId!,
+        filters: { sourceType: "MEMBERSHIP", status: "ALL_OUTSTANDING" },
+        limit: ALL_ROWS_PAGE_SIZE,
+      });
+      return page.obligations.map((o) => ({ sourceId: o.sourceId, outstandingMinor: o.outstandingMinor }));
     },
   });
 }

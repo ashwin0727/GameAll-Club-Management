@@ -17,9 +17,6 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'guest_profile_screen.dart';
 import '../authentication/session_controller.dart';
-import '../../shared/widgets/sport_scope_chip.dart';
-import '../bookings/potential_members.dart' show phoneKey;
-import '../sports/sport_scope.dart';
 
 class GuestsScreen extends ConsumerStatefulWidget {
   const GuestsScreen({super.key});
@@ -86,30 +83,11 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
     setState(() => _listLoading = true);
     try {
       final repo = ref.read(guestRepositoryProvider);
-      var results = _query.trim().length >= 2
+      final results = _query.trim().length >= 2
           ? await repo.searchGuests(_facilityId!, _query)
           : await repo.listGuests(_facilityId!, status: _statusFilter);
       // Under All Sports every guest shows; with a subset ticked, only the guests who have booked one of those
       // sports (a guest has no sport of their own — what they have played is their booking history).
-      final sports = ref.read(sportScopeProvider).ids;
-      if (sports != null) {
-        final played = <String>{};
-        final bookingRepo = ref.read(bookingRepositoryProvider);
-        for (final sportId in sports) {
-          for (var offset = 0; offset < 5000; offset += 500) {
-            final page = await bookingRepo.listGuestBookings(_facilityId!, facilitySportId: sportId, limit: 500, offset: offset);
-            for (final r in page.rows) {
-              final k = phoneKey(r.guestPhone);
-              if (k != null) played.add(k);
-            }
-            if (page.rows.length < 500) break;
-          }
-        }
-        results = results.where((g) {
-          final k = phoneKey(g.phone);
-          return k != null && played.contains(k);
-        }).toList();
-      }
       if (mounted) {
         setState(() {
           _guests = results;
@@ -237,16 +215,11 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    // The list is for the sports ticked in the "All Sports" selector; changing it reloads.
-    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
-      if (prev != next) _refreshList();
-    });
     return Scaffold(
       backgroundColor: t.surface0,
       appBar: AppBar(
         title: const Text('Guest Players',
             style: TextStyle(fontWeight: FontWeight.w800)),
-        actions: const [SportScopeChip(), SizedBox(width: 8)],
       ),
       body: SafeArea(
         child: _isLoading

@@ -18,8 +18,6 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'member_schedule.dart';
 import 'membership_detail_screen.dart';
-import '../../shared/widgets/sport_scope_chip.dart';
-import '../sports/sport_scope.dart';
 
 /// Memberships → Membership Schedule — mirrors
 /// src/features/memberships/components/member-schedule-page.tsx.
@@ -66,16 +64,11 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
     setState(() => _error = null);
     try {
       final rows = await ref.read(membershipRepositoryProvider).listMemberSchedules(fid);
-      // Only the slots on the sports ticked in the "All Sports" selector (everything under All Sports).
-      final sports = ref.read(sportScopeProvider).idSet;
-      final members = groupMemberSchedules([
-        for (final r in rows)
-          if (sports == null || sports.contains(r.facilitySportId)) r,
-      ]);
+      final members = groupMemberSchedules(rows);
       if (!mounted) return;
       setState(() {
         _members = members;
-        if (_memberId == null || !members.any((m) => m.memberId == _memberId)) _memberId = members.firstOrNull?.memberId;
+        _memberId ??= members.firstOrNull?.memberId;
         _courtId = _member?.courts.firstOrNull?.id;
       });
       await _loadAround();
@@ -145,13 +138,10 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
-      if (prev != next) _load();
-    });
     final m = _member;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Membership Schedule'), actions: const [SportScopeChip(), SizedBox(width: 8)]),
+      appBar: AppBar(title: const Text('Membership Schedule')),
       body: SafeArea(
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)

@@ -18,8 +18,6 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
-import '../../shared/widgets/sport_scope_chip.dart';
-import '../sports/sport_scope.dart';
 
 /// Coaching → Enrollments — mirrors
 /// src/features/coaching/components/enrollments-page.tsx.
@@ -91,7 +89,6 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
             programId: _programId,
             limit: _pageSize,
             offset: _page * _pageSize,
-            sportIds: ref.read(sportScopeProvider).ids,
           );
       if (!mounted || reqId != _requestId) return;
       setState(() {
@@ -157,10 +154,6 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
 
   @override
   Widget build(BuildContext context) {
-    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
-    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
-      if (prev != next) { setState(() => _page = 0); _load(); }
-    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Enrollments', message: "You don't have permission to view coaching.");
@@ -171,7 +164,7 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
         : _programs.where((p) => p.id == _programId).map((p) => p.name).firstOrNull ?? 'Program';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Student Enrollments'), actions: const [SportScopeChip(), SizedBox(width: 8)]),
+      appBar: AppBar(title: const Text('Student Enrollments')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,

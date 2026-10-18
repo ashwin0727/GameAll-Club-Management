@@ -49,3 +49,26 @@ int? utilizationPercent(List<AssignableBatch> batches) {
   final filled = batches.fold<int>(0, (sum, b) => sum + b.enrolledCount);
   return (filled / seats * 100).round().clamp(0, 100);
 }
+
+/// "Payment Pending": every membership's unpaid balance, plus one more period of the plan's price for a
+/// renewal whose date has passed with nothing owed against it. A membership with an unpaid balance is counted
+/// once, by that balance. [owedMinor] maps membership id -> outstanding minor units (Pending Payments).
+({int amountInr, int count}) membershipPending(
+  List<MembershipListRow> rows,
+  Map<String, int> owedMinor,
+  DateTime now,
+) {
+  var amount = 0.0;
+  var count = 0;
+  for (final m in rows) {
+    final minor = owedMinor[m.membershipId] ?? 0;
+    if (minor > 0) {
+      amount += minor / 100;
+      count++;
+    } else if (m.status == MembershipListStatus.inactive && m.endDate.isBefore(now)) {
+      amount += m.monthlyPriceInr;
+      count++;
+    }
+  }
+  return (amountInr: amount.round(), count: count);
+}

@@ -212,3 +212,33 @@ export function activeInactiveTrend(rows: MembershipListRow[], now: Date, months
   }
   return points;
 }
+
+/**
+ * "Payment Pending" on the Membership Dashboard: what members still owe.
+ *  - every membership's unpaid balance (what the plan cost minus what was collected), plus
+ *  - a renewal whose date has passed with nothing owed against it yet — one more period of the plan's price.
+ * A membership with an unpaid balance is counted once, by that balance. `outstanding` is the Pending Payments
+ * list for memberships (amounts in minor units); only the given rows' memberships are summed, so a sport filter
+ * narrows it the same way it narrows everything else.
+ */
+export function membershipPendingAmountInr(
+  rows: MembershipListRow[],
+  outstanding: { sourceId: string; outstandingMinor: number }[],
+  now: Date,
+): { amountInr: number; count: number } {
+  const owed = new Map(outstanding.map((o) => [o.sourceId, o.outstandingMinor]));
+  const today = iso(now);
+  let amountInr = 0;
+  let count = 0;
+  for (const r of rows) {
+    const minor = owed.get(r.membershipId) ?? 0;
+    if (minor > 0) {
+      amountInr += minor / 100;
+      count += 1;
+    } else if (r.status === "inactive" && r.endDate < today) {
+      amountInr += r.monthlyPriceInr;
+      count += 1;
+    }
+  }
+  return { amountInr, count };
+}

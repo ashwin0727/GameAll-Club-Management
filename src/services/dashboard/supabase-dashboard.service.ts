@@ -26,6 +26,10 @@ import type { DashboardService, DashboardSummaryParams } from "@/services/dashbo
 import { mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 type BookingRow = {
   id: string;
   court_id: string;
@@ -127,6 +131,7 @@ export class SupabaseDashboardService implements DashboardService {
       paymentsRes,
       membershipSessionsRes,
       revenuePaymentsRes,
+      pendingDuesRes,
     ] = await Promise.all([
       getSportsService().getFacilitySports(facilityId),
       getSportsService().getActiveSports(),
@@ -158,6 +163,12 @@ export class SupabaseDashboardService implements DashboardService {
         .or(
           `and(paid_at.gte.${revWindowFrom},paid_at.lt.${revWindowTo}),and(paid_at.is.null,created_at.gte.${revWindowFrom},created_at.lt.${revWindowTo})`,
         ),
+      // Attention Required: what is still owed. Today -> only dues falling today; any other period -> everything owed.
+      this.supabase.rpc("get_pending_payments_summary", {
+        p_facility_id: facilityId,
+        p_from: params.preset === "TODAY" ? localDateKey(now) : null,
+        p_to: params.preset === "TODAY" ? localDateKey(now) : null,
+      }),
     ]);
 
     // The sports in view: the ticked subset, or null for All Sports (every number is then facility-wide).
@@ -373,7 +384,7 @@ export class SupabaseDashboardService implements DashboardService {
       businessPosition: { revenueInr: scopedCurrentPaymentSummary.collectedInr, expensesAvailable: false },
       attentionItems: buildAttentionItems({
         membershipsExpiringSoon: memberships.expiringSoon,
-        paymentsPendingInr: currentPaymentSummary.pendingInr,
+        paymentsPendingInr: Math.round((pendingDuesRes.data?.[0]?.outstanding_minor ?? 0) / 100),
       }),
       upcomingActivities: { available: false },
     };

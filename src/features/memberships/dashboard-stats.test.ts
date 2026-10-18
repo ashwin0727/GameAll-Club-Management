@@ -9,6 +9,7 @@ import {
   inactiveChangePct,
   inactiveMembers,
   membersDeltaAbs,
+  membershipPendingAmountInr,
   planDistribution,
   rowStatus,
   summaryFromRows,
@@ -242,5 +243,25 @@ describe("summaryFromRows", () => {
       revenueInr: 0,
       revenueChangePct: null,
     });
+  });
+});
+
+describe("membershipPendingAmountInr", () => {
+  it("sums unpaid balances, adds a lapsed renewal once, and ignores paid-up active memberships", () => {
+    const rows = [
+      row({ membershipId: "owes", status: "active", endDate: "2026-10-01" }),
+      row({ membershipId: "lapsed", status: "inactive", endDate: "2026-08-01", monthlyPriceInr: 1500 }),
+      row({ membershipId: "lapsed-and-owes", status: "inactive", endDate: "2026-08-01", monthlyPriceInr: 1500 }),
+      row({ membershipId: "fine", status: "active", endDate: "2026-10-01" }),
+    ];
+    const out = membershipPendingAmountInr(
+      rows,
+      [
+        { sourceId: "owes", outstandingMinor: 50000 },
+        { sourceId: "lapsed-and-owes", outstandingMinor: 25000 },
+      ],
+      NOW,
+    );
+    expect(out).toEqual({ amountInr: 500 + 1500 + 250, count: 3 });
   });
 });

@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/formatters.dart';
+import '../../data/models/finance.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/membership_repository.dart';
 import '../../data/repositories/repository_providers.dart';
@@ -27,9 +28,6 @@ import 'membership_plans_tab.dart';
 import 'members_insights.dart';
 import 'members_ordering.dart';
 import 'membership_plan_wizard_screen.dart';
-import 'sport_scope_filters.dart';
-import '../../shared/widgets/sport_scope_chip.dart';
-import '../sports/sport_scope.dart';
 
 /// The Memberships hub — Members (the default tab) and Plans. Sessions, Schedule and Reports are one tap away
 /// from the Members tab, as they are on the Coaching hub.
@@ -62,27 +60,13 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   bool _autoOpenedPlans = false;
   bool _autoOpenedNew = false;
 
-  // What the server returned (the whole facility) ...
-  List<MembershipPlan> _rawPlans = const [];
-  MembershipPageSummary? _rawSummary;
-  List<MembershipListRow> _rawMembers = const [];
-  List<AssignableBatch> _rawBatches = const [];
-  int _memberTotal = 0;
-  // ... and what is shown: only the sports ticked in the "All Sports" selector (everything under All Sports).
-  List<MembershipPlan> _plans = const [];
+    List<MembershipPlan> _plans = const [];
   MembershipPageSummary? _summary;
   List<MembershipListRow> _members = const [];
+  int _memberTotal = 0;
   List<AssignableBatch> _batches = const [];
-
-  void _applyScope() {
-    final sports = ref.read(sportScopeProvider).idSet;
-    setState(() {
-      _plans = plansForSports(_rawPlans, _rawBatches, sports);
-      _members = membershipRowsForSports(_rawMembers, _rawBatches, sports);
-      _batches = batchesForSports(_rawBatches, sports);
-      _summary = (sports == null || _rawSummary == null) ? _rawSummary : scopedMembershipSummary(_members);
-    });
-  }
+  int? _overallRevenueInr;
+  ({int amountInr, int count})? _pending;
 
   @override
   void initState() {
@@ -125,16 +109,40 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         _loadAllMemberships(repo, facility.id),
         repo.listAssignableBatches(facility.id),
       ]);
+      // Best-effort: the page renders without these two figures.
+      int? overall;
+      ({int amountInr, int count})? pending;
+      try {
+        final now = DateTime.now();
+        final extras = await Future.wait([
+          repo.getMembershipRevenueTimeseries(
+            facility.id,
+            from: '2000-01-01',
+            to: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
+          ),
+          ref.read(financeRepositoryProvider).listPendingPayments(ListPendingPaymentsInput(
+                facilityId: facility.id,
+                filters: const PendingPaymentFilters(sourceType: ObligationSource.membership),
+                limit: 5000,
+              )),
+        ]);
+        overall = (extras[0] as List<MembershipRevenuePoint>).fold<int>(0, (a, p) => a + p.amountInr);
+        final owed = {
+          for (final o in (extras[1] as PendingPaymentsPage).obligations) o.sourceId: o.outstandingMinor,
+        };
+        pending = membershipPending((results[2] as MembershipListResult).rows, owed, now);
+      } catch (_) {}
       setState(() {
+        _overallRevenueInr = overall;
+        _pending = pending;
         _facilityId = facility.id;
-        _rawPlans = results[0] as List<MembershipPlan>;
-        _rawSummary = results[1] as MembershipPageSummary;
-        _rawMembers = (results[2] as MembershipListResult).rows;
+        _plans = results[0] as List<MembershipPlan>;
+        _summary = results[1] as MembershipPageSummary;
+        _members = (results[2] as MembershipListResult).rows;
         _memberTotal = (results[2] as MembershipListResult).totalCount;
-        _rawBatches = results[3] as List<AssignableBatch>;
+        _batches = results[3] as List<AssignableBatch>;
         _loading = false;
       });
-      _applyScope();
       if (widget.openPlans && !_autoOpenedPlans && mounted) {
         _autoOpenedPlans = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _managePlans());
@@ -235,10 +243,6 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    // Changing the "All Sports" selector re-filters what is already loaded.
-    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
-      if (prev != next && !_loading) _applyScope();
-    });
     return TabPopScope(
       tab: AppTab.members,
       child: Scaffold(
@@ -247,7 +251,6 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         title: const Text('Memberships',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
-          const SportScopeChip(),
           // Icon-only so the title, this and the create button all fit on a narrow phone.
           IconButton(
             tooltip: 'Join link',
@@ -312,6 +315,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                           members: _members,
                           counts: countMembers(_members, DateTime.now(), total: _memberTotal),
                           summary: _summary!,
+                          overallRevenueInr: _overallRevenueInr,
+                          pending: _pending,
                           batches: _batches,
                           onNew: _openNewMembership,
                           onReload: _load,
@@ -494,6 +499,8 @@ class _MembersTab extends StatefulWidget {
     required this.members,
     required this.counts,
     required this.summary,
+    required this.overallRevenueInr,
+    required this.pending,
     required this.batches,
     required this.onNew,
     required this.onReload,
@@ -502,6 +509,8 @@ class _MembersTab extends StatefulWidget {
   final List<MembershipListRow> members;
   final MemberCounts counts;
   final MembershipPageSummary summary;
+  final int? overallRevenueInr;
+  final ({int amountInr, int count})? pending;
   final List<AssignableBatch> batches;
   final VoidCallback onNew;
   final VoidCallback onReload;
@@ -513,16 +522,13 @@ class _MembersTab extends StatefulWidget {
 class _MembersTabState extends State<_MembersTab> {
   String _query = '';
   bool _insightsOpen = false;
-  bool _expiringOnly = false;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final now = DateTime.now();
     final q = _query.trim().toLowerCase();
     final ordered = orderMembersForDisplay(widget.members);
     final rows = ordered.where((m) {
-      if (_expiringOnly && !isExpiringSoon(m, now)) return false;
       if (q.isEmpty) return true;
       return m.memberName.toLowerCase().contains(q) || m.memberPhone.contains(q);
     }).toList();
@@ -538,8 +544,6 @@ class _MembersTabState extends State<_MembersTab> {
           value: '${c.total}',
           figs: [
             (value: '${c.active}', label: 'active'),
-            (value: '${c.inactive}', label: 'inactive'),
-            (value: '${c.expiring}', label: 'expiring'),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -552,15 +556,25 @@ class _MembersTabState extends State<_MembersTab> {
               color: tokens.electricBlue,
               title: 'Total Members',
               value: '${c.total}',
-              onTap: () => setState(() => _expiringOnly = false),
+              onTap: () {},
             ),
             InsightData(
-              icon: Icons.schedule_rounded,
+              icon: Icons.payments_outlined,
               color: tokens.warning,
-              title: 'Expiring Soon',
-              value: '${c.expiring}',
-              sub: 'Next 30 days',
-              onTap: () => setState(() => _expiringOnly = true),
+              title: 'Overall Revenue',
+              value: widget.overallRevenueInr == null ? '—' : Formatters.currencyInr(widget.overallRevenueInr!),
+              sub: 'All payments collected',
+              onTap: () => context.push(AppRoutes.reportsMemberships),
+            ),
+            InsightData(
+              icon: Icons.pending_actions_rounded,
+              color: tokens.destructive,
+              title: 'Payment Pending',
+              value: widget.pending == null ? '—' : Formatters.currencyInr(widget.pending!.amountInr),
+              sub: widget.pending == null
+                  ? null
+                  : (widget.pending!.count == 0 ? 'Nothing pending' : '${widget.pending!.count} unpaid or overdue'),
+              onTap: () => context.push(AppRoutes.financePendingPayments),
             ),
             InsightData(
               icon: Icons.account_balance_wallet_outlined,
@@ -609,16 +623,6 @@ class _MembersTabState extends State<_MembersTab> {
             isDense: true,
           ),
         ),
-        if (_expiringOnly) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: InputChip(
-              label: const Text('Expiring in 30 Days'),
-              onDeleted: () => setState(() => _expiringOnly = false),
-            ),
-          ),
-        ],
         const SizedBox(height: AppSpacing.md),
         if (rows.isEmpty)
           Padding(
@@ -631,9 +635,7 @@ class _MembersTabState extends State<_MembersTab> {
                 Text(
                   widget.members.isEmpty
                       ? 'No members yet.'
-                      : _expiringOnly
-                          ? 'No memberships are expiring in the next 30 days.'
-                          : 'No members match “$_query”.',
+                      : 'No members match “$_query”.',
                   style: TextStyle(color: tokens.textSecondary),
                 ),
                 if (widget.members.isEmpty) ...[

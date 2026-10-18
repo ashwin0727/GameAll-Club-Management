@@ -446,6 +446,8 @@ export function buildAttentionItems(input: {
     items.push({
       id: "payments-pending",
       message: `₹${input.paymentsPendingInr.toLocaleString("en-IN")} in payments pending.`,
+      actionLabel: "View Pending Payments",
+      actionHref: "/finance/pending-payments",
     });
   }
   return items;

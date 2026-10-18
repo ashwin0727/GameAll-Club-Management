@@ -496,13 +496,15 @@ class MembershipRepository {
   Future<List<MembershipRevenuePoint>> getMembershipRevenueTimeseries(
     String facilityId, {
     MembershipRevenueGranularity granularity = MembershipRevenueGranularity.month,
+    String? from,
+    String? to,
   }) async {
     try {
       final rows = await _client.rpc('get_membership_revenue_timeseries', params: {
         'p_facility_id': facilityId,
         'p_granularity': granularity.toJson(),
-        'p_from': null,
-        'p_to': null,
+        'p_from': from,
+        'p_to': to,
       });
       return (rows as List<dynamic>)
           .map((row) => MembershipRevenuePoint.fromJson((row as Map).cast<String, dynamic>()))

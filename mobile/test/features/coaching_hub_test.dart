@@ -305,7 +305,7 @@ class _OwnerSession extends SessionController {
 
 class _FakeCoaching implements CoachingRepository {
   @override
-  Future<StudentCardStats?> getStudentCardStats(String facilityId, {List<String>? sportIds}) async =>
+  Future<StudentCardStats?> getStudentCardStats(String facilityId) async =>
       const StudentCardStats(totalStudents: 8, enrolledStudents: 5, revenueMinor: 1250000, pendingMinor: 480000);
 
   @override
@@ -343,7 +343,7 @@ class _FakeCoaching implements CoachingRepository {
       );
 
   @override
-  Future<CoachPage> listCoaches({required String facilityId, String? search, CoachStatus? status, int limit = 20, int offset = 0, List<String>? sportIds}) async =>
+  Future<CoachPage> listCoaches({required String facilityId, String? search, CoachStatus? status, int limit = 20, int offset = 0}) async =>
       CoachPage(coaches: [coach('a', 'Arjun Kumar', students: 32, years: 3)], totalCount: 1);
 
   @override
@@ -356,7 +356,6 @@ class _FakeCoaching implements CoachingRepository {
     SessionStatus? status,
     int limit = 200,
     int offset = 0,
-    List<String>? sportIds,
   }) async =>
       const SessionPage(sessions: [], totalCount: 0);
 
@@ -374,7 +373,6 @@ class _FakeCoaching implements CoachingRepository {
     int offset = 0,
     String? coachId,
     String? level,
-    List<String>? sportIds,
     String? statusKey,
   }) async =>
       EnrollmentPage(enrollments: [student('a')], totalCount: 1);

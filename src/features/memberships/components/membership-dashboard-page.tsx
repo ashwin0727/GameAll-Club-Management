@@ -2,23 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, UserPlus, Users, UsersRound } from "lucide-react";
+import { IndianRupee, Users, UsersRound, Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MembershipDashboardHero } from "@/features/memberships/components/membership-dashboard-hero";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
-import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
+import { useAllMemberships, useMembershipOutstanding } from "@/features/memberships/hooks/use-membership-dashboard";
+import { useMembershipRevenue } from "@/features/memberships/hooks/use-memberships";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { membershipRowsForSport } from "@/features/memberships/sport-scope";
 import {
   activeInactiveTrend,
   activeMembersChangePct,
-  expiringSoon,
-  expiringSoonChangePct,
-  inactiveChangePct,
-  inactiveMembers,
   membersDeltaAbs,
+  membershipPendingAmountInr,
   summaryFromRows,
 } from "@/features/memberships/dashboard-stats";
 import { ActiveInactiveBarChart } from "@/features/memberships/components/active-inactive-bar-chart";
@@ -26,7 +24,10 @@ import { MembershipRevenueChart } from "@/features/memberships/components/member
 import { MembershipListTable } from "@/features/memberships/components/membership-list-table";
 import { QuickActionsPanel } from "@/features/memberships/components/quick-actions-panel";
 import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
+import { todayIso } from "@/features/memberships/revenue-window";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
+
+const inrFmt = (v: number) => `₹${Math.round(v).toLocaleString("en-IN")}`;
 
 /** A stable empty array, so a `?? EMPTY_BATCHES` fallback doesn't create a new reference every render. */
 const EMPTY_BATCHES: MembershipBatch[] = [];
@@ -60,10 +61,14 @@ export function MembershipDashboardPage() {
   // the Membership Plans page already does for its own stat cards.
   const summary = useMemo(() => (rows ? summaryFromRows(rows, now) : undefined), [rows, now]);
   const trend = useMemo(() => (rows ? activeInactiveTrend(rows, now, 3) : undefined), [rows, now]);
-  const expiringCount = useMemo(() => (rows ? expiringSoon(rows, now).length : undefined), [rows, now]);
-  const expiringDelta = useMemo(() => (rows ? expiringSoonChangePct(rows, now) : undefined), [rows, now]);
-  const inactiveCount = useMemo(() => (rows ? inactiveMembers(rows).length : undefined), [rows]);
-  const inactiveDelta = useMemo(() => (rows ? inactiveChangePct(rows, now) : undefined), [rows, now]);
+  // Overall Revenue: every membership payment ever collected (not just this month).
+  const overallRevenueQuery = useMembershipRevenue(facilityId, "month", { from: "2000-01-01", to: todayIso(now) }, revenueMembershipIds);
+  const overallRevenue = overallRevenueQuery.data ? overallRevenueQuery.data.reduce((sum, p) => sum + p.amountInr, 0) : undefined;
+  const outstandingQuery = useMembershipOutstanding(facilityId);
+  const pending = useMemo(
+    () => (rows && outstandingQuery.data ? membershipPendingAmountInr(rows, outstandingQuery.data, now) : undefined),
+    [rows, outstandingQuery.data, now],
+  );
   const activeDelta = useMemo(
     () => (rows && summary ? activeMembersChangePct(rows, summary.activeMembers, now) : undefined),
     [rows, summary, now],
@@ -127,27 +132,26 @@ export function MembershipDashboardPage() {
               index={1}
             />
             <MembershipStatCard
-              icon={Clock}
+              icon={IndianRupee}
               iconBg="bg-warning/15"
               iconColor="text-warning"
-              value={expiringCount !== undefined ? String(expiringCount) : "—"}
-              countTo={expiringCount}
-              format={(v) => String(v)}
-              deltaPct={expiringDelta ?? null}
-              label="Expiring Soon"
-              sub="Within next 5 days"
+              value={overallRevenue !== undefined ? inrFmt(overallRevenue) : "—"}
+              countTo={overallRevenue}
+              format={inrFmt}
+              label="Overall Revenue"
+              sub="All membership payments collected"
               index={2}
             />
             <MembershipStatCard
-              icon={UserPlus}
+              icon={Wallet}
               iconBg="bg-purple-500/15"
               iconColor="text-purple-600 dark:text-purple-400"
-              value={inactiveCount !== undefined ? String(inactiveCount) : "—"}
-              countTo={inactiveCount}
-              format={(v) => String(v)}
-              deltaPct={inactiveDelta ?? null}
-              label="Inactive Members"
-              sub="No active membership"
+              value={pending !== undefined ? inrFmt(pending.amountInr) : "—"}
+              countTo={pending?.amountInr}
+              format={inrFmt}
+              label="Payment Pending"
+              sub={pending !== undefined ? (pending.count > 0 ? `${pending.count} membership${pending.count === 1 ? "" : "s"} unpaid or overdue` : "Nothing pending") : undefined}
+              subTone={pending && pending.count > 0 ? "text-destructive" : undefined}
               index={3}
             />
           </>
