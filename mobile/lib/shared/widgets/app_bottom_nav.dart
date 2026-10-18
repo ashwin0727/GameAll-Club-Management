@@ -58,15 +58,11 @@ const _tabs = <({
 /// map. Finance sits here now that it has left the bar, and the occasional/admin screens (Reports, Inventory, Users & Roles)
 /// live one tap away in Profile → Manage instead of crowding a menu meant
 /// to be scanned in a second — each still resolves to the ONE screen for
-/// that job, never a second copy of it. New Plan/Membership/Session deep-link
-/// into the Members hub's own create flows (same screens as its
-/// context-aware FAB) rather than duplicating them.
+/// that job, never a second copy of it. Creating a plan, membership or session
+/// happens inside the Members hub itself, not from this menu.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
   (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
   (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
-  (icon: Icons.event_repeat_outlined, label: 'New Session', route: AppRoutes.membershipSessions, permission: null),
-  (icon: Icons.card_membership_outlined, label: 'New Membership', route: '${AppRoutes.memberships}?new=membership', permission: null),
-  (icon: Icons.add_card_outlined, label: 'New Plan', route: '${AppRoutes.memberships}?new=plan', permission: null),
   (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenanceTicketNew, permission: null),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
   (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),

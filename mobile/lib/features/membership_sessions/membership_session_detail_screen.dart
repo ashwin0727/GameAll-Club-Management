@@ -113,16 +113,6 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
     }
   }
 
-  Future<void> _duplicate() async {
-    try {
-      await ref.read(membershipSessionRepositoryProvider).duplicateSession(widget.batchId);
-      _toast('Session duplicated');
-      if (mounted) Navigator.of(context).pop();
-    } on AppException catch (e) {
-      _toast(e.message);
-    }
-  }
-
   Future<void> _toggleActive() async {
     final d = _detail;
     if (d == null) return;
@@ -232,8 +222,6 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                     _openReleaseGuestSlots();
                   case 'block':
                     _blockToday();
-                  case 'duplicate':
-                    _duplicate();
                   case 'toggle':
                     _toggleActive();
                 }
@@ -244,8 +232,6 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                     value: 'release', child: Text('Release Guest Slots')),
                 const PopupMenuItem(
                     value: 'block', child: Text("Block today's occurrence")),
-                const PopupMenuItem(
-                    value: 'duplicate', child: Text('Duplicate Session')),
                 PopupMenuItem(
                     value: 'toggle',
                     child: Text(d.isActive

@@ -2,6 +2,8 @@
 /// src/features/membership-sessions/types.ts.
 library;
 
+import '../../core/utils/batch_name.dart';
+
 class MembershipSessionsSummary {
   const MembershipSessionsSummary({
     required this.totalSessions,
@@ -78,7 +80,7 @@ class MembershipSessionListRow {
 
   factory MembershipSessionListRow.fromJson(Map<String, dynamic> j) => MembershipSessionListRow(
         batchId: j['batch_id'] as String,
-        name: j['name'] as String? ?? 'Session',
+        name: displayBatchName(j['name'] as String? ?? 'Session', j['start_time'] as String? ?? '', j['end_time'] as String? ?? ''),
         courtId: j['court_id'] as String,
         courtName: j['court_name'] as String? ?? '',
         facilitySportId: j['facility_sport_id'] as String,
@@ -180,7 +182,7 @@ class MembershipSessionDetail {
         facilityName: j['facilityName'] as String?,
         facilityAddress: j['facilityAddress'] as String?,
         notes: j['notes'] as String?,
-        name: j['name'] as String? ?? 'Session',
+        name: displayBatchName(j['name'] as String? ?? 'Session', j['startTime'] as String? ?? '', j['endTime'] as String? ?? ''),
         courtName: j['courtName'] as String? ?? '',
         sportName: j['sportName'] as String? ?? '',
         planName: j['planName'] as String?,

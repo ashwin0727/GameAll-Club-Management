@@ -1,5 +1,6 @@
 "use client";
 
+import { displayBatchName } from "@/features/membership-sessions/batch-name";
 import type { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -33,7 +34,7 @@ function toBatch(row: BatchRow): MembershipBatch {
     planId: row.plan_id,
     facilitySportId: row.facility_sport_id,
     courtId: row.court_id,
-    name: row.name,
+    name: displayBatchName(row.name, row.start_time, row.end_time),
     daysOfWeek: row.days_of_week,
     startTime: row.start_time,
     endTime: row.end_time,
@@ -183,7 +184,7 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
     return (data ?? []).map((row) => ({
       batchId: row.batch_id,
       sessionId: row.session_id,
-      batchName: row.batch_name,
+      batchName: displayBatchName(row.batch_name, row.start_time, row.end_time),
       courtId: row.court_id,
       courtName: row.court_name,
       facilitySportId: row.facility_sport_id,
@@ -260,8 +261,11 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
     if (error) throw mapCapacityError(error);
   }
 
-  async getSessionsSummary(facilityId: string): Promise<MembershipSessionsSummary> {
-    const { data, error } = await this.supabase.rpc("get_membership_sessions_summary", { p_facility_id: facilityId });
+  async getSessionsSummary(facilityId: string, sportIds?: string[] | null): Promise<MembershipSessionsSummary> {
+    const { data, error } = await this.supabase.rpc("get_membership_sessions_summary", {
+      p_facility_id: facilityId,
+      p_facility_sport_ids: sportIds && sportIds.length > 0 ? sportIds : null,
+    } as never);
     if (error) throw mapSupabaseError(error);
     const d = (data ?? {}) as Record<string, number>;
     return {
@@ -278,6 +282,7 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
       p_facility_id: facilityId,
       p_search: params.search?.trim() || null,
       p_facility_sport_id: params.facilitySportId ?? null,
+      p_facility_sport_ids: params.facilitySportIds && params.facilitySportIds.length > 0 ? params.facilitySportIds : null,
       p_court_id: params.courtId ?? null,
       p_status: params.status ?? null,
       p_day: params.day ?? null,
@@ -287,7 +292,7 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
     if (error) throw mapSupabaseError(error);
     const rows = (data ?? []).map((r) => ({
       batchId: r.batch_id,
-      name: r.name,
+      name: displayBatchName(r.name, r.start_time, r.end_time),
       courtId: r.court_id,
       courtName: r.court_name,
       facilitySportId: r.facility_sport_id,
@@ -316,7 +321,7 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
       facilityId: d.facilityId as string,
       facilityName: (d.facilityName as string) ?? null,
       facilityAddress: (d.facilityAddress as string) ?? null,
-      name: d.name as string,
+      name: displayBatchName(d.name as string, d.startTime as string, d.endTime as string),
       notes: (d.notes as string) ?? null,
       courtId: d.courtId as string,
       courtName: d.courtName as string,

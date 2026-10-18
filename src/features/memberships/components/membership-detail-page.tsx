@@ -101,11 +101,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 function HeaderStat({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+    // The icon sits in its own fixed square, centred against the label + value beside it, so every stat in the row
+    // has its icon, label and value on the same lines whatever the text is.
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-sm font-medium text-foreground">{value}</p>
+        <p className="text-xs leading-4 text-muted-foreground">{label}</p>
+        <div className="mt-0.5 break-words text-sm font-medium leading-5 text-foreground">{value}</div>
       </div>
     </div>
   );
@@ -263,7 +267,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                   {detail.member.address && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{detail.member.address}</span>}
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-4 grid items-start gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
                   <HeaderStat icon={IdCard} label="Membership Type" value={detail.membership.name} />
                   <HeaderStat icon={CalendarDays} label="Member Since" value={fmtDate(detail.member.memberSince)} />
                   <HeaderStat
@@ -292,7 +296,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 </div>
                 <Badge variant="outline">{autoPayStatusLabel(effectiveAutoPayStatus(autoPay)).label}</Badge>
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid items-start gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
                 <HeaderStat icon={IndianRupee} label="Charged Every Cycle" value={`${inr(autoPay.amountInr)} ${autoPayCadence(autoPay.intervalMonths)}`} />
                 <HeaderStat icon={CalendarDays} label="Next Charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "—"} />
                 <HeaderStat icon={IdCard} label="Charges Collected" value={autoPay.chargeCount} />

@@ -20,6 +20,8 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Coaching → Programs — mirrors src/features/coaching/components/programs-page.tsx.
 class CoachingProgramsScreen extends ConsumerStatefulWidget {
@@ -69,6 +71,7 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
             status: _status,
             limit: _pageSize,
             offset: _page * _pageSize,
+            sportIds: ref.read(sportScopeProvider).ids,
           );
       if (!mounted || reqId != _requestId) return;
       setState(() {
@@ -115,6 +118,10 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { setState(() => _page = 0); _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Programs', message: "You don't have permission to view coaching.");
@@ -126,6 +133,8 @@ class _CoachingProgramsScreenState extends ConsumerState<CoachingProgramsScreen>
       appBar: AppBar(
         title: const Text('Coaching Programs'),
         actions: [
+          const SportScopeChip(),
+          const SizedBox(width: 8),
           if (canCreate)
             IconButton(
               icon: const Icon(Icons.add),

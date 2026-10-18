@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Bell, Building2, CalendarDays, Check, ChevronDown, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -18,7 +19,7 @@ import { useUiStore } from "@/stores/ui-store";
 import { useLogout } from "@/features/auth/hooks/use-auth";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
-import { sportSelectionLabel } from "@/features/facility/sport-selection";
+import { resetsSportSelection, sportSelectionLabel, sportSelectionLocked } from "@/features/facility/sport-selection";
 import { cn, getInitials } from "@/lib/utils";
 import type { Profile } from "@/features/auth/types";
 
@@ -41,6 +42,14 @@ export function Topbar({ profile }: { profile: Profile }) {
   const { data: facility } = useFacility();
   // "All Sports" by default; the user can tick any combination and every page follows.
   const sports = useSportFilter(facility?.id);
+  const pathname = usePathname();
+  // Maintenance, Staff and Inventory are facility-wide: the selector is fixed at All Sports there. Arriving on one of
+  // those pages — or on Home — puts the choice back to All Sports.
+  const locked = sportSelectionLocked(pathname);
+  const setSelectedSportIds = useUiStore((st) => st.setSelectedSportIds);
+  useEffect(() => {
+    if (locked || resetsSportSelection(pathname)) setSelectedSportIds(null);
+  }, [pathname, locked, setSelectedSportIds]);
   const sportLabel = sportSelectionLabel(
     { ids: sports.selectedIds, isAll: sports.isAll },
     new Map(sports.options.map((o) => [o.facilitySportId, o.name])),
@@ -65,7 +74,12 @@ export function Topbar({ profile }: { profile: Profile }) {
       </div>
 
       {/* Sports — All Sports by default; tick any combination to look at just those. */}
-      {sports.options.length > 0 && (
+      {sports.options.length > 0 && locked && (
+        <div className={cn(CHIP, "min-w-0 max-w-[240px] cursor-not-allowed opacity-70")} aria-label="Sports (All Sports on this page)" title="This page always covers all sports">
+          <span className="truncate font-medium">All Sports</span>
+        </div>
+      )}
+      {sports.options.length > 0 && !locked && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

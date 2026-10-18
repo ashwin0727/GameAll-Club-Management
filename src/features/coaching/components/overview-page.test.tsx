@@ -32,7 +32,7 @@ vi.mock("@/services/staff", () => ({
 }));
 
 vi.mock("@/features/facility/hooks/use-facility-sport-options", () => ({
-  useFacilitySportOptions: () => ({ data: [] }),
+  useFacilitySportOptions: () => ({ data: [], isSuccess: true, isError: false }),
 }));
 
 const OVERVIEW: CoachingOverview = {
@@ -123,7 +123,7 @@ describe("CoachingOverviewPage", () => {
 
   it("loads the Coaching Insights panel for the default 30-day window and shows its tiles (no attendance)", async () => {
     renderWithProviders(<CoachingOverviewPage />);
-    await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 30));
+    await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 30, null));
 
     expect(await screen.findByText("20")).toBeInTheDocument(); // Total Students (windowed)
     expect(screen.getAllByText("Total Students").length).toBeGreaterThan(0); // KPI row tile + insights tile
@@ -141,7 +141,7 @@ describe("CoachingOverviewPage", () => {
     await user.click(screen.getByRole("combobox", { name: /coaching insights time window/i }));
     await user.click(await screen.findByText("Last 60 Days"));
 
-    await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 60));
+    await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 60, null));
     expect(await screen.findByText("35")).toBeInTheDocument(); // 60-day Total Students
     expect(screen.queryByText("4.6")).not.toBeInTheDocument();
   });
@@ -186,11 +186,11 @@ describe("CoachingOverviewPage", () => {
     expect(screen.getByText("Coaching")).toBeInTheDocument();
   });
 
-  it("passes the sport/status filters through to listCoaches when the roster panel loads", async () => {
+  it("passes the status and the selected sports (null = All Sports) through to listCoaches when the roster panel loads", async () => {
     renderWithProviders(<CoachingOverviewPage />);
     await waitFor(() =>
       expect(listCoaches).toHaveBeenCalledWith(
-        expect.objectContaining({ facilityId: "f1", filters: expect.objectContaining({ status: null, sportId: null }) }),
+        expect.objectContaining({ facilityId: "f1", filters: expect.objectContaining({ status: null, sportIds: null }) }),
       ),
     );
   });

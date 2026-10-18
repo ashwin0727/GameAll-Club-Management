@@ -263,26 +263,21 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            _muted(context, [
-              d.member.phone,
-              if (d.member.email != null) d.member.email!,
-              if (d.member.dateOfBirth != null) 'DOB ${Formatters.dateShort(DateTime.parse(d.member.dateOfBirth!))}',
-              if (d.member.address != null) d.member.address!,
-            ].join('  ·  ')),
             const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.lg,
-              runSpacing: AppSpacing.sm,
-              children: [
-                _stat(context, 'Membership Type', m.name),
-                _stat(context, 'Member Since', Formatters.dateShort(d.member.memberSince)),
-                _stat(context, 'Linked By', d.createdByName ?? 'Self registered'),
-                _stat(context, 'Start Date', Formatters.dateShort(m.startDate)),
-                _stat(context, 'Payment Status', (d.payment?.settled ?? false) ? 'PAID' : 'PENDING'),
-                _stat(context, m.autoRenew ? 'Next Payment' : 'Expiry', Formatters.dateShort(m.endDate)),
-              ],
-            ),
+            _contactLine(context, Icons.phone_outlined, d.member.phone),
+            if (d.member.email != null) _contactLine(context, Icons.mail_outline, d.member.email!),
+            if (d.member.dateOfBirth != null)
+              _contactLine(context, Icons.cake_outlined, Formatters.dateShort(DateTime.parse(d.member.dateOfBirth!))),
+            if (d.member.address != null) _contactLine(context, Icons.place_outlined, d.member.address!),
+            const Divider(height: AppSpacing.xl),
+            _statGrid(context, [
+              ('Membership Type', m.name),
+              ('Member Since', Formatters.dateShort(d.member.memberSince)),
+              ('Linked By', d.createdByName ?? 'Self registered'),
+              ('Start Date', Formatters.dateShort(m.startDate)),
+              ('Payment Status', (d.payment?.settled ?? false) ? 'PAID' : 'PENDING'),
+              (m.autoRenew ? 'Next Payment' : 'Expiry', Formatters.dateShort(m.endDate)),
+            ]),
           ],
         ),
       ),
@@ -326,13 +321,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         _row(context, 'Sub Total', _money(m.membershipFeeInr + m.registrationFeeInr)),
         _row(context, 'GST (${m.gstPercent}%)', _money(m.gstAmountInr)),
         const Divider(height: AppSpacing.lg),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Total Amount', style: TextStyle(fontWeight: FontWeight.w700, color: tokens.success)),
-            Text(_money(m.totalAmountInr), style: TextStyle(fontWeight: FontWeight.w700, color: tokens.success)),
-          ],
-        ),
+        _row(context, 'Total Amount', _money(m.totalAmountInr), emphasis: tokens.success),
         const Divider(height: AppSpacing.lg),
         _row(context, 'Payment Mode', d.payment?.method?.toUpperCase() ?? '—'),
         _row(context, 'Payment Date',
@@ -372,23 +361,21 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
             ? [Text('No activity recorded.', style: AppTypography.secondary(context))]
             : d.timeline
                 .map((ev) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.only(top: 5),
-                            child: CircleAvatar(radius: 3, backgroundColor: tokens.success),
+                            padding: const EdgeInsets.only(top: 5, right: AppSpacing.md),
+                            child: CircleAvatar(radius: 4, backgroundColor: tokens.success),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
-                            child: Wrap(
-                              spacing: AppSpacing.sm,
-                              crossAxisAlignment: WrapCrossAlignment.center,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(ev.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
-                                Text(ev.actor, style: AppTypography.caption(context)),
-                                Text(Formatters.dateTimeShort(ev.at), style: AppTypography.caption(context)),
+                                Text(ev.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                const SizedBox(height: 2),
+                                Text('${ev.actor} · ${Formatters.dateTimeShort(ev.at)}', style: AppTypography.caption(context)),
                               ],
                             ),
                           ),
@@ -419,16 +406,49 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
   Widget _muted(BuildContext context, String text) =>
       Text(text, style: AppTypography.caption(context));
 
-  Widget _stat(BuildContext context, String label, String value) => SizedBox(
-        width: 150,
-        child: Column(
+  /// One contact detail: an icon, then the text — which wraps rather than running off the card.
+  Widget _contactLine(BuildContext context, IconData icon, String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: AppTypography.caption(context)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Icon(icon, size: 16, color: context.tokens.textSecondary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(text, style: AppTypography.secondary(context))),
           ],
         ),
       );
+
+  /// Label-above-value pairs in two equal columns, so every value starts at the same left edge and a long one
+  /// wraps inside its own column instead of pushing its neighbour around.
+  Widget _statGrid(BuildContext context, List<(String, String)> items) {
+    Widget cell((String, String) it) => Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(it.$1, style: AppTypography.caption(context)),
+              const SizedBox(height: 2),
+              Text(it.$2, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ],
+          ),
+        );
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i += 2)
+          Padding(
+            padding: EdgeInsets.only(bottom: i + 2 < items.length ? AppSpacing.md : 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                cell(items[i]),
+                const SizedBox(width: AppSpacing.md),
+                i + 1 < items.length ? cell(items[i + 1]) : const Expanded(child: SizedBox.shrink()),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 
   Widget _sectionCard(BuildContext context, String title, List<Widget> children) => AppCard(
         child: Column(
@@ -441,27 +461,30 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         ),
       );
 
-  Widget _row(BuildContext context, String label, String value, {bool danger = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Text(label, style: AppTypography.secondary(context))),
-            const SizedBox(width: AppSpacing.md),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                  color: danger ? context.tokens.destructive : context.tokens.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+  /// A label on the left and its value on the right, in two fixed-proportion columns so every row in every card
+  /// lines up; a long value wraps within its column.
+  Widget _row(BuildContext context, String label, String value, {bool danger = false, Color? emphasis}) {
+    final tokens = context.tokens;
+    final color = emphasis ?? (danger ? tokens.destructive : tokens.textPrimary);
+    final weight = emphasis != null ? FontWeight.w700 : FontWeight.w600;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(label, style: TextStyle(fontSize: 13, color: emphasis ?? tokens.textSecondary, fontWeight: emphasis != null ? FontWeight.w700 : null)),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            flex: 6,
+            child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontWeight: weight, fontSize: 13, color: color)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Structure-shaped placeholder for the plan-centric membership detail

@@ -7,7 +7,6 @@ import '../../core/routing/page_transitions.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
-import '../../data/models/guest_booking_dashboard.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
@@ -19,14 +18,15 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'member_schedule.dart';
 import 'membership_detail_screen.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Memberships → Membership Schedule — mirrors
 /// src/features/memberships/components/member-schedule-page.tsx.
 ///
-/// Pick a member and see their allocated court slots across a week (or a single day), alongside the
-/// guest bookings on the same court(s) so staff can see what else is happening there. The web draws
-/// a time grid; on a phone each day is a short list of slots, which reads better at this width.
-/// Maintenance blocks and closed days are not overlaid here.
+/// Pick a member and see their allocated court slots across a week (or a single day) — only the
+/// membership schedule; guest bookings are not shown here. The web draws a time grid; on a phone each
+/// day is a short list of slots, which reads better at this width.
 class MemberScheduleScreen extends ConsumerStatefulWidget {
   const MemberScheduleScreen({super.key});
 
@@ -43,7 +43,6 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
   bool _weekView = true;
   DateTime _anchor = _today();
 
-  List<GuestBookingRow> _guestBookings = const [];
   MembershipDetail? _detail;
 
   static DateTime _today() {
@@ -67,11 +66,16 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
     setState(() => _error = null);
     try {
       final rows = await ref.read(membershipRepositoryProvider).listMemberSchedules(fid);
-      final members = groupMemberSchedules(rows);
+      // Only the slots on the sports ticked in the "All Sports" selector (everything under All Sports).
+      final sports = ref.read(sportScopeProvider).idSet;
+      final members = groupMemberSchedules([
+        for (final r in rows)
+          if (sports == null || sports.contains(r.facilitySportId)) r,
+      ]);
       if (!mounted) return;
       setState(() {
         _members = members;
-        _memberId ??= members.firstOrNull?.memberId;
+        if (_memberId == null || !members.any((m) => m.memberId == _memberId)) _memberId = members.firstOrNull?.memberId;
         _courtId = _member?.courts.firstOrNull?.id;
       });
       await _loadAround();
@@ -85,29 +89,16 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
     }
   }
 
-  /// The member's plan details, and the guest bookings on their court(s) for the visible days.
+  /// The member's plan details.
   Future<void> _loadAround() async {
     final m = _member;
-    final fid = _facilityIdOrEmpty;
-    if (m == null || fid.isEmpty) return;
-    final days = _days;
-    final from = DateFormat('yyyy-MM-dd').format(days.first);
-    final to = DateFormat('yyyy-MM-dd').format(days.last);
-    final courtIds = _courtId != null ? [_courtId!] : m.courts.map((c) => c.id).toList();
+    if (m == null || _facilityIdOrEmpty.isEmpty) return;
     try {
-      final bookingRepo = ref.read(bookingRepositoryProvider);
-      final results = await Future.wait([
-        for (final id in courtIds) bookingRepo.listGuestBookings(fid, courtId: id, from: from, to: to, limit: 200),
-      ]);
       final detail = m.membershipId == null ? null : await ref.read(membershipRepositoryProvider).getMembershipDetail(m.membershipId!);
       if (!mounted || _memberId != m.memberId) return;
-      setState(() {
-        _guestBookings = [for (final r in results) ...r.rows].where((b) => b.status != 'cancelled').toList();
-        _detail = detail;
-      });
+      setState(() => _detail = detail);
     } on AppException {
-      // The member's own slots still show; the overlay and plan details just stay empty.
-      if (mounted) setState(() => _guestBookings = const []);
+      // The member's own slots still show; the plan details just stay empty.
     }
   }
 
@@ -135,7 +126,6 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
       _memberId = picked;
       _courtId = _member?.courts.firstOrNull?.id;
       _detail = null;
-      _guestBookings = const [];
     });
     _loadAround();
   }
@@ -155,10 +145,13 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
+      if (prev != next) _load();
+    });
     final m = _member;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Membership Schedule')),
+      appBar: AppBar(title: const Text('Membership Schedule'), actions: const [SportScopeChip(), SizedBox(width: 8)]),
       body: SafeArea(
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)
@@ -170,7 +163,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       children: [
                         Text(
-                          "View a member's court schedule across the week, alongside guest bookings on the same court.",
+                          "View a member's court schedule across the week.",
                           style: AppTypography.secondary(context),
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -288,7 +281,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
     return Wrap(
       spacing: AppSpacing.md,
       runSpacing: 2,
-      children: [dot(t.primary, 'Member slot'), dot(t.electricBlue, 'Guest booking')],
+      children: [dot(t.primary, 'Member slot')],
     );
   }
 
@@ -296,10 +289,6 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
     final t = context.tokens;
     final isToday = day == _today();
     final slots = m.slots.where((s) => s.occursOn(day) && (_courtId == null || s.courtId == _courtId)).toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    final guests = _guestBookings
-        .where((b) => DateUtils.isSameDay(b.startTime, day))
-        .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     return Padding(
@@ -321,17 +310,11 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
-            if (slots.isEmpty && guests.isEmpty)
+            if (slots.isEmpty)
               Text('No Slots', style: AppTypography.caption(context))
             else ...[
               for (final s in slots)
                 _entry(t.primary, '${s.startTime} – ${s.endTime}', '${s.batchName.isEmpty ? 'Member slot' : s.batchName} · ${s.courtName}'),
-              for (final g in guests)
-                _entry(
-                  t.electricBlue,
-                  '${DateFormat('HH:mm').format(g.startTime)} – ${DateFormat('HH:mm').format(g.endTime)}',
-                  'Guest booking · ${g.guestName} · ${g.courtName}',
-                ),
             ],
           ],
         ),

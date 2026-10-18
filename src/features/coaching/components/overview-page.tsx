@@ -10,6 +10,7 @@ import { MembershipDashboardHero } from "@/features/memberships/components/membe
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { CoachesListPanel } from "@/features/coaching/components/coaches-list-panel";
 import { AddCoachSheet } from "@/features/coaching/components/add-coach-sheet";
@@ -46,28 +47,31 @@ export function CoachingOverviewPage() {
   // (which owns its own load()) to remount and refetch, since it doesn't expose a refresh handle.
   const [rosterKey, setRosterKey] = useState(0);
 
+  // The sports ticked in the top bar (null = All Sports): every figure on this page is for those sports.
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
+
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setState("loading");
     setError(null);
     try {
-      setData(await getCoachingService().getOverview(facilityId));
+      setData(await getCoachingService().getOverview(facilityId, sportIds));
       setState("ready");
     } catch (e) {
       setError(e instanceof ServiceError ? e.message : "Unable to load the coaching overview.");
       setState("error");
     }
-  }, [facilityId]);
+  }, [facilityId, sportIds, sportsReady]);
 
   const loadInsights = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setInsightsError(null);
     try {
-      setInsights(await getCoachingService().getInsights(facilityId, insightsDays));
+      setInsights(await getCoachingService().getInsights(facilityId, insightsDays, sportIds));
     } catch (e) {
       setInsightsError(e instanceof ServiceError ? e.message : "Unable to load coaching insights.");
     }
-  }, [facilityId, insightsDays]);
+  }, [facilityId, insightsDays, sportIds, sportsReady]);
 
   useEffect(() => {
     void load();

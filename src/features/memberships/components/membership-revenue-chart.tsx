@@ -39,11 +39,11 @@ function dayLabel(bucket: string): string {
  * laid out as elements rather than SVG circles so they stay round rather than being squashed
  * into ellipses.
  */
-export function MembershipRevenueChart({ facilityId }: { facilityId: string }) {
+export function MembershipRevenueChart({ facilityId, membershipIds = null }: { facilityId: string; /** null = the whole facility; a list = only these memberships (a subset of sports ticked). */ membershipIds?: string[] | null }) {
   // Six months of daily takings: the last three are shown and totalled, the three before them are only what the
   // change is measured against. The headline figure and the line come from the same data, so they always agree.
   const now = new Date();
-  const { data } = useMembershipRevenue(facilityId, "day", { from: monthStartIso(now, 5), to: todayIso(now) });
+  const { data } = useMembershipRevenue(facilityId, "day", { from: monthStartIso(now, 5), to: todayIso(now) }, membershipIds);
   const window3 = data ? revenueOverMonths(data, now, 3) : null;
   const points = window3?.current ?? [];
   const revenueInr = window3?.total;

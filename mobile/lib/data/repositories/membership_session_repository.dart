@@ -242,9 +242,13 @@ class MembershipSessionRepository {
   // src/services/membership-sessions/supabase-membership-session.service.ts.
   // ---------------------------------------------------------------------------
 
-  Future<MembershipSessionsSummary> getSessionsSummary(String facilityId) async {
+  /// `sportIds` null = All Sports; a list narrows every figure to those sports (migration 0133).
+  Future<MembershipSessionsSummary> getSessionsSummary(String facilityId, {List<String>? sportIds}) async {
     try {
-      final data = await _client.rpc('get_membership_sessions_summary', params: {'p_facility_id': facilityId});
+      final data = await _client.rpc('get_membership_sessions_summary', params: {
+        'p_facility_id': facilityId,
+        'p_facility_sport_ids': (sportIds == null || sportIds.isEmpty) ? null : sportIds,
+      });
       return MembershipSessionsSummary.fromJson((data as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
@@ -255,6 +259,7 @@ class MembershipSessionRepository {
     String facilityId, {
     String? search,
     String? facilitySportId,
+    List<String>? sportIds,
     String? courtId,
     String? status,
     int? day,
@@ -266,6 +271,7 @@ class MembershipSessionRepository {
         'p_facility_id': facilityId,
         'p_search': search,
         'p_facility_sport_id': facilitySportId,
+        'p_facility_sport_ids': (sportIds == null || sportIds.isEmpty) ? null : sportIds,
         'p_court_id': courtId,
         'p_status': status,
         'p_day': day,

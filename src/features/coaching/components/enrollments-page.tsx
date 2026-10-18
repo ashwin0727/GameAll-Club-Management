@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { EnrollmentRow, EnrollmentStatus, ProgramOption } from "@/features/coaching/types";
 import {
@@ -49,7 +50,8 @@ export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: strin
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-  useEffect(() => setPage(0), [debounced, status, programId]);
+  const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(facilityId);
+  useEffect(() => setPage(0), [debounced, status, programId, sportKey]);
 
   useEffect(() => {
     if (!facilityId) return;
@@ -57,7 +59,7 @@ export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: strin
   }, [facilityId]);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const result = await getCoachingService().listEnrollments({
       facilityId,
@@ -65,13 +67,14 @@ export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: strin
         search: debounced,
         status: status === ALL ? null : (status as EnrollmentStatus),
         programId: programId === ALL ? null : programId,
+        sportIds,
       },
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     });
     setRows(result.enrollments);
     setTotalCount(result.totalCount);
-  }, [facilityId, debounced, status, programId, page]);
+  }, [facilityId, debounced, status, programId, page, sportIds, sportsReady]);
 
   useEffect(() => {
     let cancelled = false;

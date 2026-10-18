@@ -50,6 +50,10 @@ export function MembershipDashboardPage() {
   // Membership v1 page: a facility with both Badminton and Cricket (Turf) shows one at a time.
   const rows = useMemo(() => (rowsQuery.data ? membershipRowsForSport(rowsQuery.data, batches, sportScope) : undefined), [rowsQuery.data, batches, sportScope]);
 
+  // With a subset of sports ticked, the revenue card counts only these memberships' payments; under All Sports it
+  // is the facility's total.
+  const revenueMembershipIds = useMemo(() => (sportScope && rows ? rows.map((r) => r.membershipId) : null), [sportScope, rows]);
+
   const now = useMemo(() => new Date(), []);
   // The summary RPC has no sport parameter, so it can't be trusted once a sport filter is
   // narrowing things — computed straight from the (already sport-scoped) rows instead, same as
@@ -155,7 +159,7 @@ export function MembershipDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <ActiveInactiveBarChart points={trend} />
         {facilityId && (
-          <MembershipRevenueChart facilityId={facilityId} />
+          <MembershipRevenueChart facilityId={facilityId} membershipIds={revenueMembershipIds} />
         )}
         <QuickActionsPanel
           onAddMember={() => router.push("/memberships/v1/new")}

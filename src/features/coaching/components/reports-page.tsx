@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { CoachingReports } from "@/features/coaching/types";
 import { ErrorState, KpiCard, PageHeader, TableSkeleton, money } from "@/features/coaching/components/shared";
@@ -26,18 +27,20 @@ export function CoachingReportsPage() {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
 
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
+
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setState("loading");
     setError(null);
     try {
-      setData(await getCoachingService().getReports({ facilityId, preset }));
+      setData(await getCoachingService().getReports({ facilityId, preset, sportIds }));
       setState("ready");
     } catch (e) {
       setError(e instanceof ServiceError ? e.message : "Unable to load coaching reports.");
       setState("error");
     }
-  }, [facilityId, preset]);
+  }, [facilityId, preset, sportIds, sportsReady]);
 
   useEffect(() => {
     void load();

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { SessionRow } from "@/features/coaching/types";
 import { ErrorState, PageHeader, TableSkeleton, fmtTime, sessionStatusBadge } from "@/features/coaching/components/shared";
@@ -40,13 +41,15 @@ export function SchedulePage() {
     [weekStart],
   );
 
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
+
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     try {
       const result = await getCoachingService().listSessions({
         facilityId,
-        filters: { from: weekStart.toISOString(), to: weekEnd.toISOString() },
+        filters: { from: weekStart.toISOString(), to: weekEnd.toISOString(), sportIds },
         limit: 500,
       });
       setRows(result.sessions);
@@ -54,7 +57,7 @@ export function SchedulePage() {
       setError(e instanceof ServiceError ? e.message : "Unable to load the schedule.");
       setRows([]);
     }
-  }, [facilityId, weekStart, weekEnd]);
+  }, [facilityId, weekStart, weekEnd, sportIds, sportsReady]);
 
   useEffect(() => {
     setRows(null);

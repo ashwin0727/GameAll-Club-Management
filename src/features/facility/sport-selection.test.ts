@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSportSelection, sportSelectionLabel, toggleSportSelection } from "@/features/facility/sport-selection";
+import { resetsSportSelection, resolveSportSelection, sportSelectionLabel, sportSelectionLocked, toggleSportSelection } from "@/features/facility/sport-selection";
 
 const ALL = ["bad", "cri", "foo"];
 
@@ -43,5 +43,22 @@ describe("sportSelectionLabel", () => {
     expect(sportSelectionLabel(resolveSportSelection(["bad"], ALL), names)).toBe("Badminton");
     expect(sportSelectionLabel(resolveSportSelection(["bad", "cri"], ALL), names)).toBe("Badminton, Cricket");
     expect(sportSelectionLabel(resolveSportSelection(["bad", "cri", "foo"], ["bad", "cri", "foo", "ten"]), names)).toBe("Badminton +2");
+  });
+});
+
+describe("pages that are fixed at All Sports", () => {
+  it("locks Maintenance, Staff and Inventory (every page under them)", () => {
+    for (const p of ["/maintenance", "/maintenance/tickets", "/users-roles/staff", "/users-roles/access-history", "/inventory", "/inventory/items"]) {
+      expect(sportSelectionLocked(p)).toBe(true);
+    }
+  });
+  it("leaves every other page selectable", () => {
+    for (const p of ["/dashboard", "/calendar", "/guests", "/memberships/v1", "/coaching/programs", "/reports", "/maintenancex"]) {
+      expect(sportSelectionLocked(p)).toBe(false);
+    }
+  });
+  it("starts Home from All Sports", () => {
+    expect(resetsSportSelection("/dashboard")).toBe(true);
+    expect(resetsSportSelection("/calendar")).toBe(false);
   });
 });

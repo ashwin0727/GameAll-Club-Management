@@ -162,8 +162,6 @@ class _PlanRow extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(plan.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
                         ),
                         const SizedBox(width: AppSpacing.sm),

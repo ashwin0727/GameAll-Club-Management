@@ -1,6 +1,8 @@
 /// Mirrors src/features/memberships/types.ts — same shape.
 library;
 
+import '../../core/utils/batch_name.dart';
+
 /// Matches the DB `membership_status` enum exactly (raw status, before the
 /// date-derived display status in ../features/memberships/membership_status.dart
 /// is applied).
@@ -1012,7 +1014,7 @@ class AssignableBatch {
   factory AssignableBatch.fromJson(Map<String, dynamic> json) {
     return AssignableBatch(
       batchId: json['batch_id'] as String,
-      name: json['name'] as String? ?? 'Batch',
+      name: displayBatchName(json['name'] as String? ?? 'Batch', json['start_time'] as String? ?? '', json['end_time'] as String? ?? ''),
       planId: json['plan_id'] as String?,
       courtId: json['court_id'] as String,
       courtName: json['court_name'] as String? ?? '',

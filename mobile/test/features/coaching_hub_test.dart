@@ -305,15 +305,15 @@ class _OwnerSession extends SessionController {
 
 class _FakeCoaching implements CoachingRepository {
   @override
-  Future<StudentCardStats?> getStudentCardStats(String facilityId) async =>
+  Future<StudentCardStats?> getStudentCardStats(String facilityId, {List<String>? sportIds}) async =>
       const StudentCardStats(totalStudents: 8, enrolledStudents: 5, revenueMinor: 1250000, pendingMinor: 480000);
 
   @override
-  Future<ProgramCardStats?> getProgramCardStats(String facilityId) async =>
+  Future<ProgramCardStats?> getProgramCardStats(String facilityId, {List<String>? sportIds}) async =>
       const ProgramCardStats(total: 4, active: 3, enrolled: 13, availableSeats: 7);
 
   @override
-  Future<CoachingOverview> getOverview(String facilityId) async => CoachingOverview(
+  Future<CoachingOverview> getOverview(String facilityId, {List<String>? sportIds}) async => CoachingOverview(
         activeStudents: 12,
         activePrograms: 3,
         activeCoaches: 2,
@@ -343,7 +343,7 @@ class _FakeCoaching implements CoachingRepository {
       );
 
   @override
-  Future<CoachPage> listCoaches({required String facilityId, String? search, CoachStatus? status, int limit = 20, int offset = 0}) async =>
+  Future<CoachPage> listCoaches({required String facilityId, String? search, CoachStatus? status, int limit = 20, int offset = 0, List<String>? sportIds}) async =>
       CoachPage(coaches: [coach('a', 'Arjun Kumar', students: 32, years: 3)], totalCount: 1);
 
   @override
@@ -356,11 +356,12 @@ class _FakeCoaching implements CoachingRepository {
     SessionStatus? status,
     int limit = 200,
     int offset = 0,
+    List<String>? sportIds,
   }) async =>
       const SessionPage(sessions: [], totalCount: 0);
 
   @override
-  Future<ProgramPage> listPrograms({required String facilityId, String? search, ProgramStatus? status, int limit = 20, int offset = 0}) async =>
+  Future<ProgramPage> listPrograms({required String facilityId, String? search, ProgramStatus? status, int limit = 20, int offset = 0, List<String>? sportIds}) async =>
       ProgramPage(programs: [program('a', students: 3, price: 200000)], totalCount: 1);
 
   @override
@@ -373,6 +374,7 @@ class _FakeCoaching implements CoachingRepository {
     int offset = 0,
     String? coachId,
     String? level,
+    List<String>? sportIds,
     String? statusKey,
   }) async =>
       EnrollmentPage(enrollments: [student('a')], totalCount: 1);

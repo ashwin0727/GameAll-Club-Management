@@ -16,6 +16,8 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Coaching → Overview — mirrors src/features/coaching/components/overview-page.tsx.
 class CoachingOverviewScreen extends ConsumerStatefulWidget {
@@ -40,7 +42,7 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
     if (fid == null) return;
     setState(() => _error = null);
     try {
-      final data = await ref.read(coachingRepositoryProvider).getOverview(fid);
+      final data = await ref.read(coachingRepositoryProvider).getOverview(fid, sportIds: ref.read(sportScopeProvider).ids);
       if (mounted) setState(() => _data = data);
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -49,6 +51,10 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(
@@ -61,6 +67,8 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
       appBar: AppBar(
         title: const Text('Coaching'),
         actions: [
+          const SportScopeChip(),
+          const SizedBox(width: 8),
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu_open),
             onSelected: (r) => context.push(r),

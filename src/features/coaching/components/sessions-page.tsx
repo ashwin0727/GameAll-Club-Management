@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { CoachOption, ProgramOption, SessionRow, SessionStatus } from "@/features/coaching/types";
 import {
@@ -41,7 +42,8 @@ export function SessionsPage() {
 
   const canCreate = perms?.can("COACHING_CREATE_SESSION") ?? false;
 
-  useEffect(() => setPage(0), [status, coachId, programId]);
+  const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(facilityId);
+  useEffect(() => setPage(0), [status, coachId, programId, sportKey]);
 
   useEffect(() => {
     if (!facilityId) return;
@@ -50,11 +52,12 @@ export function SessionsPage() {
   }, [facilityId]);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const result = await getCoachingService().listSessions({
       facilityId,
       filters: {
+        sportIds,
         status: status === ALL ? null : (status as SessionStatus),
         coachId: coachId === ALL ? null : coachId,
         programId: programId === ALL ? null : programId,
@@ -64,7 +67,7 @@ export function SessionsPage() {
     });
     setRows(result.sessions);
     setTotalCount(result.totalCount);
-  }, [facilityId, status, coachId, programId, page]);
+  }, [facilityId, status, coachId, programId, page, sportIds, sportsReady]);
 
   useEffect(() => {
     let cancelled = false;

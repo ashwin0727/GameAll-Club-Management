@@ -118,6 +118,8 @@ export interface MembershipSessionListRow {
 export interface MembershipSessionListParams {
   search?: string;
   facilitySportId?: string;
+  /** The sports in view (the top bar's selection); null/omitted = All Sports. */
+  facilitySportIds?: string[] | null;
   courtId?: string;
   status?: MembershipSessionStatus;
   day?: number;

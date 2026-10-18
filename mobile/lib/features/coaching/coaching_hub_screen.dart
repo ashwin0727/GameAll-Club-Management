@@ -21,6 +21,8 @@ import '../authentication/session_controller.dart';
 import '../memberships/members_insights.dart';
 import '../staff/staff_common.dart';
 import 'coaching_hub.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// The Coaching hub — laid out like Memberships: a pill tab strip (Coaching · Programs · Students),
 /// a hero card with the page's headline number, a collapsible "View More Insights" panel, the list
@@ -82,17 +84,18 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
     });
     try {
       final repo = ref.read(coachingRepositoryProvider);
+      final sportIds = ref.read(sportScopeProvider).ids;
       final now = DateTime.now();
       final week = weekRange(now);
       final results = await Future.wait<Object>([
-        repo.getOverview(fid),
-        repo.listPrograms(facilityId: fid, limit: _pageSize),
-        repo.listEnrollments(facilityId: fid, limit: _pageSize),
-        repo.listCoaches(facilityId: fid, limit: _pageSize),
-        repo.listSessions(facilityId: fid, from: week.start, to: week.end, limit: 500),
+        repo.getOverview(fid, sportIds: sportIds),
+        repo.listPrograms(facilityId: fid, limit: _pageSize, sportIds: sportIds),
+        repo.listEnrollments(facilityId: fid, limit: _pageSize, sportIds: sportIds),
+        repo.listCoaches(facilityId: fid, limit: _pageSize, sportIds: sportIds),
+        repo.listSessions(facilityId: fid, from: week.start, to: week.end, limit: 500, sportIds: sportIds),
       ]);
-      final cardStats = await repo.getProgramCardStats(fid);
-      final studentStats = await repo.getStudentCardStats(fid);
+      final cardStats = await repo.getProgramCardStats(fid, sportIds: sportIds);
+      final studentStats = await repo.getStudentCardStats(fid, sportIds: sportIds);
       if (!mounted) return;
       setState(() {
         _overview = results[0] as CoachingOverview;
@@ -130,6 +133,10 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Coaching', message: "You don't have permission to view coaching.");
@@ -142,6 +149,8 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
           title: const Text('Coaching', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
           // The create button follows the tab and sits at the top right.
           actions: [
+            const SportScopeChip(),
+            const SizedBox(width: 8),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 130),
               transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
@@ -683,7 +692,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
 
     final header = <Widget>[
       HubHeroCard(
-        icon: Icons.sports_outlined,
+        icon: Icons.school_outlined,
         title: 'Total Programs',
         value: '${stats.total}',
         figs: [
@@ -699,7 +708,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
         subtitle: 'Programs, students, sessions and fees',
         tiles: [
           InsightData(
-            icon: Icons.sports_outlined,
+            icon: Icons.school_outlined,
             color: tokens.violet,
             title: 'Total Programs',
             value: '${widget.cardStats?.total ?? stats.total}',
@@ -749,7 +758,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
         ],
       ),
       const SizedBox(height: AppSpacing.md),
-      if (rows.isEmpty) _empty(context, Icons.sports_outlined, all.isEmpty ? 'No programs yet.' : 'No programs match.'),
+      if (rows.isEmpty) _empty(context, Icons.school_outlined, all.isEmpty ? 'No programs yet.' : 'No programs match.'),
     ];
 
     return ListView.builder(
@@ -760,7 +769,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
         final p = rows[i - header.length];
         final active = p.status == ProgramStatus.active;
         return _HubRow(
-          icon: Icons.sports_outlined,
+          icon: Icons.school_outlined,
           color: tokens.violet,
           title: p.name,
           lines: [

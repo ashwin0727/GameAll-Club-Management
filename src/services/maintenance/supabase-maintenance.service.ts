@@ -1,5 +1,6 @@
 "use client";
 
+import { displayBatchName } from "@/features/membership-sessions/batch-name";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { FacilityStaffOption, MaintenanceService } from "@/services/maintenance/maintenance.service";
@@ -289,7 +290,7 @@ export class SupabaseMaintenanceService implements MaintenanceService {
     if (error) throw toServiceError(error, "MAINTENANCE_DATA_ERROR");
     return (data ?? []).map((s) => ({
       batchId: s.batch_id,
-      batchName: s.batch_name,
+      batchName: displayBatchName(s.batch_name, s.start_time, s.end_time),
       sessionDate: s.session_date,
       startTime: s.start_time,
       endTime: s.end_time,

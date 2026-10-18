@@ -20,16 +20,19 @@ import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'add_member_wizard_screen.dart';
-import 'member_detail_screen.dart';
+import 'membership_detail_screen.dart';
 import 'member_row.dart';
 import 'membership_plan_details_screen.dart';
 import 'membership_plans_tab.dart';
 import 'members_insights.dart';
 import 'members_ordering.dart';
 import 'membership_plan_wizard_screen.dart';
+import 'sport_scope_filters.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
-/// The Memberships hub — Members (the default tab) and Plans. Membership sessions live on their own
-/// screen (Profile → Manage → Membership Sessions).
+/// The Memberships hub — Members (the default tab) and Plans. Sessions, Schedule and Reports are one tap away
+/// from the Members tab, as they are on the Coaching hub.
 class MembersScreen extends ConsumerStatefulWidget {
   const MembersScreen({super.key, this.openPlans = false, this.openNew = false, this.showPlansTab = false});
 
@@ -59,11 +62,27 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   bool _autoOpenedPlans = false;
   bool _autoOpenedNew = false;
 
+  // What the server returned (the whole facility) ...
+  List<MembershipPlan> _rawPlans = const [];
+  MembershipPageSummary? _rawSummary;
+  List<MembershipListRow> _rawMembers = const [];
+  List<AssignableBatch> _rawBatches = const [];
+  int _memberTotal = 0;
+  // ... and what is shown: only the sports ticked in the "All Sports" selector (everything under All Sports).
   List<MembershipPlan> _plans = const [];
   MembershipPageSummary? _summary;
   List<MembershipListRow> _members = const [];
-  int _memberTotal = 0;
   List<AssignableBatch> _batches = const [];
+
+  void _applyScope() {
+    final sports = ref.read(sportScopeProvider).idSet;
+    setState(() {
+      _plans = plansForSports(_rawPlans, _rawBatches, sports);
+      _members = membershipRowsForSports(_rawMembers, _rawBatches, sports);
+      _batches = batchesForSports(_rawBatches, sports);
+      _summary = (sports == null || _rawSummary == null) ? _rawSummary : scopedMembershipSummary(_members);
+    });
+  }
 
   @override
   void initState() {
@@ -108,13 +127,14 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
       ]);
       setState(() {
         _facilityId = facility.id;
-        _plans = results[0] as List<MembershipPlan>;
-        _summary = results[1] as MembershipPageSummary;
-        _members = (results[2] as MembershipListResult).rows;
+        _rawPlans = results[0] as List<MembershipPlan>;
+        _rawSummary = results[1] as MembershipPageSummary;
+        _rawMembers = (results[2] as MembershipListResult).rows;
         _memberTotal = (results[2] as MembershipListResult).totalCount;
-        _batches = results[3] as List<AssignableBatch>;
+        _rawBatches = results[3] as List<AssignableBatch>;
         _loading = false;
       });
+      _applyScope();
       if (widget.openPlans && !_autoOpenedPlans && mounted) {
         _autoOpenedPlans = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _managePlans());
@@ -215,6 +235,10 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    // Changing the "All Sports" selector re-filters what is already loaded.
+    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
+      if (prev != next && !_loading) _applyScope();
+    });
     return TabPopScope(
       tab: AppTab.members,
       child: Scaffold(
@@ -223,6 +247,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         title: const Text('Memberships',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
+          const SportScopeChip(),
           // Icon-only so the title, this and the create button all fit on a narrow phone.
           IconButton(
             tooltip: 'Join link',
@@ -556,6 +581,20 @@ class _MembersTabState extends State<_MembersTab> {
             ),
           ],
         ),
+        const SizedBox(height: AppSpacing.md),
+        // The same one-tap shortcuts the Coaching hub has: Sessions, Schedule and Reports.
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            for (final (label, icon, route) in [
+              ('Sessions', Icons.event_note_outlined, AppRoutes.membershipSessions),
+              ('Schedule', Icons.calendar_view_week_outlined, AppRoutes.membershipSchedule),
+              ('Reports', Icons.bar_chart_rounded, AppRoutes.reportsMemberships),
+            ])
+              ActionChip(avatar: Icon(icon, size: 16), label: Text(label), onPressed: () => context.push(route)),
+          ],
+        ),
         const SizedBox(height: AppSpacing.lg),
         Text(
           '${rows.length} member${rows.length == 1 ? '' : 's'}',
@@ -621,10 +660,12 @@ class _MembersTabState extends State<_MembersTab> {
           child: MemberRow(
             row: m,
             onTap: () async {
-              final changed = await Navigator.of(context).push<bool>(
-                AppPageRoute(builder: (_) => MemberDetailScreen(membershipId: m.membershipId)),
+              // The same Membership Details page the web shows; the list refreshes on the way back, since
+              // the page can edit, record a payment for, cancel or delete the membership.
+              await Navigator.of(context).push<Object?>(
+                AppPageRoute(builder: (_) => MembershipDetailScreen(membershipId: m.membershipId)),
               );
-              if (changed == true) widget.onReload();
+              widget.onReload();
             },
           ),
         );

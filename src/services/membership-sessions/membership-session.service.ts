@@ -37,7 +37,8 @@ export interface MembershipSessionService {
   cancelSlotBooking(bookingId: string): Promise<void>;
 
   // Dashboard (Phase 9)
-  getSessionsSummary(facilityId: string): Promise<MembershipSessionsSummary>;
+  /** `sportIds` null/omitted = All Sports; a list narrows every figure to those sports. */
+  getSessionsSummary(facilityId: string, sportIds?: string[] | null): Promise<MembershipSessionsSummary>;
   listSessionsAdmin(facilityId: string, params: MembershipSessionListParams): Promise<MembershipSessionListResult>;
   getSessionDetail(batchId: string): Promise<MembershipSessionDetail>;
   getSessionMembers(batchId: string): Promise<MembershipSessionMemberRow[]>;

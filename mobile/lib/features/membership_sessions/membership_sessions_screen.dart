@@ -12,7 +12,6 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../data/models/membership_session_dashboard.dart';
 import '../../data/models/playing_area.dart';
-import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/app_search_field.dart';
@@ -21,9 +20,10 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
-import 'membership_batches_sheet.dart';
 import 'membership_session_detail_screen.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 const _perPage = 10;
 
@@ -78,14 +78,11 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
   final _searchController = TextEditingController();
   Timer? _debounce;
   String _search = '';
-  String? _sportId;
   String? _courtId;
   String? _status;
   int? _day;
   int _page = 0;
 
-  List<FacilitySport> _facilitySports = [];
-  List<Sport> _sports = [];
   List<PlayingArea> _areas = [];
 
   @override
@@ -117,14 +114,8 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
         return;
       }
       _facilityId = facility.id;
-      final opts = await Future.wait([
-        ref.read(sportsRepositoryProvider).getFacilitySports(facility.id),
-        ref.read(sportsRepositoryProvider).getActiveSports(),
-        ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id),
-      ]);
-      _facilitySports = (opts[0] as List<FacilitySport>).where((f) => f.enabled).toList();
-      _sports = opts[1] as List<Sport>;
-      _areas = (opts[2] as List<PlayingArea>).where((a) => !a.archived).toList();
+      final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      _areas = areas.where((a) => !a.archived).toList();
       setState(() => _isLoading = false);
       await _reload();
     } on AppException catch (e) {
@@ -141,11 +132,11 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     setState(() => _rows = null);
     try {
       final results = await Future.wait([
-        ref.read(membershipSessionRepositoryProvider).getSessionsSummary(facilityId),
+        ref.read(membershipSessionRepositoryProvider).getSessionsSummary(facilityId, sportIds: ref.read(sportScopeProvider).ids),
         ref.read(membershipSessionRepositoryProvider).listSessionsAdmin(
               facilityId,
               search: _search.isEmpty ? null : _search,
-              facilitySportId: _sportId,
+              sportIds: ref.read(sportScopeProvider).ids,
               courtId: _courtId,
               status: _status,
               day: _day,
@@ -186,22 +177,6 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     _reload();
   }
 
-  String _sportName(FacilitySport fs) {
-    final s = _sports.where((sp) => sp.id == fs.sportId).firstOrNull;
-    return fs.customSportName ?? s?.name ?? 'Sport';
-  }
-
-  Future<void> _openCreate() async {
-    final facilityId = _facilityId;
-    if (facilityId == null) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => MembershipBatchesSheet(facilityId: facilityId),
-    );
-    await _reload();
-  }
-
   Future<void> _openDetail(MembershipSessionListRow row) async {
     final facilityId = _facilityId;
     if (facilityId == null) return;
@@ -215,41 +190,21 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
+    // Every card and row is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
+      if (prev != next) {
+        setState(() {
+          _courtId = null;
+          _page = 0;
+        });
+        _reload();
+      }
+    });
     return Scaffold(
       appBar: AppBar(
         title: const Text('Membership Sessions',
             style: TextStyle(fontWeight: FontWeight.w800)),
-        actions: [
-          if (_facilityId != null)
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.lg),
-              child: Material(
-                color: tokens.primary,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: _openCreate,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_rounded, size: 16, color: tokens.onAccent(tokens.primary)),
-                        const SizedBox(width: 4),
-                        Text('Create',
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: tokens.onAccent(tokens.primary))),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+        actions: const [SportScopeChip(), SizedBox(width: 8)],
       ),
       body: SafeArea(
         child: _isLoading
@@ -345,17 +300,6 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
             scrollDirection: Axis.horizontal,
             children: [
               PickerChip(
-                label: _sportId == null
-                    ? 'All Sports'
-                    : _facilitySports
-                        .where((fs) => fs.id == _sportId)
-                        .map(_sportName)
-                        .firstOrNull ??
-                        'Sport',
-                onSelect: _pickSport,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              PickerChip(
                 label: _courtId == null
                     ? 'All Courts'
                     : _areas.where((a) => a.id == _courtId).map((a) => a.name).firstOrNull ??
@@ -387,26 +331,9 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     );
   }
 
-  Future<void> _pickSport() async {
-    final picked = await showPickerSheet<String>(
-      context: context,
-      selected: _sportId ?? 'ALL',
-      options: [
-        (value: 'ALL', label: 'All Sports'),
-        ..._facilitySports.map((fs) => (value: fs.id, label: _sportName(fs))),
-      ],
-    );
-    if (picked == null) return;
-    setState(() {
-      _sportId = picked == 'ALL' ? null : picked;
-      _courtId = null;
-    });
-    _resetPageAndReload();
-  }
-
   Future<void> _pickCourt() async {
-    final visible =
-        _areas.where((a) => _sportId == null || a.facilitySportId == _sportId).toList();
+    final sports = ref.read(sportScopeProvider).idSet;
+    final visible = _areas.where((a) => sports == null || sports.contains(a.facilitySportId)).toList();
     final picked = await showPickerSheet<String>(
       context: context,
       selected: _courtId ?? 'ALL',

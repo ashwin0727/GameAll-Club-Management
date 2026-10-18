@@ -35,6 +35,7 @@ import { PlanWizardStepper } from "@/features/memberships/components/plan-wizard
 import { CourtAccessStep } from "@/features/memberships/components/court-access-step";
 import { formatClock12 } from "@/features/memberships/components/member-schedule-grid";
 import { useFacility } from "@/features/facility/hooks/use-facility";
+import { newBatchName } from "@/features/membership-sessions/batch-name";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import {
   billingIntervalLabel,
@@ -446,7 +447,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
           planId: plan.id,
           facilitySportId: court.facilitySportId,
           courtId: w.courtId,
-          name: `${plan.name} — ${w.startTime}`,
+          name: newBatchName(plan.name, w.startTime, w.endTime),
           daysOfWeek: w.daysOfWeek,
           startTime: w.startTime,
           endTime: w.endTime,

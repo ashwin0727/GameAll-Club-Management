@@ -1,3 +1,4 @@
+import '../../core/utils/batch_name.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -263,7 +264,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
           planId: plan.id,
           facilitySportId: court.facilitySportId,
           courtId: w.courtId,
-          name: '${plan.name} — ${w.startTime}',
+          name: newBatchName(plan.name, w.startTime, w.endTime),
           daysOfWeek: [...w.daysOfWeek]..sort(),
           startTime: w.startTime,
           endTime: w.endTime,

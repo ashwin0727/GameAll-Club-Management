@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFacility } from "@/features/facility/hooks/use-facility";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
+import { useGuestHistory } from "@/features/bookings/hooks/use-guest-booking-stats";
+import { phoneKey } from "@/features/bookings/guest-insights";
 import { getGuestService } from "@/services/guests";
 import type { GuestPlayer } from "@/features/guests/types";
 import { GuestFormDialog } from "@/features/guests/components/guest-form-dialog";
@@ -23,8 +26,26 @@ export function GuestList() {
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ACTIVE" | "INACTIVE" | "">("ACTIVE");
-  const [guests, setGuests] = useState<GuestPlayer[]>([]);
+  const [allGuests, setGuests] = useState<GuestPlayer[]>([]);
   const [listLoading, setListLoading] = useState(false);
+
+  // The sports ticked in the top bar. Under All Sports every guest shows; with a subset, only the guests who have
+  // booked one of those sports (guests themselves have no sport — what they have played is their booking history).
+  const sportFilter = useSportFilter(facilityId);
+  const sportIds = useMemo(() => (sportFilter.sportSet ? [...sportFilter.sportSet] : null), [sportFilter.sportSet]);
+  const history = useGuestHistory(facilityId, sportIds, sportFilter.ready && sportIds !== null);
+  const playedKeys = useMemo(
+    () => (sportIds && history.data ? new Set(history.data.map((r) => phoneKey(r.guestPhone)).filter((k): k is string => k !== null)) : null),
+    [sportIds, history.data],
+  );
+  const guests = useMemo(
+    () => (sportIds ? (playedKeys ? allGuests.filter((g) => {
+      const k = phoneKey(g.phone);
+      return k !== null && playedKeys.has(k);
+    }) : []) : allGuests),
+    [sportIds, playedKeys, allGuests],
+  );
+  const sportLoading = sportIds !== null && history.isLoading;
 
   const [addOpen, setAddOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<GuestPlayer | null>(null);
@@ -100,11 +121,15 @@ export function GuestList() {
         </Button>
       </div>
 
-      {listLoading ? (
+      {listLoading || sportLoading ? (
         <Skeleton className="h-64 w-full rounded-xl" />
       ) : guests.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          {query.trim().length >= 2 ? "No guest players found." : "No guest players have been added yet."}
+          {query.trim().length >= 2
+            ? "No guest players found."
+            : sportIds
+              ? "No guest players have booked the selected sports."
+              : "No guest players have been added yet."}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">

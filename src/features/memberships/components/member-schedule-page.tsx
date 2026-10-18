@@ -65,10 +65,10 @@ const VIEW_OPTIONS = [
 ];
 
 /**
- * Manage Membership Schedule — pick a member, see their allocated court slots for the week
- * alongside guest bookings, maintenance blocks and closed days on the same court(s). Reuses the
- * booking calendar's own event pipeline (`useCalendarEventsForRange`) for the guest/maintenance
- * overlay and operating-hours logic, rather than re-deriving either.
+ * Manage Membership Schedule — pick a member, see their allocated court slots for the week. Only the membership
+ * schedule is drawn (guest bookings are deliberately not shown here), with maintenance blocks and closed days on
+ * the same court(s) marked as unavailable. Reuses the booking calendar's own event pipeline
+ * (`useCalendarEventsForRange`) for the maintenance overlay and operating-hours logic, rather than re-deriving either.
  */
 export function MemberSchedulePage() {
   const { data: facility } = useFacility();
@@ -133,7 +133,7 @@ export function MemberSchedulePage() {
   const otherEvents: OtherCourtEvent[] = useMemo(
     () =>
       (eventsQuery.data ?? [])
-        .filter((e): e is typeof e & { kind: "GUEST" | "MAINTENANCE" } => e.kind === "GUEST" || e.kind === "MAINTENANCE")
+        .filter((e): e is typeof e & { kind: "MAINTENANCE" } => e.kind === "MAINTENANCE")
         .map((e) => ({ courtId: e.courtId, start: e.start, end: e.end, kind: e.kind, title: e.title, subtitle: e.subtitle, href: e.href })),
     [eventsQuery.data],
   );
@@ -162,9 +162,8 @@ export function MemberSchedulePage() {
     [selectedMember, visibleCourtIds, days, dayColumns],
   );
 
-  // Every active court, not just this member's own — they can still show up in someone else's
-  // guest booking on a different court, and staff should be able to check that too. Defaults to
-  // the member's own court via the effect above; this list is just what's pickable.
+  // Every active court, not just this member's own. Defaults to the member's own court via the effect
+  // above; this list is just what's pickable.
   const courtOptions = [
     { value: "", label: "All Courts" },
     ...areas.map((a) => ({ value: a.id, label: a.name })),
@@ -274,9 +273,6 @@ export function MemberSchedulePage() {
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-success" aria-hidden /> Member Slot
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-hidden /> Guest Booking
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/50" aria-hidden /> Blocked / Maintenance

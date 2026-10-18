@@ -35,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MembershipDashboardHero } from "@/features/memberships/components/membership-dashboard-hero";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { SKILL_LEVELS } from "@/features/coaching/components/use-program-wizard-form";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
@@ -97,7 +98,8 @@ export function ProgramsPage() {
   const [tab, setTab] = useState<ProgramTab>("All Programs");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [sportId, setSportId] = useState(ALL);
+  // The sports ticked in the top bar (null = All Sports) — there is no separate Sport filter on this page.
+  const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(facilityId);
   const [level, setLevel] = useState(ALL);
   const [view, setView] = useState<"list" | "grid">("list");
   const [page, setPage] = useState(0);
@@ -114,12 +116,12 @@ export function ProgramsPage() {
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-  useEffect(() => setPage(0), [debounced, sportId, level, tab]);
+  useEffect(() => setPage(0), [debounced, sportKey, level, tab]);
 
   const today = new Date().toISOString().slice(0, 10);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const status: ProgramStatus | null = tab === "Active" || tab === "Upcoming" ? "ACTIVE" : tab === "Completed" ? "COMPLETED" : null;
     const result = await getCoachingService().listPrograms({
@@ -127,7 +129,7 @@ export function ProgramsPage() {
       filters: {
         search: debounced,
         status,
-        facilitySportId: sportId === ALL ? null : sportId,
+        sportIds,
         level: level === ALL ? null : level,
       },
       limit: PAGE_SIZE,
@@ -136,7 +138,7 @@ export function ProgramsPage() {
     const filtered = tab === "Upcoming" ? result.programs.filter((p) => p.startDate && p.startDate > today) : result.programs;
     setRows(filtered);
     setTotalCount(tab === "Upcoming" ? filtered.length : result.totalCount);
-  }, [facilityId, debounced, sportId, level, tab, page, today]);
+  }, [facilityId, debounced, sportIds, sportsReady, level, tab, page, today]);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,14 +176,14 @@ export function ProgramsPage() {
   }
 
   const loadInsights = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setInsightsError(null);
     try {
-      setInsights(await getCoachingService().getProgramInsights(facilityId));
+      setInsights(await getCoachingService().getProgramInsights(facilityId, sportIds));
     } catch (e) {
       setInsightsError(e instanceof ServiceError ? e.message : "Unable to load program insights.");
     }
-  }, [facilityId]);
+  }, [facilityId, sportIds, sportsReady]);
 
   useEffect(() => {
     void loadInsights();
@@ -294,19 +296,6 @@ export function ProgramsPage() {
                   className="h-10 pl-9"
                 />
               </div>
-              <Select value={sportId} onValueChange={setSportId}>
-                <SelectTrigger className="w-[10rem]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>All Sports</SelectItem>
-                  {(sportsQuery.data ?? []).map((s) => (
-                    <SelectItem key={s.facilitySportId} value={s.facilitySportId}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger className="w-[10rem]">
                   <SelectValue />

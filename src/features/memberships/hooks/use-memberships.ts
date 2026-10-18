@@ -7,10 +7,22 @@ import type { MembershipListParams, RevenueGranularity } from "@/features/member
 // a quick remount/filter-toggle without risking stale numbers.
 const MEMBERSHIP_STALE_TIME = 15_000;
 
-export function useMembershipRevenue(facilityId: string | null, granularity: RevenueGranularity, range?: { from?: string; to?: string }) {
+/**
+ * `membershipIds` null = the whole facility (the database total). A list narrows the figure to just those
+ * memberships — what a subset of the sports ticked in the top bar means.
+ */
+export function useMembershipRevenue(
+  facilityId: string | null,
+  granularity: RevenueGranularity,
+  range?: { from?: string; to?: string },
+  membershipIds: string[] | null = null,
+) {
   return useQuery({
-    queryKey: ["membership-revenue", facilityId, granularity, range?.from ?? null, range?.to ?? null],
-    queryFn: () => getMembershipService().getMembershipRevenueTimeseries(facilityId!, granularity, range),
+    queryKey: ["membership-revenue", facilityId, granularity, range?.from ?? null, range?.to ?? null, membershipIds ? [...membershipIds].sort().join(",") : "all"],
+    queryFn: () =>
+      membershipIds
+        ? getMembershipService().getMembershipRevenueForMemberships(facilityId!, membershipIds, range)
+        : getMembershipService().getMembershipRevenueTimeseries(facilityId!, granularity, range),
     enabled: Boolean(facilityId),
     staleTime: MEMBERSHIP_STALE_TIME,
   });

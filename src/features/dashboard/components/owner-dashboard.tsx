@@ -476,8 +476,8 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
   // Students who have joined a coaching program and are still active (one per student, however many programs).
   // Shows a dash when it can't be read (no coaching access, or the database function isn't there yet).
   const { data: studentStats } = useQuery({
-    queryKey: ["dashboard-active-students", facility?.id],
-    queryFn: () => getCoachingService().getStudentCardStats(facility!.id),
+    queryKey: ["dashboard-active-students", facility?.id, sportIds?.join("|") ?? "all"],
+    queryFn: () => getCoachingService().getStudentCardStats(facility!.id, sportIds),
     enabled: Boolean(facility?.id),
     retry: false,
     staleTime: 60_000,

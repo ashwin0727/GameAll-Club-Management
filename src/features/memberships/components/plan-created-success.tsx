@@ -76,7 +76,7 @@ export function PlanCreatedSuccess({
             <Trophy className="h-7 w-7" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-base font-bold text-black dark:text-foreground">{plan.name}</p>
+            <p className="break-words text-base font-bold text-black dark:text-foreground">{plan.name}</p>
             <p className="text-xs text-muted-foreground">{planSubtitle(plan.category, sportLabel)}</p>
             <span className="mt-1.5 inline-block rounded-full bg-[#0B9B63]/15 px-3 py-0.5 text-xs font-semibold text-[#0B7A55]">
               Active

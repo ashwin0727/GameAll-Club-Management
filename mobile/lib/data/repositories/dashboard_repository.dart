@@ -3,6 +3,7 @@ import '../../core/errors/app_exception.dart';
 import '../../features/dashboard/dashboard_calculator.dart';
 import '../models/dashboard.dart';
 import '../models/facility.dart';
+import '../models/playing_area.dart';
 import 'operating_hours_repository.dart';
 import 'playing_area_repository.dart';
 import 'sports_repository.dart';
@@ -29,9 +30,66 @@ class DashboardRepository {
   /// Takes the already-resolved [facility] (not just its id) so the caller's
   /// existing facility fetch (e.g. SessionController's cache) can be reused
   /// instead of this repository fetching it again internally.
+  /// The payments that belong to the given sports: a booking on one of their courts, a membership in one of their
+  /// batches, a coaching enrollment in one of their programs. Payments tied to none of those never count here.
+  Future<List<Map<String, dynamic>>> _paymentsInSports(
+    List<Map<String, dynamic>> payments,
+    Set<String> sports,
+    List<PlayingArea> playingAreas,
+    Set<String> membershipIds,
+  ) async {
+    final courtSport = {for (final a in playingAreas) a.id: a.facilitySportId};
+    List<List<String>> chunks(Iterable<String> ids) {
+      final list = ids.toList();
+      return [for (var i = 0; i < list.length; i += 150) list.sublist(i, (i + 150).clamp(0, list.length))];
+    }
+
+    final bookingIds = {for (final p in payments) if (p['booking_id'] != null) p['booking_id'] as String};
+    final enrollmentIds = {for (final p in payments) if (p['coaching_enrollment_id'] != null) p['coaching_enrollment_id'] as String};
+
+    final bookingSport = <String, String?>{};
+    for (final ids in chunks(bookingIds)) {
+      final rows = await _client.from('bookings').select('id, court_id').inFilter('id', ids);
+      for (final b in (rows as List).cast<Map<String, dynamic>>()) {
+        bookingSport[b['id'] as String] = courtSport[b['court_id']];
+      }
+    }
+    final enrollmentProgram = <String, String>{};
+    for (final ids in chunks(enrollmentIds)) {
+      final rows = await _client.from('coaching_enrollments').select('id, program_id').inFilter('id', ids);
+      for (final e in (rows as List).cast<Map<String, dynamic>>()) {
+        enrollmentProgram[e['id'] as String] = e['program_id'] as String;
+      }
+    }
+    final programSport = <String, String?>{};
+    for (final ids in chunks(enrollmentProgram.values.toSet())) {
+      final rows = await _client.from('coaching_programs').select('id, facility_sport_id').inFilter('id', ids);
+      for (final p in (rows as List).cast<Map<String, dynamic>>()) {
+        programSport[p['id'] as String] = p['facility_sport_id'] as String?;
+      }
+    }
+
+    return payments.where((p) {
+      final mid = p['membership_id'] as String?;
+      if (mid != null) return membershipIds.contains(mid);
+      final bid = p['booking_id'] as String?;
+      if (bid != null) {
+        final sport = bookingSport[bid];
+        return sport != null && sports.contains(sport);
+      }
+      final eid = p['coaching_enrollment_id'] as String?;
+      if (eid != null) {
+        final sport = programSport[enrollmentProgram[eid]];
+        return sport != null && sports.contains(sport);
+      }
+      return false;
+    }).toList();
+  }
+
   Future<DashboardSummary> getDashboardSummary(
     Facility facility, {
-    String? facilitySportId,
+    /// The sports in view (the "All Sports" selector); null = All Sports — nothing is filtered.
+    Set<String>? facilitySportIds,
     required DateRangePreset preset,
     int revenueMonthOffset = 0,
   }) async {
@@ -49,12 +107,12 @@ class DashboardRepository {
     final playingAreasAll = await playingAreasAllFuture;
     final schedule = await scheduleFuture;
 
-    final facilitySports = facilitySportId == null
+    final facilitySports = facilitySportIds == null
         ? facilitySportsAll
-        : facilitySportsAll.where((fs) => fs.id == facilitySportId).toList();
-    final playingAreas = facilitySportId == null
+        : facilitySportsAll.where((fs) => facilitySportIds.contains(fs.id)).toList();
+    final playingAreas = facilitySportIds == null
         ? playingAreasAll
-        : playingAreasAll.where((a) => a.facilitySportId == facilitySportId).toList();
+        : playingAreasAll.where((a) => facilitySportIds.contains(a.facilitySportId)).toList();
     final playingAreaIds = playingAreas.map((a) => a.id).toSet();
 
     final earliestFrom = (period.previous ?? period.current).from;
@@ -170,7 +228,7 @@ class DashboardRepository {
       // src/services/dashboard/supabase-dashboard.service.ts).
       ({Set<String> bookingIds, Set<String> membershipIds})? sportScope;
       Set<String>? sportMembershipIds;
-      if (facilitySportId != null) {
+      if (facilitySportIds != null) {
         final batchRows = await _client
             .from('membership_batches')
             .select('id, facility_sport_id')
@@ -183,7 +241,7 @@ class DashboardRepository {
         };
         sportMembershipIds = {
           for (final m in (batchMemberRows as List).cast<Map<String, dynamic>>())
-            if (m['membership_id'] != null && batchSport[m['batch_id']] == facilitySportId)
+            if (m['membership_id'] != null && facilitySportIds.contains(batchSport[m['batch_id']]))
               m['membership_id'] as String,
         };
         sportScope = (
@@ -211,15 +269,13 @@ class DashboardRepository {
         scopedCurrentPayments.map((p) => (status: p.status, amountInr: p.amountInr)).toList(),
       );
 
-      final revenuePayments = (revenuePaymentsRows as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .where((p) {
-            if (scope == null) return true;
-            final bid = p['booking_id'] as String?;
-            final mid = p['membership_id'] as String?;
-            return (bid != null && scope.bookingIds.contains(bid)) ||
-                (mid != null && scope.membershipIds.contains(mid));
-          })
+      // Revenue Overview is money actually received. Under All Sports every payment counts (coaching included);
+      // with a subset ticked a payment counts when what it paid for belongs to one of those sports.
+      final revenueRowsAll = (revenuePaymentsRows as List<dynamic>).cast<Map<String, dynamic>>();
+      final revenueRows = facilitySportIds == null
+          ? revenueRowsAll
+          : await _paymentsInSports(revenueRowsAll, facilitySportIds, playingAreasAll, sportMembershipIds ?? <String>{});
+      final revenuePayments = revenueRows
           .map((p) => (
                 status: p['status'] as String,
                 amountInr: p['amount_inr'] as int,
@@ -364,7 +420,7 @@ class DashboardRepository {
             sportIcon: sport?.icon ?? '🏅',
           );
         }).toList(),
-        selectedFacilitySportId: facilitySportId,
+        selectedFacilitySportId: (facilitySportIds != null && facilitySportIds.length == 1) ? facilitySportIds.first : null,
         kpis: DashboardKpis(
           revenueInr: DashboardCalculator.computeKpiValue(
             DashboardCalculator.sumPaidRevenueInr(currentPayments.map(revenueShape).toList(), scope),

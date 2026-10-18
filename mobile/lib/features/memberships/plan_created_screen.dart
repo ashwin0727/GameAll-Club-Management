@@ -124,7 +124,7 @@ class PlanCreatedScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(plan.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                              Text(plan.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                               Text(planSubtitle(plan.category, sportLabel), style: AppTypography.caption(context)),
                               const SizedBox(height: 6),
                               Container(

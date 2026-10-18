@@ -27,7 +27,7 @@ export interface SportFilter {
  * One place decides it, so a page can't drift from the bar.
  */
 export function useSportFilter(facilityId: string | null | undefined): SportFilter {
-  const { data: options = [], isSuccess } = useFacilitySportOptions(facilityId ?? undefined);
+  const { data: options = [], isSuccess, isError } = useFacilitySportOptions(facilityId ?? undefined);
   const stored = useUiStore((s) => s.selectedSportIds);
   const setStored = useUiStore((s) => s.setSelectedSportIds);
 
@@ -49,7 +49,8 @@ export function useSportFilter(facilityId: string | null | undefined): SportFilt
 
   return {
     options,
-    ready: isSuccess,
+    // A sport list that failed to load counts as ready too: pages then show All Sports instead of waiting forever.
+    ready: isSuccess || isError,
     selectedIds: resolved.ids,
     isAll: resolved.isAll,
     sportSet,
@@ -57,4 +58,14 @@ export function useSportFilter(facilityId: string | null | undefined): SportFilt
     toggle,
     selectAll,
   };
+}
+
+/**
+ * The sports in view as what the data layer takes: a stable array of ids, or null for All Sports. `ready` is false
+ * until the facility's sport list has loaded, so a page can wait rather than fetch for the wrong sports.
+ */
+export function useSportIds(facilityId: string | null | undefined): { sportIds: string[] | null; ready: boolean; key: string } {
+  const filter = useSportFilter(facilityId);
+  const sportIds = useMemo(() => (filter.sportSet ? [...filter.sportSet] : null), [filter.sportSet]);
+  return { sportIds, ready: filter.ready, key: sportIds ? sportIds.join("|") : "all" };
 }

@@ -1,3 +1,5 @@
+import 'core/sports/sport_selection.dart';
+import 'features/sports/sport_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +45,31 @@ class GameAllClubApp extends ConsumerStatefulWidget {
 }
 
 class _GameAllClubAppState extends ConsumerState<GameAllClubApp> {
+  GoRouter? _watchedRouter;
+
+  /// Maintenance, Staff and Inventory are facility-wide: whenever the user lands on one of those pages the "All Sports"
+  /// selection is put back to All Sports.
+  void _watchRoutes(GoRouter router) {
+    if (identical(_watchedRouter, router)) return;
+    _watchedRouter?.routerDelegate.removeListener(_onRouteChanged);
+    _watchedRouter = router;
+    router.routerDelegate.addListener(_onRouteChanged);
+  }
+
+  void _onRouteChanged() {
+    final router = _watchedRouter;
+    if (router == null) return;
+    if (sportSelectionLocked(router.routerDelegate.currentConfiguration.uri.path)) {
+      ref.read(sportSelectionProvider.notifier).selectAll();
+    }
+  }
+
+  @override
+  void dispose() {
+    _watchedRouter?.routerDelegate.removeListener(_onRouteChanged);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +85,7 @@ class _GameAllClubAppState extends ConsumerState<GameAllClubApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
+    _watchRoutes(router);
     final themeMode = ref.watch(themeModeControllerProvider);
     return MaterialApp.router(
       title: 'GameAll Club',

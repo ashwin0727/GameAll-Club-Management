@@ -35,6 +35,7 @@ describe("SupabaseCoachingService", () => {
       p_offset: 0,
       p_sport_id: null,
       p_sort: "name_asc",
+      p_facility_sport_ids: null,
     });
     expect(page.totalCount).toBe(6);
     expect(page.coaches[0]?.fullName).toBe("Rahul Mehta");
@@ -84,8 +85,17 @@ describe("SupabaseCoachingService", () => {
     const payload = { windowDays: 60, totalStudents: 10, coachingRevenueMinor: 50000, averageRating: 4.2 };
     const rpc = vi.fn(async () => ({ data: payload, error: null }));
     const insights = await new SupabaseCoachingService({ rpc } as never).getInsights("f1", 60);
-    expect(rpc).toHaveBeenCalledWith("get_coaching_insights", { p_facility_id: "f1", p_days: 60 });
+    expect(rpc).toHaveBeenCalledWith("get_coaching_insights", { p_facility_id: "f1", p_days: 60, p_facility_sport_ids: null });
     expect(insights).toEqual(payload);
+  });
+
+  it("sends the selected sports to the database (null is All Sports)", async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    const svc = new SupabaseCoachingService({ rpc } as never);
+    await svc.listCoaches({ facilityId: "f1", filters: { sportIds: ["s1", "s2"] } });
+    expect(rpc).toHaveBeenCalledWith("list_coaches", expect.objectContaining({ p_facility_sport_ids: ["s1", "s2"] }));
+    await svc.listCoaches({ facilityId: "f1", filters: { sportIds: [] } });
+    expect(rpc).toHaveBeenLastCalledWith("list_coaches", expect.objectContaining({ p_facility_sport_ids: null }));
   });
 
   it("updateCoach forwards the rating", async () => {

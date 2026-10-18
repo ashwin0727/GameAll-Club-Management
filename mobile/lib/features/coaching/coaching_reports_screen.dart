@@ -13,6 +13,8 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Coaching → Reports — mirrors src/features/coaching/components/reports-page.tsx.
 /// Read-only analytics over sessions / enrollments / payments / availability.
@@ -49,7 +51,7 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
       _data = null;
     });
     try {
-      final d = await ref.read(coachingRepositoryProvider).getReports(fid, preset: _preset);
+      final d = await ref.read(coachingRepositoryProvider).getReports(fid, preset: _preset, sportIds: ref.read(sportScopeProvider).ids);
       if (mounted) setState(() => _data = d);
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -58,6 +60,10 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Reports', message: "You don't have permission to view coaching.");
@@ -65,7 +71,7 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
     final presetLabel = _presets.firstWhere((p) => p.value == _preset).label;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Coaching Reports')),
+      appBar: AppBar(title: const Text('Coaching Reports'), actions: const [SportScopeChip(), SizedBox(width: 8)]),
       body: SafeArea(
         child: _error != null
             ? ErrorView(message: _error!, onRetry: _load)

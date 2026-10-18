@@ -21,6 +21,8 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Coaching → Manage Students — mirrors src/features/coaching/components/students-page.tsx.
 ///
@@ -95,11 +97,12 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
     if (fid == null) return;
     final repo = ref.read(coachingRepositoryProvider);
     try {
-      final all = await repo.listEnrollments(facilityId: fid, limit: 1);
-      final active = await repo.listEnrollments(facilityId: fid, status: EnrollmentStatus.active, limit: 1);
+      final sportIds = ref.read(sportScopeProvider).ids;
+      final all = await repo.listEnrollments(facilityId: fid, limit: 1, sportIds: sportIds);
+      final active = await repo.listEnrollments(facilityId: fid, status: EnrollmentStatus.active, limit: 1, sportIds: sportIds);
       // Payment Pending needs a real per-row status, not just a count — page through active
       // enrollments (bounded) rather than adding an aggregate RPC.
-      final activeRows = await repo.listEnrollments(facilityId: fid, status: EnrollmentStatus.active, limit: 200);
+      final activeRows = await repo.listEnrollments(facilityId: fid, status: EnrollmentStatus.active, limit: 200, sportIds: sportIds);
       final pending = activeRows.enrollments
           .where((e) => e.paymentStatus == EnrollmentPaymentStatus.pending || e.paymentStatus == EnrollmentPaymentStatus.partial)
           .length;
@@ -131,6 +134,7 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
             level: _level,
             limit: _pageSize,
             offset: _page * _pageSize,
+            sportIds: ref.read(sportScopeProvider).ids,
           );
       if (!mounted || reqId != _requestId) return;
       setState(() {
@@ -205,6 +209,10 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { setState(() => _page = 0); _loadKpis(); _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Manage Students', message: "You don't have permission to view coaching.");
@@ -222,6 +230,8 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
       appBar: AppBar(
         title: const Text('Manage Students'),
         actions: [
+          const SportScopeChip(),
+          const SizedBox(width: 8),
           if (canManage) IconButton(icon: const Icon(Icons.person_add_alt_1_outlined), tooltip: 'Add Student', onPressed: _addStudent),
         ],
       ),

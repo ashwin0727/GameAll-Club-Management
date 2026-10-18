@@ -10,7 +10,7 @@ import '../../core/utils/formatters.dart';
 import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../staff/staff_common.dart';
-import 'member_detail_screen.dart';
+import 'membership_detail_screen.dart';
 import 'member_row.dart';
 import 'manage_plan_slots_screen.dart';
 import 'membership_plan_edit_screen.dart';
@@ -122,10 +122,11 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
   }
 
   Future<void> _openMember(MembershipListRow row) async {
-    final changed = await Navigator.of(context).push<bool>(
-      AppPageRoute(builder: (_) => MemberDetailScreen(membershipId: row.membershipId)),
+    // Membership Details can edit, record a payment for, cancel or delete the membership, so assume it changed.
+    await Navigator.of(context).push<Object?>(
+      AppPageRoute(builder: (_) => MembershipDetailScreen(membershipId: row.membershipId)),
     );
-    if (changed == true && mounted) setState(() => _changed = true);
+    if (mounted) setState(() => _changed = true);
   }
 
   @override

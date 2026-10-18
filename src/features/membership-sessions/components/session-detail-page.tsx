@@ -127,14 +127,6 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
     return `${origin}/join/${detail.facilityId}?session=${detail.batchId}`;
   }, [detail]);
 
-  async function duplicate() {
-    try {
-      await getMembershipSessionService().duplicateSession(batchId);
-      router.push("/membership-sessions");
-    } catch (e) {
-      setErr(e instanceof ServiceError ? e.message : "Unable to duplicate.");
-    }
-  }
   async function blockToday() {
     try {
       await getMembershipSessionService().blockDate(batchId, todayIso());
@@ -203,7 +195,6 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={blockToday}>Block today&apos;s occurrence</DropdownMenuItem>
-              <DropdownMenuItem onClick={duplicate}>Duplicate session</DropdownMenuItem>
               <DropdownMenuItem onClick={toggleActive}>{detail.isActive ? "Pause session" : "Activate session"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

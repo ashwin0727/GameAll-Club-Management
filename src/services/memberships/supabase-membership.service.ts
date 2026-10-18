@@ -1,5 +1,6 @@
 "use client";
 
+import { displayBatchName } from "@/features/membership-sessions/batch-name";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Booking } from "@/features/bookings/types";
@@ -451,6 +452,38 @@ export class SupabaseMembershipService implements MembershipService {
     }));
   }
 
+  async getMembershipRevenueForMemberships(
+    facilityId: string,
+    membershipIds: string[],
+    range?: { from?: string; to?: string },
+  ): Promise<MembershipRevenuePoint[]> {
+    if (membershipIds.length === 0) return [];
+    const byDay = new Map<string, { amountInr: number; paymentCount: number }>();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    // Chunked so a large club's ids never overflow the request.
+    for (let i = 0; i < membershipIds.length; i += 150) {
+      const { data, error } = await this.supabase
+        .from("payments")
+        .select("amount_inr, paid_at, created_at")
+        .eq("facility_id", facilityId)
+        .eq("status", "paid")
+        .in("membership_id", membershipIds.slice(i, i + 150));
+      if (error) throw mapSupabaseError(error);
+      for (const p of data ?? []) {
+        // Dated by when the money arrived, the same way Finance and the Revenue Overview date it.
+        const d = new Date(p.paid_at ?? p.created_at);
+        const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        if (range?.from && key < range.from.slice(0, 10)) continue;
+        if (range?.to && key > range.to.slice(0, 10)) continue;
+        const cur = byDay.get(key) ?? { amountInr: 0, paymentCount: 0 };
+        cur.amountInr += p.amount_inr;
+        cur.paymentCount += 1;
+        byDay.set(key, cur);
+      }
+    }
+    return [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([bucket, v]) => ({ bucket, ...v }));
+  }
+
   async createMembershipFull(input: CreateMembershipFullInput): Promise<Membership> {
     const { data, error } = await this.supabase.rpc("create_membership_full", {
       p_facility_id: input.facilityId,
@@ -558,7 +591,7 @@ export class SupabaseMembershipService implements MembershipService {
       status: row.status,
       membershipId: row.membership_id,
       batchId: row.batch_id,
-      batchName: row.batch_name,
+      batchName: displayBatchName(row.batch_name, row.start_time, row.end_time),
       courtId: row.court_id,
       courtName: row.court_name,
       facilitySportId: row.facility_sport_id,

@@ -28,32 +28,35 @@ class CoachingRepository {
     return AppException(AppErrorCode.network);
   }
 
+  /// The sports list the database functions take: null (All Sports) unless a real subset is given.
+  List<String>? _sports(List<String>? ids) => (ids == null || ids.isEmpty) ? null : ids;
+
   List<Map<String, dynamic>> _rows(dynamic data) =>
       (data as List<dynamic>? ?? const []).map((r) => (r as Map).cast<String, dynamic>()).toList();
   Map<String, dynamic> _obj(dynamic data) => (data as Map).cast<String, dynamic>();
 
   // ── Overview / reports ──────────────────────────────────────────────────
   /// Programs tab cards (migration 0122). Null when the function is not there yet — the tab shows dashes.
-  Future<ProgramCardStats?> getProgramCardStats(String facilityId) async {
+  Future<ProgramCardStats?> getProgramCardStats(String facilityId, {List<String>? sportIds}) async {
     try {
-      return ProgramCardStats.fromJson(_obj(await _client.rpc('get_program_card_stats', params: {'p_facility_id': facilityId})));
+      return ProgramCardStats.fromJson(_obj(await _client.rpc('get_program_card_stats', params: {'p_facility_id': facilityId, 'p_facility_sport_ids': _sports(sportIds)})));
     } catch (_) {
       return null;
     }
   }
 
   /// Students tab cards (migration 0123). Null when the function is not there yet — the tab shows dashes.
-  Future<StudentCardStats?> getStudentCardStats(String facilityId) async {
+  Future<StudentCardStats?> getStudentCardStats(String facilityId, {List<String>? sportIds}) async {
     try {
-      return StudentCardStats.fromJson(_obj(await _client.rpc('get_student_card_stats', params: {'p_facility_id': facilityId})));
+      return StudentCardStats.fromJson(_obj(await _client.rpc('get_student_card_stats', params: {'p_facility_id': facilityId, 'p_facility_sport_ids': _sports(sportIds)})));
     } catch (_) {
       return null;
     }
   }
 
-  Future<CoachingOverview> getOverview(String facilityId) async {
+  Future<CoachingOverview> getOverview(String facilityId, {List<String>? sportIds}) async {
     try {
-      final data = await _client.rpc('get_coaching_overview', params: {'p_facility_id': facilityId});
+      final data = await _client.rpc('get_coaching_overview', params: {'p_facility_id': facilityId, 'p_facility_sport_ids': _sports(sportIds)});
       final json = _obj(data);
       var overview = CoachingOverview.fromJson(json);
 
@@ -62,7 +65,7 @@ class CoachingRepository {
       try {
         final now = DateTime.now();
         final start = DateTime(now.year, now.month, now.day);
-        final today = await listSessions(facilityId: facilityId, from: start, to: start.add(const Duration(days: 1)), limit: 500);
+        final today = await listSessions(facilityId: facilityId, from: start, to: start.add(const Duration(days: 1)), limit: 500, sportIds: sportIds);
         overview = overview.withActiveSessions(todaysActiveCount(today.sessions));
       } catch (_) {
         overview = overview.withActiveSessions(0);
@@ -71,14 +74,14 @@ class CoachingRepository {
       // Overall revenue (migration 0115). Missing leaves it null, shown as a dash — never this month's
       // figure passed off as the total.
       try {
-        final total = await _client.rpc('get_coaching_total_revenue', params: {'p_facility_id': facilityId});
+        final total = await _client.rpc('get_coaching_total_revenue', params: {'p_facility_id': facilityId, 'p_facility_sport_ids': _sports(sportIds)});
         if (total is num) overview = overview.withRevenueTotal(total.toInt());
       } catch (_) {
         // leave it null
       }
       // Total Coaches + this month's Coaching Expense (migration 0121). Missing leaves both null (a dash).
       try {
-        final stats = _obj(await _client.rpc('get_coaching_card_stats', params: {'p_facility_id': facilityId}));
+        final stats = _obj(await _client.rpc('get_coaching_card_stats', params: {'p_facility_id': facilityId, 'p_facility_sport_ids': _sports(sportIds)}));
         overview = overview.withCardStats(
           totalCoaches: (stats['totalCoaches'] as num?)?.toInt(),
           coachingExpenseMinor: (stats['coachingExpenseMinor'] as num?)?.toInt(),
@@ -92,13 +95,14 @@ class CoachingRepository {
     }
   }
 
-  Future<CoachingReports> getReports(String facilityId, {String? preset}) async {
+  Future<CoachingReports> getReports(String facilityId, {String? preset, List<String>? sportIds}) async {
     try {
       final data = await _client.rpc('get_coaching_reports', params: {
         'p_facility_id': facilityId,
         'p_preset': preset ?? 'THIS_MONTH',
         'p_start_date': null,
         'p_end_date': null,
+        'p_facility_sport_ids': _sports(sportIds),
       });
       return CoachingReports.fromJson(_obj(data));
     } catch (e) {
@@ -113,6 +117,7 @@ class CoachingRepository {
     CoachStatus? status,
     int limit = 20,
     int offset = 0,
+    List<String>? sportIds,
   }) async {
     try {
       final rows = await _client.rpc('list_coaches', params: {
@@ -126,6 +131,7 @@ class CoachingRepository {
         // this and an older six-argument copy of the function and refuse to pick one.
         'p_sport_id': null,
         'p_sort': 'name_asc',
+        'p_facility_sport_ids': _sports(sportIds),
       });
       return CoachPage.fromRows(_rows(rows));
     } catch (e) {
@@ -258,6 +264,7 @@ class CoachingRepository {
     ProgramStatus? status,
     int limit = 20,
     int offset = 0,
+    List<String>? sportIds,
   }) async {
     try {
       final rows = await _client.rpc('list_coaching_programs', params: {
@@ -266,6 +273,7 @@ class CoachingRepository {
         'p_status': status?.toJson(),
         'p_limit': limit,
         'p_offset': offset,
+        'p_facility_sport_ids': _sports(sportIds),
       });
       return ProgramPage.fromRows(_rows(rows));
     } catch (e) {
@@ -506,6 +514,7 @@ class CoachingRepository {
     SessionStatus? status,
     int limit = 200,
     int offset = 0,
+    List<String>? sportIds,
   }) async {
     try {
       final rows = await _client.rpc('list_coaching_sessions', params: {
@@ -518,6 +527,7 @@ class CoachingRepository {
         'p_status': status?.toJson(),
         'p_limit': limit,
         'p_offset': offset,
+        'p_facility_sport_ids': _sports(sportIds),
       });
       return SessionPage.fromRows(_rows(rows));
     } catch (e) {
@@ -645,6 +655,7 @@ class CoachingRepository {
     int offset = 0,
     String? coachId,
     String? level,
+    List<String>? sportIds,
 
     /// Overrides [status] with a raw filter key — 'NOT_ACTIVE' groups every non-ACTIVE enrollment
     /// (the Manage Students "Inactive" tab).
@@ -660,6 +671,7 @@ class CoachingRepository {
         'p_offset': offset,
         'p_coach_id': coachId,
         'p_level': level,
+        'p_facility_sport_ids': _sports(sportIds),
       });
       return EnrollmentPage.fromRows(_rows(rows));
     } catch (e) {

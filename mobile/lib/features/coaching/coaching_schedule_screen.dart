@@ -16,6 +16,8 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_common.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 /// Coaching → Schedule — a day view with date navigation. Mirrors
 /// src/features/coaching/components/schedule-page.tsx (mobile = one day at a
@@ -53,6 +55,7 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
             from: from,
             to: to,
             limit: 200,
+            sportIds: ref.read(sportScopeProvider).ids,
           );
       if (mounted) setState(() => _rows = page.sessions);
     } on AppException catch (e) {
@@ -72,6 +75,10 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Every figure here is for the sports ticked in the "All Sports" selector; changing it reloads the page.
+    ref.listen<String>(sportScopeProvider.select((s) => s.key), (prev, next) {
+      if (prev != next) { _load(); }
+    });
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('COACHING_VIEW')) {
       return const StaffPermissionDenied(title: 'Schedule', message: "You don't have permission to view coaching.");
@@ -81,6 +88,8 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
       appBar: AppBar(
         title: const Text('Coaching Schedule'),
         actions: [
+          const SportScopeChip(),
+          const SizedBox(width: 8),
           if (session.can('COACHING_CREATE_SESSION'))
             IconButton(
               icon: const Icon(Icons.add),

@@ -67,6 +67,15 @@ export interface MembershipService {
    *  A no-op, not an error, when there's no subscription or it's already cancelled. */
   cancelMembershipSubscription(membershipId: string): Promise<void>;
   /** Membership revenue actually received, bucketed by day / month / year. */
+  /**
+   * Daily membership takings for just these memberships — what the Membership Revenue card shows when a subset of
+   * the facility's sports is selected (the all-sports figure comes from getMembershipRevenueTimeseries).
+   */
+  getMembershipRevenueForMemberships(
+    facilityId: string,
+    membershipIds: string[],
+    range?: { from?: string; to?: string },
+  ): Promise<MembershipRevenuePoint[]>;
   getMembershipRevenueTimeseries(
     facilityId: string,
     granularity: RevenueGranularity,

@@ -502,7 +502,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
       (
         title: 'Assign to Program',
         desc: 'Add ${added.name} to an existing or new coaching program.',
-        icon: Icons.sports_outlined,
+        icon: Icons.school_outlined,
         onTap: () => context.push(AppRoutes.coachingPrograms),
       ),
       (

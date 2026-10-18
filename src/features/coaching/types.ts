@@ -112,6 +112,8 @@ export interface CoachFilters {
   status?: CoachStatus | null;
   specialization?: string | null;
   sportId?: string | null;
+  /** The sports in view (the top bar's selection); null/omitted = All Sports. */
+  sportIds?: string[] | null;
 }
 
 export interface CoachAvailabilityWindow {
@@ -442,6 +444,8 @@ export interface SessionFilters {
   programId?: string | null;
   courtId?: string | null;
   status?: SessionStatus | null;
+  /** The sports in view (the top bar's selection); null/omitted = All Sports. */
+  sportIds?: string[] | null;
 }
 
 export interface SessionStudent {
@@ -566,6 +570,8 @@ export interface EnrollmentFilters {
   status?: EnrollmentStatus | "NOT_ACTIVE" | null;
   coachId?: string | null;
   level?: string | null;
+  /** The sports in view (the top bar's selection); null/omitted = All Sports. */
+  sportIds?: string[] | null;
 }
 
 export interface EnrollmentDetail {

@@ -82,6 +82,9 @@ async function functionErrorMessage(error: unknown, fallback: string): Promise<s
   return fallback;
 }
 
+/** The sports list the database functions take: null (All Sports) unless a real subset is given. */
+const sportArg = (ids?: string[] | null): string[] | null => (ids && ids.length > 0 ? ids : null);
+
 export class SupabaseCoachingService {
   private readonly supabase: SupabaseClient<Database>;
 
@@ -90,8 +93,8 @@ export class SupabaseCoachingService {
   }
 
   // ── Overview / reports ───────────────────────────────────────────────────
-  async getOverview(facilityId: string): Promise<CoachingOverview> {
-    const { data, error } = await this.supabase.rpc("get_coaching_overview", { p_facility_id: facilityId });
+  async getOverview(facilityId: string, sportIds?: string[] | null): Promise<CoachingOverview> {
+    const { data, error } = await this.supabase.rpc("get_coaching_overview", { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
     if (error || !data) throw mapError(error);
     const overview = data as unknown as CoachingOverview;
 
@@ -102,7 +105,7 @@ export class SupabaseCoachingService {
       start.setHours(0, 0, 0, 0);
       const end = new Date(start);
       end.setDate(end.getDate() + 1);
-      const today = await this.listSessions({ facilityId, filters: { from: start.toISOString(), to: end.toISOString() }, limit: 500 });
+      const today = await this.listSessions({ facilityId, filters: { from: start.toISOString(), to: end.toISOString(), sportIds }, limit: 500 });
       overview.kpis.activeSessions = todaysActiveCount(today.sessions);
     } catch {
       overview.kpis.activeSessions = 0;
@@ -111,14 +114,14 @@ export class SupabaseCoachingService {
     // Overall revenue (migration 0115). A missing function leaves it undefined — the page shows a dash
     // rather than passing off this month's figure as the total.
     try {
-      const { data: total, error: totalError } = await this.supabase.rpc("get_coaching_total_revenue", { p_facility_id: facilityId });
+      const { data: total, error: totalError } = await this.supabase.rpc("get_coaching_total_revenue", { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
       if (!totalError && total !== null && total !== undefined) overview.kpis.revenueTotalMinor = Number(total);
     } catch {
       // leave it undefined
     }
     // Total Coaches + this month's Coaching Expense (migration 0121). Missing leaves both undefined (a dash).
     try {
-      const { data: stats, error: statsError } = await this.supabase.rpc("get_coaching_card_stats" as never, { p_facility_id: facilityId } as never);
+      const { data: stats, error: statsError } = await this.supabase.rpc("get_coaching_card_stats" as never, { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
       if (!statsError && stats) {
         const j = stats as unknown as { totalCoaches?: number; coachingExpenseMinor?: number };
         overview.kpis.totalCoaches = Number(j.totalCoaches ?? 0);
@@ -132,8 +135,8 @@ export class SupabaseCoachingService {
 
   /** The Coaching Insights panel's own Last 30/60/90 Days figures — independent of the KPI row's
    *  fixed calendar-month numbers above it. */
-  async getInsights(facilityId: string, days: 30 | 60 | 90): Promise<CoachingInsights> {
-    const { data, error } = await this.supabase.rpc("get_coaching_insights", { p_facility_id: facilityId, p_days: days });
+  async getInsights(facilityId: string, days: 30 | 60 | 90, sportIds?: string[] | null): Promise<CoachingInsights> {
+    const { data, error } = await this.supabase.rpc("get_coaching_insights", { p_facility_id: facilityId, p_days: days, p_facility_sport_ids: sportArg(sportIds) } as never);
     if (error || !data) throw mapError(error);
     return data as unknown as CoachingInsights;
   }
@@ -143,13 +146,15 @@ export class SupabaseCoachingService {
     preset?: string | null;
     startDate?: string | null;
     endDate?: string | null;
+    sportIds?: string[] | null;
   }): Promise<CoachingReports> {
     const { data, error } = await this.supabase.rpc("get_coaching_reports", {
       p_facility_id: input.facilityId,
       p_preset: input.preset ?? null,
       p_start_date: input.startDate ?? null,
       p_end_date: input.endDate ?? null,
-    });
+      p_facility_sport_ids: sportArg(input.sportIds),
+    } as never);
     if (error || !data) throw mapError(error);
     return data as unknown as CoachingReports;
   }
@@ -196,7 +201,8 @@ export class SupabaseCoachingService {
       p_offset: input.offset ?? 0,
       p_sport_id: f.sportId ?? null,
       p_sort: input.sort ?? "name_asc",
-    });
+      p_facility_sport_ids: sportArg(f.sportIds),
+    } as never);
     if (error) throw mapError(error);
     return {
       coaches: (data ?? []).map((r) => ({
@@ -325,6 +331,8 @@ export class SupabaseCoachingService {
       facilitySportId?: string | null;
       programType?: ProgramRow["programType"] | null;
       level?: string | null;
+      /** The sports in view (the top bar's selection); null/omitted = All Sports. */
+      sportIds?: string[] | null;
     };
     limit?: number;
     offset?: number;
@@ -339,7 +347,8 @@ export class SupabaseCoachingService {
       p_facility_sport_id: f.facilitySportId ?? null,
       p_program_type: f.programType ?? null,
       p_level: f.level ?? null,
-    });
+      p_facility_sport_ids: sportArg(f.sportIds),
+    } as never);
     if (error) throw mapError(error);
     return {
       programs: (data ?? []).map((r) => ({
@@ -369,8 +378,8 @@ export class SupabaseCoachingService {
   }
 
   /** Students page cards (migration 0123). Throws when the function is missing so the page can show dashes. */
-  async getStudentCardStats(facilityId: string): Promise<StudentCardStats> {
-    const { data, error } = await this.supabase.rpc("get_student_card_stats" as never, { p_facility_id: facilityId } as never);
+  async getStudentCardStats(facilityId: string, sportIds?: string[] | null): Promise<StudentCardStats> {
+    const { data, error } = await this.supabase.rpc("get_student_card_stats" as never, { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
     if (error || !data) throw mapError(error);
     const j = data as unknown as StudentCardStats;
     return {
@@ -381,13 +390,13 @@ export class SupabaseCoachingService {
     };
   }
 
-  async getProgramInsights(facilityId: string): Promise<ProgramInsights> {
-    const { data, error } = await this.supabase.rpc("get_program_insights", { p_facility_id: facilityId });
+  async getProgramInsights(facilityId: string, sportIds?: string[] | null): Promise<ProgramInsights> {
+    const { data, error } = await this.supabase.rpc("get_program_insights", { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
     if (error || !data) throw mapError(error);
     const insights = data as unknown as ProgramInsights;
     // Active Programs + Available Seats (migration 0122). A missing function leaves both undefined (a dash).
     try {
-      const { data: stats, error: statsError } = await this.supabase.rpc("get_program_card_stats" as never, { p_facility_id: facilityId } as never);
+      const { data: stats, error: statsError } = await this.supabase.rpc("get_program_card_stats" as never, { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
       if (!statsError && stats) {
         const j = stats as unknown as { activePrograms?: number; availableSeats?: number };
         insights.activePrograms = Number(j.activePrograms ?? 0);
@@ -566,8 +575,8 @@ export class SupabaseCoachingService {
     }));
   }
 
-  async listActiveBatchesWithStudents(facilityId: string): Promise<ActiveBatchWithStudents[]> {
-    const { data, error } = await this.supabase.rpc("list_active_coaching_batches_with_students", { p_facility_id: facilityId });
+  async listActiveBatchesWithStudents(facilityId: string, sportIds?: string[] | null): Promise<ActiveBatchWithStudents[]> {
+    const { data, error } = await this.supabase.rpc("list_active_coaching_batches_with_students", { p_facility_id: facilityId, p_facility_sport_ids: sportArg(sportIds) } as never);
     if (error) throw mapError(error);
     return (data ?? []).map((r) => ({
       id: r.id,
@@ -668,7 +677,8 @@ export class SupabaseCoachingService {
       p_status: f.status ?? null,
       p_limit: input.limit ?? 200,
       p_offset: input.offset ?? 0,
-    });
+      p_facility_sport_ids: sportArg(f.sportIds),
+    } as never);
     if (error) throw mapError(error);
     return {
       sessions: (data ?? []).map((r) => ({
@@ -789,7 +799,8 @@ export class SupabaseCoachingService {
       p_offset: input.offset ?? 0,
       p_coach_id: f.coachId ?? null,
       p_level: f.level ?? null,
-    });
+      p_facility_sport_ids: sportArg(f.sportIds),
+    } as never);
     if (error) throw mapError(error);
     return {
       enrollments: (data ?? []).map((r) => ({

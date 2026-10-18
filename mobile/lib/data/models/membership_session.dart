@@ -3,6 +3,8 @@
 /// backend contract this ports.
 library;
 
+import '../../core/utils/batch_name.dart';
+
 /// The recurring template: which court, which sport, which days of week,
 /// what time window, how many players (capacity). One row per batch — the
 /// actual calendar occurrences are [MembershipSessionSlot]/`membership_sessions`.
@@ -48,7 +50,7 @@ class MembershipBatch {
       planId: json['plan_id'] as String,
       facilitySportId: json['facility_sport_id'] as String,
       courtId: json['court_id'] as String,
-      name: json['name'] as String,
+      name: displayBatchName(json['name'] as String, json['start_time'] as String, json['end_time'] as String),
       daysOfWeek: (json['days_of_week'] as List<dynamic>? ?? const []).map((d) => (d as num).toInt()).toList(),
       startTime: json['start_time'] as String,
       endTime: json['end_time'] as String,
@@ -157,7 +159,7 @@ class MembershipSessionSlot {
     return MembershipSessionSlot(
       batchId: row['batch_id'] as String,
       sessionId: row['session_id'] as String?,
-      batchName: row['batch_name'] as String,
+      batchName: displayBatchName(row['batch_name'] as String, row['start_time'] as String, row['end_time'] as String),
       courtId: row['court_id'] as String,
       courtName: row['court_name'] as String,
       facilitySportId: row['facility_sport_id'] as String,

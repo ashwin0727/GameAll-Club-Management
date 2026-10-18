@@ -2,32 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarCheck2, CalendarDays, DoorOpen, Gauge, Plus, Link2, MoreVertical } from "lucide-react";
+import { CalendarClock, CalendarCheck2, CalendarDays, DoorOpen, Gauge, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
 import { useFacility } from "@/features/facility/hooks/use-facility";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getMembershipSessionService } from "@/services/membership-sessions";
-import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { formatSlot } from "@/features/memberships/slot-format";
-import { CreateSessionDialog } from "@/features/membership-sessions/components/create-session-dialog";
 import type {
   MembershipSessionListRow,
   MembershipSessionStatus,
   MembershipSessionsSummary,
 } from "@/features/membership-sessions/types";
-import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
 
@@ -60,37 +52,31 @@ export function MembershipSessionsPage() {
   const router = useRouter();
   const { data: facility } = useFacility();
   const facilityId = facility?.id ?? null;
+  // The sports ticked in the top bar (null = All Sports): every card and row below is for those sports.
+  const sportFilter = useSportFilter(facilityId);
+  const sportIds = useMemo(() => (sportFilter.sportSet ? [...sportFilter.sportSet] : null), [sportFilter.sportSet]);
+  const sportKey = sportIds ? sportIds.join("|") : "all";
   const [summary, setSummary] = useState<MembershipSessionsSummary | null>(null);
   const [rows, setRows] = useState<MembershipSessionListRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [sportId, setSportId] = useState("");
   const [courtId, setCourtId] = useState("");
   const [status, setStatus] = useState<MembershipSessionStatus | "">("");
   const [day, setDay] = useState("");
   const [page, setPage] = useState(1);
 
-  const [sports, setSports] = useState<Sport[]>([]);
-  const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
   const [areas, setAreas] = useState<PlayingArea[]>([]);
 
-  const [createOpen, setCreateOpen] = useState(false);
   const openDetail = useCallback((batchId: string) => router.push(`/membership-sessions/${batchId}`), [router]);
 
   useEffect(() => {
     if (!facilityId) return;
     let cancelled = false;
     (async () => {
-      const [fs, allSports, pa] = await Promise.all([
-        getSportsService().getFacilitySports(facilityId),
-        getSportsService().getActiveSports(),
-        getPlayingAreasService().getPlayingAreas(facilityId),
-      ]);
+      const pa = await getPlayingAreasService().getPlayingAreas(facilityId);
       if (cancelled) return;
-      setFacilitySports(fs.filter((x) => x.enabled));
-      setSports(allSports);
       setAreas(pa.filter((a) => !a.archived));
     })();
     return () => {
@@ -105,17 +91,20 @@ export function MembershipSessionsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debounced, sportId, courtId, status, day]);
+  }, [debounced, sportKey, courtId, status, day]);
+  useEffect(() => {
+    setCourtId("");
+  }, [sportKey]);
 
   const reload = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportFilter.ready) return;
     setRows(null);
     const svc = getMembershipSessionService();
     const [sum, list] = await Promise.all([
-      svc.getSessionsSummary(facilityId),
+      svc.getSessionsSummary(facilityId, sportIds),
       svc.listSessionsAdmin(facilityId, {
         search: debounced || undefined,
-        facilitySportId: sportId || undefined,
+        facilitySportIds: sportIds,
         courtId: courtId || undefined,
         status: status || undefined,
         day: day === "" ? undefined : Number(day),
@@ -126,7 +115,7 @@ export function MembershipSessionsPage() {
     setSummary(sum);
     setRows(list.rows);
     setTotalCount(list.totalCount);
-  }, [facilityId, debounced, sportId, courtId, status, day, page]);
+  }, [facilityId, sportFilter.ready, debounced, sportIds, courtId, status, day, page]);
 
   useEffect(() => {
     reload();
@@ -134,8 +123,8 @@ export function MembershipSessionsPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const courtsForSport = useMemo(
-    () => (sportId ? areas.filter((a) => a.facilitySportId === sportId) : areas),
-    [areas, sportId],
+    () => (sportFilter.sportSet ? areas.filter((a) => sportFilter.sportSet!.has(a.facilitySportId)) : areas),
+    [areas, sportFilter.sportSet],
   );
   const joinUrl = facilityId ? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${facilityId}` : "";
 
@@ -149,10 +138,6 @@ export function MembershipSessionsPage() {
             <h1 className="text-xl font-semibold">Membership Sessions</h1>
             <p className="text-sm text-muted-foreground">Manage membership court sessions, member allocation and guest releases.</p>
           </div>
-          <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Create Session
-          </Button>
         </div>
 
         {/* KPIs */}
@@ -173,13 +158,6 @@ export function MembershipSessionsPage() {
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sessions by name or court" className="h-9 w-full max-w-xs" />
-          <DropdownSelect aria-label="Sport" value={sportId} onChange={(e) => { setSportId(e.target.value); setCourtId(""); }} className={selectCls}>
-            <option value="">All Sports</option>
-            {facilitySports.map((fs) => {
-              const s = sports.find((sp) => sp.id === fs.sportId);
-              return <option key={fs.id} value={fs.id}>{fs.customSportName ?? s?.name ?? "Sport"}</option>;
-            })}
-          </DropdownSelect>
           <DropdownSelect aria-label="Court" value={courtId} onChange={(e) => setCourtId(e.target.value)} className={selectCls}>
             <option value="">All Courts</option>
             {courtsForSport.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -255,24 +233,6 @@ export function MembershipSessionsPage() {
                           <Button type="button" variant="outline" size="sm" onClick={() => openDetail(r.batchId)}>
                             View
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openDetail(r.batchId)}>View details</DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={async () => {
-                                  await getMembershipSessionService().duplicateSession(r.batchId);
-                                  reload();
-                                }}
-                              >
-                                Duplicate
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </div>
                       </td>
                     </tr>
@@ -302,9 +262,6 @@ export function MembershipSessionsPage() {
         </Card>
       </div>
 
-      {facilityId && (
-        <CreateSessionDialog open={createOpen} onOpenChange={setCreateOpen} facilityId={facilityId} onCreated={reload} />
-      )}
     </div>
   );
 }

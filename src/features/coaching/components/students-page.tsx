@@ -20,6 +20,7 @@ import { MembershipDashboardHero } from "@/features/memberships/components/membe
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { SKILL_LEVELS } from "@/features/coaching/components/use-program-wizard-form";
 import { getCoachingService } from "@/services/coaching";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { ServiceError } from "@/services/shared/service-error";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { CoachOption, EnrollmentPaymentStatus, EnrollmentRow, ProgramOption, StudentCardStats } from "@/features/coaching/types";
@@ -91,22 +92,24 @@ export function CoachingStudentsPage() {
     getCoachingService().listCoachOptions(facilityId).then(setCoaches).catch(() => setCoaches([]));
   }, [facilityId]);
 
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
+
   const loadKpis = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     try {
-      setKpis(await getCoachingService().getStudentCardStats(facilityId));
+      setKpis(await getCoachingService().getStudentCardStats(facilityId, sportIds));
     } catch {
       setKpis(null);
       setKpisFailed(true);
     }
-  }, [facilityId]);
+  }, [facilityId, sportIds, sportsReady]);
 
   useEffect(() => {
     void loadKpis();
   }, [loadKpis]);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const status = tab === "Active" ? "ACTIVE" : tab === "Inactive" ? "NOT_ACTIVE" : null;
     const result = await getCoachingService().listEnrollments({
@@ -117,13 +120,14 @@ export function CoachingStudentsPage() {
         programId: programId === ALL ? null : programId,
         coachId: coachId === ALL ? null : coachId,
         level: level === ALL ? null : level,
+        sportIds,
       },
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     });
     setRows(result.enrollments);
     setTotalCount(result.totalCount);
-  }, [facilityId, debounced, tab, programId, coachId, level, page]);
+  }, [facilityId, debounced, tab, programId, coachId, level, page, sportIds, sportsReady]);
 
   useEffect(() => {
     let cancelled = false;

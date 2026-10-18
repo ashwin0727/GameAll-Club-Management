@@ -31,6 +31,8 @@ import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/sport_scope_chip.dart';
+import '../sports/sport_scope.dart';
 
 const Map<DateRangePreset, String> _presetLabels = {
   DateRangePreset.today: 'Today',
@@ -49,7 +51,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Facility? _facility;
   String? _facilityId;
-  String? _selectedSportId;
   DateRangePreset _preset = DateRangePreset.today;
   int _revenueMonthOffset = 0;
 
@@ -77,6 +78,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final facility = ref.read(sessionControllerProvider).facility;
     _facility = facility;
     _facilityId = facility?.id;
+    // Landing on Home always starts from All Sports.
+    ref.read(sportSelectionProvider.notifier).selectAll();
     await _load();
   }
 
@@ -95,7 +98,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     try {
       final summary = await ref.read(dashboardRepositoryProvider).getDashboardSummary(
         _facility!,
-        facilitySportId: _selectedSportId,
+        facilitySportIds: ref.read(sportScopeProvider).idSet,
         preset: _preset,
         revenueMonthOffset: _revenueMonthOffset,
       );
@@ -165,6 +168,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final session = ref.watch(sessionControllerProvider);
     final user = session.user;
 
+    // Changing the "All Sports" selector reloads every figure for those sports.
+    ref.listen<String>(sportScopeProvider.select((x) => x.key), (prev, next) {
+      if (prev != next) _load();
+    });
     return TabPopScope(
       tab: AppTab.today,
       child: Scaffold(
@@ -185,6 +192,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
+          const SportScopeChip(),
           IconButton(
             onPressed: () async {
               await context.push(AppRoutes.refunds);
@@ -226,7 +234,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     outstandingInr: _outstandingInr,
                     facilityId:
                         ref.watch(sessionControllerProvider).facility?.id,
-                    selectedSportId: _selectedSportId,
+                    sportLabel: ref.watch(sportScopeProvider).label,
                     preset: _preset,
                     onOpenFilter: _openCommonFilter,
                     revenueMonthOffset: _revenueMonthOffset,
@@ -247,10 +255,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  /// One sheet for both filters — sport and period together.
+  /// The period filter. (Sports have their own "All Sports" selector in the app bar.)
   Future<void> _openCommonFilter() async {
     final tokens = context.tokens;
-    var sport = _selectedSportId;
     var preset = _preset;
     await showModalBottomSheet<void>(
       context: context,
@@ -311,10 +318,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w800)),
                       ),
-                      if (sport != null || preset != DateRangePreset.today)
+                      if (preset != DateRangePreset.today)
                         TextButton(
                           onPressed: () => setSheet(() {
-                            sport = null;
                             preset = DateRangePreset.today;
                           }),
                           child: const Text('Reset'),
@@ -322,19 +328,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  label('SPORT'),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      pill('All Sports', sport == null,
-                          () => setSheet(() => sport = null)),
-                      for (final s in _summary!.sports)
-                        pill(s.sportName, sport == s.facilitySportId,
-                            () => setSheet(() => sport = s.facilitySportId)),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
                   label('PERIOD'),
                   Wrap(
                     spacing: AppSpacing.sm,
@@ -349,9 +342,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   FilledButton(
                     onPressed: () {
                       Navigator.pop(sheetCtx);
-                      if (sport != _selectedSportId || preset != _preset) {
+                      if (preset != _preset) {
                         setState(() {
-                          _selectedSportId = sport;
                           _preset = preset;
                         });
                         _load();
@@ -492,7 +484,7 @@ class _DashboardBody extends StatelessWidget {
     required this.needsCount,
     required this.outstandingInr,
     required this.facilityId,
-    required this.selectedSportId,
+    required this.sportLabel,
     required this.preset,
     required this.onOpenFilter,
     required this.revenueMonthOffset,
@@ -512,7 +504,7 @@ class _DashboardBody extends StatelessWidget {
   /// in flight / failed — the summary's own figure is the fallback.
   final int? outstandingInr;
   final String? facilityId;
-  final String? selectedSportId;
+  final String sportLabel;
   final DateRangePreset preset;
   final VoidCallback onOpenFilter;
   final int revenueMonthOffset;
@@ -522,14 +514,7 @@ class _DashboardBody extends StatelessWidget {
   bool get _isToday => preset == DateRangePreset.today;
 
   String get _scopeLabel {
-    final sport = selectedSportId == null
-        ? 'All sports'
-        : summary.sports
-                .where((s) => s.facilitySportId == selectedSportId)
-                .map((s) => s.sportName)
-                .firstOrNull ??
-            'All sports';
-    return '$sport  ·  ${_presetLabels[preset]}';
+    return '$sportLabel  ·  ${_presetLabels[preset]}';
   }
 
   @override
@@ -2925,6 +2910,3 @@ class _SkelBox extends StatelessWidget {
   }
 }
 
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}

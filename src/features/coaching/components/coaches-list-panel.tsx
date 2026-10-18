@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
-import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { AddCoachSheet } from "@/features/coaching/components/add-coach-sheet";
 import type { CoachRow, CoachSort, CoachStatus } from "@/features/coaching/types";
@@ -67,12 +67,10 @@ function statusForTab(tab: StatusTab): CoachStatus | null {
  */
 export function CoachesListPanel({ facilityId, showAddButton = false }: { facilityId: string; showAddButton?: boolean }) {
   const perms = usePermissionContext();
-  const sportsQuery = useFacilitySportOptions(facilityId);
 
   const [status, setStatus] = useState<CoachStatus | null>(null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [sportId, setSportId] = useState(ALL);
   const [sort, setSort] = useState<CoachSort>("name_asc");
   const [view, setView] = useState<"list" | "grid">("list");
   const [page, setPage] = useState(0);
@@ -87,20 +85,23 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-  useEffect(() => setPage(0), [debounced, status, sportId, sort]);
+  // The sports ticked in the top bar (null = All Sports) — there is no separate Sport filter here.
+  const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(facilityId);
+  useEffect(() => setPage(0), [debounced, status, sportKey, sort]);
 
   const load = useCallback(async () => {
+    if (!sportsReady) return;
     setError(null);
     const result = await getCoachingService().listCoaches({
       facilityId,
-      filters: { search: debounced, status, sportId: sportId === ALL ? null : sportId },
+      filters: { search: debounced, status, sportIds },
       sort,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     });
     setRows(result.coaches);
     setTotalCount(result.totalCount);
-  }, [facilityId, debounced, status, sportId, sort, page]);
+  }, [facilityId, debounced, status, sportIds, sportsReady, sort, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,19 +139,6 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
               className="h-10 pl-9"
             />
           </div>
-          <Select value={sportId} onValueChange={setSportId}>
-            <SelectTrigger className="w-[10rem]" aria-label="Filter by Sport">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All Sports</SelectItem>
-              {(sportsQuery.data ?? []).map((s) => (
-                <SelectItem key={s.facilitySportId} value={s.facilitySportId}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={status ?? ALL} onValueChange={(v) => setStatus(v === ALL ? null : (v as CoachStatus))}>
             <SelectTrigger className="w-[10rem]" aria-label="Filter by Status">
               <SelectValue />

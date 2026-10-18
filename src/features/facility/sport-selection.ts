@@ -44,3 +44,16 @@ export function sportSelectionLabel(selection: ResolvedSportSelection, names: Re
   if (picked.length <= 2) return picked.join(", ");
   return `${picked[0]} +${picked.length - 1}`;
 }
+
+/**
+ * Maintenance, Staff and Inventory look at the whole facility, not one sport: on those pages the selector is fixed
+ * at "All Sports" and can't be changed.
+ */
+export function sportSelectionLocked(pathname: string): boolean {
+  return /^\/(maintenance|users-roles|inventory)(\/|$)/.test(pathname);
+}
+
+/** Landing on Home always starts from All Sports. */
+export function resetsSportSelection(pathname: string): boolean {
+  return pathname === "/dashboard";
+}
