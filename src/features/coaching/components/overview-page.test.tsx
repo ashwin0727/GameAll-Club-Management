@@ -71,7 +71,6 @@ const OVERVIEW: CoachingOverview = {
 const INSIGHTS_30: CoachingInsights = {
   windowDays: 30,
   totalStudents: 20,
-  sessionAttendancePct: 85,
   coachingRevenueMinor: 28500_00,
   averageRating: 4.8,
 };
@@ -79,7 +78,6 @@ const INSIGHTS_30: CoachingInsights = {
 const INSIGHTS_60: CoachingInsights = {
   windowDays: 60,
   totalStudents: 35,
-  sessionAttendancePct: 78.5,
   coachingRevenueMinor: 55000_00,
   averageRating: 4.6,
 };
@@ -123,16 +121,16 @@ describe("CoachingOverviewPage", () => {
     expect(screen.getByText("Schedule Session")).toBeInTheDocument();
   });
 
-  it("loads the Coaching Insights panel for the default 30-day window and shows all four tiles", async () => {
+  it("loads the Coaching Insights panel for the default 30-day window and shows its tiles (no attendance)", async () => {
     renderWithProviders(<CoachingOverviewPage />);
     await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 30));
 
     expect(await screen.findByText("20")).toBeInTheDocument(); // Total Students (windowed)
     expect(screen.getAllByText("Total Students").length).toBeGreaterThan(0); // KPI row tile + insights tile
-    expect(screen.getByText("85%")).toBeInTheDocument();
-    expect(screen.getByText("Session Attendance")).toBeInTheDocument();
-    expect(screen.getByText("4.8")).toBeInTheDocument();
-    expect(screen.getByText("Average Rating")).toBeInTheDocument();
+    expect(screen.queryByText("85%")).not.toBeInTheDocument();
+    expect(screen.queryByText("Session Attendance")).not.toBeInTheDocument();
+    expect(screen.queryByText("4.8")).not.toBeInTheDocument();
+    expect(screen.queryByText("Average Rating")).not.toBeInTheDocument();
   });
 
   it("re-fetches and re-renders Coaching Insights when the Last N Days dropdown changes", async () => {
@@ -145,7 +143,7 @@ describe("CoachingOverviewPage", () => {
 
     await waitFor(() => expect(getInsights).toHaveBeenCalledWith("f1", 60));
     expect(await screen.findByText("35")).toBeInTheDocument(); // 60-day Total Students
-    expect(screen.getByText("4.6")).toBeInTheDocument();
+    expect(screen.queryByText("4.6")).not.toBeInTheDocument();
   });
 
   it("the hero's Add Coach button opens the Add Coach slide-over instead of navigating", async () => {

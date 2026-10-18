@@ -37,3 +37,16 @@ export function mergeRuns(selected: TimeSlot[]): SlotRun[] {
 export function hoursBetween(startIso: string, endIso: string): number {
   return (new Date(endIso).getTime() - new Date(startIso).getTime()) / 3_600_000;
 }
+
+/** One booking to create: a continuous range on one court. */
+export interface CourtRun extends SlotRun {
+  courtId: string;
+}
+
+/**
+ * Every booking a multi-court selection needs: each court's chosen slots merged into continuous ranges. Courts
+ * come out in `courtOrder`; a court with nothing chosen contributes nothing.
+ */
+export function runsByCourt(selectedByCourt: Record<string, TimeSlot[]>, courtOrder: string[]): CourtRun[] {
+  return courtOrder.flatMap((courtId) => mergeRuns(selectedByCourt[courtId] ?? []).map((r) => ({ ...r, courtId })));
+}

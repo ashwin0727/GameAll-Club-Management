@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, CalendarPlus, CheckCircle2, ClipboardList, IndianRupee, Star, UserPlus, Users, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarPlus, ClipboardList, IndianRupee, UserPlus, Users, UsersRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -232,25 +232,11 @@ export function CoachingOverviewPage() {
                   value={String(insights.totalStudents)}
                 />
                 <InsightTile
-                  icon={CheckCircle2}
-                  iconBg="bg-success/15"
-                  iconColor="text-success"
-                  label="Session Attendance"
-                  value={insights.sessionAttendancePct != null ? `${insights.sessionAttendancePct}%` : "—"}
-                />
-                <InsightTile
                   icon={IndianRupee}
                   iconBg="bg-warning/15"
                   iconColor="text-warning"
                   label="Coaching Revenue"
                   value={money(insights.coachingRevenueMinor)}
-                />
-                <InsightTile
-                  icon={Star}
-                  iconBg="bg-blue-500/15"
-                  iconColor="text-blue-600 dark:text-blue-400"
-                  label="Average Rating"
-                  value={insights.averageRating != null ? insights.averageRating.toFixed(1) : "—"}
                 />
               </div>
             )}

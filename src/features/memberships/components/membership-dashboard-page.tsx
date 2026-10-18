@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MembershipDashboardHero } from "@/features/memberships/components/membership-dashboard-hero";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { membershipRowsForSport } from "@/features/memberships/sport-scope";
@@ -40,21 +40,22 @@ export function MembershipDashboardPage() {
   const router = useRouter();
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
-  const activeSportId = useActiveFacilitySportId(facilityId);
+  // The sports ticked in the top bar (null = All Sports, nothing to filter).
+  const sportScope = useSportFilter(facilityId).sportSet;
   const [plansOpen, setPlansOpen] = useState(false);
 
   const rowsQuery = useAllMemberships(facilityId);
   const batches = useFacilityBatches(facilityId).data ?? EMPTY_BATCHES;
   // Scoped to the top bar's active sport — same rule as the Plans page and every other
   // Membership v1 page: a facility with both Badminton and Cricket (Turf) shows one at a time.
-  const rows = useMemo(() => (rowsQuery.data ? membershipRowsForSport(rowsQuery.data, batches, activeSportId) : undefined), [rowsQuery.data, batches, activeSportId]);
+  const rows = useMemo(() => (rowsQuery.data ? membershipRowsForSport(rowsQuery.data, batches, sportScope) : undefined), [rowsQuery.data, batches, sportScope]);
 
   const now = useMemo(() => new Date(), []);
   // The summary RPC has no sport parameter, so it can't be trusted once a sport filter is
   // narrowing things — computed straight from the (already sport-scoped) rows instead, same as
   // the Membership Plans page already does for its own stat cards.
   const summary = useMemo(() => (rows ? summaryFromRows(rows, now) : undefined), [rows, now]);
-  const trend = useMemo(() => (rows ? activeInactiveTrend(rows, now, 6) : undefined), [rows, now]);
+  const trend = useMemo(() => (rows ? activeInactiveTrend(rows, now, 3) : undefined), [rows, now]);
   const expiringCount = useMemo(() => (rows ? expiringSoon(rows, now).length : undefined), [rows, now]);
   const expiringDelta = useMemo(() => (rows ? expiringSoonChangePct(rows, now) : undefined), [rows, now]);
   const inactiveCount = useMemo(() => (rows ? inactiveMembers(rows).length : undefined), [rows]);
@@ -154,7 +155,7 @@ export function MembershipDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <ActiveInactiveBarChart points={trend} />
         {facilityId && (
-          <MembershipRevenueChart facilityId={facilityId} revenueInr={summary?.revenueInr} revenueChangePct={summary?.revenueChangePct} />
+          <MembershipRevenueChart facilityId={facilityId} />
         )}
         <QuickActionsPanel
           onAddMember={() => router.push("/memberships/v1/new")}

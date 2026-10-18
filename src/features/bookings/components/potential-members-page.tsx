@@ -31,7 +31,8 @@ import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-
 import type { GuestPlayer } from "@/features/guests/types";
 import { formatCurrency } from "@/features/pricing/money";
 import { getGuestService } from "@/services/guests";
-import { useUiStore } from "@/stores/ui-store";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
+import { sportSelectionLabel } from "@/features/facility/sport-selection";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [10, 25, 50];
@@ -78,20 +79,25 @@ function StatCard({
 }
 
 /**
- * Potential Members: guests of the selected sport who have booked 3 or more times and aren't
+ * Potential Members: guests of the selected sports who have booked 3 or more times and aren't
  * members yet. Reached from the Guest Insights pop-up, and not listed in the menu.
  */
 export function PotentialMembersPage() {
   const { data: facility } = useFacility();
   const facilityId = facility?.id ?? null;
 
-  // One sport at a time: the top bar's choice, else the facility's first.
-  const activeSportId = useUiStore((s) => s.activeFacilitySportId);
+  // The sports ticked in the top bar (null = All Sports).
+  const sportFilter = useSportFilter(facilityId);
+  const sportIds = useMemo(() => (sportFilter.sportSet ? [...sportFilter.sportSet] : null), [sportFilter.sportSet]);
+  const sportKey = sportIds ? sportIds.join("|") : "all";
   const { data: sportChoices } = useFacilitySportOptions(facilityId ?? undefined);
-  const sport = sportChoices?.find((o) => o.facilitySportId === activeSportId) ?? sportChoices?.[0];
-  const sportId = sport?.facilitySportId ?? "";
+  const single = sportIds?.length === 1 ? sportChoices?.find((o) => o.facilitySportId === sportIds[0]) : undefined;
+  const sportLabel = sportSelectionLabel(
+    { ids: sportFilter.selectedIds, isAll: sportFilter.isAll },
+    new Map((sportChoices ?? []).map((o) => [o.facilitySportId, o.name])),
+  );
 
-  const { guests, isError } = useGuestProfiles(facilityId, sportId);
+  const { guests, isError } = useGuestProfiles(facilityId, sportIds, sportFilter.ready);
   const potential = useMemo(() => (guests ? potentialMembers(guests) : undefined), [guests]);
   const stats = useMemo(() => (guests ? segmentStats(guests) : null), [guests]);
 
@@ -118,11 +124,11 @@ export function PotentialMembersPage() {
   // A new sport or new filters start again from page one and forget guests that are no longer listed.
   useEffect(() => {
     setPage(1);
-  }, [filters, sortDir, perPage, sportId]);
+  }, [filters, sortDir, perPage, sportKey]);
   useEffect(() => {
     setFilters((f) => (f.court ? { ...f, court: "" } : f));
     setSelected(new Set());
-  }, [sportId]);
+  }, [sportKey]);
   useEffect(() => {
     if (!filtered) return;
     setSelected((prev) => {
@@ -313,8 +319,8 @@ export function PotentialMembersPage() {
                   }
                   sortDir={sortDir}
                   onSortBookings={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
-                  sportIcon={sport?.icon ?? "🏅"}
-                  sportName={sport?.name ?? "—"}
+                  sportIcon={single?.icon ?? "🏅"}
+                  sportName={sportLabel}
                   copiedKey={copiedKey}
                   onInvite={invite}
                   onViewProfile={viewProfile}

@@ -77,4 +77,8 @@ export interface PublicBookingConfirmation {
   currency: string;
   paymentStatus: string;
   bookingStatus: string;
+  /** A booking longer than an hour is held until its 50% advance is paid online. */
+  advanceRequired?: boolean;
+  advanceMinor?: number;
+  holdExpiresAt?: string | null;
 }

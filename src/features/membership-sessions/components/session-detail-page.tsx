@@ -181,7 +181,7 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
             <ArrowLeft className="h-4 w-4" /> Membership Session Details
           </button>
           <p className="text-xs text-muted-foreground">
-            <Link href="/memberships" className="hover:text-foreground">Memberships</Link>
+            <Link href="/memberships/v1" className="hover:text-foreground">Memberships</Link>
             {" / "}
             <Link href="/membership-sessions" className="hover:text-foreground">Membership Sessions</Link>
             {" / "}

@@ -145,3 +145,31 @@ describe("scheduleRowsForSport", () => {
     expect(scheduleRowsForSport(rows, null)).toHaveLength(2);
   });
 });
+
+describe("a set of sports (the top bar's multi-select)", () => {
+  const both = new Set(["badminton", "cricket"]);
+  const courts = [
+    { id: "c1", facilitySportId: "badminton" },
+    { id: "c2", facilitySportId: "cricket" },
+    { id: "c3", facilitySportId: "football" },
+  ];
+
+  it("keeps the courts of every ticked sport", () => {
+    expect(courtsForSport(courts, both).map((c) => c.id)).toEqual(["c1", "c2"]);
+  });
+
+  it("keeps a plan that has a batch on ANY ticked sport, and drops one that is only on an unticked sport", () => {
+    const plans = [plan({ id: "plan-1" }), plan({ id: "plan-2", name: "Cricket Plan" }), plan({ id: "plan-3", name: "Football Plan" })];
+    const batches = [
+      batch({ planId: "plan-1", facilitySportId: "badminton" }),
+      batch({ id: "b2", planId: "plan-2", facilitySportId: "cricket" }),
+      batch({ id: "b3", planId: "plan-3", facilitySportId: "football" }),
+    ];
+    expect(plansForSport(plans, batches, both).map((p) => p.id)).toEqual(["plan-1", "plan-2"]);
+  });
+
+  it("filters schedule rows by every ticked sport", () => {
+    const rows = [scheduleRow(), scheduleRow({ facilitySportId: "cricket" }), scheduleRow({ facilitySportId: "football" })];
+    expect(scheduleRowsForSport(rows, both)).toHaveLength(2);
+  });
+});

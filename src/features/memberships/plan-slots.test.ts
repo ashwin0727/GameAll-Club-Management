@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planSlotsFor } from "@/features/memberships/plan-slots";
+import { planSlotsFor, courtsOf, slotsForChosenCourt } from "@/features/memberships/plan-slots";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
 
 function batch(over: Partial<MembershipBatch>): MembershipBatch {
@@ -46,5 +46,27 @@ describe("planSlotsFor", () => {
 
   it("is empty with no plan chosen", () => {
     expect(planSlotsFor([batch({})], "", courts)).toEqual([]);
+  });
+});
+
+describe("courtsOf / slotsForChosenCourt", () => {
+  const mk = (batchId: string, courtId: string, startTime: string) => ({
+    batchId, courtId, courtName: courtId.toUpperCase(), daysOfWeek: [1], startTime, endTime: "09:00",
+  });
+  const multi = [mk("a", "c1", "06:00"), mk("b", "c1", "18:00"), mk("c", "c2", "06:00")];
+
+  it("lists each court once", () => {
+    expect(courtsOf(multi).map((c) => c.courtId)).toEqual(["c1", "c2"]);
+  });
+  it("keeps only the chosen court's slots on a multi-court plan", () => {
+    expect(slotsForChosenCourt(multi, "c1").map((x) => x.batchId)).toEqual(["a", "b"]);
+    expect(slotsForChosenCourt(multi, "c2").map((x) => x.batchId)).toEqual(["c"]);
+  });
+  it("returns nothing until a court is chosen on a multi-court plan", () => {
+    expect(slotsForChosenCourt(multi, "")).toEqual([]);
+  });
+  it("needs no choice on a single-court plan", () => {
+    const one = multi.slice(0, 2);
+    expect(slotsForChosenCourt(one, "")).toEqual(one);
   });
 });

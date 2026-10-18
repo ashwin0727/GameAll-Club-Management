@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile, getFacilityContext } from "@/features/auth/api/auth.api";
 import { AppShell } from "@/components/shared/app-shell";
+import { NavigationProgress } from "@/components/shared/navigation-progress";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Both share the same cached auth.getUser() call under the hood, so
@@ -19,6 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <AppShell profile={profile} facilityContext={facilityContext}>
+      <NavigationProgress />
       {children}
     </AppShell>
   );

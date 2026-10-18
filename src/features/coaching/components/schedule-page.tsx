@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -73,7 +73,6 @@ export function SchedulePage() {
     return map;
   }, [rows]);
 
-  const canCreate = perms?.can("COACHING_CREATE_SESSION") ?? false;
   const today = new Date().toDateString();
 
   return (
@@ -81,15 +80,6 @@ export function SchedulePage() {
       <PageHeader
         title="Coaching Schedule"
         subtitle="Manage coaching sessions, court allocation and availability."
-        action={
-          canCreate && (
-            <Button asChild size="sm">
-              <Link href="/coaching/sessions/new">
-                <Plus className="h-4 w-4" aria-hidden /> Add Session
-              </Link>
-            </Button>
-          )
-        }
       />
 
       <Card className="flex flex-wrap items-center justify-between gap-3 p-3">

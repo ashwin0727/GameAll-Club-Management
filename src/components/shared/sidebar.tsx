@@ -41,7 +41,6 @@ import { activeHrefFor } from "@/lib/nav-active";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/dashboard": LayoutDashboard,
-  "/memberships": Users,
   "/memberships/v1": Crown,
   "/memberships/v1/schedule": CalendarDays,
   "/memberships/v1/plans": Tags,
@@ -66,6 +65,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/coaching": GraduationCap,
   "/coaching/programs": BookOpen,
   "/coaching/students": Users,
+  "/coaching/schedule": CalendarClock,
   "/coaching/reports": BarChart3,
   "/tournaments": Trophy,
 };

@@ -50,3 +50,16 @@ describe("computeAvailableSlots", () => {
     expect(slots).toHaveLength(2);
   });
 });
+describe("computeAvailableSlots — partial tail", () => {
+  const late = { isClosed: false, is24Hours: false, slots: [{ startTime: "21:00", endTime: "23:30", crossesMidnight: false, displayOrder: 0 }] } as never;
+  const d = new Date(2026, 10, 2);
+  it("drops a last slot that would run past closing by default", () => {
+    expect(computeAvailableSlots(d, late, []).map((s) => new Date(s.startTime).getHours())).toEqual([21, 22]);
+  });
+  it("offers the 23:00–23:30 slot when asked", () => {
+    const slots = computeAvailableSlots(d, late, [], 60, true);
+    expect(slots.map((s) => new Date(s.startTime).getHours())).toEqual([21, 22, 23]);
+    const last = slots[2]!;
+    expect((new Date(last.endTime).getTime() - new Date(last.startTime).getTime()) / 60000).toBe(30);
+  });
+});

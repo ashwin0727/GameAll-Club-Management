@@ -129,8 +129,7 @@
     transform-origin: top;
   }
 
-  /* Revenue trend: the line draws left-to-right (pathLength="1", so no
-     measurement needed) and the area fill wipes in behind it. */
+  /* Revenue trend: the line is revealed left-to-right by a clip and the area fill wipes in behind it. */
   .chart-line-draw {
     animation: chart-line-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--draw-delay, 0ms);
@@ -158,10 +157,10 @@
 
 @keyframes chart-line-draw {
   from {
-    stroke-dashoffset: 1;
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    stroke-dashoffset: 0;
+    clip-path: inset(0 0 0 0);
   }
 }
 
@@ -259,5 +258,13 @@
   .donut-sweep,
   .bar-grow {
     animation: none;
+  }
+}
+@keyframes nav-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
   }
 }

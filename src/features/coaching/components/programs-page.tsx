@@ -17,7 +17,6 @@ import {
   Percent,
   Trash2,
   Search,
-  Star,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -459,7 +458,6 @@ export function ProgramsPage() {
                 <InsightTile icon={Users} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" label="Total Enrolled" value={String(insights.enrolledStudents)} />
                 <InsightTile icon={Percent} iconBg="bg-success/15" iconColor="text-success" label="Completion Rate" value={insights.avgCompletionPct != null ? `${insights.avgCompletionPct}%` : "—"} />
                 <InsightTile icon={ClipboardList} iconBg="bg-warning/15" iconColor="text-warning" label="Active Batches" value={String(insights.activeBatches)} />
-                <InsightTile icon={Star} iconBg="bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-400" label="Average Rating" value={insights.averageRating != null ? insights.averageRating.toFixed(1) : "—"} />
               </div>
             )}
           </Card>

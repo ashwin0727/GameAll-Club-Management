@@ -168,7 +168,7 @@ export function CoachingStudentsPage() {
         title="Manage Students"
         subtitle="View and manage all students enrolled in your coaching programs."
         tagline="Build Better Players."
-        taglineSub="Track progress, attendance, and performance for every student."
+        taglineSub="Track progress and performance for every student."
         buttonLabel="Add Student"
         onAddMember={canManage ? () => router.push("/coaching/students/new") : undefined}
       />

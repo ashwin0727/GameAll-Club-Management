@@ -464,7 +464,7 @@ function CompleteDialog({ sessionId, onClose, onDone }: { sessionId: string; onC
         <DialogHeader>
           <DialogTitle>Complete Session</DialogTitle>
           <DialogDescription>
-            Records completion and coach notes. Student attendance is not tracked.
+            Records completion and coach notes.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

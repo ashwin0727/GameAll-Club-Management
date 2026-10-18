@@ -38,9 +38,6 @@ export function GuestBookingsFilterCard({
   onTabChange,
   search,
   onSearchChange,
-  sportOptions,
-  sportId,
-  onSportChange,
   courts,
   courtId,
   onCourtChange,
@@ -58,9 +55,6 @@ export function GuestBookingsFilterCard({
   search: string;
   onSearchChange: (value: string) => void;
   /** The facility's sports. The choice is the same one the top bar makes. */
-  sportOptions: { value: string; label: string }[];
-  sportId: string;
-  onSportChange: (sportId: string) => void;
   courts: { id: string; name: string }[];
   courtId: string;
   onCourtChange: (courtId: string) => void;
@@ -119,14 +113,6 @@ export function GuestBookingsFilterCard({
           )}
         </div>
 
-        <SelectField
-          wrapperClassName="w-[160px]"
-          ariaLabel="Sport"
-          value={sportId}
-          onValueChange={onSportChange}
-          options={sportOptions}
-          className={CONTROL}
-        />
         <SelectField
           wrapperClassName="w-[150px]"
           ariaLabel="Court"

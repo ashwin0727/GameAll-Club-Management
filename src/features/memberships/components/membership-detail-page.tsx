@@ -44,6 +44,7 @@ import { getMembershipService } from "@/services/memberships";
 import { formatSlot } from "@/features/memberships/slot-format";
 import { ServiceError } from "@/services/shared/service-error";
 import { autoPayNextCharge, autoPayStatusLabel, autoPayCadence, effectiveAutoPayStatus } from "@/features/memberships/autopay";
+import { CopyLinkButton } from "@/features/bulk-upload/components/bulk-success-view";
 import type { MembershipAutoPay, MembershipDetail, MembershipListStatus } from "@/features/memberships/types";
 
 function inr(v: number): string {
@@ -143,7 +144,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
   }, [membershipId]);
 
   // Delete Member: confirm → (if AutoPay is running) cancel it → delete on the next try.
-  const deleteFlow = useDeleteMemberFlow({ onDeleted: () => router.push("/memberships"), onChanged: () => void load() });
+  const deleteFlow = useDeleteMemberFlow({ onDeleted: () => router.push("/memberships/v1"), onChanged: () => void load() });
 
   async function runAction() {
     if (!detail || !confirm) return;
@@ -182,7 +183,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => router.push("/memberships")}>
+          <Button type="button" variant="ghost" size="icon" onClick={() => router.push("/memberships/v1")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -306,7 +307,10 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 </div>
               )}
               {autoPay.shortUrl && autoPay.status === "created" && (
-                <p className="mt-3 break-all text-xs text-muted-foreground">Payment link: {autoPay.shortUrl}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <p className="min-w-0 flex-1 break-all text-xs text-muted-foreground">Payment link: {autoPay.shortUrl}</p>
+                  <CopyLinkButton url={autoPay.shortUrl} />
+                </div>
               )}
             </Card>
           )}

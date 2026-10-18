@@ -11,7 +11,7 @@ import { MemberSelectField } from "@/features/memberships/components/member-sele
 import { MemberScheduleGrid, type DayColumnData } from "@/features/memberships/components/member-schedule-grid";
 import { MemberScheduleDetailsPanel } from "@/features/memberships/components/member-schedule-details-panel";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { useMemberSchedules, usePlayingAreasList } from "@/features/memberships/hooks/use-member-schedule";
 import { courtsForSport, scheduleRowsForSport } from "@/features/memberships/sport-scope";
 import { useCalendarEventsForRange, useCourtSchedules, dayForCourt } from "@/features/bookings/hooks/use-booking-calendar-data";
@@ -73,7 +73,8 @@ const VIEW_OPTIONS = [
 export function MemberSchedulePage() {
   const { data: facility } = useFacility();
   const facilityId = facility?.id ?? null;
-  const activeSportId = useActiveFacilitySportId(facilityId);
+  // The sports ticked in the top bar (null = All Sports, nothing to filter).
+  const sportScope = useSportFilter(facilityId).sportSet;
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [courtFilter, setCourtFilter] = useState<string>("");
@@ -85,10 +86,10 @@ export function MemberSchedulePage() {
   const areasQuery = usePlayingAreasList(facilityId);
   // Scoped to the top bar's active sport — same rule as every other Membership v1 page.
   const members = useMemo(
-    () => groupMemberSchedules(scheduleRowsForSport(schedulesQuery.data ?? [], activeSportId)),
-    [schedulesQuery.data, activeSportId],
+    () => groupMemberSchedules(scheduleRowsForSport(schedulesQuery.data ?? [], sportScope)),
+    [schedulesQuery.data, sportScope],
   );
-  const areas = useMemo(() => courtsForSport(areasQuery.data ?? [], activeSportId), [areasQuery.data, activeSportId]);
+  const areas = useMemo(() => courtsForSport(areasQuery.data ?? [], sportScope), [areasQuery.data, sportScope]);
 
   // Default to the first member with a schedule, once loaded.
   useEffect(() => {

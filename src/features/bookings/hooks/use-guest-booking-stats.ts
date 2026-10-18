@@ -14,36 +14,40 @@ function iso(d: Date): string {
 }
 
 /**
- * Every guest booking in [from, to] for one sport — the list, fetched a page at a time until it is
- * all here. Leave `from` / `to` out for the sport's whole history. `extra` narrows it further with the same filters the table has (search, court, …).
+ * Every guest booking in [from, to] for the sports in view — the list, fetched a page at a time until it is
+ * all here. `sportIds` null is All Sports; a subset is fetched sport by sport and merged, newest first. Leave
+ * `from` / `to` out for the whole history. `extra` narrows it further with the same filters the table has (search, court, …).
  */
 export async function fetchAllGuestBookings(
   facilityId: string,
-  facilitySportId: string,
+  sportIds: string[] | null,
   from: string | undefined,
   to: string | undefined,
   extra: Partial<Pick<GuestBookingListParams, "search" | "courtId" | "status" | "paymentStatus">> = {},
 ): Promise<GuestBookingRow[]> {
   const svc = getBookingService();
   const out: GuestBookingRow[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const result = await svc.listGuestBookings(facilityId, { ...extra, facilitySportId, from, to, page, perPage: PAGE_SIZE });
-    out.push(...result.rows);
-    if (out.length >= result.totalCount || result.rows.length === 0) break;
+  for (const facilitySportId of sportIds && sportIds.length > 0 ? sportIds : [undefined]) {
+    const before = out.length;
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const result = await svc.listGuestBookings(facilityId, { ...extra, facilitySportId, from, to, page, perPage: PAGE_SIZE });
+      out.push(...result.rows);
+      if (out.length - before >= result.totalCount || result.rows.length === 0) break;
+    }
   }
-  return out;
+  return sportIds && sportIds.length > 1 ? out.sort((a, b) => b.startTime.localeCompare(a.startTime)) : out;
 }
 
 /**
- * The Guest Bookings header figures for one sport: the selected period, the period just
+ * The Guest Bookings header figures for the sports in view: the selected period, the period just
  * before it (for the comparison lines), and the bookings still to come. Worked out from
  * the same list the table uses, so the cards and the table always agree — and, because the
  * list is sport-aware, so are they. The previous result stays on screen while a new one loads.
  */
-export function useGuestBookingStats(facilityId: string | null, facilitySportId: string, from: string, to: string) {
+export function useGuestBookingStats(facilityId: string | null, sportIds: string[] | null, ready: boolean, from: string, to: string) {
   return useQuery({
-    queryKey: ["guest-booking-stats", facilityId, facilitySportId, from, to],
-    enabled: Boolean(facilityId) && Boolean(facilitySportId),
+    queryKey: ["guest-booking-stats", facilityId, sportIds?.join("|") ?? "all", from, to],
+    enabled: Boolean(facilityId) && ready,
     placeholderData: keepPreviousData,
     staleTime: 15_000,
     queryFn: async (): Promise<GuestStats & { upcoming: number }> => {
@@ -53,22 +57,22 @@ export function useGuestBookingStats(facilityId: string | null, facilitySportId:
       const horizon = parseIsoDate(iso(today));
       horizon.setDate(horizon.getDate() + 365);
       const [current, previous, ahead] = await Promise.all([
-        fetchAllGuestBookings(fid, facilitySportId, from, to),
-        fetchAllGuestBookings(fid, facilitySportId, before.from, before.to),
-        fetchAllGuestBookings(fid, facilitySportId, iso(today), iso(horizon)),
+        fetchAllGuestBookings(fid, sportIds, from, to),
+        fetchAllGuestBookings(fid, sportIds, before.from, before.to),
+        fetchAllGuestBookings(fid, sportIds, iso(today), iso(horizon)),
       ]);
       return { ...buildGuestStats(current, previous), upcoming: countUpcoming(ahead, new Date()) };
     },
   });
 }
 
-/** Every guest booking a sport has ever had — what the Recent Guests and Guest Insights cards are worked out from. */
-export function useGuestHistory(facilityId: string | null, facilitySportId: string) {
+/** Every guest booking the sports in view have ever had — what the Recent Guests and Guest Insights cards are worked out from. */
+export function useGuestHistory(facilityId: string | null, sportIds: string[] | null, ready: boolean) {
   return useQuery({
-    queryKey: ["guest-history", facilityId, facilitySportId],
-    enabled: Boolean(facilityId) && Boolean(facilitySportId),
+    queryKey: ["guest-history", facilityId, sportIds?.join("|") ?? "all"],
+    enabled: Boolean(facilityId) && ready,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
-    queryFn: () => fetchAllGuestBookings(facilityId!, facilitySportId, undefined, undefined),
+    queryFn: () => fetchAllGuestBookings(facilityId!, sportIds, undefined, undefined),
   });
 }

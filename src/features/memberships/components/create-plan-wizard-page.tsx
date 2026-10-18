@@ -35,7 +35,7 @@ import { PlanWizardStepper } from "@/features/memberships/components/plan-wizard
 import { CourtAccessStep } from "@/features/memberships/components/court-access-step";
 import { formatClock12 } from "@/features/memberships/components/member-schedule-grid";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import {
   billingIntervalLabel,
   durationLabel,
@@ -325,7 +325,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
     durationDays: 30,
     joiningFeeInr: 0,
     securityDepositInr: 0,
-    showBadge: true,
+    showBadge: false,
     badgeText: "Popular",
     courtIds: [],
     // Mon-Fri, matching the same default the Add Member wizard's own Playing Schedule step seeds.
@@ -350,11 +350,12 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeSportId = useActiveFacilitySportId(facilityId);
+  // The sports ticked in the top bar (null = All Sports, nothing to filter).
+  const sportScope = useSportFilter(facilityId).sportSet;
   const areasQuery = usePlayingAreasList(facilityId);
   // Scoped to the top bar's active sport — a plan is always created for one sport at a time;
   // switching sport up there is how an owner builds a plan for their other sport.
-  const courts = courtsForSport((areasQuery.data ?? []).filter((a) => a.status === "ACTIVE"), activeSportId);
+  const courts = courtsForSport((areasQuery.data ?? []).filter((a) => a.status === "ACTIVE"), sportScope);
   const courtSchedulesQuery = useCourtSchedules(facilityId, courts);
   const sportNamesQuery = useFacilitySportNames(facilityId);
 

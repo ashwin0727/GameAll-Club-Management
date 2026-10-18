@@ -193,7 +193,7 @@ describe("activeInactiveTrend", () => {
   });
 
   it("marks a membership inactive for months after it ended", () => {
-    const rows = [row({ startDate: "2026-01-01", endDate: "2026-07-15" })];
+    const rows = [row({ startDate: "2026-01-01", endDate: "2026-07-15", status: "inactive" })];
     const trend = activeInactiveTrend(rows, NOW, 3);
     // Jul: covers month-end (Jul 31)? endDate 2026-07-15 < Jul 31 -> already inactive by Jul end.
     expect(trend[0]).toMatchObject({ label: "Jul", active: 0, inactive: 1 });

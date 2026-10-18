@@ -7,10 +7,10 @@ import type { MembershipListParams, RevenueGranularity } from "@/features/member
 // a quick remount/filter-toggle without risking stale numbers.
 const MEMBERSHIP_STALE_TIME = 15_000;
 
-export function useMembershipRevenue(facilityId: string | null, granularity: RevenueGranularity) {
+export function useMembershipRevenue(facilityId: string | null, granularity: RevenueGranularity, range?: { from?: string; to?: string }) {
   return useQuery({
-    queryKey: ["membership-revenue", facilityId, granularity],
-    queryFn: () => getMembershipService().getMembershipRevenueTimeseries(facilityId!, granularity),
+    queryKey: ["membership-revenue", facilityId, granularity, range?.from ?? null, range?.to ?? null],
+    queryFn: () => getMembershipService().getMembershipRevenueTimeseries(facilityId!, granularity, range),
     enabled: Boolean(facilityId),
     staleTime: MEMBERSHIP_STALE_TIME,
   });

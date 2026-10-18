@@ -4,15 +4,18 @@ interface UiState {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
-  /** The sport the dashboard reports on; null = the facility's first sport. */
-  activeFacilitySportId: string | null;
-  setActiveFacilitySportId: (id: string | null) => void;
+  /**
+   * The sports every page reports on. `null` = All Sports (the default); otherwise the subset ticked in the top
+   * bar. Read it through `useSportFilter`, which checks it against the facility's real sports.
+   */
+  selectedSportIds: string[] | null;
+  setSelectedSportIds: (ids: string[] | null) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
   sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  activeFacilitySportId: null,
-  setActiveFacilitySportId: (id) => set({ activeFacilitySportId: id }),
+  selectedSportIds: null,
+  setSelectedSportIds: (ids) => set({ selectedSportIds: ids }),
 }));

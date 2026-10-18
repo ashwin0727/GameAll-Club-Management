@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Building2, CalendarDays, ChevronDown, LogOut, Menu, User } from "lucide-react";
+import { Bell, Building2, CalendarDays, Check, ChevronDown, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -18,7 +17,8 @@ import { TopbarSearch } from "@/components/shared/topbar-search";
 import { useUiStore } from "@/stores/ui-store";
 import { useLogout } from "@/features/auth/hooks/use-auth";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
+import { sportSelectionLabel } from "@/features/facility/sport-selection";
 import { cn, getInitials } from "@/lib/utils";
 import type { Profile } from "@/features/auth/types";
 
@@ -39,13 +39,12 @@ export function Topbar({ profile }: { profile: Profile }) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const logout = useLogout();
   const { data: facility } = useFacility();
-  const { data: sportOptions = [] } = useFacilitySportOptions(facility?.id);
-  const activeSportId = useUiStore((s) => s.activeFacilitySportId);
-  const setActiveSportId = useUiStore((s) => s.setActiveFacilitySportId);
-  // A stale or unset pick means the first sport, matching what the dashboard shows.
-  const selectedSportId = sportOptions.some((o) => o.facilitySportId === activeSportId)
-    ? activeSportId!
-    : (sportOptions[0]?.facilitySportId ?? "");
+  // "All Sports" by default; the user can tick any combination and every page follows.
+  const sports = useSportFilter(facility?.id);
+  const sportLabel = sportSelectionLabel(
+    { ids: sports.selectedIds, isAll: sports.isAll },
+    new Map(sports.options.map((o) => [o.facilitySportId, o.name])),
+  );
   // Read on the client only, so the server-rendered HTML never disagrees with
   // the browser's clock or timezone.
   const [today, setToday] = useState<string | null>(null);
@@ -59,39 +58,56 @@ export function Topbar({ profile }: { profile: Profile }) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Facility */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className={cn(CHIP, "min-w-0 max-w-[220px] outline-none focus-visible:ring-2 focus-visible:ring-ring")}>
-            <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="truncate font-medium">{facility?.name ?? "Your facility"}</span>
-            <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuLabel className="flex flex-col">
-            <span className="text-xs font-normal text-muted-foreground">Active facility</span>
-            <span className="font-medium">{facility?.name ?? "Your facility"}</span>
-            {facility?.address?.city && (
-              <span className="text-xs font-normal text-muted-foreground">{facility.address.city}</span>
+      {/* Facility — fixed: there is one facility here, so nothing to switch. */}
+      <div className={cn(CHIP, "min-w-0 max-w-[220px]")} aria-label="Facility">
+        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="truncate font-medium">{facility?.name ?? "Your facility"}</span>
+      </div>
+
+      {/* Sports — All Sports by default; tick any combination to look at just those. */}
+      {sports.options.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label="Sports"
+              className={cn(CHIP, "min-w-0 max-w-[240px] outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+            >
+              <span className="truncate font-medium">{sportLabel}</span>
+              <ChevronDown className="ml-1 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Show data for</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={sports.isAll}
+              // Keep the menu open so several sports can be ticked in one go.
+              onSelect={(e) => e.preventDefault()}
+              onCheckedChange={() => sports.selectAll()}
+            >
+              <span className="font-medium">All Sports</span>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            {sports.options.map((option) => (
+              <DropdownMenuCheckboxItem
+                key={option.facilitySportId}
+                checked={sports.selectedIds.includes(option.facilitySportId)}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => sports.toggle(option.facilitySportId)}
+              >
+                <span className="mr-2" aria-hidden>
+                  {option.icon}
+                </span>
+                {option.name}
+              </DropdownMenuCheckboxItem>
+            ))}
+            {!sports.isAll && (
+              <p className="flex items-center gap-1.5 px-2 pb-1.5 pt-2 text-[11px] text-muted-foreground">
+                <Check className="h-3 w-3" aria-hidden /> Every page shows only the sports ticked above.
+              </p>
             )}
-          </DropdownMenuLabel>
-          {sportOptions.length > 0 && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Sport</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={selectedSportId} onValueChange={setActiveSportId}>
-                {sportOptions.map((option) => (
-                  <DropdownMenuRadioItem key={option.facilitySportId} value={option.facilitySportId}>
-                    <span className="mr-2" aria-hidden>{option.icon}</span>
-                    {option.name}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <div className="flex-1" />
 

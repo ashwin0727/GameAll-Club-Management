@@ -2,8 +2,8 @@ import type { DashboardSummary, DateRangePreset } from "@/features/dashboard/typ
 import type { Facility } from "@/features/onboarding/types";
 
 export interface DashboardSummaryParams {
-  /** The one sport shown. null = the facility's first sport (no all-sports aggregate). */
-  facilitySportId: string | null;
+  /** The sports shown (the top bar's selection). null = All Sports — nothing is filtered out. */
+  facilitySportIds: string[] | null;
   preset: DateRangePreset;
   custom?: { from: string; to: string };
   /** Months back from the current month for the Revenue Overview panel (0 = this month). Independent of `preset`. */

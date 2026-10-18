@@ -13,13 +13,15 @@ export function computeAvailableSlots(
   day: OperatingDay,
   existingBookings: { startTime: string; endTime: string }[],
   slotMinutes = 60,
+  /** Also offer the shorter slot left at the end of a window (open until 23:30 → a 23:00–23:30 slot). */
+  includePartialTail = false,
 ): TimeSlot[] {
   const windows = windowsForDay(day);
   const slots: TimeSlot[] = [];
 
   for (const window of windows) {
-    for (let start = window.startMin; start + slotMinutes <= window.endMin; start += slotMinutes) {
-      const end = start + slotMinutes;
+    for (let start = window.startMin; includePartialTail ? start < window.endMin : start + slotMinutes <= window.endMin; start += slotMinutes) {
+      const end = Math.min(start + slotMinutes, window.endMin);
       const startTime = atMinutes(date, start);
       const endTime = atMinutes(date, end);
       const available = !existingBookings.some((b) => rangesOverlap(startTime, endTime, new Date(b.startTime), new Date(b.endTime)));

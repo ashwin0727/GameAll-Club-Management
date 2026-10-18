@@ -332,7 +332,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
         setSaving(false);
         return;
       }
-      router.push("/memberships");
+      router.push("/memberships/v1");
     } catch (err) {
       setError(err instanceof ServiceError ? err.message : "Unable to create this membership.");
       setSaving(false);
@@ -360,7 +360,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
         ) : (
           <p className="text-sm text-muted-foreground">Recurring link could not be generated — you can retry from the list.</p>
         )}
-        <Button type="button" onClick={() => router.push("/memberships")}>
+        <Button type="button" onClick={() => router.push("/memberships/v1")}>
           Back to Memberships
         </Button>
       </div>
@@ -374,7 +374,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships")}
+          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships/v1")}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -667,7 +667,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships")}
+          onClick={() => router.push(isEdit && membershipId ? `/memberships/${membershipId}` : "/memberships/v1")}
         >
           Cancel
         </Button>

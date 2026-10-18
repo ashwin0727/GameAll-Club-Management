@@ -77,7 +77,10 @@ const PINCODE_RE = /^[1-9]\d{5}$/;
 function localDigits(countryCode: string, phone: string): string {
   const digits = phone.replace(/\D/g, "");
   const code = countryCode.replace(/\D/g, "");
-  return code && digits.startsWith(code) && digits.length > code.length ? digits.slice(code.length) : digits;
+  // An Indian mobile is 10 digits and many start with "91" themselves (9123456789), so for +91 the code is peeled
+  // off only when there are more digits than a local number has.
+  const hasCodePrefix = code && digits.startsWith(code) && digits.length > code.length && (code !== "91" || digits.length > 10);
+  return hasCodePrefix ? digits.slice(code.length) : digits;
 }
 
 /** "Full name is required." / "Full name is invalid." — every field's message follows this shape. */

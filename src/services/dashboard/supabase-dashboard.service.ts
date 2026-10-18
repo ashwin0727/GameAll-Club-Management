@@ -42,6 +42,8 @@ type PaymentRow = {
   status: string;
   amount_inr: number;
   created_at: string;
+  /** When the money actually arrived; null on older rows, which fall back to created_at. */
+  paid_at?: string | null;
   booking_id: string | null;
   membership_id: string | null;
 };
@@ -51,6 +53,54 @@ export class SupabaseDashboardService implements DashboardService {
 
   constructor(client?: SupabaseClient<Database>) {
     this.supabase = client ?? createClient();
+  }
+
+  /** The payments that belong to the given sports (see the call site for what "belongs" means). */
+  private async paymentsInSports<T extends { booking_id?: string | null; membership_id?: string | null; coaching_enrollment_id?: string | null }>(
+    payments: T[],
+    sports: ReadonlySet<string>,
+    playingAreas: { id: string; facilitySportId: string }[],
+    membershipIds: ReadonlySet<string>,
+  ): Promise<T[]> {
+    const sb = this.supabase as unknown as SupabaseClient;
+    const courtSport = new Map(playingAreas.map((a) => [a.id, a.facilitySportId]));
+    const chunks = <V,>(list: V[], n = 150): V[][] => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n));
+
+    const bookingIds = [...new Set(payments.map((p) => p.booking_id).filter((x): x is string => Boolean(x)))];
+    const enrollmentIds = [...new Set(payments.map((p) => p.coaching_enrollment_id).filter((x): x is string => Boolean(x)))];
+
+    const bookingSport = new Map<string, string | undefined>();
+    for (const ids of chunks(bookingIds)) {
+      const { data, error } = await sb.from("bookings").select("id, court_id").in("id", ids);
+      if (error) throw mapSupabaseError(error);
+      for (const b of (data ?? []) as { id: string; court_id: string }[]) bookingSport.set(b.id, courtSport.get(b.court_id));
+    }
+
+    const enrollmentProgram = new Map<string, string>();
+    for (const ids of chunks(enrollmentIds)) {
+      const { data, error } = await sb.from("coaching_enrollments").select("id, program_id").in("id", ids);
+      if (error) throw mapSupabaseError(error);
+      for (const e of (data ?? []) as { id: string; program_id: string }[]) enrollmentProgram.set(e.id, e.program_id);
+    }
+    const programSport = new Map<string, string | null>();
+    for (const ids of chunks([...new Set(enrollmentProgram.values())])) {
+      const { data, error } = await sb.from("coaching_programs").select("id, facility_sport_id").in("id", ids);
+      if (error) throw mapSupabaseError(error);
+      for (const p of (data ?? []) as { id: string; facility_sport_id: string | null }[]) programSport.set(p.id, p.facility_sport_id);
+    }
+
+    return payments.filter((p) => {
+      if (p.membership_id != null) return membershipIds.has(p.membership_id);
+      if (p.booking_id != null) {
+        const sport = bookingSport.get(p.booking_id);
+        return sport !== undefined && sports.has(sport);
+      }
+      if (p.coaching_enrollment_id != null) {
+        const sport = programSport.get(enrollmentProgram.get(p.coaching_enrollment_id) ?? "");
+        return sport != null && sports.has(sport);
+      }
+      return false;
+    });
   }
 
   async getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary> {
@@ -102,25 +152,22 @@ export class SupabaseDashboardService implements DashboardService {
       }),
       this.supabase
         .from("payments")
-        .select("status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id")
+        .select("status, amount_inr, created_at, paid_at, booking_id, membership_id, coaching_enrollment_id")
         .eq("facility_id", facilityId)
-        .gte("created_at", revWindowFrom)
-        .lt("created_at", revWindowTo),
+        // Dated the way Finance dates it: when the money was received (paid_at), else when the row was made.
+        .or(
+          `and(paid_at.gte.${revWindowFrom},paid_at.lt.${revWindowTo}),and(paid_at.is.null,created_at.gte.${revWindowFrom},created_at.lt.${revWindowTo})`,
+        ),
     ]);
 
-    // One sport at a time: no explicit pick falls back to the facility's first sport.
-    const activeSportId =
-      (params.facilitySportId && facilitySportsAll.some((fs) => fs.id === params.facilitySportId)
-        ? params.facilitySportId
-        : null) ??
-      facilitySportsAll[0]?.id ??
-      null;
+    // The sports in view: the ticked subset, or null for All Sports (every number is then facility-wide).
+    const requested = (params.facilitySportIds ?? []).filter((id) => facilitySportsAll.some((fs) => fs.id === id));
+    const activeSportSet: Set<string> | null =
+      requested.length > 0 && requested.length < facilitySportsAll.length ? new Set(requested) : null;
 
-    const facilitySports = activeSportId
-      ? facilitySportsAll.filter((fs) => fs.id === activeSportId)
-      : facilitySportsAll;
-    const playingAreas = activeSportId
-      ? playingAreasAll.filter((a) => a.facilitySportId === activeSportId)
+    const facilitySports = activeSportSet ? facilitySportsAll.filter((fs) => activeSportSet.has(fs.id)) : facilitySportsAll;
+    const playingAreas = activeSportSet
+      ? playingAreasAll.filter((a) => activeSportSet.has(a.facilitySportId))
       : playingAreasAll;
     const playingAreaIds = new Set(playingAreas.map((a) => a.id));
 
@@ -246,7 +293,7 @@ export class SupabaseDashboardService implements DashboardService {
     // in that sport's batches; Active Membership to those same memberships.
     let sportScope: { bookingIds: Set<string>; membershipIds: Set<string> } | null = null;
     let sportMembershipIds: Set<string> | null = null;
-    if (activeSportId) {
+    if (activeSportSet) {
       const [batchesRes, batchMembersRes] = await Promise.all([
         this.supabase.from("membership_batches").select("id, facility_sport_id").eq("facility_id", facilityId),
         this.supabase.from("membership_batch_members").select("membership_id, batch_id"),
@@ -256,7 +303,7 @@ export class SupabaseDashboardService implements DashboardService {
       const batchSport = new Map((batchesRes.data ?? []).map((b) => [b.id, b.facility_sport_id] as const));
       sportMembershipIds = new Set(
         (batchMembersRes.data ?? [])
-          .filter((m) => m.membership_id != null && batchSport.get(m.batch_id) === activeSportId)
+          .filter((m) => m.membership_id != null && activeSportSet.has(batchSport.get(m.batch_id) ?? ""))
           .map((m) => m.membership_id as string),
       );
       sportScope = { bookingIds: new Set(bookingRows.map((b) => b.id)), membershipIds: sportMembershipIds };
@@ -279,12 +326,16 @@ export class SupabaseDashboardService implements DashboardService {
     const currentGuestBookings = bookingRows.filter((b) => guestFilter(b, current)).map(toGuestShape);
     const previousGuestBookings = previous ? bookingRows.filter((b) => guestFilter(b, previous)).map(toGuestShape) : [];
 
-    const revenuePayments = ((revenuePaymentsRes.data ?? []) as PaymentRow[]).filter(
-      (p) =>
-        sportScope == null ||
-        (p.booking_id != null && sportScope.bookingIds.has(p.booking_id)) ||
-        (p.membership_id != null && sportScope.membershipIds.has(p.membership_id)),
-    );
+    // Revenue is money actually received — every payment that is "paid", whether it settled a booking in full or only
+    // part of it (an advance, an instalment), whether Razorpay confirmed it or staff recorded it — counted on the day
+    // it was received, exactly as Finance counts it.
+    const revenueAll = ((revenuePaymentsRes.data ?? []) as PaymentRow[]).map((p) => ({ ...p, created_at: p.paid_at ?? p.created_at }));
+    // All Sports counts every payment (coaching and uncategorised ones included). With a subset ticked, a payment
+    // counts when what it paid for belongs to one of those sports: a booking on one of their courts, a membership in
+    // one of their batches, a coaching enrollment in one of their programs.
+    const revenuePayments = activeSportSet
+      ? await this.paymentsInSports(revenueAll, activeSportSet, playingAreasAll, sportMembershipIds ?? new Set())
+      : revenueAll;
     const revenueOverview = buildRevenueOverview(revenuePayments, now, revenueMonthOffset);
 
     return {
@@ -293,7 +344,7 @@ export class SupabaseDashboardService implements DashboardService {
         const sport = sports.find((s) => s.id === fs.sportId);
         return { facilitySportId: fs.id, sportName: fs.customSportName || sport?.name || "Sport", sportIcon: sport?.icon ?? "🏅" };
       }),
-      selectedFacilitySportId: activeSportId,
+      selectedFacilitySportIds: activeSportSet ? [...activeSportSet] : null,
       period: current,
       kpis: {
         revenueInr: computeKpiValue(

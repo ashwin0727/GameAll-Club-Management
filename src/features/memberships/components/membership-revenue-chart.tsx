@@ -1,22 +1,18 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { axisTicks } from "@/features/memberships/dashboard-stats";
 import { useMembershipRevenue } from "@/features/memberships/hooks/use-memberships";
 import { cn } from "@/lib/utils";
+import { monthStartIso, revenueOverMonths, todayIso } from "@/features/memberships/revenue-window";
 
 const LINE = "#00A86B";
 /** Room on the left for the y-axis figures. */
 const AXIS_GUTTER = "2.75rem";
 /** How many dates to caption along the bottom. */
 const X_LABELS = 5;
-
-function startOfThisMonth(): string {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-}
 
 function inr(v: number): string {
   return `₹${v.toLocaleString("en-IN")}`;
@@ -43,19 +39,15 @@ function dayLabel(bucket: string): string {
  * laid out as elements rather than SVG circles so they stay round rather than being squashed
  * into ellipses.
  */
-export function MembershipRevenueChart({
-  facilityId,
-  revenueInr,
-  revenueChangePct,
-}: {
-  facilityId: string;
-  revenueInr: number | undefined;
-  revenueChangePct: number | null | undefined;
-}) {
-  const { data } = useMembershipRevenue(facilityId, "day");
-  // The same window the headline figure covers, so the two always agree.
-  const monthStart = startOfThisMonth();
-  const points = (data ?? []).filter((p) => p.bucket.slice(0, 10) >= monthStart);
+export function MembershipRevenueChart({ facilityId }: { facilityId: string }) {
+  // Six months of daily takings: the last three are shown and totalled, the three before them are only what the
+  // change is measured against. The headline figure and the line come from the same data, so they always agree.
+  const now = new Date();
+  const { data } = useMembershipRevenue(facilityId, "day", { from: monthStartIso(now, 5), to: todayIso(now) });
+  const window3 = data ? revenueOverMonths(data, now, 3) : null;
+  const points = window3?.current ?? [];
+  const revenueInr = window3?.total;
+  const revenueChangePct = window3?.changePct;
 
   const ticks = axisTicks(Math.max(0, ...points.map((p) => p.amountInr)), 4);
   const axisMax = ticks[ticks.length - 1] || 1;
@@ -80,11 +72,8 @@ export function MembershipRevenueChart({
     <Card className="stat-enter space-y-4 rounded-xl p-5" style={{ "--stat-delay": "340ms" } as React.CSSProperties}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-bold text-black dark:text-foreground">Membership Revenue</h3>
-        {/* Display-only, to match the design — both the figure and the line cover this month. */}
-        <span className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-input bg-card px-3 text-xs font-medium text-foreground">
-          This Month
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-        </span>
+        {/* The window is fixed — shown, not a control. */}
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">Last 3 Months</span>
       </div>
 
       {revenueInr === undefined ? (
@@ -103,7 +92,7 @@ export function MembershipRevenueChart({
                 <DeltaIcon className="h-3 w-3" aria-hidden />
                 {Math.abs(Math.round(revenueChangePct))}%
               </span>
-              <span className="text-xs text-muted-foreground">Vs last month</span>
+              <span className="text-xs text-muted-foreground">Vs previous 3 months</span>
             </>
           )}
         </div>
@@ -148,7 +137,7 @@ export function MembershipRevenueChart({
                 )}
               </svg>
 
-              {coords.map((c, i) => (
+              {points.length <= 31 && coords.map((c, i) => (
                 <span
                   key={points[i]!.bucket}
                   aria-hidden

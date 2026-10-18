@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hoursBetween, mergeRuns, toggleSlot } from "@/features/bookings/slot-selection";
+import { hoursBetween, mergeRuns, runsByCourt, toggleSlot } from "@/features/bookings/slot-selection";
 import type { TimeSlot } from "@/features/bookings/types";
 
 const at = (h: number) => new Date(2026, 9, 20, h).toISOString();
@@ -29,4 +29,18 @@ describe("mergeRuns", () => {
     ]);
   });
   it("is empty for no selection", () => expect(mergeRuns([])).toEqual([]));
+});
+
+describe("runsByCourt", () => {
+  it("makes one booking per court and continuous range, in court order", () => {
+    const runs = runsByCourt({ c2: [slot(7)], c1: [slot(18), slot(19), slot(21)] }, ["c1", "c2"]);
+    expect(runs.map((r) => [r.courtId, r.startTime, r.endTime])).toEqual([
+      ["c1", at(18), at(20)],
+      ["c1", at(21), at(22)],
+      ["c2", at(7), at(8)],
+    ]);
+  });
+  it("skips courts with nothing chosen and courts not in the order", () => {
+    expect(runsByCourt({ c1: [slot(9)], c3: [slot(10)] }, ["c1", "c2"]).map((r) => r.courtId)).toEqual(["c1"]);
+  });
 });

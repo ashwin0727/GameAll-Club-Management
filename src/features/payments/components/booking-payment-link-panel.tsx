@@ -25,6 +25,7 @@ export function BookingPaymentLinkPanel({
   guestName,
   guestPhone,
   description,
+  advance = false,
   onPaid,
 }: {
   facilityId: string;
@@ -33,6 +34,8 @@ export function BookingPaymentLinkPanel({
   guestPhone: string | null;
   /** What the booking is, for the share message — e.g. "Badminton · Court 1 · 20 Oct, 6:00 PM – 8:00 PM". */
   description: string;
+  /** The link is for the 50% advance of a booking longer than an hour, so the balance is still to come. */
+  advance?: boolean;
   /** Fires once, when the payment is confirmed. */
   onPaid?: (link: BookingPaymentLink) => void;
 }) {
@@ -153,7 +156,11 @@ export function BookingPaymentLinkPanel({
         </span>
         <div>
           <p className="font-medium">Payment received</p>
-          <p className="text-muted-foreground">The booking is confirmed and marked Paid. Nothing to collect at the venue.</p>
+          <p className="text-muted-foreground">
+            {advance
+              ? "Booking is Confirmed and Marked Paid"
+              : "The booking is confirmed and marked Paid. Nothing to collect at the venue."}
+          </p>
         </div>
       </div>
     );

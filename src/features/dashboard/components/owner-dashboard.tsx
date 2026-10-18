@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   BadgeIndianRupee,
@@ -30,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFacility } from "@/features/facility/hooks/use-facility";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
+import { getCoachingService } from "@/services/coaching";
 import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard-summary";
 import type {
   DashboardSummary,
@@ -39,7 +42,6 @@ import type {
   ScheduleBlock,
   ScheduleBlockType,
 } from "@/features/dashboard/types";
-import { useUiStore } from "@/stores/ui-store";
 import { courtsNow, type ActivityStatus, type CourtNow } from "@/features/dashboard/court-activity";
 import { cn, formatCurrencyINR } from "@/lib/utils";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
@@ -58,7 +60,7 @@ const COMPARE_LABEL: Record<DateRangePreset, string> = {
 /** Every quick action points at a route that already exists. */
 const QUICK_ACTIONS: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Guest Booking", href: "/guest-bookings", icon: UserRound },
-  { label: "Add Member", href: "/memberships", icon: UserPlus },
+  { label: "Add Member", href: "/memberships/v1", icon: UserPlus },
   { label: "Add Expense", href: "/finance/expenses", icon: Receipt },
   { label: "Block Court", href: "/maintenance/court-schedule", icon: ShieldBan },
   { label: "Create Coaching Session", href: "/coaching/sessions", icon: GraduationCap },
@@ -227,20 +229,20 @@ function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number })
           {rows.slice(0, 6).map(({ court, block, status }) => (
             <li
               key={court.courtId}
-              className="grid grid-cols-[4.25rem_3.25rem_minmax(0,1fr)_auto_4.25rem] items-center gap-2 py-2 text-xs"
+              className="grid min-h-[2.5rem] grid-cols-[4rem_4.5rem_minmax(0,1fr)_4.5rem_4.5rem] items-center gap-2 py-2 text-xs"
             >
               <span className="tabular-nums text-muted-foreground">{block ? formatMinute(block.startMinute) : "—"}</span>
               <span className="truncate rounded-md bg-secondary px-1.5 py-0.5 text-center text-[11px] font-medium">
                 {court.courtName}
               </span>
               <span className="truncate text-foreground">{block?.label ?? "—"}</span>
-              {block ? (
-                <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", TYPE_TAG[block.type])}>
-                  {TYPE_LABEL[block.type]}
-                </span>
-              ) : (
-                <span />
-              )}
+              <span className="flex">
+                {block && (
+                  <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", TYPE_TAG[block.type])}>
+                    {TYPE_LABEL[block.type]}
+                  </span>
+                )}
+              </span>
               <span className={cn("flex items-center justify-end gap-1.5 text-[11px] font-medium", STATUS_TEXT[status].cls)}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[status])} />
                 {STATUS_TEXT[status].label}
@@ -259,19 +261,22 @@ function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
       {rows.length === 0 ? (
         <EmptyNote>No courts configured yet.</EmptyNote>
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="divide-y divide-border/60">
           {rows.slice(0, 7).map(({ court, status, busyUntil }) => {
             const busy = status === "live";
             return (
-              <li key={court.courtId} className="flex items-center justify-between gap-2 text-xs">
-                <span className="w-16 shrink-0 truncate font-medium">{court.courtName}</span>
-                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <li
+                key={court.courtId}
+                className="grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_5.5rem_6rem] items-center gap-2 py-2 text-xs"
+              >
+                <span className="truncate font-medium">{court.courtName}</span>
+                <span className="flex items-center gap-1.5">
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", busy ? "bg-destructive" : "bg-success")} />
                   <span className={busy ? "text-destructive" : "text-success"}>{busy ? "Busy" : "Available"}</span>
                 </span>
-                {busy && busyUntil !== null && (
-                  <span className="shrink-0 text-[11px] text-muted-foreground">Until {formatMinute(busyUntil)}</span>
-                )}
+                <span className="text-right text-[11px] tabular-nums text-muted-foreground">
+                  {busy && busyUntil !== null ? `Until ${formatMinute(busyUntil)}` : ""}
+                </span>
               </li>
             );
           })}
@@ -404,7 +409,7 @@ function MembershipCard({ summary, delay }: { summary: DashboardSummary; delay: 
     { icon: UserRoundX, tone: "bg-destructive/15 text-destructive", label: "Expired", value: m.expired },
   ];
   return (
-    <DashCard title="Membership" delay={delay} action={<CardLink href="/memberships">View Members</CardLink>}>
+    <DashCard title="Membership" delay={delay} action={<CardLink href="/memberships/v1">View Members</CardLink>}>
       <ul className="space-y-2.5">
         {rows.map(({ icon: Icon, tone, label, value }) => (
           <li key={label} className="flex items-center gap-2.5 text-xs">
@@ -463,26 +468,36 @@ function AttentionCard({ summary, onGo, delay }: { summary: DashboardSummary; on
 export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | null }) {
   const router = useRouter();
   const { data: facility, isLoading: facilityLoading } = useFacility();
-  const activeFacilitySportId = useUiStore((s) => s.activeFacilitySportId);
+  // The sports ticked in the top bar (null = All Sports).
+  const sports = useSportFilter(facility?.id);
+  const sportIds = sports.sportSet ? [...sports.sportSet] : null;
   const [revenueMonthOffset, setRevenueMonthOffset] = useState(0);
+
+  // Students who have joined a coaching program and are still active (one per student, however many programs).
+  // Shows a dash when it can't be read (no coaching access, or the database function isn't there yet).
+  const { data: studentStats } = useQuery({
+    queryKey: ["dashboard-active-students", facility?.id],
+    queryFn: () => getCoachingService().getStudentCardStats(facility!.id),
+    enabled: Boolean(facility?.id),
+    retry: false,
+    staleTime: 60_000,
+  });
 
   // Passing the already-fetched facility through means the summary query
   // doesn't need to look it up again itself, cutting a stage out of what was
   // otherwise a facility-fetch -> summary-fetch waterfall.
   const { data: summary, isLoading, isError, isPlaceholderData, refetch } = useDashboardSummary(facility ?? null, {
-    // null = the facility's first sport; the dashboard always shows exactly one.
-    facilitySportId: activeFacilitySportId,
+    facilitySportIds: sportIds,
     preset: PRESET,
     revenueMonthOffset,
   });
 
-  // Only a month change keeps the page up (see the hook); switching sport is a
+  // Only a month change keeps the page up (see the hook); switching sports is a
   // different dataset, so it still gets the full skeleton rather than briefly
-  // showing the previous sport's numbers.
-  const sportChanging =
-    isPlaceholderData &&
-    activeFacilitySportId !== null &&
-    summary?.selectedFacilitySportId !== activeFacilitySportId;
+  // showing the previous selection's numbers.
+  const sameSports = (a: string[] | null | undefined, b: string[] | null) =>
+    (a ?? null) === null ? b === null : b !== null && a!.length === b.length && a!.every((id) => b.includes(id));
+  const sportChanging = isPlaceholderData && !sameSports(summary?.selectedFacilitySportIds, sportIds);
   const revenueLoading = isPlaceholderData && !sportChanging;
 
   if (facilityLoading || isLoading || sportChanging) {
@@ -625,17 +640,17 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           value={String(summary.kpis.activeMemberships.value)}
           sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} expiring soon` : undefined}
           subClass="text-warning"
-          href="/memberships"
+          href="/memberships/v1"
         />
         <DashKpi
           delay={240}
           icon={GraduationCap}
           tone="bg-warning/15 text-warning"
-          label="Coaching Sessions"
-          value="—"
-          sub="Open coaching"
+          label="Active Students"
+          value={studentStats ? String(studentStats.enrolledStudents) : "—"}
+          sub="Enrolled in programs"
           subClass="text-warning"
-          href="/coaching/sessions"
+          href="/coaching/students"
         />
       </div>
 
@@ -772,8 +787,7 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
               </linearGradient>
             </defs>
             <path className="chart-area-wipe" d={areaPath} fill="url(#revenue-fill)" />
-            {/* pathLength=1 normalises the dash maths, so the line draws
-                itself left-to-right without measuring the real path. */}
+            {/* Revealed left-to-right by a clip, not a dash: a dash would be measured in screen pixels here. */}
             <path
               className="chart-line-draw"
               d={linePath}
@@ -781,9 +795,8 @@ function RevenueOverviewChart({ points }: { points: RevenueOverviewData["points"
               stroke="hsl(var(--primary))"
               strokeWidth={2}
               strokeLinejoin="round"
+              strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
-              pathLength={1}
-              strokeDasharray={1}
             />
           </svg>
         </div>

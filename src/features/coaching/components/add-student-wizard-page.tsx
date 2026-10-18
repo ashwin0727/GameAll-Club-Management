@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getCoachingService } from "@/services/coaching";
+import { StudentBulkUpload } from "@/features/bulk-upload/components/student-bulk-upload";
 import { getFinanceService } from "@/services/finance";
 import { getMembershipService } from "@/services/memberships";
 import { MemberAlreadyExistsError } from "@/services/memberships/supabase-membership.service";
@@ -19,7 +20,7 @@ import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-
 import { isValidEmail, sanitizePhoneDigits } from "@/features/coaching/add-coach-validation";
 import type { EnrollmentBillingLink, ProgramDetail, ProgramRow } from "@/features/coaching/types";
 import { blurOnWheel, fmtDate, money, NO_SPINNER_INPUT } from "@/features/coaching/components/shared";
-import { chargeDates, perSessionMinor, programLengthLabel } from "@/features/coaching/billing-schedule";
+import { chargeDates, perSessionMinor, programLengthLabel, programTotalSessions } from "@/features/coaching/billing-schedule";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Student Details", "Program & Enrollment", "Review & Confirm", "Payment", "Success"] as const;
@@ -429,6 +430,10 @@ export function AddStudentWizardPage() {
         ))}
       </ol>
 
+      {step === "Student Details" && facilityId && (
+        <StudentBulkUpload facilityId={facilityId} activeProgramCount={programs === null ? null : programs.length} />
+      )}
+
       <div className="rounded-xl border border-border bg-card p-5">
         {step === "Student Details" && (
           <div className="space-y-4">
@@ -675,7 +680,7 @@ export function AddStudentWizardPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Sessions</p>
                 <p className="text-sm font-medium">
-                  {program.sessionCount ?? "—"}
+                  {programTotalSessions(program) ?? "—"}
                   {program.sessionsPerWeek ? ` · ${program.sessionsPerWeek} / week` : ""}
                 </p>
               </div>

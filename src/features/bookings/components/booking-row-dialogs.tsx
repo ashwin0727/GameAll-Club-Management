@@ -505,7 +505,7 @@ export function CustomerDialog({ row, onClose }: { row: BookingRow; onClose: () 
       footer={
         <>
           <Button asChild variant="outline">
-            <Link href={isMember ? "/memberships" : "/guests"}>{isMember ? "Open Members" : "Open Guest Players"}</Link>
+            <Link href={isMember ? "/memberships/v1" : "/guests"}>{isMember ? "Open Members" : "Open Guest Players"}</Link>
           </Button>
           <Button type="button" onClick={onClose}>
             Close

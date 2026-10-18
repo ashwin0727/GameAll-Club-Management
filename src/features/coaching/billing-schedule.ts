@@ -55,3 +55,21 @@ export function upcomingCharges(
   const count = Math.min(chargesLeft(billing), limit);
   return count > 0 ? chargeDates(next, count) : [];
 }
+
+/**
+ * A program's real total sessions: sessions per week × the weeks it runs. Falls back to the older "sessions per
+ * package" count only when that can't be worked out (no weekly cadence, or no start/end date). Null when neither is
+ * known. The same rule the Programs list and Program Details page use.
+ */
+export function programTotalSessions(p: {
+  sessionsPerWeek?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  sessionCount?: number | null;
+}): number | null {
+  if (p.sessionsPerWeek && p.startDate && p.endDate) {
+    const weeks = Math.max(1, Math.round((new Date(p.endDate).getTime() - new Date(p.startDate).getTime()) / (7 * 86_400_000)));
+    return p.sessionsPerWeek * weeks;
+  }
+  return p.sessionCount ?? null;
+}

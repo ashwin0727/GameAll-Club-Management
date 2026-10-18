@@ -181,7 +181,8 @@ export interface RevenueOverview {
 export interface DashboardSummary {
   facility: { id: string; name: string; city: string };
   sports: AvailableSportOption[];
-  selectedFacilitySportId: string | null;
+  /** The sports this summary is for; null = All Sports. */
+  selectedFacilitySportIds: string[] | null;
   period: DateRange;
   kpis: DashboardKpis;
   revenueBySport: RevenueBySportSummary;

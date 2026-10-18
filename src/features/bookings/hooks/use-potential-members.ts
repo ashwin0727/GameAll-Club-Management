@@ -24,8 +24,8 @@ export function useMemberPhoneKeys(facilityId: string | null) {
  * Every guest of the sport, each with their booking history summed up and whether they are
  * already a member. `guests` is undefined until both the history and the member list are in.
  */
-export function useGuestProfiles(facilityId: string | null, facilitySportId: string) {
-  const history = useGuestHistory(facilityId, facilitySportId);
+export function useGuestProfiles(facilityId: string | null, sportIds: string[] | null, ready: boolean) {
+  const history = useGuestHistory(facilityId, sportIds, ready);
   const members = useMemberPhoneKeys(facilityId);
   const guests = useMemo<GuestProfile[] | undefined>(
     () => (history.data && members.data ? buildGuestProfiles(history.data, members.data, new Date()) : undefined),

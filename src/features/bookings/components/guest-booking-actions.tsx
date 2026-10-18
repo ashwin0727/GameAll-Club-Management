@@ -17,6 +17,7 @@ import { getBookingService } from "@/services/bookings";
 import { getRefundService } from "@/services/refunds";
 import { ServiceError } from "@/services/shared/service-error";
 import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
+import { needsAdvance } from "@/features/bookings/advance-payment";
 import { formatCurrency } from "@/features/pricing/money";
 import { buildBookingDocument, openPrintable } from "@/features/bookings/booking-document";
 import type { GuestBookingRow } from "@/features/bookings/types";
@@ -396,6 +397,7 @@ function CompleteDialog({
             bookingId={row.bookingId}
             guestName={row.guestName}
             guestPhone={row.guestPhone}
+            advance={needsAdvance(row.startTime, row.endTime)}
             description={`${row.sportName ?? "Court"} · ${row.courtName}`}
             onPaid={() => {
               setBusy(true);

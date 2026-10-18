@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, CalendarPlus, ChevronRight, IndianRupee, MapPin, Star, Users } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarPlus, ChevronRight, IndianRupee, MapPin, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -245,12 +245,7 @@ export function SessionWizardPage() {
                     <div className="min-w-0">
                       <p className="font-semibold">{coach.fullName}</p>
                       <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {coach.rating != null && (
-                          <span className="flex items-center gap-0.5">
-                            <Star className="h-3 w-3 fill-warning text-warning" aria-hidden /> {coach.rating.toFixed(1)}
-                          </span>
-                        )}
-                        {coach.experienceYears != null && <span>{coach.rating != null ? " | " : ""}{coach.experienceYears} yrs exp</span>}
+                        {coach.experienceYears != null && <span>{coach.experienceYears} yrs exp</span>}
                       </p>
                     </div>
                   </div>
@@ -262,7 +257,6 @@ export function SessionWizardPage() {
                 {(coaches ?? []).map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.fullName}
-                    {c.rating != null ? ` — ${c.rating.toFixed(1)}★` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -465,11 +459,6 @@ export function SessionWizardPage() {
                 <AvatarFallback className="text-[10px]">{coach ? initials(coach.fullName) : "?"}</AvatarFallback>
               </Avatar>
               <span className="text-sm">{coach?.fullName ?? "—"}</span>
-              {coach?.rating != null && (
-                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                  <Star className="h-3 w-3 fill-warning text-warning" aria-hidden /> {coach.rating.toFixed(1)}
-                </span>
-              )}
             </div>
             <dl className="mt-3 space-y-1.5 text-xs text-muted-foreground">
               <Row icon={BookOpen} value={`${sportName ?? "—"} | ${level}`} />

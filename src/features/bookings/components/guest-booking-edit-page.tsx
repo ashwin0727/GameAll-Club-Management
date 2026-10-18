@@ -129,7 +129,7 @@ export function GuestBookingEditPage({ bookingId }: { bookingId: string }) {
     ]);
     const schedule = override ?? facilitySchedule;
     const day = schedule?.days.find((x) => x.dayOfWeek === d.getDay()) ?? null;
-    setSlots(day ? computeAvailableSlots(d, day, existing.filter((x) => x.id !== bookingId)) : []);
+    setSlots(day ? computeAvailableSlots(d, day, existing.filter((x) => x.id !== bookingId), 60, true) : []);
     setSlotsLoading(false);
   }, [facilityId, courtId, date, bookingId]);
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,7 +12,7 @@ import {
   Check,
   CircleAlert,
   CircleCheck,
-  Clock3,
+  Download,
   LayoutGrid,
   Lock,
   Mail,
@@ -30,12 +29,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { CourtImage } from "@/components/shared/court-image";
+import { resolveFacilityHeroImage } from "../hero-image";
 import {
+  HoldExpiredError,
   SlotUnavailableError,
+  createPublicCheckout,
   createPublicGuestBooking,
+  downloadPublicBookingInvoice,
   getPublicBookingFacility,
+  getPublicBookingReceipt,
   getPublicCourtAvailability,
+  verifyPublicCheckout,
+  type PublicBookingReceipt,
 } from "../public-booking";
+import { isCheckoutCancellation, isCheckoutFailure, openRazorpayCheckout } from "@/features/payments/razorpay-checkout";
+import { samePick, summarise, togglePick, type Pick, type PickSummary } from "../picks";
+import { clearPending, loadPending, savePending } from "../pending";
 import {
   EMPTY_GUEST,
   durationLabel,
@@ -50,25 +60,17 @@ import {
   type GuestFieldErrors,
 } from "../guest-form";
 import { PublicBookingHeader } from "./public-booking-header";
-import { resolveFacilityHeroImage, type HeroImage } from "../hero-image";
 import { BOOKING_PURPOSES, type PublicBookingConfirmation, type PublicBookingCourt, type PublicBookingFacility, type PublicGuestDetails } from "../types";
 
-type Step = "select" | "details" | "review" | "done";
+type Step = "select" | "details" | "review" | "pay" | "done";
 
 const STEPS: { id: Step; label: string }[] = [
   { id: "select", label: "Choose Court & Time" },
   { id: "details", label: "Guest Details" },
   { id: "review", label: "Review & Confirm" },
+  { id: "pay", label: "Payment" },
   { id: "done", label: "Booking Confirmed" },
 ];
-
-interface Selection {
-  courtId: string;
-  courtName: string;
-  startTime: string;
-  endTime: string;
-  priceMinor: number;
-}
 
 /** Next 14 days, starting today — the window a player can book into. */
 function upcomingDates(): Date[] {
@@ -123,14 +125,26 @@ export function PublicBookingFlow({
   const [courts, setCourts] = useState<PublicBookingCourt[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
-  const [selection, setSelection] = useState<Selection | null>(null);
+  // Any number of courts, and any number of hours on each; every hour ticked is one entry in picks.
+  const [picks, setPicks] = useState<Pick[]>([]);
+  const [courtIds, setCourtIds] = useState<string[]>([]);
+  const summary = useMemo(() => (picks.length > 0 ? summarise(picks) : null), [picks]);
   const [guest, setGuest] = useState<PublicGuestDetails>(EMPTY_GUEST);
   const [errors, setErrors] = useState<GuestFieldErrors>({});
 
   const [step, setStep] = useState<Step>("select");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<PublicBookingConfirmation | null>(null);
+  const [confirmations, setConfirmations] = useState<PublicBookingConfirmation[]>([]);
+  // Bookings longer than an hour wait here, held, until their 50% advance is paid online.
+  const [pending, setPending] = useState<PendingItem[]>([]);
+  const pendingRef = useRef<PendingItem[]>([]);
+  pendingRef.current = pending;
+  const [otherConfirmations, setOtherConfirmations] = useState<PublicBookingConfirmation[]>([]);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [partialNote, setPartialNote] = useState<string | null>(null);
+  const bookingPhone = useRef("");
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
@@ -151,37 +165,45 @@ export function PublicBookingFlow({
     };
   }, [facilityId, initialSportId]);
 
-  const loadSlots = useCallback(async () => {
-    if (!sportId) return;
-    setSlotsLoading(true);
-    try {
-      setCourts(await getPublicCourtAvailability(facilityId, sportId, toDateParam(date)));
-    } finally {
-      setSlotsLoading(false);
-    }
-  }, [facilityId, sportId, date]);
+  const loadSlots = useCallback(
+    async (pickFirstCourt: boolean) => {
+      if (!sportId) return;
+      setSlotsLoading(true);
+      try {
+        const list = await getPublicCourtAvailability(facilityId, sportId, toDateParam(date));
+        setCourts(list);
+        if (pickFirstCourt) {
+          const first = list.find((c) => c.slots.some((sl) => sl.available)) ?? list[0];
+          setCourtIds(first ? [first.courtId] : []);
+        }
+      } finally {
+        setSlotsLoading(false);
+      }
+    },
+    [facilityId, sportId, date],
+  );
 
   useEffect(() => {
-    void loadSlots();
-    // Changing sport or date invalidates any slot already picked.
-    setSelection(null);
+    // Changing sport or date invalidates every court and slot already picked.
+    setPicks([]);
+    setCourtIds([]);
+    void loadSlots(true);
   }, [loadSlots]);
+
+  function toggleCourt(id: string) {
+    if (courtIds.includes(id)) {
+      setCourtIds(courtIds.filter((x) => x !== id));
+      setPicks((cur) => cur.filter((p) => p.courtId !== id));
+    } else {
+      setCourtIds([...courtIds, id]);
+    }
+  }
 
   const sport = facility?.sports.find((s) => s.facilitySportId === sportId) ?? null;
   const sportName = sport?.name ?? "";
 
-  // Courts carry no photograph of their own, so the card thumbnails reuse
-  // the venue's hero — the same image the landing page resolved.
-  const heroImage = useMemo(
-    () =>
-      facility
-        ? resolveFacilityHeroImage(facility, sport)
-        : ({ src: null, alt: "", source: "none" } as HeroImage),
-    [facility, sport],
-  );
-
   function goToDetails() {
-    if (!selection) return;
+    if (picks.length === 0) return;
     setFormError(null);
     setStep("details");
   }
@@ -196,36 +218,190 @@ export function PublicBookingFlow({
 
   /** Send the player back to slot selection after losing a race for a slot. */
   function returnToSelection(message: string) {
-    setSelection(null);
+    setPicks([]);
     setStep("select");
     setFormError(message);
-    void loadSlots();
+    void loadSlots(false);
   }
 
   async function confirm() {
-    if (!selection || submitting) return;
+    if (!summary || submitting) return;
     setSubmitting(true);
     setFormError(null);
+    // One booking per court and continuous stretch, made one after another so a clash on a later one stops there.
+    const made: PublicBookingConfirmation[] = [];
+    let failure: Error | null = null;
     try {
-      const result = await createPublicGuestBooking({
-        facilityId,
-        courtId: selection.courtId,
-        startTime: selection.startTime,
-        endTime: selection.endTime,
-        guest,
-      });
-      setConfirmation(result);
-      setStep("done");
+      for (const r of summary.requests) {
+        made.push(
+          await createPublicGuestBooking({
+            facilityId,
+            courtId: r.courtId,
+            startTime: r.startTime,
+            endTime: r.endTime,
+            guest,
+          }),
+        );
+      }
     } catch (e) {
-      if (e instanceof SlotUnavailableError) {
+      failure = e instanceof Error ? e : new Error("Something went wrong. Please try again.");
+    }
+
+    if (failure && made.length === 0) {
+      if (failure instanceof SlotUnavailableError) {
         returnToSelection("Sorry, this court is no longer available. Please choose another time.");
       } else {
-        setFormError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+        setFormError(failure.message);
+      }
+      setSubmitting(false);
+      return;
+    }
+
+    bookingPhone.current = guest.phone;
+    const note = failure
+      ? `${failure instanceof SlotUnavailableError ? "One of the courts was taken just now." : failure.message} ${made.length} of ${summary.requests.length} bookings were made — the rest were not.`
+      : null;
+    setPartialNote(note);
+    const advance = made.filter((c) => c.advanceRequired);
+    const others = made.filter((c) => !c.advanceRequired);
+    if (advance.length === 0) {
+      setConfirmations(made);
+      setStep("done");
+    } else {
+      setOtherConfirmations(others);
+      setPending(advance.map((c) => ({ confirmation: c, state: "waiting" as const })));
+      setPayError(null);
+      savePending(facilityId, { phone: guest.phone, advance, others, notice: note });
+      setStep("pay");
+    }
+    setSubmitting(false);
+  }
+
+  function markPending(bookingId: string, state: PendingItem["state"]) {
+    setPending((cur) => cur.map((i) => (i.confirmation.bookingId === bookingId ? { ...i, state } : i)));
+  }
+
+  /**
+   * Opens Razorpay Checkout ONCE for the advance of every held booking (however many courts and times), then has the
+   * server verify the result and confirm them all together.
+   */
+  async function payAdvance() {
+    const items = pendingRef.current.filter((i) => i.state === "waiting");
+    if (items.length === 0 || payingId) return;
+    const ids = items.map((i) => i.confirmation.bookingId);
+    const phone = bookingPhone.current;
+    setPayError(null);
+    setPayingId(ids[0]!);
+    try {
+      const checkout = await createPublicCheckout({ bookingIds: ids, phone });
+      if (checkout.paid) {
+        for (const id of ids) markPending(id, "confirmed");
+        return;
+      }
+      const first = items[0]!.confirmation;
+      const outcome = await openRazorpayCheckout(
+        {
+          keyId: checkout.keyId!,
+          razorpayOrderId: checkout.razorpayOrderId!,
+          amount: checkout.amount!,
+          currency: checkout.currency ?? "INR",
+          paymentOrderId: checkout.paymentOrderId!,
+          receipt: checkout.receipt ?? "",
+        },
+        {
+          description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName} — 50% advance`,
+          prefill: { name: first.guestName, contact: phone },
+        },
+      );
+      const result = await verifyPublicCheckout({
+        bookingIds: ids,
+        phone,
+        paymentOrderId: checkout.paymentOrderId!,
+        razorpayOrderId: checkout.razorpayOrderId!,
+        razorpayPaymentId: outcome.razorpayPaymentId,
+        razorpaySignature: outcome.razorpaySignature,
+      });
+      if (result.confirmed) for (const id of ids) markPending(id, "confirmed");
+      else setPayError("Your payment went through, but the booking isn't confirmed yet. This page will update in a moment.");
+    } catch (e) {
+      if (isCheckoutCancellation(e)) {
+        // Closed Checkout without paying — nothing to report, the button is still there.
+      } else if (isCheckoutFailure(e)) {
+        setPayError(e.description || "The payment didn't go through. Please try again.");
+      } else if (e instanceof HoldExpiredError) {
+        for (const id of ids) markPending(id, "expired");
+      } else {
+        setPayError(e instanceof Error ? e.message : "We couldn't start the payment. Please try again.");
       }
     } finally {
-      setSubmitting(false);
+      setPayingId(null);
     }
   }
+
+  function bookAgain() {
+    clearPending(facilityId);
+    setPending([]);
+    setOtherConfirmations([]);
+    setPartialNote(null);
+    setPicks([]);
+    setStep("select");
+    void loadSlots(true);
+  }
+
+  // Back from the payment page (or a refresh): pick up the bookings that are still waiting on their advance.
+  useEffect(() => {
+    const stored = loadPending(facilityId);
+    if (!stored) return;
+    bookingPhone.current = stored.phone;
+    setOtherConfirmations(stored.others);
+    setPartialNote(stored.notice);
+    setPending(stored.advance.map((c) => ({ confirmation: c, state: "waiting" as const })));
+    setStep("pay");
+  }, [facilityId]);
+
+  // While waiting, ask the server whether each held booking has been confirmed (or has lapsed).
+  useEffect(() => {
+    if (step !== "pay") return;
+    let cancelled = false;
+    let running = false;
+    const check = async () => {
+      if (running) return;
+      running = true;
+      try {
+        for (const item of pendingRef.current.filter((i) => i.state === "waiting")) {
+          const status = await getPublicBookingReceipt(item.confirmation.bookingId, bookingPhone.current);
+          if (cancelled) return;
+          if (status?.confirmed) markPending(item.confirmation.bookingId, "confirmed");
+          else if (!status || status.cancelled) markPending(item.confirmation.bookingId, "expired");
+        }
+      } finally {
+        running = false;
+      }
+    };
+    void check();
+    const timer = setInterval(() => void check(), 4000);
+    const onFocus = () => void check();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [step]);
+
+  // Once nothing is waiting any more, move on to the confirmation (or stay to offer "Book Again" if all lapsed).
+  useEffect(() => {
+    if (step !== "pay" || pending.length === 0 || pending.some((i) => i.state === "waiting")) return;
+    const confirmed = pending.filter((i) => i.state === "confirmed").map((i) => i.confirmation);
+    if (confirmed.length === 0) return;
+    const lapsed = pending.length - confirmed.length;
+    if (lapsed > 0) {
+      setPartialNote((cur) => [cur, `${lapsed} booking${lapsed === 1 ? "" : "s"} lapsed because the advance wasn't paid in time.`].filter(Boolean).join(" "));
+    }
+    setConfirmations([...confirmed, ...otherConfirmations]);
+    clearPending(facilityId);
+    setStep("done");
+  }, [pending, step, otherConfirmations, facilityId]);
 
   if (facilityLoading) return <FlowSkeleton />;
 
@@ -252,10 +428,10 @@ export function PublicBookingFlow({
   // Only the details step: step 1 has the sticky bar beneath it, and the
   // review page now carries its own Booking Details and Payment Details
   // panels, which this would only repeat.
-  const showSummaryPanel = Boolean(selection) && step === "details";
+  const showSummaryPanel = Boolean(summary) && step === "details";
 
-  if (step === "done" && confirmation) {
-    return <Confirmed confirmation={confirmation} facility={facility} embedded={embedded} />;
+  if (step === "done" && confirmations.length > 0) {
+    return <Confirmed confirmations={confirmations} facility={facility} embedded={embedded} notice={partialNote} phone={bookingPhone.current} />;
   }
 
   return (
@@ -273,7 +449,10 @@ export function PublicBookingFlow({
         )}
 
         <div className="px-4 py-5 sm:px-8 sm:py-6">
-          <StepBar current={step} />
+          <StepBar
+            current={step}
+            withPayment={Boolean(summary?.advanceRequired) || pending.length > 0 || confirmations.some((c) => c.advanceRequired)}
+          />
 
           <div className="mt-6">
             <h1 className="text-lg font-semibold tracking-tight sm:text-2xl">Book Your Court</h1>
@@ -282,7 +461,9 @@ export function PublicBookingFlow({
                 ? "Quick and easy court booking for everyone."
                 : step === "details"
                   ? "Tell us who's playing."
-                  : "Check everything over before you confirm."}
+                  : step === "pay"
+                    ? "Pay the advance to confirm your court."
+                    : "Check everything over before you confirm."}
             </p>
           </div>
 
@@ -311,10 +492,11 @@ export function PublicBookingFlow({
                   onDateChange={setDate}
                   courts={courts}
                   loading={slotsLoading}
-                  selection={selection}
-                  onSelect={setSelection}
+                  courtIds={courtIds}
+                  onToggleCourt={toggleCourt}
+                  picks={picks}
+                  onTogglePick={(p) => setPicks((cur) => togglePick(cur, p))}
                   currency={facility.currency}
-                  heroImage={heroImage}
                 />
               )}
 
@@ -322,11 +504,15 @@ export function PublicBookingFlow({
                 <DetailsStep guest={guest} errors={errors} onChange={setGuest} />
               )}
 
-              {step === "review" && selection && (
+              {step === "pay" && (
+                <PayStep items={pending} payingId={payingId} error={payError} notice={partialNote} onPay={() => void payAdvance()} onBookAgain={bookAgain} />
+              )}
+
+              {step === "review" && summary && (
                 <ReviewStep
                   facility={facility}
                   sportName={sportName}
-                  selection={selection}
+                  summary={summary}
                   guest={guest}
                   error={formError}
                   agreed={agreed}
@@ -338,13 +524,13 @@ export function PublicBookingFlow({
             {/* The desktop summary panel is for the later steps: on step 1
                 the sticky bar below already shows the same figures, and two
                 copies of them side by side reads as a mistake. */}
-            {showSummaryPanel && selection && (
+            {showSummaryPanel && summary && (
               <SummaryPanel
                 open={summaryOpen}
                 onToggle={() => setSummaryOpen((v) => !v)}
                 facility={facility}
                 sportName={sportName}
-                selection={selection}
+                summary={summary}
               />
             )}
           </div>
@@ -354,7 +540,7 @@ export function PublicBookingFlow({
           step={step}
           facility={facility}
           sportName={sportName}
-          selection={selection}
+          summary={summary}
           submitting={submitting}
           agreed={agreed}
           onBack={() => {
@@ -368,11 +554,13 @@ export function PublicBookingFlow({
   );
 }
 
-function StepBar({ current }: { current: Step }) {
-  const index = STEPS.findIndex((s) => s.id === current);
+/** The Payment step only exists for a booking that needs an online advance (longer than an hour). */
+function StepBar({ current, withPayment }: { current: Step; withPayment: boolean }) {
+  const steps = STEPS.filter((s) => s.id !== "pay" || withPayment);
+  const index = steps.findIndex((s) => s.id === current);
   return (
     <ol className="flex items-center" aria-label="Booking Steps">
-      {STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const done = i < index;
         const active = i === index;
         return (
@@ -399,7 +587,7 @@ function StepBar({ current }: { current: Step }) {
             >
               {s.label}
             </span>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <span
                 className={cn("h-px flex-1 transition-colors", done ? "bg-primary/40" : "bg-border")}
                 aria-hidden
@@ -421,10 +609,11 @@ function SelectStep({
   onDateChange,
   courts,
   loading,
-  selection,
-  onSelect,
+  courtIds,
+  onToggleCourt,
+  picks,
+  onTogglePick,
   currency,
-  heroImage,
 }: {
   facility: PublicBookingFacility;
   sportId: string;
@@ -434,19 +623,19 @@ function SelectStep({
   onDateChange: (d: Date) => void;
   courts: PublicBookingCourt[];
   loading: boolean;
-  selection: Selection | null;
-  onSelect: (s: Selection) => void;
+  courtIds: string[];
+  onToggleCourt: (courtId: string) => void;
+  picks: Pick[];
+  onTogglePick: (p: Pick) => void;
   currency: string;
-  heroImage: HeroImage;
 }) {
   const [showAllCourts, setShowAllCourts] = useState(false);
+  // Courts have no photograph of their own: show the venue's own image, else the sport's artwork (e.g. the football
+  // turf), and the green COURT panel when neither exists or the file fails to load.
+  const courtImage = resolveFacilityHeroImage(facility, facility.sports.find((s) => s.facilitySportId === sportId) ?? null).src;
 
-  // The court cards act as a filter for the slot rail below: pick a court,
-  // then a time on it. Defaults to the first court that has anything free.
-  const [courtId, setCourtId] = useState<string | null>(null);
-  const activeCourtId =
-    courtId ?? selection?.courtId ?? courts.find((c) => c.slots.some((s) => s.available))?.courtId ?? courts[0]?.courtId ?? null;
-  const activeCourt = courts.find((c) => c.courtId === activeCourtId) ?? null;
+  // Any number of courts can be ticked; each one gets its own row of times below, and any number of times on each.
+  const chosenCourts = courtIds.map((id) => courts.find((c) => c.courtId === id)).filter((c): c is PublicBookingCourt => Boolean(c));
 
   const VISIBLE = 3;
   const visibleCourts = showAllCourts ? courts : courts.slice(0, VISIBLE);
@@ -503,8 +692,8 @@ function SelectStep({
       <section>
         <div className="mb-1 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">Select a Court</h2>
-            <p className="text-xs text-muted-foreground">Available courts for the selected date</p>
+            <h2 className="text-sm font-semibold">Select Courts</h2>
+            <p className="text-xs text-muted-foreground">Pick one or more courts for the selected date</p>
           </div>
           {hasMoreCourts && (
             <button
@@ -533,10 +722,10 @@ function SelectStep({
               <CourtCard
                 key={court.courtId}
                 court={court}
-                image={heroImage}
+                imageUrl={courtImage}
                 currency={currency}
-                selected={court.courtId === activeCourtId}
-                onSelect={() => setCourtId(court.courtId)}
+                selected={courtIds.includes(court.courtId)}
+                onSelect={() => onToggleCourt(court.courtId)}
               />
             ))}
             {hasMoreCourts && !showAllCourts && (
@@ -555,8 +744,10 @@ function SelectStep({
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold">Select Time Slot</h2>
-        <p className="text-xs text-muted-foreground">All times shown in IST</p>
+        <h2 className="text-sm font-semibold">Select Time Slots</h2>
+        <p className="text-xs text-muted-foreground">
+          All times shown in IST. Tap several to book more than one hour{chosenCourts.length > 1 ? ", on each court" : ""}.
+        </p>
 
         {loading ? (
           <div className="mt-3 flex gap-2">
@@ -564,17 +755,23 @@ function SelectStep({
               <Skeleton key={i} className="h-14 w-32 shrink-0 rounded-xl" />
             ))}
           </div>
-        ) : !activeCourt ? null : activeCourt.slots.length === 0 ? (
+        ) : chosenCourts.length === 0 ? (
           <p className="mt-3 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No times are open on this court. Try another court or date.
+            Choose a court above to see its times.
           </p>
         ) : (
-          <SlotRail
-            court={activeCourt}
-            currency={currency}
-            selection={selection}
-            onSelect={onSelect}
-          />
+          chosenCourts.map((court) => (
+            <div key={court.courtId} className="mt-3">
+              {chosenCourts.length > 1 && <p className="text-xs font-semibold">{court.courtName}</p>}
+              {court.slots.length === 0 ? (
+                <p className="mt-1 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  No times are open on this court. Try another court or date.
+                </p>
+              ) : (
+                <SlotRail court={court} currency={currency} picks={picks} onTogglePick={onTogglePick} />
+              )}
+            </div>
+          ))
         )}
       </section>
     </div>
@@ -606,13 +803,14 @@ function Picker({
 
 function CourtCard({
   court,
-  image,
+  imageUrl,
   currency,
   selected,
   onSelect,
 }: {
   court: PublicBookingCourt;
-  image: HeroImage;
+  /** The picture to show if there is one; otherwise (or if it fails to load) the green COURT panel. */
+  imageUrl?: string | null;
   currency: string;
   selected: boolean;
   onSelect: () => void;
@@ -632,14 +830,8 @@ function CourtCard({
         selected ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/40",
       )}
     >
-      <div className="relative aspect-[4/3] w-full bg-muted">
-        {image.src ? (
-          <Image src={image.src} alt="" fill sizes="240px" className="object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/15 to-muted">
-            <LayoutGrid className="h-6 w-6 text-muted-foreground" aria-hidden />
-          </div>
-        )}
+      <div className="relative aspect-[3/1] w-full bg-muted">
+        <CourtImage src={imageUrl} alt={court.courtName} />
         {selected && (
           <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <CircleCheck className="h-4 w-4" aria-hidden />
@@ -656,17 +848,17 @@ function CourtCard({
   );
 }
 
-/** Horizontally scrolling time slots, with arrows on pointer devices. */
+/** Horizontally scrolling time slots, with arrows on pointer devices. Any number can be ticked. */
 function SlotRail({
   court,
   currency,
-  selection,
-  onSelect,
+  picks,
+  onTogglePick,
 }: {
   court: PublicBookingCourt;
   currency: string;
-  selection: Selection | null;
-  onSelect: (s: Selection) => void;
+  picks: Pick[];
+  onTogglePick: (p: Pick) => void;
 }) {
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -675,29 +867,28 @@ function SlotRail({
   };
 
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="mt-1 flex items-center gap-2">
       <RailButton direction="left" onClick={() => scrollBy(-1)} />
       <div
         ref={railRef}
         className="flex flex-1 snap-x gap-2 overflow-x-auto scroll-smooth pb-1"
       >
         {court.slots.map((slot) => {
-          const active = selection?.courtId === court.courtId && selection.startTime === slot.startTime;
+          const pick: Pick = {
+            courtId: court.courtId,
+            courtName: court.courtName,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            priceMinor: slot.priceMinor,
+          };
+          const active = picks.some((p) => samePick(p, pick));
           return (
             <button
               key={slot.startTime}
               type="button"
               disabled={!slot.available}
               aria-pressed={active}
-              onClick={() =>
-                onSelect({
-                  courtId: court.courtId,
-                  courtName: court.courtName,
-                  startTime: slot.startTime,
-                  endTime: slot.endTime,
-                  priceMinor: slot.priceMinor,
-                })
-              }
+              onClick={() => onTogglePick(pick)}
               className={cn(
                 "min-h-14 w-32 shrink-0 snap-start rounded-xl border px-2 py-2 text-center transition-colors",
                 !slot.available && "cursor-not-allowed border-dashed opacity-55",
@@ -934,7 +1125,7 @@ function PhoneInput({
 function ReviewStep({
   facility,
   sportName,
-  selection,
+  summary,
   guest,
   error,
   agreed,
@@ -942,14 +1133,14 @@ function ReviewStep({
 }: {
   facility: PublicBookingFacility;
   sportName: string;
-  selection: Selection;
+  summary: PickSummary;
   guest: PublicGuestDetails;
   error: string | null;
   agreed: boolean;
   onAgreedChange: (v: boolean) => void;
 }) {
-  const total = formatMoney(selection.priceMinor, facility.currency);
-  const duration = durationLabel(selection.startTime, selection.endTime);
+  const cur = facility.currency;
+  const first = summary.requests[0]!;
 
   return (
     <div className="space-y-5">
@@ -970,32 +1161,67 @@ function ReviewStep({
         <ReviewPanel title="Booking Details">
           <IconRow icon={LayoutGrid} label="Sport" value={sportName} />
           <IconRow icon={MapPin} label="Facility" value={facility.facilityName} />
-          <IconRow icon={LayoutGrid} label="Court" value={selection.courtName} />
-          <IconRow icon={CalendarDays} label="Date" value={formatBookingDate(selection.startTime)} />
-          <IconRow icon={Clock3} label="Time" value={formatSlotRange(selection.startTime, selection.endTime)} />
-          <IconRow icon={Clock3} label="Duration" value={duration} />
+          <IconRow icon={CalendarDays} label="Date" value={formatBookingDate(first.startTime)} />
+          <ul className="space-y-2 pt-1">
+            {summary.requests.map((r) => (
+              <li key={`${r.courtId}-${r.startTime}`} className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                <p className="font-medium">{r.courtName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatSlotRange(r.startTime, r.endTime)} · {durationLabel(r.startTime, r.endTime)}
+                </p>
+              </li>
+            ))}
+          </ul>
         </ReviewPanel>
 
         <ReviewPanel title="Payment Details">
-          <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <WalletCards className="h-4 w-4 text-primary" aria-hidden />
-              Payment at Venue
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Please pay directly at the venue.</p>
-          </div>
+          {summary.advanceRequired ? (
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <WalletCards className="h-4 w-4 text-primary" aria-hidden />
+                50% Advance Online
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Bookings longer than 1 hour are held for 30 minutes and confirmed once the advance is paid online. The balance is paid at the venue.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <WalletCards className="h-4 w-4 text-primary" aria-hidden />
+                Payment at Venue
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Please pay directly at the venue.</p>
+            </div>
+          )}
 
           <div className="pt-1">
             <p className="text-xs font-semibold">Price Details</p>
             <dl className="mt-2 space-y-2 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-muted-foreground">Court Price ({duration})</dt>
-                <dd className="font-medium">{total}</dd>
-              </div>
+              {summary.requests.map((r) => (
+                <div key={`${r.courtId}-${r.startTime}`} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted-foreground">
+                    {r.courtName} ({durationLabel(r.startTime, r.endTime)})
+                  </dt>
+                  <dd className="font-medium">{formatMoney(r.totalMinor, cur)}</dd>
+                </div>
+              ))}
               <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
                 <dt className="font-semibold text-primary">Total Amount</dt>
-                <dd className="text-base font-semibold text-primary">{total}</dd>
+                <dd className="text-base font-semibold text-primary">{formatMoney(summary.totalMinor, cur)}</dd>
               </div>
+              {summary.advanceRequired && (
+                <>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="font-semibold">Advance Due Online (50%)</dt>
+                    <dd className="font-semibold">{formatMoney(summary.advanceDueMinor, cur)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">Balance at Venue</dt>
+                    <dd className="font-medium">{formatMoney(summary.balanceMinor, cur)}</dd>
+                  </div>
+                </>
+              )}
             </dl>
           </div>
         </ReviewPanel>
@@ -1066,26 +1292,37 @@ function SummaryPanel({
   onToggle,
   facility,
   sportName,
-  selection,
+  summary,
 }: {
   open: boolean;
   onToggle: () => void;
   facility: PublicBookingFacility;
   sportName: string;
-  selection: Selection;
+  summary: PickSummary;
 }) {
+  const cur = facility.currency;
   const body = (
     <dl className="space-y-1.5 text-sm">
       <Row label="Sport" value={sportName} />
-      <Row label="Court" value={selection.courtName} />
-      <Row label="Date" value={formatBookingDate(selection.startTime)} />
-      <Row label="Time" value={formatSlotRange(selection.startTime, selection.endTime)} />
-      <Row label="Duration" value={durationLabel(selection.startTime, selection.endTime)} />
+      <Row label="Date" value={formatBookingDate(summary.requests[0]!.startTime)} />
+      {summary.requests.map((r) => (
+        <Row key={`${r.courtId}-${r.startTime}`} label={r.courtName} value={`${formatSlotRange(r.startTime, r.endTime)} (${durationLabel(r.startTime, r.endTime)})`} />
+      ))}
       <div className="flex items-center justify-between border-t border-border pt-2 font-semibold">
         <span>Total</span>
-        <span>{formatMoney(selection.priceMinor, facility.currency)}</span>
+        <span>{formatMoney(summary.totalMinor, cur)}</span>
       </div>
-      <p className="pt-1 text-xs text-muted-foreground">Pay at venue</p>
+      {summary.advanceRequired ? (
+        <>
+          <div className="flex items-center justify-between font-semibold">
+            <span>Advance Online (50%)</span>
+            <span>{formatMoney(summary.advanceDueMinor, cur)}</span>
+          </div>
+          <p className="pt-1 text-xs text-muted-foreground">Balance {formatMoney(summary.balanceMinor, cur)} at the venue</p>
+        </>
+      ) : (
+        <p className="pt-1 text-xs text-muted-foreground">Pay at venue</p>
+      )}
     </dl>
   );
 
@@ -1126,7 +1363,7 @@ function BookingActionBar({
   step,
   facility,
   sportName,
-  selection,
+  summary,
   submitting,
   agreed,
   onBack,
@@ -1135,22 +1372,25 @@ function BookingActionBar({
   step: Step;
   facility: PublicBookingFacility;
   sportName: string;
-  selection: Selection | null;
+  summary: PickSummary | null;
   submitting: boolean;
   agreed: boolean;
   onBack: () => void;
   onNext: () => void;
 }) {
-  if (step === "done") return null;
+  if (step === "done" || step === "pay") return null;
 
   // Step 1 needs a slot; the last step needs the player to have ticked the
   // consent box beside the details it refers to.
-  const canContinue = step === "select" ? Boolean(selection) : step === "review" ? agreed : true;
+  const canContinue = step === "select" ? Boolean(summary) : step === "review" ? agreed : true;
+  const advance = Boolean(summary?.advanceRequired);
   const label =
     step === "review"
       ? submitting
         ? "Confirming booking…"
-        : "Confirm Booking"
+        : advance
+          ? "Confirm & Pay Advance"
+          : "Confirm Booking"
       : step === "details"
         ? "Review & Confirm"
         : "Continue";
@@ -1159,25 +1399,28 @@ function BookingActionBar({
   // confirming. On the details step the desktop summary panel already
   // carries it, and the design keeps that footer to just the two buttons.
   const showTotal = step === "select";
+  const cur = facility.currency;
+  const courtsLabel = summary ? [...new Set(summary.requests.map((r) => r.courtName))].join(", ") : "";
+  const timesLabel = summary ? summary.requests.map((r) => formatSlotRange(r.startTime, r.endTime)).join(", ") : "";
 
   return (
     <div className="sticky bottom-0 z-10 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:px-8">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          {selection ? (
+          {summary ? (
             <>
               {/* The full context line has room only on larger screens; the
                   phone keeps the total, which is what a player checks. */}
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                {[sportName, facility.facilityName, selection.courtName].filter(Boolean).join(" • ")}
+                {[sportName, facility.facilityName, courtsLabel].filter(Boolean).join(" • ")}
               </p>
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                {formatBookingDate(selection.startTime)} • {formatSlotRange(selection.startTime, selection.endTime)} •{" "}
-                {durationLabel(selection.startTime, selection.endTime)}
+                {formatBookingDate(summary.requests[0]!.startTime)} • {timesLabel} • {summary.hours} {summary.hours === 1 ? "hour" : "hours"}
               </p>
-              <p className="text-[11px] text-muted-foreground sm:hidden">Total</p>
+              <p className="text-[11px] text-muted-foreground sm:hidden">{advance ? "Total · advance now" : "Total"}</p>
               <p className="text-base font-semibold text-primary sm:hidden">
-                {formatMoney(selection.priceMinor, facility.currency)}
+                {formatMoney(summary.totalMinor, cur)}
+                {advance && <span className="text-xs font-medium text-muted-foreground"> · {formatMoney(summary.advanceDueMinor, cur)} now</span>}
               </p>
             </>
           ) : (
@@ -1185,12 +1428,10 @@ function BookingActionBar({
           )}
         </div>
 
-        {selection && showTotal && (
+        {summary && showTotal && (
           <div className="hidden text-right sm:block">
-            <p className="text-[11px] text-muted-foreground">Total</p>
-            <p className="text-lg font-semibold text-primary">
-              {formatMoney(selection.priceMinor, facility.currency)}
-            </p>
+            <p className="text-[11px] text-muted-foreground">{advance ? `Total · ${formatMoney(summary.advanceDueMinor, cur)} advance now` : "Total"}</p>
+            <p className="text-lg font-semibold text-primary">{formatMoney(summary.totalMinor, cur)}</p>
           </div>
         )}
 
@@ -1213,7 +1454,7 @@ function BookingActionBar({
         </Button>
       </div>
 
-      {step === "select" && selection && (
+      {step === "select" && summary && (
         <p className="mt-1 hidden text-right text-[11px] text-muted-foreground sm:block">
           You can review your booking next
         </p>
@@ -1222,22 +1463,92 @@ function BookingActionBar({
   );
 }
 
+const PAYMENT_STATUS_LABEL: Record<PublicBookingReceipt["paymentStatus"], string> = {
+  PAID: "Fully Paid",
+  PARTIALLY_PAID: "Partially Paid",
+  PENDING: "Pay at Venue",
+};
+
+/** The booking as the confirmation page shows it: the server's receipt when it has arrived, else what we already know. */
+function receiptFallback(c: PublicBookingConfirmation): PublicBookingReceipt {
+  const paid = c.advanceRequired ? Math.min(c.advanceMinor ?? 0, c.amountMinor) : 0;
+  return {
+    found: true,
+    bookingId: c.bookingId,
+    code: c.code,
+    confirmed: true,
+    cancelled: false,
+    holdExpiresAt: null,
+    facilityName: c.facilityName,
+    sportName: c.sportName,
+    courtName: c.courtName,
+    startTime: c.startTime,
+    endTime: c.endTime,
+    guestName: c.guestName,
+    guestPhone: c.guestPhone,
+    partySize: 1,
+    currency: c.currency,
+    amountMinor: c.amountMinor,
+    paidMinor: paid,
+    outstandingMinor: Math.max(c.amountMinor - paid, 0),
+    paymentStatus: paid >= c.amountMinor && c.amountMinor > 0 ? "PAID" : paid > 0 ? "PARTIALLY_PAID" : "PENDING",
+    paymentMethod: paid > 0 ? "Razorpay" : null,
+    paymentReference: null,
+    paidAt: null,
+  };
+}
+
 function Confirmed({
-  confirmation,
+  confirmations,
   facility,
   embedded,
+  notice,
+  phone,
 }: {
-  confirmation: PublicBookingConfirmation;
+  confirmations: PublicBookingConfirmation[];
   facility: PublicBookingFacility;
   embedded: boolean;
+  notice?: string | null;
+  phone: string;
 }) {
+  const confirmation = confirmations[0]!;
+  const multiple = confirmations.length > 1;
+  const [receipts, setReceipts] = useState<Record<string, PublicBookingReceipt>>({});
+  const [invoiceBusy, setInvoiceBusy] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+  // The booking's real payment position (what arrived, what is still owed) comes from the server.
+  useEffect(() => {
+    let active = true;
+    for (const c of confirmations) {
+      void getPublicBookingReceipt(c.bookingId, phone).then((r) => {
+        if (active && r) setReceipts((cur) => ({ ...cur, [c.bookingId]: r }));
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [confirmations, phone]);
+
+  async function downloadInvoice(c: PublicBookingConfirmation) {
+    setInvoiceError(null);
+    setInvoiceBusy(c.bookingId);
+    try {
+      await downloadPublicBookingInvoice(c.bookingId, phone, `invoice-${c.code}.pdf`);
+    } catch (e) {
+      setInvoiceError(e instanceof Error ? e.message : "We couldn't build the invoice. Please try again.");
+    } finally {
+      setInvoiceBusy(null);
+    }
+  }
+
   const calendarHref = useMemo(() => {
     const stamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]|\.\d{3}/g, "");
     const params = new URLSearchParams({
       action: "TEMPLATE",
       text: `${confirmation.sportName} at ${confirmation.facilityName}`,
       dates: `${stamp(confirmation.startTime)}/${stamp(confirmation.endTime)}`,
-      details: `Booking ${confirmation.code} — ${confirmation.courtName}. Pay at venue.`,
+      details: `Booking ${confirmation.code} — ${confirmation.courtName}.`,
       location: confirmation.facilityName,
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -1246,7 +1557,9 @@ function Confirmed({
   const [shared, setShared] = useState(false);
 
   async function share() {
-    const text = `Booking ${confirmation.code} — ${confirmation.sportName} at ${confirmation.facilityName}, ${confirmation.courtName}, ${formatBookingDate(confirmation.startTime)} ${formatSlotRange(confirmation.startTime, confirmation.endTime)}`;
+    const text = confirmations
+      .map((c) => `Booking ${c.code} — ${c.sportName} at ${c.facilityName}, ${c.courtName}, ${formatBookingDate(c.startTime)} ${formatSlotRange(c.startTime, c.endTime)}`)
+      .join("\n");
     if (navigator.share) {
       try {
         await navigator.share({ title: "Booking Confirmed", text });
@@ -1278,53 +1591,100 @@ function Confirmed({
         <div className="px-4 py-8 sm:px-8 sm:py-10">
           <div className="text-center">
             <SuccessBadge />
-            <h1 className="mt-4 text-xl font-bold tracking-tight sm:text-2xl">Booking Confirmed!</h1>
+            <h1 className="mt-4 text-xl font-bold tracking-tight sm:text-2xl">
+              {multiple ? "Bookings Confirmed!" : "Booking Confirmed!"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your court has been successfully booked.
+              {multiple ? "Your courts have been successfully booked." : "Your court has been successfully booked."}
             </p>
           </div>
 
-          <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl border border-border">
-            <dl className="grid gap-px bg-border sm:grid-cols-3">
-              <ConfirmedCell label="Booking ID">
-                <span className="text-base font-bold text-primary">{confirmation.code}</span>
-              </ConfirmedCell>
-              <ConfirmedCell label="Sport" icon={LayoutGrid}>
-                {confirmation.sportName}
-              </ConfirmedCell>
-              <ConfirmedCell label="Court" icon={UserRound}>
-                {confirmation.courtName}
-              </ConfirmedCell>
+          {notice && <Notice tone="error" title="Some Bookings Weren't Made" message={notice} className="mx-auto mt-6 max-w-3xl" />}
+          {invoiceError && <Notice tone="error" title="Invoice" message={invoiceError} className="mx-auto mt-6 max-w-3xl" />}
 
-              <ConfirmedCell label="Date">{formatBookingDate(confirmation.startTime)}</ConfirmedCell>
-              <ConfirmedCell label="Time">
-                {formatSlotRange(confirmation.startTime, confirmation.endTime)}
-              </ConfirmedCell>
-              <ConfirmedCell label="Duration">
-                {durationLabel(confirmation.startTime, confirmation.endTime)}
-              </ConfirmedCell>
+          <div className="mx-auto mt-6 max-w-3xl space-y-4">
+            {confirmations.map((c) => {
+              const r = receipts[c.bookingId] ?? receiptFallback(c);
+              const cur = r.currency;
+              return (
+                <section key={c.bookingId} className="overflow-hidden rounded-xl border border-border">
+                  <dl className="grid gap-px bg-border sm:grid-cols-3">
+                    <ConfirmedCell label="Booking ID">
+                      <span className="text-base font-bold text-primary">{r.code}</span>
+                    </ConfirmedCell>
+                    <ConfirmedCell label="Booked By" icon={UserRound}>
+                      {r.guestName}
+                      {r.guestPhone ? <span className="block text-xs font-normal text-muted-foreground">{r.guestPhone}</span> : null}
+                    </ConfirmedCell>
+                    <ConfirmedCell label="Sport" icon={LayoutGrid}>
+                      {r.sportName}
+                    </ConfirmedCell>
 
-              <ConfirmedCell label="Amount">
-                <span className="text-base font-bold text-primary">
-                  {formatMoney(confirmation.amountMinor, confirmation.currency)}
-                </span>
-              </ConfirmedCell>
+                    <ConfirmedCell label="Court / Turf" icon={MapPin}>
+                      {r.courtName}
+                    </ConfirmedCell>
+                    <ConfirmedCell label="Date" icon={CalendarDays}>
+                      {formatBookingDate(r.startTime)}
+                    </ConfirmedCell>
+                    <ConfirmedCell label="Time">
+                      {formatSlotRange(r.startTime, r.endTime)}
+                      <span className="block text-xs font-normal text-muted-foreground">{durationLabel(r.startTime, r.endTime)}</span>
+                    </ConfirmedCell>
+                  </dl>
 
-              <div className="bg-card p-4 sm:col-span-2">
-                <dt className="text-[11px] text-muted-foreground">Payment</dt>
-                <dd className="mt-1 flex items-start gap-2.5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
-                    <WalletCards className="h-4 w-4" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold">Pay at Venue</span>
-                    <span className="block text-xs text-muted-foreground">
-                      Please pay directly at the venue.
-                    </span>
-                  </span>
-                </dd>
-              </div>
-            </dl>
+                  <div className="space-y-2 border-t border-border bg-card p-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <WalletCards className="h-4 w-4" aria-hidden /> Payment Status
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                          r.paymentStatus === "PAID" && "bg-primary/15 text-primary",
+                          r.paymentStatus === "PARTIALLY_PAID" && "bg-amber-500/15 text-amber-600",
+                          r.paymentStatus === "PENDING" && "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {PAYMENT_STATUS_LABEL[r.paymentStatus]}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Total Amount</span>
+                      <span className="font-semibold">{formatMoney(r.amountMinor, cur)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Paid Amount</span>
+                      <span className="font-semibold text-primary">{formatMoney(r.paidMinor, cur)}</span>
+                    </div>
+                    {r.outstandingMinor > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Pending Amount (pay at the venue)</span>
+                        <span className="font-semibold">{formatMoney(r.outstandingMinor, cur)}</span>
+                      </div>
+                    )}
+                    {r.paidMinor > 0 && (r.paymentMethod || r.paymentReference) && (
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Paid via {r.paymentMethod ?? "Razorpay"}</span>
+                        {r.paymentReference && <span className="tabular-nums">Ref {r.paymentReference}</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-border bg-muted/30 p-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 w-full sm:w-auto"
+                      disabled={invoiceBusy === c.bookingId}
+                      onClick={() => void downloadInvoice(c)}
+                    >
+                      <Download className="h-4 w-4" aria-hidden />
+                      {invoiceBusy === c.bookingId ? "Preparing invoice…" : "Download Invoice"}
+                    </Button>
+                  </div>
+                </section>
+              );
+            })}
           </div>
 
           <div className="mx-auto mt-6 grid max-w-3xl gap-2 sm:grid-cols-3">
@@ -1343,6 +1703,142 @@ function Confirmed({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** One held booking waiting on its advance. */
+interface PendingItem {
+  confirmation: PublicBookingConfirmation;
+  state: "waiting" | "confirmed" | "expired";
+}
+
+/** mm:ss until the hold lapses. */
+function HoldCountdown({ until }: { until: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.max(0, Math.floor((new Date(until).getTime() - now) / 1000));
+  return (
+    <span className="tabular-nums">
+      {String(Math.floor(left / 60)).padStart(2, "0")}:{String(left % 60).padStart(2, "0")}
+    </span>
+  );
+}
+
+/**
+ * The Payment step for a booking longer than an hour. The court is held for 30 minutes; "Proceed to Pay" opens
+ * Razorpay Checkout for the 50% advance (no link is made or shared), and the booking is confirmed once the payment
+ * is verified. However many courts and times were booked, it is ONE payment for the whole advance.
+ */
+function PayStep({
+  items,
+  payingId,
+  error,
+  notice,
+  onPay,
+  onBookAgain,
+}: {
+  items: PendingItem[];
+  payingId: string | null;
+  error: string | null;
+  notice: string | null;
+  onPay: () => void;
+  onBookAgain: () => void;
+}) {
+  const waiting = items.filter((i) => i.state === "waiting");
+  const allExpired = items.length > 0 && items.every((i) => i.state === "expired");
+  const cur = items[0]?.confirmation.currency ?? "INR";
+  const total = items.filter((i) => i.state !== "expired").reduce((s, i) => s + i.confirmation.amountMinor, 0);
+  const dueNow = waiting.reduce((s, i) => s + (i.confirmation.advanceMinor ?? 0), 0);
+  const paidSoFar = items.filter((i) => i.state === "confirmed").reduce((s, i) => s + (i.confirmation.advanceMinor ?? 0), 0);
+  const paying = payingId !== null;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold">Pay Your Advance</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your court is held while you pay. Bookings longer than 1 hour are confirmed once 50% is paid online — the balance is paid at the venue.
+        </p>
+      </div>
+
+      {notice && <Notice tone="error" title="Some Bookings Weren't Made" message={notice} />}
+      {error && <Notice tone="error" title="Payment Not Completed" message={error} />}
+
+      <ul className="space-y-3">
+        {items.map((item) => {
+          const c = item.confirmation;
+          return (
+            <li key={c.bookingId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{c.courtName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatBookingDate(c.startTime)} · {formatSlotRange(c.startTime, c.endTime)} · {durationLabel(c.startTime, c.endTime)}
+                </p>
+              </div>
+              <div className="text-right text-xs">
+                {item.state === "confirmed" ? (
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                    <CircleCheck className="h-4 w-4" aria-hidden /> Advance paid
+                  </span>
+                ) : item.state === "expired" ? (
+                  <span className="text-sm font-medium text-destructive">Expired — the court was released</span>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold">{formatMoney(c.advanceMinor ?? 0, c.currency)} advance</p>
+                    {c.holdExpiresAt && (
+                      <p className="text-muted-foreground">
+                        Held for <HoldCountdown until={c.holdExpiresAt} />
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {!allExpired && (
+        <dl className="space-y-2 rounded-xl border border-border p-4 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Total Amount</dt>
+            <dd className="font-medium">{formatMoney(total, cur)}</dd>
+          </div>
+          {paidSoFar > 0 && (
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Already Paid</dt>
+              <dd className="font-medium text-primary">{formatMoney(paidSoFar, cur)}</dd>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-border pt-2">
+            <dt className="font-semibold">Advance to Pay Now (50%)</dt>
+            <dd className="text-base font-semibold text-primary">{formatMoney(dueNow, cur)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">Balance at the Venue</dt>
+            <dd className="font-medium">{formatMoney(Math.max(total - paidSoFar - dueNow, 0), cur)}</dd>
+          </div>
+        </dl>
+      )}
+
+      {allExpired ? (
+        <Button type="button" onClick={onBookAgain} className="min-h-11">
+          Book Again
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          {/* One payment covers every held booking, however many courts and times were picked. */}
+          <Button type="button" onClick={onPay} disabled={paying || waiting.length === 0} className="min-h-11 w-full sm:w-auto">
+            <Lock className="h-4 w-4" aria-hidden />
+            {paying ? "Opening Razorpay…" : `Proceed to Pay ${formatMoney(dueNow, cur)}`}
+          </Button>
+          <p className="text-xs text-muted-foreground">You&apos;ll pay securely with Razorpay — UPI, cards, net banking and wallets.</p>
+        </div>
+      )}
     </div>
   );
 }

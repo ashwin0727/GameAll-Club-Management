@@ -30,3 +30,20 @@ export function planSlotsFor(batches: MembershipBatch[], planId: string, courtNa
     }))
     .sort((a, b) => a.courtName.localeCompare(b.courtName) || a.startTime.localeCompare(b.startTime));
 }
+
+/** The distinct courts a plan's slots are on, in slot order. */
+export function courtsOf(slots: PlanSlot[]): { courtId: string; courtName: string }[] {
+  const seen = new Map<string, string>();
+  for (const sl of slots) if (!seen.has(sl.courtId)) seen.set(sl.courtId, sl.courtName);
+  return [...seen].map(([courtId, courtName]) => ({ courtId, courtName }));
+}
+
+/**
+ * A member plays on ONE court at a time. When the plan spans several courts the member picks one, and
+ * gets only that court's slots; a single-court plan needs no choice. Until a court is picked on a
+ * multi-court plan this returns no slots.
+ */
+export function slotsForChosenCourt(slots: PlanSlot[], chosenCourtId: string): PlanSlot[] {
+  if (courtsOf(slots).length <= 1) return slots;
+  return slots.filter((sl) => sl.courtId === chosenCourtId);
+}

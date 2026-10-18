@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chargeDates, chargesLeft, nextPaymentDate, perSessionMinor, programLengthLabel, upcomingCharges } from "@/features/coaching/billing-schedule";
+import { chargeDates, chargesLeft, nextPaymentDate, perSessionMinor, programLengthLabel, programTotalSessions, upcomingCharges } from "@/features/coaching/billing-schedule";
 
 describe("chargeDates", () => {
   it("is the same day each month: 14 Oct → 14 Nov → 14 Dec → 14 Jan", () => {
@@ -69,5 +69,15 @@ describe("upcomingCharges", () => {
   it("is empty when nothing is charging", () => {
     expect(upcomingCharges(b({ status: "CANCELLED" }))).toEqual([]);
     expect(upcomingCharges(null)).toEqual([]);
+  });
+});
+
+describe("programTotalSessions", () => {
+  it("is sessions per week × weeks, e.g. 3 a week for 8 weeks = 24", () => {
+    expect(programTotalSessions({ sessionsPerWeek: 3, startDate: "2026-11-02", endDate: "2026-12-28" })).toBe(24);
+  });
+  it("falls back to the package count, then null", () => {
+    expect(programTotalSessions({ sessionsPerWeek: null, sessionCount: 10 })).toBe(10);
+    expect(programTotalSessions({})).toBeNull();
   });
 });

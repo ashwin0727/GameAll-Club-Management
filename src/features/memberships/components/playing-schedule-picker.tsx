@@ -32,7 +32,6 @@ export function PlayingSchedulePicker({
   onChange: (next: PlayingScheduleDraft) => void;
 }) {
   const [areas, setAreas] = useState<PlayingArea[]>([]);
-  const activeSportId = useUiStore((s) => s.activeFacilitySportId);
 
   // Every default below reads and writes through this ref instead of the `value` prop
   // directly. The sport/court fetch is async — it can resolve after another effect (or the
@@ -51,10 +50,12 @@ export function PlayingSchedulePicker({
         if (cancelled) return;
         const enabled = fs.filter((f) => f.enabled);
         setAreas(playingAreas.filter((a) => !a.archived && a.status === "ACTIVE" && a.bookingEnabled));
-        // Defaults to the sport picked in the top bar, same as every other sport-scoped page —
+        // Defaults to a sport ticked in the top bar, same as every other sport-scoped page —
         // falling back to the facility's first onboarded sport if that one isn't enabled here.
         if (!valueRef.current.facilitySportId) {
-          const preferred = enabled.find((f) => f.id === activeSportId) ?? enabled[0];
+          // The first of the sports ticked in the top bar (any, under All Sports) that is enabled here.
+          const ticked = useUiStore.getState().selectedSportIds;
+          const preferred = (ticked ? enabled.find((f) => ticked.includes(f.id)) : undefined) ?? enabled[0];
           if (preferred) onChange({ ...valueRef.current, facilitySportId: preferred.id });
         }
       })

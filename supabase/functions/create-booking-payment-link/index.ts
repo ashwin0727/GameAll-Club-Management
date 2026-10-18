@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
   // Everything the link shows comes from the booking row, read under the caller's own access.
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
-    .select("guest_name, guest_phone, start_time, end_time, court_id, payment_status")
+    .select("guest_name, guest_phone, start_time, end_time, court_id, payment_status, amount_minor")
     .eq("id", body.bookingId)
     .eq("facility_id", body.facilityId)
     .maybeSingle();
@@ -188,6 +188,19 @@ Deno.serve(async (req) => {
     return jsonResponse({ bookingId: body.bookingId, status: "PAID", paid: true }, 200);
   }
 
+  // An advance (or the full amount) already received for this booking: never ask for it twice. The balance of a
+  // long booking is collected through Pending Payments.
+  const { data: settled } = await supabase
+    .from("payment_orders")
+    .select("*")
+    .eq("facility_id", body.facilityId)
+    .eq("booking_id", body.bookingId)
+    .in("status", PAID_STATES)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (settled) return jsonResponse(linkPayload(settled as PaymentOrderRow, { status: "PAID" }), 200);
+
   const { data: orderData, error: orderErr } = await supabase.rpc("create_payment_order", {
     p_facility_id: body.facilityId,
     p_source_type: "GUEST_BOOKING",
@@ -195,6 +208,8 @@ Deno.serve(async (req) => {
     p_membership_session_booking_id: null,
     p_member_id: null,
     p_plan_id: null,
+    // A booking longer than an hour is secured with a 50% advance (migration 0130); shorter ones pay in full.
+    p_advance: true,
   });
   if (orderErr || !orderData) {
     console.error("[create-booking-payment-link] create_payment_order failed", orderErr?.code, orderErr?.message);
@@ -236,7 +251,9 @@ Deno.serve(async (req) => {
       currency: order.currency,
       accept_partial: false,
       reference_id: order.id,
-      description: linkDescription(court?.name ?? null, booking.start_time, booking.end_time, facility?.timezone ?? "Asia/Kolkata"),
+      description:
+        (order.amount_minor < (booking.amount_minor ?? 0) ? "Advance (50%) · " : "") +
+        linkDescription(court?.name ?? null, booking.start_time, booking.end_time, facility?.timezone ?? "Asia/Kolkata"),
       expire_by: expireBy,
       customer: {
         ...(booking.guest_name ? { name: booking.guest_name } : {}),

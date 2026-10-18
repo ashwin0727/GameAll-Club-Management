@@ -21,8 +21,8 @@ describe("sidebar menu structure", () => {
   it("has exactly the agreed items in each section", () => {
     expect(labelsIn("main")).toEqual(["Home", "Calendar", "Tournaments"]);
     expect(labelsIn("guest")).toEqual(["Guest Booking", "Guest Players"]);
-    expect(labelsIn("memberships")).toEqual(["Dashboard", "Membership Schedule", "Membership Plan", "Membership Sessions", "Members"]);
-    expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Report"]);
+    expect(labelsIn("memberships")).toEqual(["Dashboard", "Membership Schedule", "Membership Plan", "Membership Sessions"]);
+    expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Coaching Schedule", "Report"]);
     expect(labelsIn("maintenance")).toEqual(["Maintenance", "Maintenance Tracker", "Issue Category"]);
     expect(labelsIn("staff")).toEqual(["Staff", "Roles & Permission", "Access History"]);
     expect(labelsIn("inventory")).toEqual(["Inventory Tracker", "Items", "Stock Movement", "Purchase Orders", "Vendors", "Categories"]);
@@ -55,6 +55,7 @@ describe("activeHrefFor — the most specific entry wins", () => {
     expect(activeHrefFor("/coaching/programs", hrefs)).toBe("/coaching/programs");
     expect(activeHrefFor("/coaching/programs/abc-123", hrefs)).toBe("/coaching/programs");
     expect(activeHrefFor("/coaching/students/new", hrefs)).toBe("/coaching/students");
+    expect(activeHrefFor("/coaching/schedule", hrefs)).toBe("/coaching/schedule");
     expect(activeHrefFor("/maintenance/tickets/42", hrefs)).toBe("/maintenance/tickets");
     expect(activeHrefFor("/inventory/purchase-orders/7", hrefs)).toBe("/inventory/purchase-orders");
   });
@@ -64,9 +65,7 @@ describe("activeHrefFor — the most specific entry wins", () => {
     expect(activeHrefFor("/memberships/v1/plans/abc", hrefs)).toBe("/memberships/v1/plans");
   });
 
-  it("keeps Members, Dashboard and Membership Schedule distinct", () => {
-    expect(activeHrefFor("/memberships", hrefs)).toBe("/memberships");
-    expect(activeHrefFor("/memberships/new", hrefs)).toBe("/memberships");
+  it("keeps Dashboard and Membership Schedule distinct", () => {
     expect(activeHrefFor("/memberships/v1", hrefs)).toBe("/memberships/v1");
     expect(activeHrefFor("/memberships/v1/schedule", hrefs)).toBe("/memberships/v1/schedule");
   });

@@ -64,14 +64,15 @@ describe("CoachesListPanel", () => {
     listRoles.mockReset().mockResolvedValue([]);
   });
 
-  it("shows the All Sports / All Status / sort dropdowns and the tabs, and renders the rating column", async () => {
+  it("shows the All Sports / All Status / sort dropdowns and the tabs, and no rating column", async () => {
     renderWithProviders(<CoachesListPanel facilityId="f1" />);
 
     expect(await screen.findByText("Arjun V")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /filter by sport/i })).toHaveTextContent("All Sports");
     expect(screen.getByRole("combobox", { name: /filter by status/i })).toHaveTextContent("All Status");
     expect(screen.getByRole("combobox", { name: /sort by/i })).toHaveTextContent("Name (A-Z)");
-    expect(screen.getByText("4.9")).toBeInTheDocument();
+    expect(screen.queryByText("4.9")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rating")).not.toBeInTheDocument();
     expect(screen.getByText("All Coaches")).toBeInTheDocument();
     expect(screen.getAllByText("Active").length).toBeGreaterThan(0); // tab + status badge
   });
@@ -119,10 +120,10 @@ describe("CoachesListPanel", () => {
     );
   });
 
-  it("shows an empty state when nothing matches, and a dash for coaches with no rating yet", async () => {
-    listCoaches.mockResolvedValue({ coaches: [{ ...COACH, rating: null }], totalCount: 1 });
+  it("shows an empty state when nothing matches", async () => {
+    listCoaches.mockResolvedValue({ coaches: [], totalCount: 0 });
     renderWithProviders(<CoachesListPanel facilityId="f1" />);
-    expect(await screen.findByText("—")).toBeInTheDocument();
+    expect(await screen.findByText(/no coaches/i)).toBeInTheDocument();
   });
 
   it("opens the Add Coach slide-over from its own button and refreshes the roster once a coach is added", async () => {

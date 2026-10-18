@@ -191,13 +191,20 @@ export interface MonthTrendPoint {
 
 /**
  * The last `months` calendar months (oldest first), each with how many memberships covered
- * that month's last day (active) versus had already ended by then (inactive). Approximated
+ * that month's last day (today, for the current month) (active) versus had already ended by then (inactive). Approximated
  * from start/end dates only, since per-month status snapshots aren't stored.
  */
 export function activeInactiveTrend(rows: MembershipListRow[], now: Date, months = 6): MonthTrendPoint[] {
   const points: MonthTrendPoint[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+    // The current month is counted exactly like the Active / Inactive Members cards (by each membership's status
+    // today), so the chart and the cards can never disagree. Past months are worked out from the dates.
+    if (i === 0) {
+      const inactive = rows.filter((r) => r.status === "inactive").length;
+      points.push({ label: MONTH_LABELS[monthEnd.getMonth()]!, active: rows.length - inactive, inactive });
+      continue;
+    }
     const monthEndIso = iso(monthEnd);
     const active = rows.filter((r) => r.startDate <= monthEndIso && r.endDate >= monthEndIso).length;
     const inactive = rows.filter((r) => r.endDate < monthEndIso).length;

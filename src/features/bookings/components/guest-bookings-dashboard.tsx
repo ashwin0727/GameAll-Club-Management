@@ -9,7 +9,7 @@ import { PageHero } from "@/components/shared/page-hero";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { GuestBookingStatsRow } from "@/features/bookings/components/guest-booking-stats-row";
 import { fetchAllGuestBookings, useGuestBookingStats, useGuestHistory } from "@/features/bookings/hooks/use-guest-booking-stats";
-import { useUiStore } from "@/stores/ui-store";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { GuestBookingsFilterCard, type GuestTab } from "@/features/bookings/components/guest-bookings-filter-card";
 import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
 import { GuestBookingsHighlights } from "@/features/bookings/components/guest-bookings-highlights";
@@ -65,25 +65,21 @@ export function GuestBookingsDashboard() {
   // The clicked column sorts the rows on screen; null keeps the order the list came in.
   const [sortKey, setSortKey] = useState<GuestSortKey | null>(null);
   const [sortDir, setSortDir] = useState<GuestSortDir>("asc");
-  const [facilitySports, setFacilitySports] = useState<FacilitySport[]>([]);
+  const [, setFacilitySports] = useState<FacilitySport[]>([]);
   const [areas, setAreas] = useState<PlayingArea[]>([]);
   const [sportsLoaded, setSportsLoaded] = useState(false);
 
-  // One sport at a time: whatever the top bar picked, else the facility's first sport. Every
-  // number, chart and row on this page is for that sport only.
-  const activeSportId = useUiStore((st) => st.activeFacilitySportId);
-  const facilitySport = facilitySports.find((fs) => fs.id === activeSportId) ?? facilitySports[0];
-  const sportId = facilitySport?.id ?? "";
+  // The sports ticked in the top bar (null = All Sports). Every number, chart and row on this page is for those sports.
+  const sportFilter = useSportFilter(facilityId);
+  const sportIds = useMemo(() => (sportFilter.sportSet ? [...sportFilter.sportSet] : null), [sportFilter.sportSet]);
+  const sportKey = sportIds ? sportIds.join("|") : "all";
   const perms = usePermissionContext();
   // Without a permission context (e.g. mid-onboarding) the page's own role gate already applied.
   const canBook = !perms || perms.can("GUEST_BOOKINGS_CREATE") || perms.can("BOOKINGS_CREATE");
-  const statsQuery = useGuestBookingStats(facilityId, sportId, from, to);
-  // The sport dropdown here is the top bar's choice, shown in a second place — changing either changes both.
-  const setActiveSportId = useUiStore((st) => st.setActiveFacilitySportId);
+  const statsQuery = useGuestBookingStats(facilityId, sportIds, sportFilter.ready, from, to);
   const { data: sportChoices } = useFacilitySportOptions(facilityId ?? undefined);
-  const sportOptions = (sportChoices ?? []).map((o) => ({ value: o.facilitySportId, label: o.name }));
-  // Every guest booking this sport has ever had: the Recent Guests and Guest Insights cards read from it.
-  const historyQuery = useGuestHistory(facilityId, sportId);
+  // Every guest booking these sports have ever had: the Recent Guests and Guest Insights cards read from it.
+  const historyQuery = useGuestHistory(facilityId, sportIds, sportFilter.ready);
   const [insightsOpen, setInsightsOpen] = useState(false);
   useEffect(() => {
     if (!facilityId) return;
@@ -110,11 +106,11 @@ export function GuestBookingsDashboard() {
 
   useEffect(() => {
     setPage(1);
-  }, [debounced, sportId, courtId, status, tab, from, to, perPage]);
+  }, [debounced, sportKey, courtId, status, tab, from, to, perPage]);
 
   useEffect(() => {
     setCourtId("");
-  }, [sportId]);
+  }, [sportKey]);
 
   function changeTab(next: GuestTab) {
     setTab(next);
@@ -126,14 +122,14 @@ export function GuestBookingsDashboard() {
   }
 
   const reload = useCallback(async () => {
-    // Wait until we know which sport, or the first load would briefly list every sport.
-    if (!facilityId || !sportsLoaded || !sportId) return;
+    // Wait until we know which sports, or the first load would briefly list the wrong ones.
+    if (!facilityId || !sportsLoaded || !sportFilter.ready) return;
     setRows(null);
     if (tab === "upcoming") {
       const today = new Date();
       const horizon = new Date(today);
       horizon.setDate(horizon.getDate() + 365);
-      const all = await fetchAllGuestBookings(facilityId, sportId, iso(today), iso(horizon), {
+      const all = await fetchAllGuestBookings(facilityId, sportIds, iso(today), iso(horizon), {
         search: debounced || undefined,
         courtId: courtId || undefined,
       });
@@ -146,11 +142,23 @@ export function GuestBookingsDashboard() {
       if (coming[0]?.currency) setCurrency(coming[0].currency);
       return;
     }
+    if (sportIds && sportIds.length > 1) {
+      // Several sports ticked: gather them all, newest first, and page through the merged list here.
+      const all = await fetchAllGuestBookings(facilityId, sportIds, from, to, {
+        search: debounced || undefined,
+        courtId: courtId || undefined,
+        status: status || undefined,
+      });
+      setTotalCount(all.length);
+      setRows(all.slice((page - 1) * perPage, page * perPage));
+      if (all[0]?.currency) setCurrency(all[0].currency);
+      return;
+    }
     const svc = getBookingService();
     const [list] = await Promise.all([
       svc.listGuestBookings(facilityId, {
         search: debounced || undefined,
-        facilitySportId: sportId,
+        facilitySportId: sportIds?.[0],
         courtId: courtId || undefined,
         status: status || undefined,
         from,
@@ -162,7 +170,7 @@ export function GuestBookingsDashboard() {
     setRows(list.rows);
     setTotalCount(list.totalCount);
     if (list.rows[0]?.currency) setCurrency(list.rows[0].currency);
-  }, [facilityId, sportsLoaded, debounced, sportId, courtId, status, tab, from, to, page, perPage]);
+  }, [facilityId, sportsLoaded, sportFilter.ready, debounced, sportIds, courtId, status, tab, from, to, page, perPage]);
 
   useEffect(() => {
     reload();
@@ -170,7 +178,7 @@ export function GuestBookingsDashboard() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / perPage));
   const pageRows = useMemo(() => (rows && sortKey ? sortGuestRows(rows, sortKey, sortDir) : rows), [rows, sortKey, sortDir]);
-  const sportIcon = sportChoices?.find((o) => o.facilitySportId === sportId)?.icon ?? "🏅";
+  const sportIcon = (sportIds?.length === 1 ? sportChoices?.find((o) => o.facilitySportId === sportIds[0])?.icon : undefined) ?? "🏅";
 
   function sortBy(key: GuestSortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -180,8 +188,8 @@ export function GuestBookingsDashboard() {
     }
   }
   const courtsForSport = useMemo(
-    () => (sportId ? areas.filter((a) => a.facilitySportId === sportId) : areas),
-    [areas, sportId],
+    () => (sportFilter.sportSet ? areas.filter((a) => sportFilter.sportSet!.has(a.facilitySportId)) : areas),
+    [areas, sportFilter.sportSet],
   );
 
 
@@ -267,9 +275,6 @@ export function GuestBookingsDashboard() {
             onTabChange={changeTab}
             search={search}
             onSearchChange={setSearch}
-            sportOptions={sportOptions}
-            sportId={sportId}
-            onSportChange={setActiveSportId}
             courts={courtsForSport.map((a) => ({ id: a.id, name: a.name }))}
             courtId={courtId}
             onCourtChange={setCourtId}

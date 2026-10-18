@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Download, MoreHorizontal, Pencil, Search, Eye } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Download, MoreHorizontal, Pencil, Search, Eye, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectField } from "@/components/shared/select-field";
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useDeleteMemberFlow } from "@/features/memberships/components/use-delete-member-flow";
 import { bucketForRow, rowStatus, type PlanBucket, type RowStatus } from "@/features/memberships/dashboard-stats";
 import { formatClock, formatDayRange } from "@/features/memberships/slot-format";
 import type { MembershipListRow } from "@/features/memberships/types";
@@ -94,7 +96,17 @@ function csvCell(v: string | number): string {
  */
 export function MembershipListTable({ rows }: { rows: MembershipListRow[] | undefined }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const now = useMemo(() => new Date(), []);
+
+  // Delete Member (the old Members page is gone, so it lives on the dashboard's rows): confirm → cancel AutoPay if
+  // it is running → delete on the next try.
+  const refreshRows = () => {
+    for (const key of ["membership-dashboard-rows", "membership-list", "membership-summary", "member-schedules"]) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
+  const deleteFlow = useDeleteMemberFlow({ onDeleted: refreshRows, onChanged: refreshRows });
 
   const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
@@ -430,6 +442,13 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit membership
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => deleteFlow.start({ memberId: row.memberId, name: row.memberName, membershipId: row.membershipId })}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete member
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -501,6 +520,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
           per page
         </div>
       </div>
+      {deleteFlow.dialogs}
     </Card>
   );
 }

@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useUiStore } from "@/stores/ui-store";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import {
@@ -82,7 +82,8 @@ export function BookingOperationsView() {
     isError: facilityError,
   } = useFacility();
   const facilityId = facility?.id ?? null;
-  const activeSportId = useUiStore((s) => s.activeFacilitySportId);
+  // The sports ticked in the top bar (null = All Sports): the calendar shows every court of those sports.
+  const sportScope = useSportFilter(facilityId).sportSet;
 
   const [loadState, setLoadState] = useState<
     "loading" | "ready" | "none" | "error"
@@ -143,15 +144,9 @@ export function BookingOperationsView() {
     };
   }, [facility, facilityLoading, facilityError]);
 
-  // One sport at a time: whatever the top bar picked, else the first sport.
-  const facilitySport =
-    facilitySports.find((fs) => fs.id === activeSportId) ?? facilitySports[0];
   const sportCourts = useMemo(
-    () =>
-      facilitySport
-        ? areas.filter((a) => a.facilitySportId === facilitySport.id)
-        : [],
-    [areas, facilitySport],
+    () => (sportScope ? areas.filter((a) => sportScope.has(a.facilitySportId)) : areas),
+    [areas, sportScope],
   );
   const courtIds = useMemo(
     () => new Set(sportCourts.map((c) => c.id)),

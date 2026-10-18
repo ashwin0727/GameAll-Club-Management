@@ -151,6 +151,11 @@ describe("fieldErrors — Indian phone / name / pincode / GST rules", () => {
     expect(fieldErrors(1, draft({ phone: "919876543210" })).phone).toBeUndefined();
   });
 
+  it("accepts a real mobile number that itself starts with 91", () => {
+    expect(fieldErrors(1, draft({ phone: "9123456789" })).phone).toBeUndefined();
+    expect(fieldErrors(1, draft({ phone: "919123456789" })).phone).toBeUndefined();
+  });
+
   it("only sanity-checks the length for a non-Indian code, since the 6-9 rule is India-specific", () => {
     expect(fieldErrors(1, draft({ countryCode: "+1", phone: "5876543210" })).phone).toBeUndefined();
     expect(fieldErrors(1, draft({ countryCode: "+1", phone: "123" })).phone).toBeDefined();

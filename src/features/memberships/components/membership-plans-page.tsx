@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
@@ -46,7 +46,8 @@ export function MembershipPlansPage() {
   const router = useRouter();
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
-  const activeSportId = useActiveFacilitySportId(facilityId);
+  // The sports ticked in the top bar (null = All Sports, nothing to filter).
+  const sportScope = useSportFilter(facilityId).sportSet;
 
   const [allPlans, setAllPlans] = useState<MembershipPlan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +69,8 @@ export function MembershipPlansPage() {
   // Scoped to the top bar's active sport — a facility with both Badminton and Cricket (Turf)
   // shows only one sport's plans/members/revenue at a time; switching sport up there switches
   // what's shown here, exactly like the Bookings and Dashboard pages already do for courts.
-  const plans = useMemo(() => (allPlans ? plansForSport(allPlans, batches, activeSportId) : null), [allPlans, batches, activeSportId]);
-  const rows = useMemo(() => membershipRowsForSport(allRows, batches, activeSportId), [allRows, batches, activeSportId]);
+  const plans = useMemo(() => (allPlans ? plansForSport(allPlans, batches, sportScope) : null), [allPlans, batches, sportScope]);
+  const rows = useMemo(() => membershipRowsForSport(allRows, batches, sportScope), [allRows, batches, sportScope]);
 
   const stats = plans ? planStats(plans, rows, batches) : null;
   const badges = useMemo(() => (plans ? planBadges(plans, rows) : new Map()), [plans, rows]);

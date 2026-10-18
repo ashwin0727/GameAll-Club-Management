@@ -439,7 +439,7 @@ export function buildAttentionItems(input: {
       id: "memberships-expiring",
       message: `${input.membershipsExpiringSoon} membership${input.membershipsExpiringSoon === 1 ? "" : "s"} expiring soon.`,
       actionLabel: "View Members",
-      actionHref: "/memberships",
+      actionHref: "/memberships/v1",
     });
   }
   if (input.paymentsPendingInr > 0) {

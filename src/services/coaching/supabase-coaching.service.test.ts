@@ -81,7 +81,7 @@ describe("SupabaseCoachingService", () => {
   });
 
   it("getInsights fetches the windowed coaching insights", async () => {
-    const payload = { windowDays: 60, totalStudents: 10, sessionAttendancePct: 87.5, coachingRevenueMinor: 50000, averageRating: 4.2 };
+    const payload = { windowDays: 60, totalStudents: 10, coachingRevenueMinor: 50000, averageRating: 4.2 };
     const rpc = vi.fn(async () => ({ data: payload, error: null }));
     const insights = await new SupabaseCoachingService({ rpc } as never).getInsights("f1", 60);
     expect(rpc).toHaveBeenCalledWith("get_coaching_insights", { p_facility_id: "f1", p_days: 60 });

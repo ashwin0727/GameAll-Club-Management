@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { axisTicks, type MonthTrendPoint } from "@/features/memberships/dashboard-stats";
@@ -23,11 +22,8 @@ export function ActiveInactiveBarChart({ points }: { points: MonthTrendPoint[] |
     <Card className="stat-enter space-y-4 rounded-xl p-5" style={{ "--stat-delay": "300ms" } as React.CSSProperties}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-base font-bold text-black dark:text-foreground">Active vs Inactive Members</h3>
-        {/* Display-only, to match the design — the chart always covers the last six months. */}
-        <span className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-input bg-card px-3 text-xs font-medium text-foreground">
-          Last 6 Months
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-        </span>
+        {/* The window is fixed — shown, not a control. */}
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">Last 3 Months</span>
       </div>
 
       <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground">

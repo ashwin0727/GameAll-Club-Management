@@ -14,6 +14,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { usePaymentCheckout, type CheckoutResult } from "@/features/payments/use-payment-checkout";
 import { PaymentStatusPanel, type PaymentStatusPanelState } from "@/features/payments/components/payment-status-panel";
 import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
+import { needsAdvance } from "@/features/bookings/advance-payment";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -204,6 +205,7 @@ export function BookingDetailsDialog({
                 bookingId={booking.id}
                 guestName={booking.guestName ?? ""}
                 guestPhone={booking.guestPhone}
+                advance={needsAdvance(booking.startTime, booking.endTime)}
                 description={`${sportName} · ${court?.name ?? "Court"} · ${new Date(booking.startTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`}
                 onPaid={() => onChanged({ ...booking, status: "confirmed", paymentStatus: "PAID" })}
               />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { LayoutGrid, List, Plus, Search, Star } from "lucide-react";
+import { LayoutGrid, List, Plus, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,16 +54,6 @@ function statusForTab(tab: StatusTab): CoachStatus | null {
   if (tab === "Active") return "ACTIVE";
   if (tab === "Inactive") return "INACTIVE";
   return null;
-}
-
-function RatingCell({ rating }: { rating: number | null }) {
-  if (rating == null) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span className="inline-flex items-center gap-1 tabular-nums">
-      <Star className="h-3.5 w-3.5 fill-warning text-warning" aria-hidden />
-      {rating.toFixed(1)}
-    </span>
-  );
 }
 
 /**
@@ -241,7 +231,6 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                   ))}
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <RatingCell rating={c.rating} />
                   <span>{c.sessionCount} sessions</span>
                   {coachStatusBadge(c.status)}
                 </div>
@@ -257,7 +246,6 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                   <TableHead>Sports</TableHead>
                   <TableHead>Expertise</TableHead>
                   <TableHead className="text-right">Experience</TableHead>
-                  <TableHead>Rating</TableHead>
                   <TableHead className="text-right">Sessions</TableHead>
                   <TableHead className="text-right">Students</TableHead>
                   <TableHead>Status</TableHead>
@@ -294,9 +282,6 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                     <TableCell className="text-muted-foreground">{c.expertiseLevels.join(", ") || "—"}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {c.experienceYears != null ? `${c.experienceYears} yrs` : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <RatingCell rating={c.rating} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{c.sessionCount}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.studentCount}</TableCell>

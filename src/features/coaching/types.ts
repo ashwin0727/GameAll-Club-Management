@@ -186,10 +186,6 @@ export interface CoachInput {
 export interface CoachingInsights {
   windowDays: 30 | 60 | 90;
   totalStudents: number;
-  /** Completed ÷ concluded (completed + cancelled) sessions in the window, as a percentage — a
-   *  proxy for per-student attendance, which no check-in system exists to track. Null when no
-   *  session in the window has concluded yet. */
-  sessionAttendancePct: number | null;
   coachingRevenueMinor: number;
   /** Average of every active coach's manual `rating`; null until at least one is set. */
   averageRating: number | null;

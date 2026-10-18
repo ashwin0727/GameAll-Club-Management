@@ -87,12 +87,12 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Membership Schedule", group: "memberships", href: "/memberships/v1/schedule", roles: STAFF_ROLES },
   { label: "Membership Plan", group: "memberships", href: "/memberships/v1/plans", roles: STAFF_ROLES },
   { label: "Membership Sessions", group: "memberships", href: "/membership-sessions", roles: STAFF_ROLES },
-  { label: "Members", group: "memberships", href: "/memberships", roles: STAFF_ROLES },
 
   // Coaching Management
   { label: "Coaching", group: "coaching", href: "/coaching", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
   { label: "Program", group: "coaching", href: "/coaching/programs", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
   { label: "Students", group: "coaching", href: "/coaching/students", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
+  { label: "Coaching Schedule", group: "coaching", href: "/coaching/schedule", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
   { label: "Report", group: "coaching", href: "/coaching/reports", roles: STAFF_ROLES, permission: "COACHING_VIEW" },
 
   // Maintenance Management (Court Schedule is no longer in the menu; its page still exists)

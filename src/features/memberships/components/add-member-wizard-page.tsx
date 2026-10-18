@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectField } from "@/components/shared/select-field";
 import { DatePicker } from "@/components/shared/date-picker";
+import { MemberBulkUpload } from "@/features/bulk-upload/components/member-bulk-upload";
 import { PlanSlotsList } from "@/features/memberships/components/plan-slots-list";
 import { MembershipReviewStep } from "@/features/memberships/components/membership-review-step";
 import { MemberContextPanel } from "@/features/memberships/components/member-context-panel";
@@ -32,13 +33,13 @@ import {
 import { durationLabel, monthlyEquivalentInr, periodEndDate, planBadges, planFeatures, splitPlanName, type PlanBadge } from "@/features/memberships/plan-insights";
 import { PLAN_CARD_THEMES } from "@/features/memberships/components/plan-card";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
-import { planSlotsFor } from "@/features/memberships/plan-slots";
+import { courtsOf, planSlotsFor, slotsForChosenCourt } from "@/features/memberships/plan-slots";
 import { DUPLICATE_MEMBER_MESSAGE, findDuplicateMember } from "@/features/memberships/duplicate-guards";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { plansForSport } from "@/features/memberships/sport-scope";
 import { useFacilityBatches } from "@/features/membership-sessions/hooks/use-facility-batches";
 import { useFacility } from "@/features/facility/hooks/use-facility";
-import { useActiveFacilitySportId } from "@/features/facility/hooks/use-active-facility-sport";
+import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getMembershipService } from "@/services/memberships";
 import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipListRow, MembershipPlan } from "@/features/memberships/types";
@@ -283,7 +284,8 @@ export function AddMemberWizardPage() {
   const queryClient = useQueryClient();
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
-  const activeSportId = useActiveFacilitySportId(facilityId);
+  // The sports ticked in the top bar (null = All Sports, nothing to filter).
+  const sportScope = useSportFilter(facilityId).sportSet;
 
   const [step, setStep] = useState<WizardStep>(1);
   const [allPlans, setAllPlans] = useState<MembershipPlan[]>([]);
@@ -291,7 +293,7 @@ export function AddMemberWizardPage() {
   // Scoped to the top bar's active sport — a member can only join a plan for whichever sport is
   // currently selected up there; joining the other sport's plan means switching sport first, the
   // same rule Court Access already enforces when a plan is created.
-  const plans = useMemo(() => plansForSport(allPlans, batches, activeSportId), [allPlans, batches, activeSportId]);
+  const plans = useMemo(() => plansForSport(allPlans, batches, sportScope), [allPlans, batches, sportScope]);
   // Only for working out the "Most Popular" / "Best Value" badges the same way the Membership
   // Plans page does — this wizard doesn't otherwise need the facility's existing memberships.
   const membershipRows = useAllMemberships(facilityId).data ?? EMPTY_ROWS;
@@ -389,7 +391,14 @@ export function AddMemberWizardPage() {
     [draft.startDate, draft.durationDays],
   );
   // The chosen plan's own court/timing slots — fixed when the plan was created.
-  const slots = useMemo(() => planSlotsFor(batches, draft.planId, courtNames), [batches, draft.planId, courtNames]);
+  const planSlots = useMemo(() => planSlotsFor(batches, draft.planId, courtNames), [batches, draft.planId, courtNames]);
+  // A member plays on one court at a time: when the plan spans several courts they pick which one, and only
+  // that court's slots are assigned (and shown in the review).
+  const planCourts = useMemo(() => courtsOf(planSlots), [planSlots]);
+  const needsCourtChoice = planCourts.length > 1;
+  const [chosenCourtId, setChosenCourtId] = useState("");
+  const [courtTried, setCourtTried] = useState(false);
+  const slots = useMemo(() => slotsForChosenCourt(planSlots, chosenCourtId), [planSlots, chosenCourtId]);
   // The same person (same phone number) can't be put on the same plan twice.
   const duplicateMember = useMemo(
     () =>
@@ -402,7 +411,11 @@ export function AddMemberWizardPage() {
     () => ({ ...fieldErrors(step, draft), ...(step === 2 && duplicateMember ? { planId: DUPLICATE_MEMBER_MESSAGE } : {}) }),
     [step, draft, duplicateMember],
   );
-  const stepError = validateStep(step, draft) ?? (step === 2 && duplicateMember ? DUPLICATE_MEMBER_MESSAGE : null);
+  const courtChoiceError = needsCourtChoice && !chosenCourtId ? "Choose the court this member will play on." : null;
+  const stepError =
+    validateStep(step, draft) ??
+    (step === 2 && duplicateMember ? DUPLICATE_MEMBER_MESSAGE : null) ??
+    (step === 2 ? courtChoiceError : null);
   const furthest = furthestReachableStep(draft);
   // Shown as soon as a field is left (blurred), or once Next/Create has been tried — not while
   // it's still being typed into for the first time.
@@ -412,6 +425,7 @@ export function AddMemberWizardPage() {
 
   function next() {
     if (stepError) {
+      setCourtTried(true);
       setTouchedFields(new Set(Object.keys(errors)));
       return;
     }
@@ -420,6 +434,7 @@ export function AddMemberWizardPage() {
   }
 
   function choosePlan(plan: MembershipPlan) {
+    setChosenCourtId("");
     setDraft((d) => ({
       ...d,
       planId: plan.id,
@@ -654,6 +669,10 @@ export function AddMemberWizardPage() {
           </div>
         </div>
       </div>
+
+      {step === 1 && (
+        <MemberBulkUpload facilityId={facilityId} plans={plans} batches={batches} courtNames={courtNames} existingRows={membershipRows} />
+      )}
 
       <Card className={cn("rounded-xl p-4", GLASS)}>
         <WizardStepper
@@ -892,7 +911,39 @@ export function AddMemberWizardPage() {
                     Set by this plan — the member plays on these courts and timings. To change them, edit the plan.
                   </p>
                 </div>
-                <PlanSlotsList slots={slots} className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2" />
+                {needsCourtChoice && (
+                  <div role="radiogroup" aria-label="Court" className="space-y-2 rounded-lg bg-muted/40 p-3">
+                    <p className="text-sm font-medium text-foreground">
+                      Select Court <span className="text-destructive">*</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      This plan covers more than one court, but a member plays on one court at a time.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {planCourts.map((c) => (
+                        <label
+                          key={c.courtId}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm",
+                            chosenCourtId === c.courtId ? "border-primary bg-primary/5" : "border-input hover:bg-accent",
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="member-court"
+                            value={c.courtId}
+                            checked={chosenCourtId === c.courtId}
+                            onChange={() => setChosenCourtId(c.courtId)}
+                            className="accent-primary"
+                          />
+                          {c.courtName}
+                        </label>
+                      ))}
+                    </div>
+                    {courtChoiceError && courtTried && <p className="text-xs text-destructive">{courtChoiceError}</p>}
+                  </div>
+                )}
+                <PlanSlotsList slots={needsCourtChoice ? (chosenCourtId ? slots : planSlots) : slots} className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2" />
               </div>
             )}
 

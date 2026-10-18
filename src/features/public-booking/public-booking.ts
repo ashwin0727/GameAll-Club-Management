@@ -48,6 +48,8 @@ export async function getPublicCourtAvailability(
   date: string,
 ): Promise<PublicBookingCourt[]> {
   const supabase = createClient();
+  // Court time held for an advance that never arrived goes back on sale before availability is read.
+  await supabase.rpc("release_expired_booking_holds" as never).then(() => undefined, () => undefined);
   const { data, error } = await supabase.rpc("get_public_court_availability", {
     p_facility_id: facilityId,
     p_facility_sport_id: facilitySportId,
@@ -140,4 +142,120 @@ export async function createPublicGuestBooking(input: {
   }
   if (!data?.bookingId) throw new Error("Something went wrong. Please try again.");
   return data as PublicBookingConfirmation;
+}
+
+export class HoldExpiredError extends Error {
+  constructor() {
+    super("That booking has expired. Please book again.");
+    this.name = "HoldExpiredError";
+  }
+}
+
+/** What the confirmation page and the invoice show for one booking. Money is in minor units (paise). */
+export interface PublicBookingReceipt {
+  found: boolean;
+  bookingId: string;
+  code: string;
+  confirmed: boolean;
+  cancelled: boolean;
+  holdExpiresAt: string | null;
+  facilityName: string;
+  sportName: string;
+  courtName: string;
+  startTime: string;
+  endTime: string;
+  guestName: string;
+  guestPhone: string;
+  partySize: number;
+  currency: string;
+  amountMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+  paymentStatus: "PAID" | "PARTIALLY_PAID" | "PENDING";
+  paymentMethod: string | null;
+  paymentReference: string | null;
+  paidAt: string | null;
+}
+
+/** Public: the booking's details and how much of it is paid. Needs the phone number the booking was made with. */
+export async function getPublicBookingReceipt(bookingId: string, phone: string): Promise<PublicBookingReceipt | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("public_booking_receipt" as never, { p_booking_id: bookingId, p_phone: phone } as never);
+  const d = data as unknown as (Partial<PublicBookingReceipt> & { found?: boolean }) | null;
+  if (error || !d || !d.found) return null;
+  return d as PublicBookingReceipt;
+}
+
+async function readFunctionError(error: unknown): Promise<{ error?: string; code?: string }> {
+  try {
+    return (await (error as { context?: Response }).context?.json?.()) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export interface PublicCheckout {
+  /** Already paid and confirmed — nothing more to pay. */
+  paid?: boolean;
+  keyId?: string;
+  razorpayOrderId?: string;
+  amount?: number;
+  currency?: string;
+  paymentOrderId?: string;
+  receipt?: string;
+}
+
+/**
+ * Public: start the 50% advance for every held booking in ONE payment. Returns what Razorpay Checkout needs to open —
+ * the amount is decided on the server from the bookings, never sent from here.
+ */
+export async function createPublicCheckout(input: { bookingIds: string[]; phone: string }): Promise<PublicCheckout> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke<PublicCheckout & { error?: string }>("public-booking-checkout", {
+    body: { action: "create", bookingIds: input.bookingIds, phone: input.phone },
+  });
+  if (error) {
+    const payload = await readFunctionError(error);
+    if (payload.code === "HOLD_EXPIRED") throw new HoldExpiredError();
+    throw new Error(payload.error ?? "We couldn't start the payment. Please try again.");
+  }
+  if (!data || (!data.paid && !(data.razorpayOrderId && data.keyId))) throw new Error("We couldn't start the payment. Please try again.");
+  return data;
+}
+
+/** Public: hand the server the Checkout result to verify; it confirms the booking only once Razorpay agrees. */
+export async function verifyPublicCheckout(input: {
+  bookingIds: string[];
+  phone: string;
+  paymentOrderId: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+}): Promise<{ confirmed: boolean }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke<{ confirmed?: boolean; error?: string }>("public-booking-checkout", {
+    body: { action: "verify", ...input },
+  });
+  if (error) {
+    const payload = await readFunctionError(error);
+    throw new Error(payload.error ?? "We couldn't verify that payment. Please contact the venue.");
+  }
+  return { confirmed: data?.confirmed === true };
+}
+
+/** Public: the booking's invoice as a PDF, saved by the browser. */
+export async function downloadPublicBookingInvoice(bookingId: string, phone: string, fileName: string): Promise<void> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke("public-booking-checkout", {
+    body: { action: "invoice", bookingId, phone },
+  });
+  if (error || !(data instanceof Blob)) throw new Error("We couldn't build the invoice. Please try again.");
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

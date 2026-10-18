@@ -46,7 +46,7 @@ export function CoachingReportsPage() {
   const header = (
     <PageHeader
       title="Coaching Reports"
-      subtitle="Program performance, coach utilization and student growth. Attendance is not a metric."
+      subtitle="Program performance, coach utilization and student growth."
       action={
         <Select value={preset} onValueChange={setPreset}>
           <SelectTrigger className="w-[12rem]">
