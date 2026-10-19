@@ -46,11 +46,11 @@ export function sportSelectionLabel(selection: ResolvedSportSelection, names: Re
 }
 
 /**
- * Maintenance, Staff and Inventory look at the whole facility, not one sport: on those pages the selector is fixed
- * at "All Sports" and can't be changed.
+ * Maintenance, Staff, Inventory, Expenses and Daily Closing look at the whole facility, not one sport (expenses and the
+ * cash drawer are not split by sport): on those pages the selector is fixed at "All Sports" and can't be changed.
  */
 export function sportSelectionLocked(pathname: string): boolean {
-  return /^\/(maintenance|users-roles|inventory)(\/|$)/.test(pathname);
+  return /^\/(maintenance|users-roles|inventory|finance\/expenses|finance\/daily-closing)(\/|$)/.test(pathname);
 }
 
 /** Landing on Home always starts from All Sports. */

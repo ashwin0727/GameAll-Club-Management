@@ -16,6 +16,7 @@ import { getFinanceService } from "@/services/finance";
 import type { FinanceDateRange, LedgerEntry, LedgerTxnType } from "@/features/finance/types";
 import { AddExpenseDialog } from "@/features/finance/components/add-expense-dialog";
 import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
 
@@ -85,6 +86,8 @@ export function TransactionsList() {
   const [entries, setEntries] = useState<LedgerEntry[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [listError, setListError] = useState<string | null>(null);
+  // The top bar's sport selection (null = All Sports): every figure here follows it.
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 300);
@@ -118,10 +121,10 @@ export function TransactionsList() {
   // is meaningless against a new one.
   useEffect(() => {
     setPage(0);
-  }, [dateRange, txnType, category, paymentMethod, debounced]);
+  }, [dateRange, txnType, category, paymentMethod, debounced, sportIds]);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setListError(null);
     const result = await getFinanceService().listLedger({
       facilityId,
@@ -134,10 +137,11 @@ export function TransactionsList() {
       },
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
+      sportIds,
     });
     setEntries(result.entries);
     setTotalCount(result.totalCount);
-  }, [facilityId, dateRange, txnType, category, paymentMethod, debounced, page]);
+  }, [facilityId, sportsReady, sportIds, dateRange, txnType, category, paymentMethod, debounced, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,6 +188,13 @@ export function TransactionsList() {
         <h1 className="text-xl font-semibold">Transactions</h1>
         <AddExpenseDialog onCreated={() => void load()} />
       </div>
+
+      {sportIds && (
+        <p className="text-xs text-muted-foreground">
+          Showing payments and refunds for the sports selected in the top bar. Expenses are not split by sport, so they are
+          not listed here — see Expenses.
+        </p>
+      )}
 
       <Card className="p-4">
         {/* Top-aligned, not a grid: choosing a custom range grows that one

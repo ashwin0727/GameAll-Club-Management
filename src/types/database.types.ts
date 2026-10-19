@@ -3224,7 +3224,7 @@ export interface Database {
         Returns: Database["public"]["Tables"]["settlement_exceptions"]["Row"][];
       };
       get_finance_summary: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: {
           gross_revenue_minor: number;
           refunds_minor: number;
@@ -3445,7 +3445,7 @@ export interface Database {
         }[];
       };
       get_pnl: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3467,7 +3467,7 @@ export interface Database {
         }[];
       };
       get_pnl_trend: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3481,7 +3481,7 @@ export interface Database {
         Returns: Record<string, unknown>;
       };
       list_pending_payments: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_search?: string | null;
           p_source_type?: string | null;
@@ -3514,7 +3514,7 @@ export interface Database {
         }[];
       };
       get_pending_payments_summary: {
-        Args: { p_facility_id: string; p_from?: string | null; p_to?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_from?: string | null; p_to?: string | null };
         Returns: {
           outstanding_minor: number;
           pending_minor: number;
@@ -3543,7 +3543,7 @@ export interface Database {
         };
       };
       list_finance_ledger: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3579,11 +3579,11 @@ export interface Database {
         Returns: { payment_method: string }[];
       };
       get_payment_method_breakdown: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: { payment_method: string; amount_minor: number; payment_count: number }[];
       };
       get_revenue_breakdown: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: {
           membership_revenue_minor: number;
           member_booking_revenue_minor: number;
@@ -3595,11 +3595,11 @@ export interface Database {
         }[];
       };
       get_revenue_trend: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null; p_granularity?: string };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null; p_granularity?: string };
         Returns: { bucket_date: string; gross_minor: number; refund_minor: number; net_minor: number }[];
       };
       list_finance_transactions: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3613,7 +3613,7 @@ export interface Database {
         Returns: Database["public"]["Views"]["finance_transactions_view"]["Row"][];
       };
       count_finance_transactions: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3629,7 +3629,7 @@ export interface Database {
         Returns: Database["public"]["Views"]["finance_transactions_view"]["Row"];
       };
       get_booking_analytics: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3649,7 +3649,7 @@ export interface Database {
         }[];
       };
       get_booking_trend: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3661,7 +3661,7 @@ export interface Database {
         Returns: { bucket_date: string; total: number; completed: number; cancelled: number }[];
       };
       get_bookings_by_sport: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3672,7 +3672,7 @@ export interface Database {
         Returns: { facility_sport_id: string; sport_name: string; booking_count: number }[];
       };
       get_booking_source_split: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3683,7 +3683,7 @@ export interface Database {
         Returns: { source: string; booking_count: number }[];
       };
       get_overall_utilization: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3694,7 +3694,7 @@ export interface Database {
         Returns: { open_minutes: number; booked_minutes: number; utilization_pct: number }[];
       };
       get_court_utilization: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3713,7 +3713,7 @@ export interface Database {
         }[];
       };
       get_sport_utilization: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3730,7 +3730,7 @@ export interface Database {
         }[];
       };
       get_peak_hours: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3741,7 +3741,7 @@ export interface Database {
         Returns: { hour: number; open_minutes: number; booked_minutes: number; demand_pct: number }[];
       };
       get_demand_heatmap: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3758,7 +3758,7 @@ export interface Database {
         }[];
       };
       get_revenue_by_sport: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3769,7 +3769,7 @@ export interface Database {
         Returns: { facility_sport_id: string; sport_name: string; revenue_minor: number }[];
       };
       get_revenue_by_court: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3786,7 +3786,7 @@ export interface Database {
         }[];
       };
       get_analytics_overview: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3808,7 +3808,7 @@ export interface Database {
         }[];
       };
       get_membership_analytics: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: {
           active_members: number;
           new_memberships: number;
@@ -3821,11 +3821,11 @@ export interface Database {
         }[];
       };
       get_memberships_by_type: {
-        Args: { p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
+        Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: { membership_type: string; plan_name: string; count: number; revenue_minor: number }[];
       };
       get_membership_session_analytics: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3844,7 +3844,7 @@ export interface Database {
         }[];
       };
       get_guest_release_analytics: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3855,7 +3855,7 @@ export interface Database {
         Returns: { released: number; booked: number; remaining: number; revenue_minor: number }[];
       };
       get_guest_booking_analytics: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3877,7 +3877,7 @@ export interface Database {
         }[];
       };
       get_guest_bookings_by_sport: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3888,7 +3888,7 @@ export interface Database {
         Returns: { facility_sport_id: string; sport_name: string; booking_count: number; revenue_minor: number }[];
       };
       get_guest_bookings_by_court: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;
@@ -3905,7 +3905,7 @@ export interface Database {
         }[];
       };
       get_guest_peak_hours: {
-        Args: {
+        Args: { p_facility_sport_ids?: string[] | null;
           p_facility_id: string;
           p_preset?: string;
           p_start_date?: string | null;

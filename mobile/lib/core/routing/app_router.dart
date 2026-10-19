@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/facility.dart';
+import '../config/app_config.dart';
 import '../../features/authentication/create_account_screen.dart';
 import '../../features/authentication/email_verification_screen.dart';
 import '../../features/authentication/forgot_password_screen.dart';
@@ -104,6 +105,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = ref.read(sessionControllerProvider);
       final path = state.matchedLocation;
+
+      // Inventory Management is switched off (AppConfig.inventoryEnabled): no one can reach its screens.
+      if (!AppConfig.inventoryEnabled && (path == AppRoutes.inventory || path.startsWith('${AppRoutes.inventory}/'))) {
+        return AppRoutes.dashboard;
+      }
 
       // Stay on the splash until BOTH the session has resolved AND the
       // splash clip has played out — then everything else routes normally.

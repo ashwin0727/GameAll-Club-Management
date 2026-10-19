@@ -30,6 +30,7 @@ describe("SupabaseReportsService.getBookingAnalytics", () => {
       p_end_date: null,
       p_facility_sport_id: "fs-1",
       p_court_id: null,
+      p_facility_sport_ids: null,
     });
     expect(result).toEqual({
       total: 205,
@@ -220,6 +221,7 @@ describe("SupabaseReportsService revenue", () => {
       p_preset: "THIS_MONTH",
       p_start_date: null,
       p_end_date: null,
+      p_facility_sport_ids: null,
     });
     expect(result).toEqual({
       grossMinor: 11000000,
@@ -418,6 +420,7 @@ describe("SupabaseReportsService memberships", () => {
       p_preset: "THIS_MONTH",
       p_start_date: null,
       p_end_date: null,
+      p_facility_sport_ids: null,
     });
     expect(r).toMatchObject({ activeMembers: 84, newMemberships: 12, outstandingMinor: 1000000 });
   });

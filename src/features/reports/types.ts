@@ -29,6 +29,11 @@ export interface AnalyticsFilter {
   facilitySportId?: string | null;
   /** courts.id — null means "all courts". */
   courtId?: string | null;
+  /**
+   * The sports ticked in the top bar (facility_sports.id), or null for All Sports. Filled in by useAnalyticsFilter from
+   * the top bar — never read from or written to the URL — and combined with `facilitySportId`.
+   */
+  facilitySportIds?: string[] | null;
 }
 
 export const DEFAULT_FILTER_PRESET: AnalyticsPreset = "THIS_MONTH";

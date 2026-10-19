@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/features/pricing/money";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import Link from "next/link";
@@ -68,6 +69,8 @@ export function PendingPaymentsPage() {
   const [obligations, setObligations] = useState<PaymentObligation[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // The top bar's sport selection (null = All Sports): every figure here follows it.
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 300);
@@ -96,10 +99,10 @@ export function PendingPaymentsPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debounced, sourceType, status, sort]);
+  }, [debounced, sourceType, status, sort, sportIds]);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const finance = getFinanceService();
     const [list, totals] = await Promise.all([
@@ -113,13 +116,14 @@ export function PendingPaymentsPage() {
         },
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
+        sportIds,
       }),
-      finance.getPendingPaymentsSummary(facilityId),
+      finance.getPendingPaymentsSummary(facilityId, null, null, sportIds),
     ]);
     setObligations(list.obligations);
     setTotalCount(list.totalCount);
     setSummary(totals);
-  }, [facilityId, debounced, sourceType, status, sort, page]);
+  }, [facilityId, sportsReady, sportIds, debounced, sourceType, status, sort, page]);
 
   useEffect(() => {
     let cancelled = false;

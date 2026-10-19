@@ -20,12 +20,19 @@ export function dateRangeArgs(f: AnalyticsFilter): {
   };
 }
 
+/** The top bar's sports as the RPCs take them: a list narrows, null is All Sports. */
+export function sportListArgs(f: AnalyticsFilter): { p_facility_sport_ids: string[] | null } {
+  return { p_facility_sport_ids: f.facilitySportIds && f.facilitySportIds.length > 0 ? f.facilitySportIds : null };
+}
+
 export function scopeArgs(f: AnalyticsFilter): {
   p_facility_sport_id: string | null;
   p_court_id: string | null;
+  p_facility_sport_ids: string[] | null;
 } {
   return {
     p_facility_sport_id: f.facilitySportId ?? null,
     p_court_id: f.courtId ?? null,
+    ...sportListArgs(f),
   };
 }

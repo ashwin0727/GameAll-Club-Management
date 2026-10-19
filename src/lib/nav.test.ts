@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS } from "@/lib/constants";
+import { INVENTORY_ENABLED, NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS } from "@/lib/constants";
 import { activeHrefFor } from "@/lib/nav-active";
 
 const labelsIn = (group: (typeof NAV_GROUP_ORDER)[number]) => NAV_ITEMS.filter((i) => i.group === group).map((i) => i.label);
@@ -25,7 +25,9 @@ describe("sidebar menu structure", () => {
     expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Coaching Schedule", "Report"]);
     expect(labelsIn("maintenance")).toEqual(["Maintenance", "Maintenance Tracker", "Issue Category"]);
     expect(labelsIn("staff")).toEqual(["Staff", "Roles & Permission", "Access History"]);
-    expect(labelsIn("inventory")).toEqual(["Inventory Tracker", "Items", "Stock Movement", "Purchase Orders", "Vendors", "Categories"]);
+    expect(labelsIn("inventory")).toEqual(
+      INVENTORY_ENABLED ? ["Inventory Tracker", "Items", "Stock Movement", "Purchase Orders", "Vendors", "Categories"] : [],
+    );
   });
 
   it("no longer lists Court Schedule anywhere", () => {
@@ -48,7 +50,12 @@ describe("sidebar menu structure", () => {
 });
 
 describe("activeHrefFor — the most specific entry wins", () => {
-  const hrefs = NAV_ITEMS.flatMap((i) => [i.href, ...(i.children ?? []).map((c) => c.href)]);
+  // Inventory is listed explicitly so this rule stays covered while the module is switched off.
+  const hrefs = [
+    ...NAV_ITEMS.flatMap((i) => [i.href, ...(i.children ?? []).map((c) => c.href)]),
+    "/inventory",
+    "/inventory/purchase-orders",
+  ];
 
   it("lights only the child, not the parent that shares its prefix", () => {
     expect(activeHrefFor("/coaching", hrefs)).toBe("/coaching");

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getFacilityService } from "@/services/facility";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import type { Facility } from "@/features/onboarding/types";
 import { filterFromSearchParams, filterToSearchParams } from "../url-state";
 import type { AnalyticsFilter } from "../types";
@@ -12,6 +13,9 @@ import type { AnalyticsFilter } from "../types";
  * On first load, when the URL has no facility, the user's first facility is
  * used. `setFilter` replaces (not pushes) so the back button doesn't step
  * through every tweak.
+ *
+ * The top bar's sport selection is folded in as `facilitySportIds` (kept out of the URL), so every report follows
+ * it and reloads when it changes.
  */
 export function useAnalyticsFilter(): {
   filter: AnalyticsFilter | null;
@@ -36,10 +40,18 @@ export function useAnalyticsFilter(): {
   }, []);
 
   const fallbackFacilityId = facilities?.[0]?.id ?? "";
-  const filter = useMemo<AnalyticsFilter | null>(() => {
+  const urlFilter = useMemo<AnalyticsFilter | null>(() => {
     if (facilities === null || !fallbackFacilityId) return null;
     return filterFromSearchParams(params, fallbackFacilityId);
   }, [facilities, fallbackFacilityId, params]);
+
+  const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(urlFilter?.facilityId);
+  const filter = useMemo<AnalyticsFilter | null>(
+    () => (urlFilter ? { ...urlFilter, facilitySportIds: sportIds } : null),
+    // `sportKey` stands in for the ids so an unchanged selection keeps the same filter object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [urlFilter, sportKey],
+  );
 
   const setFilter = useCallback(
     (next: AnalyticsFilter) => {
@@ -52,6 +64,7 @@ export function useAnalyticsFilter(): {
     filter,
     facilities: facilities ?? [],
     setFilter,
-    ready: facilities !== null && Boolean(fallbackFacilityId),
+    // Wait for the sport list too, so a report never loads for All Sports and then again for the chosen sport.
+    ready: facilities !== null && Boolean(fallbackFacilityId) && sportsReady,
   };
 }

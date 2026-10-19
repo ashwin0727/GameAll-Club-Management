@@ -33,6 +33,7 @@ import type {
   RevenueTrendPoint,
 } from "@/features/finance/types";
 import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { RevenueTrendChart } from "@/features/finance/components/revenue-trend-chart";
 import { ServiceError } from "@/services/shared/service-error";
 
@@ -100,6 +101,8 @@ export function FinanceDashboard() {
   const [trend, setTrend] = useState<RevenueTrendPoint[] | null>(null);
   const [recent, setRecent] = useState<FinanceTransaction[] | null>(null);
   const [rangeError, setRangeError] = useState<string | null>(null);
+  // The top bar's sport selection (null = All Sports): every figure here follows it.
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,16 +125,16 @@ export function FinanceDashboard() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     const finance = getFinanceService();
     setRangeError(null);
 
     const [s, b, m, t, page] = await Promise.all([
-      finance.getSummary(facilityId, dateRange),
-      finance.getRevenueBreakdown(facilityId, dateRange),
-      finance.getPaymentMethodBreakdown(facilityId, dateRange),
-      finance.getRevenueTrend(facilityId, dateRange, granularity),
-      finance.listTransactions({ facilityId, dateRange, limit: 5, offset: 0 }),
+      finance.getSummary(facilityId, dateRange, sportIds),
+      finance.getRevenueBreakdown(facilityId, dateRange, sportIds),
+      finance.getPaymentMethodBreakdown(facilityId, dateRange, sportIds),
+      finance.getRevenueTrend(facilityId, dateRange, granularity, sportIds),
+      finance.listTransactions({ facilityId, dateRange, limit: 5, offset: 0, sportIds }),
     ]);
 
     setSummary(s);
@@ -143,13 +146,13 @@ export function FinanceDashboard() {
     // The comparison window: the same span immediately before this one.
     // Fetched rather than derived, so it is the server's total either way.
     try {
-      setPrevious(await finance.getSummary(facilityId, previousRange(dateRange)));
+      setPrevious(await finance.getSummary(facilityId, previousRange(dateRange), sportIds));
     } catch {
       // A missing comparison is not worth failing the page over — the
       // deltas simply read "vs last period" with no figure.
       setPrevious(null);
     }
-  }, [facilityId, dateRange, granularity]);
+  }, [facilityId, sportsReady, sportIds, dateRange, granularity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +208,13 @@ export function FinanceDashboard() {
       </div>
 
       {rangeError && <p className="text-sm text-destructive">{rangeError}</p>}
+
+      {sportIds && (
+        <p className="text-xs text-muted-foreground">
+          Showing the sports selected in the top bar. Expenses are not split by sport, so expense and net figures cover the whole
+          facility.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {!summary ? (

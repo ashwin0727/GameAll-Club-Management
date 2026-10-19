@@ -70,6 +70,11 @@ function toTransaction(row: TransactionRow): FinanceTransaction {
   };
 }
 
+/** The sports in view as the RPC takes them: a list narrows, null/empty is All Sports. */
+function sportArg(ids?: string[] | null): { p_facility_sport_ids: string[] | null } {
+  return { p_facility_sport_ids: ids && ids.length > 0 ? ids : null };
+}
+
 export class SupabaseFinanceService implements FinanceService {
   private readonly supabase: SupabaseClient<Database>;
 
@@ -77,8 +82,8 @@ export class SupabaseFinanceService implements FinanceService {
     this.supabase = client ?? createClient();
   }
 
-  async getSummary(facilityId: string, dateRange: FinanceDateRange): Promise<FinanceSummary> {
-    const { data, error } = await this.supabase.rpc("get_finance_summary", { p_facility_id: facilityId, ...dateRangeArgs(dateRange) });
+  async getSummary(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<FinanceSummary> {
+    const { data, error } = await this.supabase.rpc("get_finance_summary", { p_facility_id: facilityId, ...dateRangeArgs(dateRange), ...sportArg(sportIds) });
     if (error || !data?.[0]) throw this.mapError(error);
     const row = data[0];
     return {
@@ -97,8 +102,8 @@ export class SupabaseFinanceService implements FinanceService {
   }
 
   /** Backend-aggregated split by method — never summed from a paginated list. */
-  async getPaymentMethodBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<PaymentMethodSlice[]> {
-    const { data, error } = await this.supabase.rpc('get_payment_method_breakdown', { p_facility_id: facilityId, ...dateRangeArgs(dateRange) });
+  async getPaymentMethodBreakdown(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<PaymentMethodSlice[]> {
+    const { data, error } = await this.supabase.rpc('get_payment_method_breakdown', { p_facility_id: facilityId, ...dateRangeArgs(dateRange), ...sportArg(sportIds) });
     if (error) throw this.mapError(error);
     return (data ?? []).map((row) => ({
       paymentMethod: row.payment_method,
@@ -113,6 +118,7 @@ export class SupabaseFinanceService implements FinanceService {
     filters?: LedgerFilters;
     limit?: number;
     offset?: number;
+    sportIds?: string[] | null;
   }): Promise<LedgerPage> {
     const f = input.filters ?? {};
     const { data, error } = await this.supabase.rpc("list_finance_ledger", {
@@ -125,6 +131,7 @@ export class SupabaseFinanceService implements FinanceService {
       p_search: f.search?.trim() || null,
       p_limit: input.limit ?? 10,
       p_offset: input.offset ?? 0,
+      ...sportArg(input.sportIds),
     });
     if (error) throw this.mapError(error);
     const entries: LedgerEntry[] = (data ?? []).map((row) => ({
@@ -170,6 +177,7 @@ export class SupabaseFinanceService implements FinanceService {
     offset?: number;
     /** One obligation by id, whatever its status — for the Record page. */
     sourceId?: string | null;
+    sportIds?: string[] | null;
   }): Promise<PendingPaymentsPage> {
     const f = input.filters ?? {};
     const { data, error } = await this.supabase.rpc("list_pending_payments", {
@@ -183,6 +191,7 @@ export class SupabaseFinanceService implements FinanceService {
       p_limit: input.limit ?? 20,
       p_offset: input.offset ?? 0,
       p_source_id: input.sourceId ?? null,
+      ...sportArg(input.sportIds),
     });
     if (error) throw this.mapError(error);
     const obligations: PaymentObligation[] = (data ?? []).map((row) => ({
@@ -216,11 +225,13 @@ export class SupabaseFinanceService implements FinanceService {
     facilityId: string,
     from?: string | null,
     to?: string | null,
+    sportIds?: string[] | null,
   ): Promise<PendingPaymentsSummary> {
     const { data, error } = await this.supabase.rpc("get_pending_payments_summary", {
       p_facility_id: facilityId,
       p_from: from ?? null,
       p_to: to ?? null,
+      ...sportArg(sportIds),
     });
     if (error || !data?.[0]) throw this.mapError(error);
     const row = data[0];
@@ -558,11 +569,12 @@ export class SupabaseFinanceService implements FinanceService {
 
   // ── Profit & Loss ──────────────────────────────────────────────────────
 
-  async getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null): Promise<ProfitAndLoss> {
+  async getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null, sportIds?: string[] | null): Promise<ProfitAndLoss> {
     const { data, error } = await this.supabase.rpc("get_pnl", {
       p_facility_id: facilityId,
       ...dateRangeArgs(dateRange),
       p_category_id: categoryId ?? null,
+      ...sportArg(sportIds),
     });
     if (error || !data?.[0]) throw this.mapError(error);
     const row = data[0];
@@ -589,11 +601,13 @@ export class SupabaseFinanceService implements FinanceService {
     facilityId: string,
     dateRange: FinanceDateRange,
     granularity: RevenueTrendGranularity,
+    sportIds?: string[] | null,
   ): Promise<PnlTrendPoint[]> {
     const { data, error } = await this.supabase.rpc("get_pnl_trend", {
       p_facility_id: facilityId,
       ...dateRangeArgs(dateRange),
       p_granularity: granularity,
+      ...sportArg(sportIds),
     });
     if (error) throw this.mapError(error);
     return (data ?? []).map((row) => ({
@@ -604,8 +618,8 @@ export class SupabaseFinanceService implements FinanceService {
     }));
   }
 
-  async getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<RevenueBreakdown> {
-    const { data, error } = await this.supabase.rpc("get_revenue_breakdown", { p_facility_id: facilityId, ...dateRangeArgs(dateRange) });
+  async getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<RevenueBreakdown> {
+    const { data, error } = await this.supabase.rpc("get_revenue_breakdown", { p_facility_id: facilityId, ...dateRangeArgs(dateRange), ...sportArg(sportIds) });
     if (error || !data?.[0]) throw this.mapError(error);
     const row = data[0];
     return {
@@ -619,8 +633,8 @@ export class SupabaseFinanceService implements FinanceService {
     };
   }
 
-  async getRevenueTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity): Promise<RevenueTrendPoint[]> {
-    const { data, error } = await this.supabase.rpc("get_revenue_trend", { p_facility_id: facilityId, ...dateRangeArgs(dateRange), p_granularity: granularity });
+  async getRevenueTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity, sportIds?: string[] | null): Promise<RevenueTrendPoint[]> {
+    const { data, error } = await this.supabase.rpc("get_revenue_trend", { p_facility_id: facilityId, ...dateRangeArgs(dateRange), p_granularity: granularity, ...sportArg(sportIds) });
     if (error) throw this.mapError(error);
     return (data ?? []).map((row) => ({ date: row.bucket_date, grossMinor: row.gross_minor, refundMinor: row.refund_minor, netMinor: row.net_minor }));
   }
@@ -632,6 +646,7 @@ export class SupabaseFinanceService implements FinanceService {
       p_source_type: input.sourceType ?? null,
       p_status: input.status ?? null,
       p_search: input.search ?? null,
+      ...sportArg(input.sportIds),
     };
     const [{ data, error }, { data: countData, error: countError }] = await Promise.all([
       this.supabase.rpc("list_finance_transactions", { ...args, p_limit: input.limit ?? 20, p_offset: input.offset ?? 0 }),

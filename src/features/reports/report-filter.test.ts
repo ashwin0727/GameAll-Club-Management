@@ -24,12 +24,17 @@ describe("dateRangeArgs", () => {
 
 describe("scopeArgs", () => {
   it("nulls absent sport/court", () => {
-    expect(scopeArgs(base)).toEqual({ p_facility_sport_id: null, p_court_id: null });
+    expect(scopeArgs(base)).toEqual({ p_facility_sport_id: null, p_court_id: null, p_facility_sport_ids: null });
+  });
+  it("passes the top bar's sports list when there is one", () => {
+    expect(scopeArgs({ ...base, facilitySportIds: ["fs-1", "fs-2"] }).p_facility_sport_ids).toEqual(["fs-1", "fs-2"]);
+    expect(scopeArgs({ ...base, facilitySportIds: [] }).p_facility_sport_ids).toBeNull();
   });
   it("passes sport and court when set", () => {
     expect(scopeArgs({ ...base, facilitySportId: "fs-1", courtId: "c-2" })).toEqual({
       p_facility_sport_id: "fs-1",
       p_court_id: "c-2",
+      p_facility_sport_ids: null,
     });
   });
 });

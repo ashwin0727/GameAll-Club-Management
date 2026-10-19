@@ -52,6 +52,10 @@ describe("pages that are fixed at All Sports", () => {
       expect(sportSelectionLocked(p)).toBe(true);
     }
   });
+  it("locks Expenses and Daily Closing (not split by sport), but not the other Finance pages", () => {
+    for (const p of ["/finance/expenses", "/finance/expenses/abc", "/finance/daily-closing"]) expect(sportSelectionLocked(p)).toBe(true);
+    for (const p of ["/finance", "/finance/transactions", "/finance/pending-payments", "/finance/profit-loss"]) expect(sportSelectionLocked(p)).toBe(false);
+  });
   it("leaves every other page selectable", () => {
     for (const p of ["/dashboard", "/calendar", "/guests", "/memberships/v1", "/coaching/programs", "/reports", "/maintenancex"]) {
       expect(sportSelectionLocked(p)).toBe(false);

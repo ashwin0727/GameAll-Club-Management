@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database.types";
 import type { ReportsService } from "@/services/reports/reports.service";
 import { ServiceError } from "@/services/shared/service-error";
-import { dateRangeArgs, scopeArgs } from "@/features/reports/report-filter";
+import { dateRangeArgs, scopeArgs, sportListArgs } from "@/features/reports/report-filter";
 import type { RevenueTrendPoint } from "@/features/finance/types";
 import type {
   AnalyticsFilter,
@@ -166,6 +166,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_finance_summary", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
     });
     if (error || !data?.[0]) throw this.mapError(error);
     const r = data[0];
@@ -185,6 +186,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_revenue_trend", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
       p_granularity: granularity,
     });
     if (error) throw this.mapError(error);
@@ -200,6 +202,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_revenue_breakdown", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
     });
     if (error || !data?.[0]) throw this.mapError(error);
     const r = data[0];
@@ -217,6 +220,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_payment_method_breakdown", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
     });
     if (error) throw this.mapError(error);
     return (data ?? []).map((r) => ({
@@ -272,6 +276,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_membership_analytics", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
     });
     if (error || !data?.[0]) throw this.mapError(error);
     const r = data[0];
@@ -291,6 +296,7 @@ export class SupabaseReportsService implements ReportsService {
     const { data, error } = await this.supabase.rpc("get_memberships_by_type", {
       p_facility_id: filter.facilityId,
       ...dateRangeArgs(filter),
+      ...sportListArgs(filter),
     });
     if (error) throw this.mapError(error);
     return (data ?? []).map((r) => ({

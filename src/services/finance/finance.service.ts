@@ -30,10 +30,10 @@ import type {
 
 export interface FinanceService {
   /** The dashboard's headline numbers — backend-aggregated, never summed from a paginated list (spec §"Backend Aggregation"). */
-  getSummary(facilityId: string, dateRange: FinanceDateRange): Promise<FinanceSummary>;
-  getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<RevenueBreakdown>;
-  getRevenueTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity): Promise<RevenueTrendPoint[]>;
-  getPaymentMethodBreakdown(facilityId: string, dateRange: FinanceDateRange): Promise<PaymentMethodSlice[]>;
+  getSummary(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<FinanceSummary>;
+  getRevenueBreakdown(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<RevenueBreakdown>;
+  getRevenueTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity, sportIds?: string[] | null): Promise<RevenueTrendPoint[]>;
+  getPaymentMethodBreakdown(facilityId: string, dateRange: FinanceDateRange, sportIds?: string[] | null): Promise<PaymentMethodSlice[]>;
   /** Payments, refunds and expenses in one server-filtered, server-paged list. */
   listLedger(input: {
     facilityId: string;
@@ -41,6 +41,8 @@ export interface FinanceService {
     filters?: LedgerFilters;
     limit?: number;
     offset?: number;
+    /** The sports in view (null = All Sports). Expense rows are left out while a sport is selected. */
+    sportIds?: string[] | null;
   }): Promise<LedgerPage>;
   listPaymentMethods(facilityId: string): Promise<string[]>;
   /** Everything still owed, from every source, filtered and paged server-side. */
@@ -50,9 +52,11 @@ export interface FinanceService {
     limit?: number;
     offset?: number;
     sourceId?: string | null;
+    /** The sports in view (null = All Sports). */
+    sportIds?: string[] | null;
   }): Promise<PendingPaymentsPage>;
   getPaymentObligation(facilityId: string, sourceId: string): Promise<PaymentObligation | null>;
-  getPendingPaymentsSummary(facilityId: string, from?: string | null, to?: string | null): Promise<PendingPaymentsSummary>;
+  getPendingPaymentsSummary(facilityId: string, from?: string | null, to?: string | null, sportIds?: string[] | null): Promise<PendingPaymentsSummary>;
   /** Collect against any obligation. The server revalidates the balance. */
   recordObligationPayment(input: {
     sourceType: ObligationSource;
@@ -107,8 +111,8 @@ export interface FinanceService {
   reopenDailyClosing(closingId: string, reason: string): Promise<void>;
   listDailyClosings(input: { facilityId: string; dateRange: FinanceDateRange; limit?: number; offset?: number }): Promise<DailyClosingHistoryPage>;
   // Profit & Loss
-  getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null): Promise<ProfitAndLoss>;
-  getPnlTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity): Promise<PnlTrendPoint[]>;
+  getProfitAndLoss(facilityId: string, dateRange: FinanceDateRange, categoryId?: string | null, sportIds?: string[] | null): Promise<ProfitAndLoss>;
+  getPnlTrend(facilityId: string, dateRange: FinanceDateRange, granularity: RevenueTrendGranularity, sportIds?: string[] | null): Promise<PnlTrendPoint[]>;
   /** Server-side filtered, searched, and paginated (spec §"Transaction Pagination"). */
   listTransactions(input: ListTransactionsInput): Promise<TransactionPage>;
   getTransaction(transactionId: string): Promise<FinanceTransaction>;

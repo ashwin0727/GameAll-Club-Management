@@ -23,7 +23,7 @@ describe("SupabaseFinanceService.getSummary", () => {
 
     const result = await service.getSummary("facility-1", { preset: "THIS_MONTH" });
 
-    expect(rpc).toHaveBeenCalledWith("get_finance_summary", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null });
+    expect(rpc).toHaveBeenCalledWith("get_finance_summary", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null, p_facility_sport_ids: null });
     expect(result).toEqual({
       grossRevenueMinor: 350000,
       refundsMinor: 80000,
@@ -45,7 +45,7 @@ describe("SupabaseFinanceService.getSummary", () => {
 
     await service.getSummary("facility-1", { preset: "CUSTOM", startDate: "2026-08-01", endDate: "2026-08-15" });
 
-    expect(rpc).toHaveBeenCalledWith("get_finance_summary", { p_facility_id: "facility-1", p_preset: "CUSTOM", p_start_date: "2026-08-01", p_end_date: "2026-08-15" });
+    expect(rpc).toHaveBeenCalledWith("get_finance_summary", { p_facility_id: "facility-1", p_preset: "CUSTOM", p_start_date: "2026-08-01", p_end_date: "2026-08-15", p_facility_sport_ids: null });
   });
 
   it("maps a facility-isolation rejection to FINANCE_ACCESS_DENIED — never a fabricated zero summary", async () => {
@@ -90,7 +90,7 @@ describe("SupabaseFinanceService.getRevenueBreakdown", () => {
 
     const result = await service.getRevenueBreakdown("facility-1", { preset: "THIS_MONTH" });
 
-    expect(rpc).toHaveBeenCalledWith("get_revenue_breakdown", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null });
+    expect(rpc).toHaveBeenCalledWith("get_revenue_breakdown", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null, p_facility_sport_ids: null });
     expect(result).toEqual({
       membershipRevenueMinor: 150000,
       memberBookingRevenueMinor: 50000,
@@ -116,7 +116,7 @@ describe("SupabaseFinanceService.getRevenueTrend", () => {
 
     const result = await service.getRevenueTrend("facility-1", { preset: "THIS_MONTH" }, "daily");
 
-    expect(rpc).toHaveBeenCalledWith("get_revenue_trend", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null, p_granularity: "daily" });
+    expect(rpc).toHaveBeenCalledWith("get_revenue_trend", { p_facility_id: "facility-1", p_preset: "THIS_MONTH", p_start_date: null, p_end_date: null, p_granularity: "daily", p_facility_sport_ids: null });
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual({ date: "2026-08-01", grossMinor: 850000, refundMinor: 0, netMinor: 850000 });
   });

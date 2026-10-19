@@ -103,6 +103,8 @@ export interface ListTransactionsInput extends TransactionFilters {
   dateRange: FinanceDateRange;
   limit?: number;
   offset?: number;
+  /** The sports in view (null = All Sports). */
+  sportIds?: string[] | null;
 }
 
 export interface TransactionPage {

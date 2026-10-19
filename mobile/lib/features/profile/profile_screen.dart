@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -244,7 +245,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: AppSpacing.xl),
 
             ],
-            if (session.can('INVENTORY_VIEW')) ...[
+            if (AppConfig.inventoryEnabled && session.can('INVENTORY_VIEW')) ...[
               _sectionLabel('Inventory Management'),
               _GroupCard(children: [
                 _NavRow(

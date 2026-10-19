@@ -17,6 +17,10 @@ class AppConfig {
   /// project's configured Site URL.
   static const String webAppUrl = String.fromEnvironment('WEB_APP_URL');
 
+  /// Master switch for Inventory Management. While false the Profile menu entries are hidden and every /inventory
+  /// route bounces to Home; the module's code is untouched, so turning it back on is changing this to true.
+  static const bool inventoryEnabled = false;
+
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 }

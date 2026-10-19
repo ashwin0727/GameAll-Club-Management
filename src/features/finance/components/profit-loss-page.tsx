@@ -9,6 +9,7 @@ import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { PnlTrendChart } from "@/features/finance/components/pnl-trend-chart";
 import { ServiceError } from "@/services/shared/service-error";
 import type { FinanceDateRange, PnlTrendPoint, ProfitAndLoss, RevenueTrendGranularity } from "@/features/finance/types";
@@ -33,6 +34,8 @@ export function ProfitLossPage() {
   const [pnl, setPnl] = useState<ProfitAndLoss | null>(null);
   const [trend, setTrend] = useState<PnlTrendPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The top bar's sport selection (null = All Sports): every figure here follows it.
+  const { sportIds, ready: sportsReady } = useSportIds(facilityId);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,16 +55,16 @@ export function ProfitLossPage() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId || !sportsReady) return;
     setError(null);
     const finance = getFinanceService();
     const [p, t] = await Promise.all([
-      finance.getProfitAndLoss(facilityId, dateRange),
-      finance.getPnlTrend(facilityId, dateRange, granularityFor(dateRange.preset)),
+      finance.getProfitAndLoss(facilityId, dateRange, null, sportIds),
+      finance.getPnlTrend(facilityId, dateRange, granularityFor(dateRange.preset), sportIds),
     ]);
     setPnl(p);
     setTrend(t);
-  }, [facilityId, dateRange]);
+  }, [facilityId, sportsReady, sportIds, dateRange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +109,13 @@ export function ProfitLossPage() {
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {sportIds && (
+        <p className="text-xs text-muted-foreground">
+          Revenue is for the sports selected in the top bar. Expenses are not split by sport, so they cover the whole facility
+          and the profit shown is revenue for these sports less all expenses.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {pnl === null

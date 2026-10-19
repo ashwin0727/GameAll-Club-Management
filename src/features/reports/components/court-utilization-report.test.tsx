@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CourtUtilizationReport } from "./court-utilization-report";
 import { installFakeReportsFilterDeps } from "@/test/fakes/fake-reports-filter-deps";
 import { installFakeReportsService } from "@/test/fakes/fake-reports-service";
+
+// The reports read the top bar's sport selection; these tests have no query client, and All Sports is what they mean.
+vi.mock("@/features/facility/hooks/use-sport-filter", () => ({
+  useSportIds: () => ({ sportIds: null, ready: true, key: "all" }),
+}));
 
 const SLOW = { timeout: 4000 } as const;
 

@@ -73,6 +73,21 @@ export interface NavItem {
 
 const STAFF_ROLES: Role[] = ["admin", "staff"];
 
+/**
+ * Master switch for Inventory Management. While false the menu entries, search results and every /inventory page are
+ * gone for everyone; the module's code and data are untouched, so turning it back on is changing this to true.
+ */
+export const INVENTORY_ENABLED = false;
+
+const INVENTORY_NAV_ITEMS: NavItem[] = [
+  { label: "Inventory Tracker", group: "inventory", href: "/inventory", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Items", group: "inventory", href: "/inventory/items", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Stock Movement", group: "inventory", href: "/inventory/movements", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Purchase Orders", group: "inventory", href: "/inventory/purchase-orders", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Vendors", group: "inventory", href: "/inventory/vendors", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  { label: "Categories", group: "inventory", href: "/inventory/categories", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+];
+
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Calendar", group: "main", href: "/calendar", roles: ["admin", "staff", "member"] },
@@ -105,13 +120,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Roles & Permission", group: "staff", href: "/users-roles/roles", roles: STAFF_ROLES, permission: "USERS_VIEW" },
   { label: "Access History", group: "staff", href: "/users-roles/access-history", roles: STAFF_ROLES, permission: "USERS_VIEW" },
 
-  // Inventory Management
-  { label: "Inventory Tracker", group: "inventory", href: "/inventory", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
-  { label: "Items", group: "inventory", href: "/inventory/items", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
-  { label: "Stock Movement", group: "inventory", href: "/inventory/movements", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
-  { label: "Purchase Orders", group: "inventory", href: "/inventory/purchase-orders", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
-  { label: "Vendors", group: "inventory", href: "/inventory/vendors", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
-  { label: "Categories", group: "inventory", href: "/inventory/categories", roles: STAFF_ROLES, permission: "INVENTORY_VIEW" },
+  // Inventory Management (switched off while INVENTORY_ENABLED is false)
+  ...(INVENTORY_ENABLED ? INVENTORY_NAV_ITEMS : []),
 
   // Finance (unchanged)
   {

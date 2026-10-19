@@ -25,7 +25,6 @@ import 'membership_detail_screen.dart';
 import 'member_row.dart';
 import 'membership_plan_details_screen.dart';
 import 'membership_plans_tab.dart';
-import 'members_insights.dart';
 import 'members_ordering.dart';
 import 'membership_plan_wizard_screen.dart';
 
@@ -353,104 +352,160 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
 
 /// The photo hero card — a title, one big figure, and a row of small figures beneath a hairline.
 /// The Members tab shows the total member count in it.
-class _HeroStatCard extends StatelessWidget {
-  const _HeroStatCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.figs,
+/// The Members page's single summary card: total + active members on the photo, then Overall Revenue and
+/// Payment Pending in a strip along the bottom.
+class _MembersSummaryCard extends StatelessWidget {
+  const _MembersSummaryCard({
+    required this.total,
+    required this.active,
+    required this.revenue,
+    required this.pending,
+    required this.onRevenueTap,
+    required this.onPendingTap,
   });
 
-  final IconData icon;
-  final String title;
-  final String value;
-  final List<({String value, String label})> figs;
+  final int total;
+  final int active;
+  final int? revenue;
+  final ({int amountInr, int count})? pending;
+  final VoidCallback onRevenueTap;
+  final VoidCallback onPendingTap;
+
+  static const _white = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final hasPending = (pending?.count ?? 0) > 0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: SizedBox(
-        height: 190,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // ── photo background, same treatment as the dashboard's hero
-            // cards — a dark gradient overlay keeps the white text legible.
-            Image.asset('assets/images/members_card.png', fit: BoxFit.cover),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.55),
-                    Colors.black.withValues(alpha: 0.15),
-                  ],
-                ),
-              ),
-            ),
-            DecoratedBox(
+      child: Stack(
+        children: [
+          Positioned.fill(child: Image.asset('assets/images/members_card.png', fit: BoxFit.cover)),
+          Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.0),
-                    Colors.black.withValues(alpha: 0.45),
-                  ],
+                  colors: [Colors.black.withValues(alpha: 0.55), Colors.black.withValues(alpha: 0.75)],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, size: 16, color: const Color(0xFFFFFFFF)),
-                      const SizedBox(width: 6),
-                      Text(title,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: const Color(0xFFFFFFFF)
-                                  .withValues(alpha: 0.8))),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFFFFFFF),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: 0.6,
-                    child: Container(
-                      height: 1,
-                      color: const Color(0xFFFFFFFF).withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      for (var i = 0; i < figs.length; i++) ...[
-                        if (i > 0) const SizedBox(width: AppSpacing.xl),
-                        _MiniFig(
-                            value: figs[i].value,
-                            label: figs[i].label,
-                            onAccent: true),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.groups_outlined, size: 16, color: _white),
+                        const SizedBox(width: 8),
+                        Text('Total members', style: TextStyle(fontSize: 14, color: _white.withValues(alpha: 0.9))),
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('$total',
+                            style: const TextStyle(fontSize: 44, height: 1, fontWeight: FontWeight.w800, color: _white)),
+                        const SizedBox(width: 16),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(color: tokens.success, shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('$active active',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _white)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+              Container(height: 1, color: _white.withValues(alpha: 0.12)),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _SummaryCell(
+                        label: 'Overall Revenue',
+                        value: revenue == null ? '—' : Formatters.currencyInr(revenue!),
+                        valueColor: _white,
+                        sub: revenue == null ? null : 'All collected',
+                        subColor: tokens.success,
+                        onTap: onRevenueTap,
+                      ),
+                    ),
+                    Container(width: 1, color: _white.withValues(alpha: 0.12)),
+                    Expanded(
+                      child: _SummaryCell(
+                        label: 'Payment Pending',
+                        value: pending == null ? '—' : Formatters.currencyInr(pending!.amountInr),
+                        valueColor: hasPending ? tokens.warning : _white,
+                        sub: pending == null ? null : (hasPending ? '${pending!.count} unpaid' : 'Nothing pending'),
+                        subColor: hasPending ? _white.withValues(alpha: 0.75) : tokens.success,
+                        tint: hasPending ? tokens.warning.withValues(alpha: 0.12) : null,
+                        onTap: onPendingTap,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryCell extends StatelessWidget {
+  const _SummaryCell({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    required this.subColor,
+    required this.onTap,
+    this.sub,
+    this.tint,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+  final String? sub;
+  final Color subColor;
+  final Color? tint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        color: tint,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 13, color: const Color(0xFFFFFFFF).withValues(alpha: 0.75))),
+            const SizedBox(height: 6),
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
+            if (sub != null) ...[
+              const SizedBox(height: 4),
+              Text(sub!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: subColor)),
+            ],
           ],
         ),
       ),
@@ -458,41 +513,9 @@ class _HeroStatCard extends StatelessWidget {
   }
 }
 
-class _MiniFig extends StatelessWidget {
-  const _MiniFig(
-      {required this.value, required this.label, this.onAccent = false});
-
-  final String value;
-  final String label;
-  final bool onAccent;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    const white = Color(0xFFFFFFFF);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: onAccent ? white : tokens.textPrimary,
-            )),
-        Text(label,
-            style: TextStyle(
-                fontSize: 12,
-                color: onAccent
-                    ? white.withValues(alpha: 0.75)
-                    : tokens.textSecondary)),
-      ],
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────── People ──
 
-/// The Members tab — a total-members hero card, a collapsible "View More Insights" panel, then the
+/// The Members tab — one summary card (members, revenue, pending), then the
 /// members themselves: Active first, then Inactive, most recent joiners first within each.
 class _MembersTab extends StatefulWidget {
   const _MembersTab({
@@ -521,7 +544,6 @@ class _MembersTab extends StatefulWidget {
 
 class _MembersTabState extends State<_MembersTab> {
   String _query = '';
-  bool _insightsOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -533,67 +555,17 @@ class _MembersTabState extends State<_MembersTab> {
       return m.memberName.toLowerCase().contains(q) || m.memberPhone.contains(q);
     }).toList();
     final c = widget.counts;
-    final utilization = utilizationPercent(widget.batches);
 
     // The page header is a short fixed list; the member rows come after it and are built only as they
     // scroll into view — a club can have hundreds, and typing in the search box rebuilds this page.
     final header = <Widget>[
-        _HeroStatCard(
-          icon: Icons.groups_rounded,
-          title: 'Total Members',
-          value: '${c.total}',
-          figs: [
-            (value: '${c.active}', label: 'active'),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        InsightsPanel(
-          open: _insightsOpen,
-          onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
-          tiles: [
-            InsightData(
-              icon: Icons.groups_outlined,
-              color: tokens.electricBlue,
-              title: 'Total Members',
-              value: '${c.total}',
-              onTap: () {},
-            ),
-            InsightData(
-              icon: Icons.payments_outlined,
-              color: tokens.warning,
-              title: 'Overall Revenue',
-              value: widget.overallRevenueInr == null ? '—' : Formatters.currencyInr(widget.overallRevenueInr!),
-              sub: 'All payments collected',
-              onTap: () => context.push(AppRoutes.reportsMemberships),
-            ),
-            InsightData(
-              icon: Icons.pending_actions_rounded,
-              color: tokens.destructive,
-              title: 'Payment Pending',
-              value: widget.pending == null ? '—' : Formatters.currencyInr(widget.pending!.amountInr),
-              sub: widget.pending == null
-                  ? null
-                  : (widget.pending!.count == 0 ? 'Nothing pending' : '${widget.pending!.count} unpaid or overdue'),
-              onTap: () => context.push(AppRoutes.financePendingPayments),
-            ),
-            InsightData(
-              icon: Icons.account_balance_wallet_outlined,
-              color: tokens.violet,
-              title: 'Total Revenue',
-              value: Formatters.currencyInr(widget.summary.revenueInr),
-              sub: _changeLabel(widget.summary.revenueChangePct),
-              subColor: _changeColor(tokens, widget.summary.revenueChangePct),
-              onTap: () => context.push(AppRoutes.reportsMemberships),
-            ),
-            InsightData(
-              icon: Icons.bar_chart_rounded,
-              color: tokens.primary,
-              title: 'Utilization',
-              value: utilization == null ? '—' : '$utilization%',
-              sub: 'Avg. slot usage',
-              onTap: () => context.push(AppRoutes.membershipSessions),
-            ),
-          ],
+        _MembersSummaryCard(
+          total: c.total,
+          active: c.active,
+          revenue: widget.overallRevenueInr,
+          pending: widget.pending,
+          onRevenueTap: () => context.push(AppRoutes.reportsMemberships),
+          onPendingTap: () => context.push(AppRoutes.financePendingPayments),
         ),
         const SizedBox(height: AppSpacing.md),
         // The same one-tap shortcuts the Coaching hub has: Sessions, Schedule and Reports.
@@ -673,17 +645,6 @@ class _MembersTabState extends State<_MembersTab> {
         );
       },
     );
-  }
-
-  static String? _changeLabel(double? pct) {
-    if (pct == null) return null;
-    final rounded = pct.abs().round();
-    return pct >= 0 ? '↑ +$rounded%' : '↓ $rounded%';
-  }
-
-  static Color? _changeColor(AppColorTokens tokens, double? pct) {
-    if (pct == null) return null;
-    return pct >= 0 ? tokens.primary : tokens.destructive;
   }
 }
 
