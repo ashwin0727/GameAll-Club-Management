@@ -8,15 +8,20 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
-import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { Banknote, Percent, TrendingUp, Wallet } from "lucide-react";
+import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
+import { currentMonthRange, fillTrendBuckets, toFinanceDateRange, type DayRange } from "@/features/finance/day-range";
+import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { PnlTrendChart } from "@/features/finance/components/pnl-trend-chart";
 import { ServiceError } from "@/services/shared/service-error";
-import type { FinanceDateRange, PnlTrendPoint, ProfitAndLoss, RevenueTrendGranularity } from "@/features/finance/types";
+import type { PnlTrendPoint, ProfitAndLoss, RevenueTrendGranularity } from "@/features/finance/types";
 
-function granularityFor(preset: FinanceDateRange["preset"]): RevenueTrendGranularity {
-  if (preset === "TODAY" || preset === "YESTERDAY" || preset === "THIS_WEEK" || preset === "LAST_WEEK") return "daily";
-  if (preset === "THIS_YEAR") return "monthly";
+/** A day-by-day trend for a short span, weekly for a few months, monthly beyond that. */
+function granularityFor(range: DayRange): RevenueTrendGranularity {
+  const days = Math.round((new Date(range.to).getTime() - new Date(range.from).getTime()) / 86_400_000) + 1;
+  if (days > 120) return "monthly";
+  if (days > 45) return "weekly";
   return "daily";
 }
 
@@ -29,7 +34,9 @@ export function ProfitLossPage() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [facilityName, setFacilityName] = useState("");
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
-  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: "THIS_MONTH" });
+  // The whole current month until the user picks other dates (and presses Apply).
+  const [range, setRange] = useState<DayRange>(() => currentMonthRange());
+  const dateRange = useMemo(() => toFinanceDateRange(range), [range]);
 
   const [pnl, setPnl] = useState<ProfitAndLoss | null>(null);
   const [trend, setTrend] = useState<PnlTrendPoint[] | null>(null);
@@ -60,11 +67,12 @@ export function ProfitLossPage() {
     const finance = getFinanceService();
     const [p, t] = await Promise.all([
       finance.getProfitAndLoss(facilityId, dateRange, null, sportIds),
-      finance.getPnlTrend(facilityId, dateRange, granularityFor(dateRange.preset), sportIds),
+      finance.getPnlTrend(facilityId, dateRange, granularityFor(range), sportIds),
     ]);
     setPnl(p);
-    setTrend(t);
-  }, [facilityId, sportsReady, sportIds, dateRange]);
+    // Quiet days are shown as zero, so the chart spans exactly the dates that were picked.
+    setTrend(fillTrendBuckets(t, range, granularityFor(range), (date) => ({ date, revenueMinor: 0, expenseMinor: 0, netMinor: 0 })));
+  }, [facilityId, sportsReady, sportIds, dateRange, range]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +113,7 @@ export function ProfitLossPage() {
             Recognised revenue less recorded expenses{facilityName ? ` for ${facilityName}` : ""}.
           </p>
         </div>
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
+        <DayRangeFilter value={range} onApply={setRange} />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -117,24 +125,58 @@ export function ProfitLossPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {pnl === null
-          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          : [
-              { label: "Total Revenue", value: formatCurrency(pnl.totalRevenueMinor, "INR"), accent: "text-foreground" },
-              { label: "Total Expenses", value: formatCurrency(pnl.totalExpenseMinor, "INR"), accent: "text-foreground" },
-              {
-                label: "Net Profit",
-                value: formatCurrency(pnl.netProfitMinor, "INR"),
-                accent: pnl.netProfitMinor < 0 ? "text-destructive" : "text-primary",
-              },
-              { label: "Profit Margin", value: `${pnl.profitMarginPct}%`, accent: "text-foreground" },
-            ].map((kpi) => (
-              <Card key={kpi.label} className="p-3">
-                <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
-                <p className={cn("mt-1 text-lg font-semibold tabular-nums", kpi.accent)}>{kpi.value}</p>
-              </Card>
-            ))}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {pnl === null ? (
+          Array.from({ length: 4 }).map((_, i) => <MembershipStatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <MembershipStatCard
+              icon={Banknote}
+              iconBg="bg-success/15"
+              iconColor="text-success"
+              value={formatCurrency(pnl.totalRevenueMinor, "INR")}
+              countTo={pnl.totalRevenueMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Total Revenue"
+              sub="Payments less refunds"
+              index={0}
+            />
+            <MembershipStatCard
+              icon={Wallet}
+              iconBg="bg-destructive/15"
+              iconColor="text-destructive"
+              value={formatCurrency(pnl.totalExpenseMinor, "INR")}
+              countTo={pnl.totalExpenseMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Total Expenses"
+              sub="Recorded expenses"
+              index={1}
+            />
+            <MembershipStatCard
+              icon={TrendingUp}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-400"
+              value={formatCurrency(pnl.netProfitMinor, "INR")}
+              countTo={pnl.netProfitMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Net Profit"
+              sub={pnl.netProfitMinor < 0 ? "A loss in this period" : "Revenue less expenses"}
+              subTone={pnl.netProfitMinor < 0 ? "text-destructive" : undefined}
+              index={2}
+            />
+            <MembershipStatCard
+              icon={Percent}
+              iconBg="bg-purple-500/15"
+              iconColor="text-purple-600 dark:text-purple-400"
+              value={`${pnl.profitMarginPct}%`}
+              countTo={Number(pnl.profitMarginPct)}
+              format={(v) => `${Math.round(v * 10) / 10}%`}
+              label="Profit Margin"
+              sub="Net profit as a share of revenue"
+              index={3}
+            />
+          </>
+        )}
       </div>
 
       {pnl === null ? (

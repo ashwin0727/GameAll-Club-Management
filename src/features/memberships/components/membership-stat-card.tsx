@@ -19,6 +19,7 @@ export function MembershipStatCard({
   countTo,
   format,
   deltaPct,
+  invertDelta = false,
   sub,
   subTone,
   label,
@@ -33,6 +34,8 @@ export function MembershipStatCard({
   countTo?: number;
   format?: (v: number) => string;
   deltaPct?: number | null;
+  /** A rise is bad (expenses, money owed): the arrow still follows the number, the colour follows what it means. */
+  invertDelta?: boolean;
   /** The line along the card's bottom edge. Omit it for a shorter, two-line card. */
   sub?: string;
   /** Colour for that line; muted unless given (the design shows the month-on-month one in green). */
@@ -47,7 +50,10 @@ export function MembershipStatCard({
   const animated = useCountUp(countTo ?? 0);
   const animating = countTo !== undefined && format !== undefined;
   const shown = animating ? format(Math.round(animated)) : value;
+  // A long amount (₹12,34,56,789) steps down a size rather than being cut off.
+  const longFigure = shown.length > 10;
   const positive = deltaPct != null && deltaPct >= 0;
+  const good = deltaPct != null && (invertDelta ? deltaPct <= 0 : deltaPct >= 0);
   const DeltaIcon = positive ? ArrowUp : ArrowDown;
 
   return (
@@ -75,13 +81,13 @@ export function MembershipStatCard({
         <div className="min-w-0 flex-1">
           <p
             className={cn(
-              "truncate font-bold leading-none tabular-nums text-foreground",
-              compact ? "text-[22px]" : "text-[26px]",
+              "whitespace-nowrap font-bold leading-none tabular-nums text-foreground",
+              compact ? (longFigure ? "text-[17px]" : "text-[22px]") : longFigure ? "text-[20px]" : "text-[26px]",
             )}
           >
             {shown}
           </p>
-          <p className={cn("mt-1.5 truncate font-semibold text-foreground", compact ? "text-[13px]" : "text-sm")}>
+          <p className={cn("mt-1.5 break-words font-semibold leading-snug text-foreground", compact ? "text-[13px]" : "text-sm")}>
             {label}
           </p>
         </div>
@@ -90,7 +96,7 @@ export function MembershipStatCard({
           <span
             className={cn(
               "flex shrink-0 items-center gap-0.5 whitespace-nowrap text-sm font-semibold",
-              positive ? "text-success" : "text-destructive",
+              good ? "text-success" : "text-destructive",
             )}
           >
             <DeltaIcon className="h-3.5 w-3.5" aria-hidden />

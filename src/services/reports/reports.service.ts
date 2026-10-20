@@ -24,7 +24,12 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  OverviewMetricKey,
+  OverviewTrendPoint,
+  ReportsOverviewMetrics,
   MembershipAnalytics,
+  MembershipMemberCounts,
+  MembershipBatchRow,
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
@@ -71,8 +76,23 @@ export interface ReportsService {
   /** One-row business snapshot for the Overview page; composes the other RPCs. */
   getAnalyticsOverview(filter: AnalyticsFilter): Promise<AnalyticsOverview>;
 
+  /** The twelve overview cards for the dates and sports in view (null sports = All Sports). */
+  getReportsOverview(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<ReportsOverviewMetrics>;
+  /** The chart behind one card: that figure over the same dates, bucketed. */
+  getReportsOverviewTrend(
+    facilityId: string,
+    metric: OverviewMetricKey,
+    range: { from: string; to: string },
+    granularity: "daily" | "weekly" | "monthly",
+    sportIds: string[] | null,
+  ): Promise<OverviewTrendPoint[]>;
+
   /** Active / new / expiring members + membership revenue & payment completion. */
   getMembershipAnalytics(filter: AnalyticsFilter): Promise<MembershipAnalytics>;
+  /** Total / active / inactive members as of the end of the dates, for the sports in view (null = All Sports). */
+  getMembershipMemberCounts(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<MembershipMemberCounts>;
+  /** Members by sport, court / turf and booked timing for the dates and sports in view. */
+  getMembershipBatchBreakdown(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<MembershipBatchRow[]>;
   /** New memberships in the range, grouped by type + plan. */
   getMembershipsByType(filter: AnalyticsFilter): Promise<MembershipTypeRow[]>;
   /** Session capacity / allocations / released / booked / unused, over sessions in the range. */

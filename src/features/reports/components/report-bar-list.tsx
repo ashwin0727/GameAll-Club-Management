@@ -31,7 +31,7 @@ export function ReportBarList({ items, max }: { items: ReportBar[]; max?: number
               className="h-full rounded-full"
               style={{
                 width: `${Math.round((item.value / peak) * 100)}%`,
-                backgroundColor: item.color ?? "var(--primary)",
+                backgroundColor: item.color ?? "hsl(var(--primary))",
               }}
             />
           </div>

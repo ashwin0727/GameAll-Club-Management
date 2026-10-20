@@ -15,14 +15,14 @@ import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import type { FinanceDateRange, LedgerEntry, LedgerTxnType } from "@/features/finance/types";
 import { AddExpenseDialog } from "@/features/finance/components/add-expense-dialog";
-import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
+import { currentMonthRange, isCurrentMonth, toFinanceDateRange, type DayRange } from "@/features/finance/day-range";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
 
 const PAGE_SIZE = 10;
 const ALL = "ALL";
-const DEFAULT_PRESET = "THIS_MONTH" as const;
 
 /** Every category the ledger can produce, for the filter. */
 const CATEGORIES = [
@@ -73,7 +73,9 @@ export function TransactionsList() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
 
-  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: DEFAULT_PRESET });
+  // The whole current month until the user picks other dates (and presses Apply).
+  const [range, setRange] = useState<DayRange>(() => currentMonthRange());
+  const dateRange = useMemo<FinanceDateRange>(() => toFinanceDateRange(range), [range]);
   const [txnType, setTxnType] = useState<string>(ALL);
   const [category, setCategory] = useState<string>(ALL);
   const [paymentMethod, setPaymentMethod] = useState<string>(ALL);
@@ -163,14 +165,14 @@ export function TransactionsList() {
     category !== ALL ||
     paymentMethod !== ALL ||
     search.trim() !== '' ||
-    dateRange.preset !== DEFAULT_PRESET;
+    !isCurrentMonth(range);
 
   function resetFilters() {
     setTxnType(ALL);
     setCategory(ALL);
     setPaymentMethod(ALL);
     setSearch('');
-    setDateRange({ preset: DEFAULT_PRESET });
+    setRange(currentMonthRange());
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -204,7 +206,7 @@ export function TransactionsList() {
             screen. */}
         <div className={cn("flex flex-wrap items-start gap-3", !showFilters && "hidden lg:flex")}>
           <Filter label="Date Range" className="min-w-[13rem]">
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <DayRangeFilter value={range} onApply={setRange} inline />
           </Filter>
 
           <Filter label="Type" className="w-[8.5rem]">

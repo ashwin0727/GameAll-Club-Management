@@ -4,7 +4,11 @@ import { RevenueReport } from "./revenue-report";
 import { installFakeReportsFilterDeps } from "@/test/fakes/fake-reports-filter-deps";
 import { installFakeReportsService } from "@/test/fakes/fake-reports-service";
 
-// The reports read the top bar's sport selection; these tests have no query client, and All Sports is what they mean.
+// The report reads the facility and the top bar's sport selection; these tests have no query client, and All Sports is what they mean.
+const FACILITY = { id: "fac-1", name: "Champz Turf" };
+vi.mock("@/features/facility/hooks/use-facility", () => ({
+  useFacility: () => ({ data: FACILITY, isLoading: false }),
+}));
 vi.mock("@/features/facility/hooks/use-sport-filter", () => ({
   useSportIds: () => ({ sportIds: null, ready: true, key: "all" }),
 }));
@@ -23,7 +27,7 @@ describe("RevenueReport", () => {
     expect(await screen.findByText("No revenue data for this period.", {}, SLOW)).toBeInTheDocument();
   });
 
-  it("renders totals, the trend table and the by-sport / by-court tables (unscoped)", async () => {
+  it("renders totals, the trend table and the by-sport / by-court tables ", async () => {
     const reports = setup();
     reports.revenueSummary = {
       grossMinor: 11_000_000,
@@ -53,5 +57,13 @@ describe("RevenueReport", () => {
     expect(screen.getByRole("table", { name: /revenue over time/i })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: /revenue by sport/i })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: /revenue by court/i })).toBeInTheDocument();
+    // the four figures are cards, and the filter is just From / To dates
+    expect(screen.getByText("Net Revenue")).toBeInTheDocument();
+    expect(screen.getAllByText("Refunds").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("From date")).toBeInTheDocument();
+    expect(screen.getByLabelText("To date")).toBeInTheDocument();
+    expect(screen.queryByText("All Sports")).not.toBeInTheDocument();
+    expect(screen.queryByText("All Courts")).not.toBeInTheDocument();
+    expect(screen.queryByText("This Month")).not.toBeInTheDocument();
   });
 });

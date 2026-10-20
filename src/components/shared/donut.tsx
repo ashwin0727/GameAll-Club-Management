@@ -55,7 +55,7 @@ export function Donut({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--border, #e5e7eb)"
+            stroke="hsl(var(--border))"
             strokeWidth={stroke}
           />
           {segments.map((segment, index) => {

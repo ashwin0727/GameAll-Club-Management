@@ -344,19 +344,48 @@ describe("summarizePayments (payment status calculation)", () => {
 });
 
 describe("buildAttentionItems (attention item generation, empty-state logic)", () => {
+  const owe = (over: Partial<{ sourceType: string; sourceId: string; customerName: string; outstandingInr: number; status: string; dueOn: string }>) => ({
+    sourceType: "GUEST_BOOKING",
+    sourceId: "s1",
+    customerName: "Asha",
+    outstandingInr: 500,
+    status: "PENDING",
+    dueOn: "2026-10-20",
+    ...over,
+  });
+
   it("generates no items when everything is healthy", () => {
-    expect(buildAttentionItems({ membershipsExpiringSoon: 0, paymentsPendingInr: 0 })).toEqual([]);
+    expect(buildAttentionItems({ membershipsExpiringSoon: 0, obligations: [] })).toEqual([]);
   });
 
   it("generates an item only for conditions that are actually true", () => {
-    const items = buildAttentionItems({ membershipsExpiringSoon: 3, paymentsPendingInr: 0 });
+    const items = buildAttentionItems({ membershipsExpiringSoon: 3 });
     expect(items).toHaveLength(1);
     expect(items[0]?.id).toBe("memberships-expiring");
   });
 
-  it("generates one item per real condition when multiple apply", () => {
-    const items = buildAttentionItems({ membershipsExpiringSoon: 2, paymentsPendingInr: 500 });
-    expect(items.map((i) => i.id)).toEqual(["memberships-expiring", "payments-pending"]);
+  it("lists every owed payment, overdue first and the longest overdue at the very top, then expiring memberships last", () => {
+    const items = buildAttentionItems({
+      membershipsExpiringSoon: 2,
+      obligations: [
+        owe({ sourceId: "later", dueOn: "2026-10-25" }),
+        owe({ sourceId: "recent-overdue", status: "OVERDUE", dueOn: "2026-10-15" }),
+        owe({ sourceId: "oldest-overdue", status: "OVERDUE", dueOn: "2026-10-01", sourceType: "MEMBERSHIP" }),
+        owe({ sourceId: "soon", dueOn: "2026-10-21", sourceType: "COACHING_ENROLLMENT" }),
+      ],
+    });
+    expect(items.map((i) => i.id)).toEqual([
+      "payment-oldest-overdue",
+      "payment-recent-overdue",
+      "payment-soon",
+      "payment-later",
+      "memberships-expiring",
+    ]);
+    expect(items[0]).toMatchObject({ overdue: true, amountInr: 500, actionHref: "/finance/pending-payments/oldest-overdue/record" });
+    expect(items[0]?.message).toContain("Membership");
+    expect(items[0]?.message).toContain("overdue since");
+    expect(items[2]?.message).toContain("Coaching");
+    expect(items[2]?.overdue).toBe(false);
   });
 });
 describe("buildRevenueTrend", () => {

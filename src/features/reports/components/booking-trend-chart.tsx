@@ -57,8 +57,8 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
-              background: "var(--popover)",
-              color: "var(--popover-foreground)",
+              background: "hsl(var(--popover))",
+              color: "hsl(var(--popover-foreground))",
               fontSize: 12,
             }}
             formatter={(value: number, name: string) => [
@@ -76,7 +76,7 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
             fill="url(#bookingTotalGradient)"
             name="total"
             dot={{ r: 3, fill: "#00F08A", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#00F08A", stroke: "var(--background)", strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: "#00F08A", stroke: "hsl(var(--background))", strokeWidth: 2 }}
             isAnimationActive
             animationDuration={700}
             animationEasing="ease-out"
@@ -89,7 +89,7 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
             fill="none"
             name="cancelled"
             dot={false}
-            activeDot={{ r: 4, fill: "#FF4D67", stroke: "var(--background)", strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: "#FF4D67", stroke: "hsl(var(--background))", strokeWidth: 2 }}
             isAnimationActive
             animationDuration={700}
             animationEasing="ease-out"

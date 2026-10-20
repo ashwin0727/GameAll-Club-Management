@@ -427,6 +427,14 @@ function MembershipCard({ summary, delay }: { summary: DashboardSummary; delay: 
 
 function AttentionCard({ summary, onGo, delay }: { summary: DashboardSummary; onGo: (href: string) => void; delay: number }) {
   const items = summary.attentionItems;
+  // Overdue payments lead the list; the summary line adds everything owed up.
+  const payments = items.filter((i) => i.amountInr != null);
+  const overdueItems = payments.filter((i) => i.overdue);
+  const totalOwed = payments.reduce((sum, i) => sum + (i.amountInr ?? 0), 0);
+  const totalOverdue = overdueItems.reduce((sum, i) => sum + (i.amountInr ?? 0), 0);
+  // At most four pending payments are listed here; anything beyond that is one tap away on the Pending Payments page.
+  const MAX_PAYMENTS = 4;
+  const visible = [...payments.slice(0, MAX_PAYMENTS), ...items.filter((i) => i.amountInr == null)];
   return (
     <DashCard
       title="Attention Required"
@@ -440,26 +448,55 @@ function AttentionCard({ summary, onGo, delay }: { summary: DashboardSummary; on
       {items.length === 0 ? (
         <p className="py-4 text-xs text-success">You&apos;re all caught up. No immediate attention required.</p>
       ) : (
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <li key={item.id} className="flex items-start gap-2 text-xs">
-              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="leading-snug text-foreground">{item.message}</p>
-                {item.actionHref && item.actionLabel && (
-                  <button
-                    type="button"
-                    onClick={() => onGo(item.actionHref!)}
-                    className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-                  >
-                    {item.actionLabel}
-                    <ChevronRight className="h-3 w-3" aria-hidden />
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          {payments.length > 0 && (
+            <p className="mb-3 rounded-lg bg-muted/50 px-2.5 py-2 text-xs text-foreground">
+              <span className="font-semibold">{formatCurrencyINR(totalOwed)}</span> pending across {payments.length}{" "}
+              {payments.length === 1 ? "payment" : "payments"}
+              {overdueItems.length > 0 && (
+                <>
+                  {" · "}
+                  <span className="font-semibold text-destructive">{formatCurrencyINR(totalOverdue)} overdue</span>
+                </>
+              )}
+            </p>
+          )}
+          <ul className="space-y-3">
+            {visible.map((item) => (
+              <li key={item.id} className="flex items-start gap-2 text-xs">
+                <TriangleAlert
+                  className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", item.overdue ? "text-destructive" : "text-warning")}
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className={cn("leading-snug", item.overdue ? "font-medium text-destructive" : "text-foreground")}>
+                    {item.message}
+                  </p>
+                  {item.actionHref && item.actionLabel && (
+                    <button
+                      type="button"
+                      onClick={() => onGo(item.actionHref!)}
+                      className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                    >
+                      {item.actionLabel}
+                      <ChevronRight className="h-3 w-3" aria-hidden />
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {payments.length > MAX_PAYMENTS && (
+            <button
+              type="button"
+              onClick={() => onGo("/finance/pending-payments")}
+              className="mt-3 flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+            >
+              View all {payments.length} pending payments
+              <ChevronRight className="h-3 w-3" aria-hidden />
+            </button>
+          )}
+        </>
       )}
     </DashCard>
   );

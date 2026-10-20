@@ -71,8 +71,8 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
-              background: "var(--popover)",
-              color: "var(--popover-foreground)",
+              background: "hsl(var(--popover))",
+              color: "hsl(var(--popover-foreground))",
               fontSize: 12,
             }}
             formatter={(value: number) => [formatCurrency(value, "INR"), "Revenue"]}
@@ -89,7 +89,7 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
             // A dot per reading, so a flat stretch still shows where the
             // readings actually are rather than reading as one long segment.
             dot={{ r: 3, fill: "#00D084", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#00D084", stroke: "var(--background)", strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: "#00D084", stroke: "hsl(var(--background))", strokeWidth: 2 }}
             isAnimationActive
             animationDuration={700}
             animationEasing="ease-out"

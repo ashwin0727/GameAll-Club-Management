@@ -25,7 +25,12 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  OverviewMetricKey,
+  OverviewTrendPoint,
+  ReportsOverviewMetrics,
   MembershipAnalytics,
+  MembershipMemberCounts,
+  MembershipBatchRow,
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
@@ -270,6 +275,50 @@ export class SupabaseReportsService implements ReportsService {
     };
   }
 
+  async getReportsOverview(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<ReportsOverviewMetrics> {
+    const { data, error } = await this.supabase.rpc("get_reports_overview", {
+      p_facility_id: facilityId,
+      p_start_date: range.from,
+      p_end_date: range.to,
+      p_facility_sport_ids: sportIds && sportIds.length > 0 ? sportIds : null,
+    });
+    if (error || !data) throw this.mapError(error);
+    const r = data as Record<string, number>;
+    return {
+      totalRevenueMinor: Number(r.totalRevenueMinor ?? 0),
+      totalExpensesMinor: Number(r.totalExpensesMinor ?? 0),
+      netRevenueMinor: Number(r.netRevenueMinor ?? 0),
+      guestBookings: Number(r.guestBookings ?? 0),
+      members: Number(r.members ?? 0),
+      programs: Number(r.programs ?? 0),
+      coaches: Number(r.coaches ?? 0),
+      students: Number(r.students ?? 0),
+      guestBookingRevenueMinor: Number(r.guestBookingRevenueMinor ?? 0),
+      membershipRevenueMinor: Number(r.membershipRevenueMinor ?? 0),
+      coachingRevenueMinor: Number(r.coachingRevenueMinor ?? 0),
+      coachingExpensesMinor: Number(r.coachingExpensesMinor ?? 0),
+    };
+  }
+
+  async getReportsOverviewTrend(
+    facilityId: string,
+    metric: OverviewMetricKey,
+    range: { from: string; to: string },
+    granularity: "daily" | "weekly" | "monthly",
+    sportIds: string[] | null,
+  ): Promise<OverviewTrendPoint[]> {
+    const { data, error } = await this.supabase.rpc("get_reports_overview_trend", {
+      p_facility_id: facilityId,
+      p_metric: metric,
+      p_start_date: range.from,
+      p_end_date: range.to,
+      p_granularity: granularity,
+      p_facility_sport_ids: sportIds && sportIds.length > 0 ? sportIds : null,
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({ date: r.bucket_date, value: Number(r.value) }));
+  }
+
   // ─── Phase 6: Memberships ──────────────────────────────────────────────
 
   async getMembershipAnalytics(filter: AnalyticsFilter): Promise<MembershipAnalytics> {
@@ -290,6 +339,44 @@ export class SupabaseReportsService implements ReportsService {
       pendingCount: r.pending_count,
       outstandingMinor: r.outstanding_minor,
     };
+  }
+
+  async getMembershipMemberCounts(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<MembershipMemberCounts> {
+    const { data, error } = await this.supabase.rpc("get_membership_member_counts", {
+      p_facility_id: facilityId,
+      p_start_date: range.from,
+      p_end_date: range.to,
+      p_facility_sport_ids: sportIds && sportIds.length > 0 ? sportIds : null,
+    });
+    if (error || !data?.[0]) throw this.mapError(error);
+    const r = data[0];
+    return { asOf: r.as_of, total: Number(r.total_members), active: Number(r.active_members), inactive: Number(r.inactive_members) };
+  }
+
+  async getMembershipBatchBreakdown(facilityId: string, range: { from: string; to: string }, sportIds: string[] | null): Promise<MembershipBatchRow[]> {
+    const { data, error } = await this.supabase.rpc("get_membership_batch_breakdown", {
+      p_facility_id: facilityId,
+      p_start_date: range.from,
+      p_end_date: range.to,
+      p_facility_sport_ids: sportIds && sportIds.length > 0 ? sportIds : null,
+    });
+    if (error) throw this.mapError(error);
+    return (data ?? []).map((r) => ({
+      facilitySportId: r.facility_sport_id,
+      sportName: r.sport_name,
+      courtId: r.court_id,
+      courtName: r.court_name,
+      batchId: r.batch_id,
+      batchName: r.batch_name,
+      daysOfWeek: r.days_of_week ?? [],
+      startTime: r.start_time,
+      endTime: r.end_time,
+      capacity: r.capacity,
+      members: Number(r.members),
+      activeMembers: Number(r.active_members),
+      courtMembers: Number(r.court_members),
+      sportMembers: Number(r.sport_members),
+    }));
   }
 
   async getMembershipsByType(filter: AnalyticsFilter): Promise<MembershipTypeRow[]> {

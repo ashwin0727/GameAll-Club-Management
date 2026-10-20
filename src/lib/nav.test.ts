@@ -14,7 +14,8 @@ describe("sidebar menu structure", () => {
       "Maintenance Management",
       "Staff Management",
       "Inventory Management",
-      "Finance",
+      "Finance Management",
+      "Report & Analytics Management",
     ]);
   });
 
@@ -25,6 +26,8 @@ describe("sidebar menu structure", () => {
     expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Coaching Schedule", "Report"]);
     expect(labelsIn("maintenance")).toEqual(["Maintenance", "Maintenance Tracker", "Issue Category"]);
     expect(labelsIn("staff")).toEqual(["Staff", "Roles & Permission", "Access History"]);
+    expect(labelsIn("finance")).toEqual(["Overview", "Transactions", "Payments", "Expenses", "Daily Closing", "P&L", "Refunds"]);
+    expect(labelsIn("reports")).toEqual(["Overview", "Court Utilization", "Revenue", "Memberships", "Guest Bookings"]);
     expect(labelsIn("inventory")).toEqual(
       INVENTORY_ENABLED ? ["Inventory Tracker", "Items", "Stock Movement", "Purchase Orders", "Vendors", "Categories"] : [],
     );
@@ -36,10 +39,13 @@ describe("sidebar menu structure", () => {
     expect(NAV_ITEMS.some((i) => i.href === "/maintenance/court-schedule")).toBe(false);
   });
 
-  it("only the Finance group still nests pages; every other section is flat", () => {
-    for (const item of NAV_ITEMS) {
-      if (item.group !== "finance") expect(item.children).toBeUndefined();
-    }
+  it("every section is flat — Finance Management and Report & Analytics Management list their pages directly", () => {
+    for (const item of NAV_ITEMS) expect(item.children).toBeUndefined();
+  });
+
+  it("keeps Finance and Reports as two separate sections with their own pages", () => {
+    expect(NAV_ITEMS.filter((i) => i.group === "finance").every((i) => i.href.startsWith("/finance") || i.href === "/refunds")).toBe(true);
+    expect(NAV_ITEMS.filter((i) => i.group === "reports").every((i) => i.href.startsWith("/reports"))).toBe(true);
   });
 
   it("keeps the permission gates on the sections that had them", () => {

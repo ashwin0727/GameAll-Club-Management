@@ -36,10 +36,11 @@ export type NavGroup =
   | "maintenance"
   | "staff"
   | "inventory"
-  | "finance";
+  | "finance"
+  | "reports";
 
 /** Sidebar sections in display order. */
-export const NAV_GROUP_ORDER: NavGroup[] = ["main", "guest", "memberships", "coaching", "maintenance", "staff", "inventory", "finance"];
+export const NAV_GROUP_ORDER: NavGroup[] = ["main", "guest", "memberships", "coaching", "maintenance", "staff", "inventory", "finance", "reports"];
 
 export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   main: null,
@@ -49,7 +50,8 @@ export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   maintenance: "Maintenance Management",
   staff: "Staff Management",
   inventory: "Inventory Management",
-  finance: "Finance",
+  finance: "Finance Management",
+  reports: "Report & Analytics Management",
 };
 
 export interface NavItem {
@@ -65,8 +67,8 @@ export interface NavItem {
    */
   permission?: string;
   /**
-   * Sub-pages shown when the item is expanded (only the Finance group still
-   * uses this; every other section lists its pages directly as flat items).
+   * Optional sub-pages shown when the item is expanded. No section uses this today — every section lists its
+   * pages directly as flat items.
    */
   children?: { label: string; href: string }[];
 }
@@ -123,36 +125,21 @@ export const NAV_ITEMS: NavItem[] = [
   // Inventory Management (switched off while INVENTORY_ENABLED is false)
   ...(INVENTORY_ENABLED ? INVENTORY_NAV_ITEMS : []),
 
-  // Finance (unchanged)
-  {
-    label: "Payments",
-    group: "finance",
-    href: "/finance",
-    roles: STAFF_ROLES,
-    children: [
-      { label: "Overview", href: "/finance" },
-      { label: "Transactions", href: "/finance/transactions" },
-      { label: "Payments", href: "/finance/pending-payments" },
-      { label: "Expenses", href: "/finance/expenses" },
-      { label: "Daily Closing", href: "/finance/daily-closing" },
-      { label: "P&L", href: "/finance/profit-loss" },
-      { label: "Refunds", href: "/refunds" },
-    ],
-  },
-  {
-    label: "Reports & Analytics",
-    group: "finance",
-    href: "/reports",
-    roles: STAFF_ROLES,
-    children: [
-      { label: "Overview", href: "/reports" },
-      { label: "Bookings", href: "/reports/bookings" },
-      { label: "Court Utilization", href: "/reports/court-utilization" },
-      { label: "Revenue", href: "/reports/revenue" },
-      { label: "Memberships", href: "/reports/memberships" },
-      { label: "Guest Bookings", href: "/reports/guest-bookings" },
-    ],
-  },
+  // Finance Management
+  { label: "Overview", group: "finance", href: "/finance", roles: STAFF_ROLES },
+  { label: "Transactions", group: "finance", href: "/finance/transactions", roles: STAFF_ROLES },
+  { label: "Payments", group: "finance", href: "/finance/pending-payments", roles: STAFF_ROLES },
+  { label: "Expenses", group: "finance", href: "/finance/expenses", roles: STAFF_ROLES },
+  { label: "Daily Closing", group: "finance", href: "/finance/daily-closing", roles: STAFF_ROLES },
+  { label: "P&L", group: "finance", href: "/finance/profit-loss", roles: STAFF_ROLES },
+  { label: "Refunds", group: "finance", href: "/refunds", roles: STAFF_ROLES },
+
+  // Report & Analytics Management
+  { label: "Overview", group: "reports", href: "/reports", roles: STAFF_ROLES },
+  { label: "Court Utilization", group: "reports", href: "/reports/court-utilization", roles: STAFF_ROLES },
+  { label: "Revenue", group: "reports", href: "/reports/revenue", roles: STAFF_ROLES },
+  { label: "Memberships", group: "reports", href: "/reports/memberships", roles: STAFF_ROLES },
+  { label: "Guest Bookings", group: "reports", href: "/reports/guest-bookings", roles: STAFF_ROLES },
 ];
 
 export const QUERY_STALE_TIME_MS = 30_000;

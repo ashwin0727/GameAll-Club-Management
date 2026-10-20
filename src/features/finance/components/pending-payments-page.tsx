@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CircleCheck, Search, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, CircleCheck, Clock3, Coins, Search, SlidersHorizontal, TriangleAlert, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/features/pricing/money";
+import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
@@ -145,19 +146,6 @@ export function PendingPaymentsPage() {
   const lastRow = Math.min((page + 1) * PAGE_SIZE, totalCount);
   const hasFilters = debounced.trim() !== "" || sourceType !== ALL || status !== DEFAULT_STATUS;
 
-  const kpis = useMemo(
-    () =>
-      summary
-        ? [
-            { label: "Outstanding Total", value: summary.outstandingMinor, accent: "text-primary" },
-            { label: "Pending", value: summary.pendingMinor, accent: "text-foreground" },
-            { label: "Partially Paid", value: summary.partiallyPaidMinor, accent: "text-foreground" },
-            { label: "Overdue", value: summary.overdueMinor, accent: "text-destructive" },
-          ]
-        : [],
-    [summary],
-  );
-
   if (loadState === "loading") return <Skeleton className="h-96 w-full rounded-xl" />;
   if (loadState === "none") return <p className="text-sm text-muted-foreground">No facility found for this account yet.</p>;
   if (loadState === "error") return <p className="text-sm text-destructive">Unable to load pending payments.</p>;
@@ -171,17 +159,58 @@ export function PendingPaymentsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {summary === null
-          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          : kpis.map((kpi) => (
-              <Card key={kpi.label} className="p-3">
-                <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
-                <p className={cn("mt-1 text-lg font-semibold tabular-nums", kpi.accent)}>
-                  {formatCurrency(kpi.value, "INR")}
-                </p>
-              </Card>
-            ))}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {summary === null ? (
+          Array.from({ length: 4 }).map((_, i) => <MembershipStatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <MembershipStatCard
+              icon={Wallet}
+              iconBg="bg-primary/15"
+              iconColor="text-primary"
+              value={formatCurrency(summary.outstandingMinor, "INR")}
+              countTo={summary.outstandingMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Outstanding Total"
+              sub={`${summary.obligationCount} payment${summary.obligationCount === 1 ? "" : "s"} still owed`}
+              index={0}
+            />
+            <MembershipStatCard
+              icon={Clock3}
+              iconBg="bg-warning/15"
+              iconColor="text-warning"
+              value={formatCurrency(summary.pendingMinor, "INR")}
+              countTo={summary.pendingMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Pending"
+              sub="Nothing paid yet"
+              index={1}
+            />
+            <MembershipStatCard
+              icon={Coins}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-400"
+              value={formatCurrency(summary.partiallyPaidMinor, "INR")}
+              countTo={summary.partiallyPaidMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Partially Paid"
+              sub="Balance left on part-paid items"
+              index={2}
+            />
+            <MembershipStatCard
+              icon={TriangleAlert}
+              iconBg="bg-destructive/15"
+              iconColor="text-destructive"
+              value={formatCurrency(summary.overdueMinor, "INR")}
+              countTo={summary.overdueMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Overdue"
+              sub="Past their due date"
+              subTone={summary.overdueMinor > 0 ? "text-destructive" : undefined}
+              index={3}
+            />
+          </>
+        )}
       </div>
 
       <Card className="p-4">

@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
   Banknote,
   Clock3,
   Download,
-  MapPin,
-  TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -19,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChartSkeleton } from "@/components/shared/chart-skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Donut, type DonutSegment } from "@/components/shared/donut";
-import { StatCard } from "@/components/shared/stat-card";
+import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { formatCurrency } from "@/features/pricing/money";
 import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
@@ -32,7 +30,9 @@ import type {
   RevenueTrendGranularity,
   RevenueTrendPoint,
 } from "@/features/finance/types";
-import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { buildFinanceCsv, downloadCsv } from "@/features/finance/export";
+import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
+import { currentMonthRange, fillTrendBuckets, iso, toFinanceDateRange, type DayRange } from "@/features/finance/day-range";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { RevenueTrendChart } from "@/features/finance/components/revenue-trend-chart";
 import { ServiceError } from "@/services/shared/service-error";
@@ -62,25 +62,6 @@ function changePct(current: number, previous: number): number | null {
   return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
 }
 
-function Delta({ pct, invert }: { pct: number | null; invert?: boolean }) {
-  if (pct === null) return <span className="text-[11px] text-muted-foreground">Vs last period</span>;
-  // For expenses and money owed, a rise is bad news — the arrow follows the
-  // number but the colour follows what it means for the facility.
-  const good = invert ? pct <= 0 : pct >= 0;
-  const Icon = pct >= 0 ? TrendingUp : TrendingDown;
-  return (
-    <span className={cnTone(good)}>
-      <Icon className="h-3 w-3" aria-hidden />
-      {pct > 0 ? "+" : ""}
-      {pct}% vs last period
-    </span>
-  );
-}
-
-function cnTone(good: boolean) {
-  return `inline-flex items-center gap-1 text-[11px] font-medium ${good ? "text-success" : "text-destructive"}`;
-}
-
 /**
  * The Finance Dashboard. Every figure comes from a backend RPC — this
  * renders what the server returns and never sums a total itself. The only
@@ -89,9 +70,13 @@ function cnTone(good: boolean) {
  */
 export function FinanceDashboard() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
-  const [facilityName, setFacilityName] = useState<string>("");
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
-  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: "THIS_MONTH" });
+  // The whole current month by default. Editing the dates changes only the draft; "Apply" loads them, and Export is
+  // always for the applied dates — so what is exported is exactly what is on screen.
+  const [applied, setApplied] = useState<DayRange>(() => currentMonthRange());
+  const [dirty, setDirty] = useState(false);
+  const dateRange = useMemo<FinanceDateRange>(() => toFinanceDateRange(applied), [applied]);
+  const [exporting, setExporting] = useState(false);
   const [granularity, setGranularity] = useState<RevenueTrendGranularity>("daily");
 
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
@@ -115,7 +100,6 @@ export function FinanceDashboard() {
           return;
         }
         setFacilityId(facility.id);
-        setFacilityName(facility.name);
         setLoadState("ready");
       })
       .catch(() => !cancelled && setLoadState("error"));
@@ -140,7 +124,8 @@ export function FinanceDashboard() {
     setSummary(s);
     setBreakdown(b);
     setMethods(m);
-    setTrend(t);
+    // Quiet days are shown as zero, so the chart spans exactly the dates that were picked.
+    setTrend(fillTrendBuckets(t, applied, granularity, (date) => ({ date, grossMinor: 0, refundMinor: 0, netMinor: 0 })));
     setRecent(page.transactions);
 
     // The comparison window: the same span immediately before this one.
@@ -152,7 +137,7 @@ export function FinanceDashboard() {
       // deltas simply read "vs last period" with no figure.
       setPrevious(null);
     }
-  }, [facilityId, sportsReady, sportIds, dateRange, granularity]);
+  }, [facilityId, sportsReady, sportIds, dateRange, applied, granularity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +149,36 @@ export function FinanceDashboard() {
       cancelled = true;
     };
   }, [load]);
+
+  async function exportCsv() {
+    if (!facilityId || exporting) return;
+    setExporting(true);
+    try {
+      // Every ledger row inside the applied dates, fetched page by page.
+      const finance = getFinanceService();
+      const pageSize = 500;
+      const entries = [];
+      for (let offset = 0; offset < 100_000; offset += pageSize) {
+        const page = await finance.listLedger({ facilityId, dateRange, limit: pageSize, offset, sportIds });
+        entries.push(...page.entries);
+        if (entries.length >= page.totalCount || page.entries.length === 0) break;
+      }
+      downloadCsv(
+        `finance-${applied.from}-to-${applied.to}.csv`,
+        buildFinanceCsv({
+          from: applied.from,
+          to: applied.to,
+          summary,
+          entries,
+          scopeNote: sportIds ? "Sports selected in the top bar (expenses are not split by sport and are not listed)" : null,
+        }),
+      );
+    } catch (err) {
+      setRangeError(err instanceof ServiceError ? err.message : "Could not export. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (loadState === "loading") return <DashboardSkeleton />;
   if (loadState === "none") {
@@ -194,16 +209,18 @@ export function FinanceDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <span className="mr-auto inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-sm">
-          <MapPin className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          {facilityName || "Facility"}
-        </span>
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
-        <Button asChild variant="outline" size="sm" className="min-h-9">
-          <Link href="/finance/transactions">
-            <Download className="h-4 w-4" aria-hidden /> Export
-          </Link>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <DayRangeFilter value={applied} onApply={setApplied} onDirtyChange={setDirty} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="min-h-9"
+          disabled={exporting || dirty || !summary}
+          title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
+          onClick={() => void exportCsv()}
+        >
+          <Download className="h-4 w-4" aria-hidden /> {exporting ? "Exporting…" : "Export"}
         </Button>
       </div>
 
@@ -216,43 +233,61 @@ export function FinanceDashboard() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {!summary ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+          Array.from({ length: 4 }).map((_, i) => <MembershipStatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard
+            <MembershipStatCard
               icon={Banknote}
-              label="Total Revenue"
+              iconBg="bg-success/15"
+              iconColor="text-success"
               value={formatCurrency(summary.grossRevenueMinor, INR)}
-              accent="#00D084"
+              countTo={summary.grossRevenueMinor}
+              format={(v) => formatCurrency(Math.round(v), INR)}
+              deltaPct={changePct(summary.grossRevenueMinor, previous?.grossRevenueMinor ?? 0)}
+              label="Total Revenue"
+              sub="Payments received"
               index={0}
-              hint={<Delta pct={changePct(summary.grossRevenueMinor, previous?.grossRevenueMinor ?? 0)} />}
             />
-            <StatCard
+            <MembershipStatCard
               icon={Wallet}
-              label="Total Expenses"
+              iconBg="bg-destructive/15"
+              iconColor="text-destructive"
               value={formatCurrency(summary.expensesMinor, INR)}
-              accent="#FF4D67"
+              countTo={summary.expensesMinor}
+              format={(v) => formatCurrency(Math.round(v), INR)}
+              deltaPct={changePct(summary.expensesMinor, previous?.expensesMinor ?? 0)}
+              invertDelta
+              label="Total Expenses"
+              sub="Recorded expenses"
               index={1}
-              hint={<Delta pct={changePct(summary.expensesMinor, previous?.expensesMinor ?? 0)} invert />}
             />
-            <StatCard
+            <MembershipStatCard
               icon={TrendingUp}
-              label="Net Revenue"
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-400"
               value={formatCurrency(summary.netRevenueMinor, INR)}
-              accent="#00F08A"
+              countTo={summary.netRevenueMinor}
+              format={(v) => formatCurrency(Math.round(v), INR)}
+              deltaPct={changePct(summary.netRevenueMinor, previous?.netRevenueMinor ?? 0)}
+              label="Net Revenue"
+              sub="After refunds and expenses"
               index={2}
-              hint={<Delta pct={changePct(summary.netRevenueMinor, previous?.netRevenueMinor ?? 0)} />}
             />
             <Link href="/finance/pending-payments" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <StatCard
+              <MembershipStatCard
                 icon={Clock3}
-                label="Pending Payments"
+                iconBg="bg-warning/15"
+                iconColor="text-warning"
                 value={formatCurrency(summary.outstandingMinor, INR)}
-                accent="#FFB020"
+                countTo={summary.outstandingMinor}
+                format={(v) => formatCurrency(Math.round(v), INR)}
+                deltaPct={changePct(summary.outstandingMinor, previous?.outstandingMinor ?? 0)}
+                invertDelta
+                label="Pending Payments"
+                sub="Owed to the facility · View"
                 index={3}
-                hint={<Delta pct={changePct(summary.outstandingMinor, previous?.outstandingMinor ?? 0)} invert />}
                 className="h-full transition-colors hover:border-primary/40"
               />
             </Link>
@@ -279,7 +314,7 @@ export function FinanceDashboard() {
           </div>
           {trend === null ? (
             <ChartSkeleton className="h-56" />
-          ) : trend.length === 0 ? (
+          ) : trend.every((p) => p.grossMinor === 0) ? (
             <EmptyPanel message="No revenue in this period yet." />
           ) : (
             <RevenueTrendChart points={trend} />
@@ -475,10 +510,6 @@ function previousRange(range: FinanceDateRange): FinanceDateRange {
     return { preset: "CUSTOM", startDate: iso(prevStart), endDate: iso(prevEnd) };
   }
   return range;
-}
-
-function iso(date: Date): string {
-  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
 }
 
 function formatTxnDate(iso: string): string {

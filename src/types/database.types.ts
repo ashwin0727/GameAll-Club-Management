@@ -3223,6 +3223,44 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["settlement_exceptions"]["Row"][];
       };
+      get_membership_batch_breakdown: {
+        Args: { p_facility_id: string; p_start_date: string; p_end_date: string; p_facility_sport_ids?: string[] | null };
+        Returns: {
+          facility_sport_id: string | null;
+          sport_name: string;
+          court_id: string | null;
+          court_name: string | null;
+          batch_id: string | null;
+          batch_name: string | null;
+          days_of_week: number[] | null;
+          start_time: string | null;
+          end_time: string | null;
+          capacity: number | null;
+          members: number;
+          active_members: number;
+          court_members: number;
+          sport_members: number;
+        }[];
+      };
+      get_membership_member_counts: {
+        Args: { p_facility_id: string; p_start_date: string; p_end_date: string; p_facility_sport_ids?: string[] | null };
+        Returns: { as_of: string; total_members: number; active_members: number; inactive_members: number }[];
+      };
+      get_reports_overview: {
+        Args: { p_facility_id: string; p_start_date: string; p_end_date: string; p_facility_sport_ids?: string[] | null };
+        Returns: Record<string, unknown>;
+      };
+      get_reports_overview_trend: {
+        Args: {
+          p_facility_id: string;
+          p_metric: string;
+          p_start_date: string;
+          p_end_date: string;
+          p_granularity?: string;
+          p_facility_sport_ids?: string[] | null;
+        };
+        Returns: { bucket_date: string; value: number }[];
+      };
       get_finance_summary: {
         Args: { p_facility_sport_ids?: string[] | null; p_facility_id: string; p_preset?: string; p_start_date?: string | null; p_end_date?: string | null };
         Returns: {

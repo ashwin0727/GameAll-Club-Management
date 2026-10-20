@@ -17,7 +17,12 @@ import type {
   RevenueBySportRow,
   RevenueByCourtRow,
   AnalyticsOverview,
+  OverviewMetricKey,
+  OverviewTrendPoint,
+  ReportsOverviewMetrics,
   MembershipAnalytics,
+  MembershipMemberCounts,
+  MembershipBatchRow,
   MembershipTypeRow,
   MembershipSessionAnalytics,
   GuestReleaseAnalytics,
@@ -178,9 +183,34 @@ export class FakeReportsService implements ReportsService {
     if (this.error) throw this.error;
     return this.revenueByCourt;
   }
+  reportsOverview: ReportsOverviewMetrics = {
+    totalRevenueMinor: 0, totalExpensesMinor: 0, netRevenueMinor: 0, guestBookings: 0, members: 0, programs: 0, coaches: 0, students: 0,
+    guestBookingRevenueMinor: 0, membershipRevenueMinor: 0, coachingRevenueMinor: 0, coachingExpensesMinor: 0,
+  };
+  overviewTrend: OverviewTrendPoint[] = [];
+  overviewTrendCalls: OverviewMetricKey[] = [];
+  async getReportsOverview(): Promise<ReportsOverviewMetrics> {
+    if (this.error) throw this.error;
+    return this.reportsOverview;
+  }
+  async getReportsOverviewTrend(_facilityId: string, metric: OverviewMetricKey): Promise<OverviewTrendPoint[]> {
+    if (this.error) throw this.error;
+    this.overviewTrendCalls.push(metric);
+    return this.overviewTrend;
+  }
   async getAnalyticsOverview(): Promise<AnalyticsOverview> {
     if (this.error) throw this.error;
     return this.analyticsOverview;
+  }
+  membershipMemberCounts: MembershipMemberCounts = { asOf: "2026-10-21", total: 0, active: 0, inactive: 0 };
+  async getMembershipMemberCounts(): Promise<MembershipMemberCounts> {
+    if (this.error) throw this.error;
+    return this.membershipMemberCounts;
+  }
+  membershipBatchBreakdown: MembershipBatchRow[] = [];
+  async getMembershipBatchBreakdown(): Promise<MembershipBatchRow[]> {
+    if (this.error) throw this.error;
+    return this.membershipBatchBreakdown;
   }
   async getMembershipAnalytics(): Promise<MembershipAnalytics> {
     if (this.error) throw this.error;

@@ -162,7 +162,8 @@ export interface PaymentMethodSlice {
 }
 
 export interface RevenueBySportRow {
-  facilitySportId: string;
+  /** null on the last row, "Not linked to a sport": revenue that belongs to no sport (e.g. a member never put in a batch). */
+  facilitySportId: string | null;
   sportName: string;
   revenueMinor: number;
 }
@@ -190,6 +191,46 @@ export interface AnalyticsOverview {
   overallUtilizationPct: number;
 }
 
+// ─── Overview cards (migration 0140) ──────────────────────────────────────
+
+/** Which card's figure a chart plots. */
+export type OverviewMetricKey =
+  | "REVENUE"
+  | "EXPENSES"
+  | "NET"
+  | "GUEST_BOOKINGS"
+  | "MEMBERS"
+  | "PROGRAMS"
+  | "COACHES"
+  | "STUDENTS"
+  | "GUEST_BOOKING_REVENUE"
+  | "MEMBERSHIP_REVENUE"
+  | "COACHING_REVENUE"
+  | "COACHING_EXPENSES";
+
+/** The twelve overview figures. Money is in minor units; the four "now" counts ignore the date range. */
+export interface ReportsOverviewMetrics {
+  totalRevenueMinor: number;
+  totalExpensesMinor: number;
+  netRevenueMinor: number;
+  guestBookings: number;
+  members: number;
+  programs: number;
+  coaches: number;
+  students: number;
+  guestBookingRevenueMinor: number;
+  membershipRevenueMinor: number;
+  coachingRevenueMinor: number;
+  coachingExpensesMinor: number;
+}
+
+export interface OverviewTrendPoint {
+  /** yyyy-mm-dd: the day, the Monday of the week, or the 1st of the month. */
+  date: string;
+  /** Minor units for money figures, a plain count otherwise. */
+  value: number;
+}
+
 // ─── Phase 6: Memberships ────────────────────────────────────────────────
 
 export interface MembershipAnalytics {
@@ -201,6 +242,42 @@ export interface MembershipAnalytics {
   partiallyPaidCount: number;
   pendingCount: number;
   outstandingMinor: number;
+}
+
+/**
+ * Members for the chosen dates: `total` registered or had a membership running in them, `active` of those have one that has not ended
+ * or been cancelled by `asOf` (the last day, or today if that day is still to come), `inactive` is the rest.
+ */
+export interface MembershipMemberCounts {
+  /** yyyy-mm-dd */
+  asOf: string;
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+/**
+ * One timing of a membership session batch (a court held at a time of day on some weekdays) with the members in it. The
+ * last row under All Sports has `batchId` null: members counted for the dates who are in no batch.
+ */
+export interface MembershipBatchRow {
+  facilitySportId: string | null;
+  sportName: string;
+  courtId: string | null;
+  courtName: string | null;
+  batchId: string | null;
+  batchName: string | null;
+  /** 0 = Sunday … 6 = Saturday */
+  daysOfWeek: number[];
+  /** hh:mm:ss */
+  startTime: string | null;
+  endTime: string | null;
+  capacity: number | null;
+  members: number;
+  activeMembers: number;
+  /** Distinct people across every timing on this court / in this sport (a person in two timings counts once). */
+  courtMembers: number;
+  sportMembers: number;
 }
 
 export interface MembershipTypeRow {

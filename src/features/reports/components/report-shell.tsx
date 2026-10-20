@@ -22,6 +22,7 @@ export function ReportShell({
   errorMessage = "Unable to load this report. Please try again.",
   filterBar,
   onExportCsv,
+  exportDisabled = false,
   children,
 }: {
   title: string;
@@ -32,6 +33,8 @@ export function ReportShell({
   errorMessage?: string;
   filterBar?: React.ReactNode;
   onExportCsv?: () => void;
+  /** The dates on screen have changed but not been applied: the file would not match what is shown. */
+  exportDisabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -42,7 +45,14 @@ export function ReportShell({
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
         {status === "ready" && onExportCsv && (
-          <Button variant="outline" size="sm" className="min-h-9" onClick={onExportCsv}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-9"
+            onClick={onExportCsv}
+            disabled={exportDisabled}
+            title={exportDisabled ? "Apply the new dates first — the export is for the dates on screen." : undefined}
+          >
             <Download className="h-4 w-4" aria-hidden /> Download CSV
           </Button>
         )}

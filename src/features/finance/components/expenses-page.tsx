@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Receipt, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Clock3, Layers, Receipt, Search, SlidersHorizontal, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { formatCurrency, toMinorUnits } from "@/features/pricing/money";
+import { formatCurrency } from "@/features/pricing/money";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { getFinanceService } from "@/services/finance";
 import { AddExpenseDialog } from "@/features/finance/components/add-expense-dialog";
 import { MarkExpensePaidDialog } from "@/features/finance/components/mark-expense-paid-dialog";
-import { DateRangePicker } from "@/features/finance/components/date-range-picker";
+import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
+import { currentMonthRange, toFinanceDateRange, type DayRange } from "@/features/finance/day-range";
+import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { ServiceError } from "@/services/shared/service-error";
 import type {
   ExpenseCategory,
@@ -48,7 +50,9 @@ export function ExpensesPage() {
   const { data: facility, isLoading: facilityLoading, isError: facilityQueryError } = useFacility();
   const facilityId = facility?.id ?? null;
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
-  const [dateRange, setDateRange] = useState<FinanceDateRange>({ preset: "THIS_MONTH" });
+  // The whole current month until the user picks other dates (and presses Apply).
+  const [range, setRange] = useState<DayRange>(() => currentMonthRange());
+  const dateRange = useMemo<FinanceDateRange>(() => toFinanceDateRange(range), [range]);
   const [page, setPage] = useState(0);
 
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
@@ -59,8 +63,6 @@ export function ExpensesPage() {
   const [categoryId, setCategoryId] = useState(ALL);
   const [paymentStatus, setPaymentStatus] = useState(ALL);
   const [paymentMethod, setPaymentMethod] = useState(ALL);
-  const [minAmount, setMinAmount] = useState("");
-  const [maxAmount, setMaxAmount] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
@@ -103,7 +105,7 @@ export function ExpensesPage() {
     };
   }, [facility, facilityLoading, facilityQueryError]);
 
-  useEffect(() => setPage(0), [dateRange, debounced, categoryId, paymentStatus, paymentMethod, minAmount, maxAmount]);
+  useEffect(() => setPage(0), [dateRange, debounced, categoryId, paymentStatus, paymentMethod]);
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -118,8 +120,6 @@ export function ExpensesPage() {
           categoryId: categoryId === ALL ? null : categoryId,
           paymentStatus: paymentStatus === ALL ? null : (paymentStatus as ExpensePaymentStatus),
           paymentMethod: paymentMethod === ALL ? null : paymentMethod,
-          minMinor: minAmount ? toMinorUnits(minAmount, "INR") : null,
-          maxMinor: maxAmount ? toMinorUnits(maxAmount, "INR") : null,
         },
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
@@ -129,7 +129,7 @@ export function ExpensesPage() {
     setExpenses(list.expenses);
     setTotalCount(list.totalCount);
     setSummary(totals);
-  }, [facilityId, dateRange, debounced, categoryId, paymentStatus, paymentMethod, minAmount, maxAmount, page]);
+  }, [facilityId, dateRange, debounced, categoryId, paymentStatus, paymentMethod, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,28 +150,7 @@ export function ExpensesPage() {
     debounced.trim() !== "" ||
     categoryId !== ALL ||
     paymentStatus !== ALL ||
-    paymentMethod !== ALL ||
-    minAmount !== "" ||
-    maxAmount !== "";
-
-  const kpis = useMemo(
-    () =>
-      summary
-        ? [
-            { label: "Total (Period)", value: summary.totalMinor, accent: "text-foreground" },
-            { label: "This Month", value: summary.thisMonthMinor, accent: "text-foreground" },
-            { label: "This Week", value: summary.thisWeekMinor, accent: "text-foreground" },
-            {
-              label: `Unpaid${summary.pendingCount ? ` (${summary.pendingCount})` : ""}`,
-              value: summary.pendingMinor,
-              accent: "text-warning",
-            },
-            { label: "Maintenance", value: summary.maintenanceMinor, accent: "text-foreground" },
-            { label: "Other Operating", value: summary.otherMinor, accent: "text-foreground" },
-          ]
-        : [],
-    [summary],
-  );
+    paymentMethod !== ALL;
 
   if (loadState === "loading") return <Skeleton className="h-96 w-full rounded-xl" />;
   if (loadState === "none") return <p className="text-sm text-muted-foreground">No facility found for this account yet.</p>;
@@ -184,23 +163,93 @@ export function ExpensesPage() {
           <h1 className="text-xl font-semibold">Expenses</h1>
           <p className="text-sm text-muted-foreground">Track facility expenses and operating costs.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-          <AddExpenseDialog onCreated={() => void load()} />
+        <div className="flex flex-wrap items-start gap-3">
+          <DayRangeFilter value={range} onApply={setRange} />
+          <div className="pt-5">
+            <AddExpenseDialog onCreated={() => void load()} />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        {summary === null
-          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          : kpis.map((kpi) => (
-              <Card key={kpi.label} className="p-3">
-                <p className="text-[11px] text-muted-foreground">{kpi.label}</p>
-                <p className={cn("mt-1 text-lg font-semibold tabular-nums", kpi.accent)}>
-                  {formatCurrency(kpi.value, "INR")}
-                </p>
-              </Card>
-            ))}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {summary === null ? (
+          Array.from({ length: 6 }).map((_, i) => <MembershipStatCardSkeleton key={i} compact />)
+        ) : (
+          <>
+            <MembershipStatCard
+              icon={Receipt}
+              iconBg="bg-destructive/15"
+              iconColor="text-destructive"
+              value={formatCurrency(summary.totalMinor, "INR")}
+              countTo={summary.totalMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Total (Period)"
+              sub="Selected dates"
+              index={0}
+              compact
+            />
+            <MembershipStatCard
+              icon={CalendarDays}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-600 dark:text-blue-400"
+              value={formatCurrency(summary.thisMonthMinor, "INR")}
+              countTo={summary.thisMonthMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="This Month"
+              sub="Current month"
+              index={1}
+              compact
+            />
+            <MembershipStatCard
+              icon={CalendarRange}
+              iconBg="bg-purple-500/15"
+              iconColor="text-purple-600 dark:text-purple-400"
+              value={formatCurrency(summary.thisWeekMinor, "INR")}
+              countTo={summary.thisWeekMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="This Week"
+              sub="Current week"
+              index={2}
+              compact
+            />
+            <MembershipStatCard
+              icon={Clock3}
+              iconBg="bg-warning/15"
+              iconColor="text-warning"
+              value={formatCurrency(summary.pendingMinor, "INR")}
+              countTo={summary.pendingMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Unpaid"
+              sub={summary.pendingCount ? `${summary.pendingCount} not fully paid` : "Everything is paid"}
+              index={3}
+              compact
+            />
+            <MembershipStatCard
+              icon={Wrench}
+              iconBg="bg-orange-500/15"
+              iconColor="text-orange-600 dark:text-orange-400"
+              value={formatCurrency(summary.maintenanceMinor, "INR")}
+              countTo={summary.maintenanceMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Maintenance"
+              sub="Selected dates"
+              index={4}
+              compact
+            />
+            <MembershipStatCard
+              icon={Layers}
+              iconBg="bg-success/15"
+              iconColor="text-success"
+              value={formatCurrency(summary.otherMinor, "INR")}
+              countTo={summary.otherMinor}
+              format={(v) => formatCurrency(Math.round(v), "INR")}
+              label="Other Operating"
+              sub="Everything else"
+              index={5}
+              compact
+            />
+          </>
+        )}
       </div>
 
       <Card className="p-4">
@@ -231,12 +280,6 @@ export function ExpensesPage() {
               options={[{ value: ALL, label: "Any Method" }, ...methods.map((m) => ({ value: m, label: m }))]}
             />
           </FilterField>
-          <FilterField label="Min ₹" className="w-[7rem]">
-            <Input inputMode="decimal" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} placeholder="0" />
-          </FilterField>
-          <FilterField label="Max ₹" className="w-[7rem]">
-            <Input inputMode="decimal" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="—" />
-          </FilterField>
           <div className="ml-auto space-y-1.5">
             <span className="block select-none text-xs text-transparent" aria-hidden>
               Reset
@@ -251,8 +294,6 @@ export function ExpensesPage() {
                 setCategoryId(ALL);
                 setPaymentStatus(ALL);
                 setPaymentMethod(ALL);
-                setMinAmount("");
-                setMaxAmount("");
               }}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Reset

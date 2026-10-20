@@ -429,25 +429,64 @@ export function buildScheduleTimeline(input: {
   return { startHour, endHour, courts };
 }
 
+/** One thing still owed, as Pending Payments lists it (amounts in whole rupees). */
+export interface AttentionObligation {
+  sourceType: string;
+  sourceId: string;
+  customerName: string;
+  outstandingInr: number;
+  /** PENDING | PARTIALLY_PAID | OVERDUE */
+  status: string;
+  /** yyyy-mm-dd */
+  dueOn: string;
+}
+
+const OBLIGATION_LABELS: Record<string, string> = {
+  GUEST_BOOKING: "Guest booking",
+  BOOKING: "Booking",
+  MEMBERSHIP: "Membership",
+  COACHING_ENROLLMENT: "Coaching",
+};
+
+function shortDate(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  if (!y || !m || !d) return yyyyMmDd;
+  return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/**
+ * The Attention Required list: every payment still owed — overdue ones first, the longest overdue at the very top —
+ * then what is due next, then memberships about to lapse. Nothing is left out because of its type.
+ */
 export function buildAttentionItems(input: {
   membershipsExpiringSoon: number;
-  paymentsPendingInr: number;
+  obligations?: AttentionObligation[];
 }): AttentionItem[] {
   const items: AttentionItem[] = [];
+  const owed = [...(input.obligations ?? [])].sort((x, y) => {
+    const ox = x.status === "OVERDUE" ? 0 : 1;
+    const oy = y.status === "OVERDUE" ? 0 : 1;
+    if (ox !== oy) return ox - oy;
+    return x.dueOn.localeCompare(y.dueOn); // oldest due date first
+  });
+  for (const o of owed) {
+    const overdue = o.status === "OVERDUE";
+    const label = OBLIGATION_LABELS[o.sourceType] ?? "Payment";
+    items.push({
+      id: `payment-${o.sourceId}`,
+      message: `${o.customerName} · ${label}: ₹${o.outstandingInr.toLocaleString("en-IN")} ${overdue ? "overdue since" : "due"} ${shortDate(o.dueOn)}`,
+      actionLabel: "Record payment",
+      actionHref: `/finance/pending-payments/${o.sourceId}/record`,
+      overdue,
+      amountInr: o.outstandingInr,
+    });
+  }
   if (input.membershipsExpiringSoon > 0) {
     items.push({
       id: "memberships-expiring",
       message: `${input.membershipsExpiringSoon} membership${input.membershipsExpiringSoon === 1 ? "" : "s"} expiring soon.`,
       actionLabel: "View Members",
       actionHref: "/memberships/v1",
-    });
-  }
-  if (input.paymentsPendingInr > 0) {
-    items.push({
-      id: "payments-pending",
-      message: `₹${input.paymentsPendingInr.toLocaleString("en-IN")} in payments pending.`,
-      actionLabel: "View Pending Payments",
-      actionHref: "/finance/pending-payments",
     });
   }
   return items;

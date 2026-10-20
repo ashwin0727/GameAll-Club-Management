@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { NAV_ITEMS } from "@/lib/constants";
+import { NAV_GROUP_LABELS, NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import type { PermissionKey } from "@/features/staff/types";
@@ -34,7 +34,7 @@ export function TopbarSearch({ role }: { role: Role }) {
     for (const item of NAV_ITEMS) {
       if (!item.roles.includes(role)) continue;
       if (item.permission && perms && !perms.can(item.permission as PermissionKey)) continue;
-      out.push({ label: item.label, href: item.href, section: "Page" });
+      out.push({ label: item.label, href: item.href, section: NAV_GROUP_LABELS[item.group] ?? "Page" });
       for (const child of item.children ?? []) {
         if (child.href === item.href) continue;
         out.push({ label: child.label, href: child.href, section: item.label });

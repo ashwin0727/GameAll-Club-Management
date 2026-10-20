@@ -27,7 +27,7 @@ export function CapacityDonut({
     <div className="flex items-center gap-4">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border, #e5e7eb)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--border))" strokeWidth={stroke} />
           {segments.map((s, i) => {
             const len = (Math.min(s.value, total) / total) * circ;
             const dash = `${len} ${circ - len}`;

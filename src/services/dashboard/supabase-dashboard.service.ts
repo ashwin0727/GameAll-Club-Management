@@ -163,11 +163,16 @@ export class SupabaseDashboardService implements DashboardService {
         .or(
           `and(paid_at.gte.${revWindowFrom},paid_at.lt.${revWindowTo}),and(paid_at.is.null,created_at.gte.${revWindowFrom},created_at.lt.${revWindowTo})`,
         ),
-      // Attention Required: what is still owed. Today -> only dues falling today; any other period -> everything owed.
-      this.supabase.rpc("get_pending_payments_summary", {
+      // Attention Required: everything still owed, oldest due date first (so what is overdue leads). Today -> what is
+      // overdue or due by today; any other period -> everything owed. Follows the top bar's sports.
+      this.supabase.rpc("list_pending_payments", {
         p_facility_id: facilityId,
-        p_from: params.preset === "TODAY" ? localDateKey(now) : null,
+        p_status: "ALL_OUTSTANDING",
         p_to: params.preset === "TODAY" ? localDateKey(now) : null,
+        p_sort: "DUE_DATE",
+        p_limit: 50,
+        p_offset: 0,
+        p_facility_sport_ids: params.facilitySportIds && params.facilitySportIds.length > 0 ? params.facilitySportIds : null,
       }),
     ]);
 
@@ -384,7 +389,14 @@ export class SupabaseDashboardService implements DashboardService {
       businessPosition: { revenueInr: scopedCurrentPaymentSummary.collectedInr, expensesAvailable: false },
       attentionItems: buildAttentionItems({
         membershipsExpiringSoon: memberships.expiringSoon,
-        paymentsPendingInr: Math.round((pendingDuesRes.data?.[0]?.outstanding_minor ?? 0) / 100),
+        obligations: (pendingDuesRes.data ?? []).map((r) => ({
+          sourceType: r.source_type,
+          sourceId: r.source_id,
+          customerName: r.customer_name,
+          outstandingInr: Math.round(r.outstanding_minor / 100),
+          status: r.status,
+          dueOn: r.due_on,
+        })),
       }),
       upcomingActivities: { available: false },
     };

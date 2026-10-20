@@ -25,6 +25,7 @@ import '../../data/models/finance.dart'
         PendingPaymentsPage,
         PendingPaymentsSummary,
         ListPendingPaymentsInput,
+        ObligationStatus,
         PendingPaymentFilters;
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_avatar.dart';
@@ -108,11 +109,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       try {
         final fin = ref.read(financeRepositoryProvider);
         // Today -> only what falls due today; any other period -> everything still owed.
-        String? dueFrom, dueTo;
+        String? dueTo;
         if (_preset == DateRangePreset.today) {
           final n = DateTime.now();
-          dueFrom = dueTo =
-              '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+          dueTo = '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
         }
         final extras = await Future.wait([
           fin.listLedger(ListLedgerInput(
@@ -123,10 +123,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           )),
           fin.listPendingPayments(ListPendingPaymentsInput(
             facilityId: _facilityId!,
-            filters: PendingPaymentFilters(from: dueFrom, to: dueTo),
-            limit: 3,
+            // Overdue first: the server orders by due date, oldest first. Today also stops at today.
+            filters: PendingPaymentFilters(to: dueTo),
+            limit: 500,
           )),
-          fin.getPendingPaymentsSummary(_facilityId!, from: dueFrom, to: dueTo),
+          fin.getPendingPaymentsSummary(_facilityId!, to: dueTo),
         ]);
         if (!mounted) return;
         setState(() {
@@ -668,18 +669,6 @@ class _DashboardBody extends StatelessWidget {
           _OnCourtNowSection(liveBlocks: liveBlocks, nowMin: nowMin),
         ],
 
-        // ── EMPTY SLOTS ───────────────────────────────────────────
-        if (_isToday) ...[
-          Builder(builder: (context) {
-            final gaps = _findGaps(tl, nowMin);
-            if (gaps.isEmpty) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xl),
-              child: _EmptySlotsSection(gaps: gaps),
-            );
-          }),
-        ],
-
         // ── PROMO BANNER ──────────────────────────────────────────
         const SizedBox(height: AppSpacing.xl),
         const _MoreThanBookingsCard(),
@@ -725,32 +714,6 @@ class _DashboardBody extends StatelessWidget {
     );
   }
 
-  /// Free windows on each court from now until close — the biggest per court.
-  static List<_SlotGap> _findGaps(ScheduleTimeline tl, int nowMin) {
-    final closeMin = tl.endHour * 60;
-    final startMin = math.max(nowMin, tl.startHour * 60);
-    if (closeMin - startMin < 30) return const [];
-    final gaps = <_SlotGap>[];
-    for (final c in tl.courts) {
-      final busy = c.blocks
-          .where((b) => b.endMinute > startMin)
-          .map((b) => (b.startMinute, b.endMinute))
-          .toList()
-        ..sort((a, b) => a.$1.compareTo(b.$1));
-      var cursor = startMin;
-      for (final (bs, be) in busy) {
-        if (bs - cursor >= 45) {
-          gaps.add(_SlotGap(c.courtName, c.sportName, cursor, bs));
-        }
-        cursor = math.max(cursor, be);
-      }
-      if (closeMin - cursor >= 45) {
-        gaps.add(_SlotGap(c.courtName, c.sportName, cursor, closeMin));
-      }
-    }
-    gaps.sort((a, b) => a.startMin.compareTo(b.startMin));
-    return gaps;
-  }
 }
 
 class _ScheduleCourtRef {
@@ -758,15 +721,6 @@ class _ScheduleCourtRef {
   final String id;
   final String name;
   final String sport;
-}
-
-class _SlotGap {
-  const _SlotGap(this.court, this.sport, this.startMin, this.endMin);
-  final String court;
-  final String sport;
-  final int startMin;
-  final int endMin;
-  int get minutes => endMin - startMin;
 }
 
 String _time12(int minuteOfDay) {
@@ -1523,24 +1477,53 @@ class _NeedsYouSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final n = count > 0 ? count : (obligations.length + attention.length);
+    // Overdue leads (the server already orders oldest due date first); the summary adds it all up.
+    final overdue = obligations.where((o) => o.status == ObligationStatus.overdue).toList();
+    final totalOwed = obligations.fold<int>(0, (sum, o) => sum + o.outstandingMinor);
+    final totalOverdue = overdue.fold<int>(0, (sum, o) => sum + o.outstandingMinor);
     return _DashSection(
       title: 'Needs You',
       trailing: Text('$n item${n == 1 ? '' : 's'}',
           style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
       child: Column(
         children: [
+          if (obligations.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text.rich(
+                  TextSpan(
+                    style: TextStyle(fontSize: 12.5, color: tokens.textSecondary),
+                    children: [
+                      TextSpan(
+                          text: Formatters.currencyInr((totalOwed / 100).round()),
+                          style: TextStyle(fontWeight: FontWeight.w800, color: tokens.textPrimary)),
+                      TextSpan(text: ' pending across ${obligations.length} payment${obligations.length == 1 ? '' : 's'}'),
+                      if (overdue.isNotEmpty) ...[
+                        const TextSpan(text: ' · '),
+                        TextSpan(
+                            text: '${Formatters.currencyInr((totalOverdue / 100).round())} overdue',
+                            style: TextStyle(fontWeight: FontWeight.w800, color: tokens.destructive)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
           for (final o in obligations)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _needRow(
                 context,
-                icon: Icons.schedule_rounded,
-                tone: tokens.warning,
-                title: "${o.customerName} hasn't paid",
+                icon: o.status == ObligationStatus.overdue ? Icons.warning_amber_rounded : Icons.schedule_rounded,
+                tone: o.status == ObligationStatus.overdue ? tokens.destructive : tokens.warning,
+                title: o.status == ObligationStatus.overdue
+                    ? '${o.customerName} · overdue since ${_dueLabel(o.dueOn)}'
+                    : '${o.customerName} · due ${_dueLabel(o.dueOn)}',
                 subtitle: o.description,
-                trailing: Formatters.currencyInr(
-                    (o.outstandingMinor / 100).round()),
-                trailingTone: tokens.warning,
+                trailing: Formatters.currencyInr((o.outstandingMinor / 100).round()),
+                trailingTone: o.status == ObligationStatus.overdue ? tokens.destructive : tokens.warning,
                 onTap: () async {
                   await context.push(AppRoutes.financePendingPayments);
                   onReturn();
@@ -1564,6 +1547,11 @@ class _NeedsYouSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _dueLabel(String yyyyMmDd) {
+    final d = DateTime.tryParse(yyyyMmDd);
+    return d == null ? yyyyMmDd : Formatters.dateShort(d);
   }
 
   Widget _needRow(
@@ -1731,82 +1719,6 @@ class _OnCourtNowSection extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────── EMPTY SLOTS ──
-
-class _EmptySlotsSection extends StatelessWidget {
-  const _EmptySlotsSection({required this.gaps});
-  final List<_SlotGap> gaps;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return _DashSection(
-      title: 'Free Slots Left Today',
-      child: SizedBox(
-        height: 118,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: gaps.length,
-          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-          itemBuilder: (context, i) {
-            final g = gaps[i];
-            return Material(
-              color: tokens.surface1,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => context.push(AppRoutes.bookings),
-                child: Container(
-              width: 130,
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: tokens.borderColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_time12(g.startMin),
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text('${g.court} · ${g.sport}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: 10.5, color: tokens.textSecondary)),
-                  Text('${g.minutes} min free',
-                      style: TextStyle(
-                          fontSize: 10.5, color: tokens.textSecondary)),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () => context.push(AppRoutes.bookings),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: tokens.primary,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text('Fill',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: tokens.onAccent(tokens.primary))),
-                    ),
-                  ),
-                ],
-              ),
-                ),
-              ),
-            );
-          },
-        ),
       ),
     );
   }

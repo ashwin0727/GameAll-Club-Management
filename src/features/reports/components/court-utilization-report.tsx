@@ -4,15 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getReportsService } from "@/services/reports";
-import { useAnalyticsFilter } from "./use-analytics-filter";
-import { AnalyticsFilterBar } from "./analytics-filter-bar";
-import { AnalyticsFilterSheet } from "./analytics-filter-sheet";
+import { useReportRange } from "./use-report-range";
+import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
 import { ReportShell, type ReportStatus } from "./report-shell";
 import { ReportBarList } from "./report-bar-list";
 import { DataTable } from "./data-table";
 import { Heatmap } from "./heatmap";
 import { PeakHoursChart } from "./peak-hours-chart";
-import { filterToSearchParams } from "../url-state";
 import { toCsv } from "../aggregation";
 import type {
   CourtUtilizationRow,
@@ -35,7 +33,8 @@ function formatHourLabel(h: number): string {
 }
 
 export function CourtUtilizationReport() {
-  const { filter, setFilter, ready } = useAnalyticsFilter();
+  const { filter, range, setRange, ready } = useReportRange();
+  const [dirty, setDirty] = useState(false);
 
   const [status, setStatus] = useState<ReportStatus>("loading");
   const [overall, setOverall] = useState<OverallUtilization | null>(null);
@@ -80,32 +79,8 @@ export function CourtUtilizationReport() {
     return rows;
   }, [courts, courtSort]);
 
-  const filterBar =
-    ready && filter ? (
-      <>
-        <div className="hidden md:block">
-          <AnalyticsFilterBar filter={filter} onChange={setFilter} />
-        </div>
-        <div className="md:hidden">
-          <AnalyticsFilterSheet filter={filter} onChange={setFilter} />
-        </div>
-      </>
-    ) : null;
-
-  function courtHref(courtId: string): string {
-    return `/reports/court-utilization?${filterToSearchParams({
-      ...filter!,
-      courtId,
-      facilitySportId: null,
-    }).toString()}`;
-  }
-  function sportHref(facilitySportId: string): string {
-    return `/reports/court-utilization?${filterToSearchParams({
-      ...filter!,
-      facilitySportId,
-      courtId: null,
-    }).toString()}`;
-  }
+  // Just the dates: the facility is the one facility, and the sports come from the top bar.
+  const filterBar = ready ? <DayRangeFilter value={range} onApply={setRange} onDirtyChange={setDirty} /> : null;
 
   function handleExport() {
     if (!filter) return;
@@ -136,7 +111,7 @@ export function CourtUtilizationReport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `court-utilization-${filter.facilityId}-${filter.preset}.csv`;
+    a.download = `court-utilization-${range.from}-to-${range.to}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -164,6 +139,7 @@ export function CourtUtilizationReport() {
       errorMessage="Unable to calculate utilization. Please try again."
       filterBar={filterBar}
       onExportCsv={handleExport}
+      exportDisabled={dirty}
     >
       <div className="space-y-5">
         {overall && (
@@ -216,10 +192,6 @@ export function CourtUtilizationReport() {
                     booked: (c.bookedMinutes / 60).toFixed(1),
                     util: `${c.utilizationPct}%`,
                   }))}
-                  href={(row) => {
-                    const match = sortedCourts.find((c) => c.courtName === row.court);
-                    return match ? courtHref(match.courtId) : "#";
-                  }}
                 />
               </div>
             </>
@@ -245,10 +217,6 @@ export function CourtUtilizationReport() {
                   booked: (s.bookedMinutes / 60).toFixed(1),
                   util: `${s.utilizationPct}%`,
                 }))}
-                href={(row) => {
-                  const match = sports.find((s) => s.sportName === row.sport);
-                  return match ? sportHref(match.facilitySportId) : "#";
-                }}
               />
             </div>
           </Card>

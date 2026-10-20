@@ -125,6 +125,10 @@ export interface AttentionItem {
   /** Omitted when there's no existing page this can honestly link to yet. */
   actionLabel?: string;
   actionHref?: string;
+  /** A payment past its due date — listed first, in red. */
+  overdue?: boolean;
+  /** What is owed, for a payment item (whole rupees). */
+  amountInr?: number;
 }
 
 /** No activity/event log table exists yet — always unavailable, never fabricated. */

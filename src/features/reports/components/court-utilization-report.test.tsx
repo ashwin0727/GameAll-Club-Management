@@ -5,7 +5,11 @@ import { CourtUtilizationReport } from "./court-utilization-report";
 import { installFakeReportsFilterDeps } from "@/test/fakes/fake-reports-filter-deps";
 import { installFakeReportsService } from "@/test/fakes/fake-reports-service";
 
-// The reports read the top bar's sport selection; these tests have no query client, and All Sports is what they mean.
+// The report reads the facility and the top bar's sport selection; these tests have no query client, and All Sports is what they mean.
+const FACILITY = { id: "fac-1", name: "Champz Turf" };
+vi.mock("@/features/facility/hooks/use-facility", () => ({
+  useFacility: () => ({ data: FACILITY, isLoading: false }),
+}));
 vi.mock("@/features/facility/hooks/use-sport-filter", () => ({
   useSportIds: () => ({ sportIds: null, ready: true, key: "all" }),
 }));
@@ -76,6 +80,20 @@ describe("CourtUtilizationReport", () => {
     const table = screen.getByRole("table", { name: /court utilization/i });
     const bodyText = table.textContent ?? "";
     expect(bodyText.indexOf("Court 2")).toBeLessThan(bodyText.indexOf("Court 1"));
+  });
+
+  it("filters by From / To dates only — no facility, month, sport or court pickers", async () => {
+    const reports = setup();
+    reports.overallUtilization = { openMinutes: 6000, bookedMinutes: 4080, utilizationPct: 68 };
+    reports.courtUtilization = TWO_COURTS;
+    render(<CourtUtilizationReport />);
+    expect(await screen.findByLabelText("From date", {}, SLOW)).toBeInTheDocument();
+    expect(screen.getByLabelText("To date")).toBeInTheDocument();
+    await screen.findByText("68%", {}, SLOW);
+    expect(screen.queryByText("All Sports")).not.toBeInTheDocument();
+    expect(screen.queryByText("All Courts")).not.toBeInTheDocument();
+    expect(screen.queryByText("This Month")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /facility|sport$|court$/i })).not.toBeInTheDocument();
   });
 
   it("offers a CSV download once data is loaded", async () => {
