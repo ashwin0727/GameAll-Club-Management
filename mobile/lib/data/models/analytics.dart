@@ -131,7 +131,18 @@ class AnalyticsFilter {
   final String? facilitySportId;
   final String? courtId;
 
-  static const AnalyticsFilter initial = AnalyticsFilter(preset: AnalyticsPreset.thisMonth);
+  /// The current calendar month (first day → today) as an explicit range —
+  /// the default for every report, as on the web.
+  factory AnalyticsFilter.currentMonth([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    String iso(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    return AnalyticsFilter(
+      preset: AnalyticsPreset.custom,
+      startDate: iso(DateTime(n.year, n.month, 1)),
+      endDate: iso(DateTime(n.year, n.month, n.day)),
+    );
+  }
 
   /// A half-picked CUSTOM range can't be sent — the server would reject it.
   bool get isComplete =>
@@ -146,10 +157,11 @@ class AnalyticsFilter {
     Object? facilitySportId = _sentinel,
     Object? courtId = _sentinel,
   }) {
+    final next = preset ?? this.preset;
     return AnalyticsFilter(
-      preset: preset ?? this.preset,
-      startDate: preset == AnalyticsPreset.custom ? (startDate ?? this.startDate) : null,
-      endDate: preset == AnalyticsPreset.custom ? (endDate ?? this.endDate) : null,
+      preset: next,
+      startDate: next == AnalyticsPreset.custom ? (startDate ?? this.startDate) : null,
+      endDate: next == AnalyticsPreset.custom ? (endDate ?? this.endDate) : null,
       facilitySportId: identical(facilitySportId, _sentinel)
           ? this.facilitySportId
           : facilitySportId as String?,
@@ -491,17 +503,18 @@ class PaymentMethodSlice {
 
 class RevenueBySportRow {
   const RevenueBySportRow({
-    required this.facilitySportId,
+    this.facilitySportId,
     required this.sportName,
     required this.revenueMinor,
   });
 
-  final String facilitySportId;
+  /// Null for the "Not linked to a sport" row (revenue with no sport behind it).
+  final String? facilitySportId;
   final String sportName;
   final int revenueMinor;
 
   factory RevenueBySportRow.fromJson(Map<String, dynamic> json) => RevenueBySportRow(
-        facilitySportId: json['facility_sport_id'] as String,
+        facilitySportId: json['facility_sport_id'] as String?,
         sportName: json['sport_name'] as String,
         revenueMinor: _int(json['revenue_minor']),
       );
@@ -733,5 +746,145 @@ class GuestPeakHourRow {
   factory GuestPeakHourRow.fromJson(Map<String, dynamic> json) => GuestPeakHourRow(
         hour: _int(json['hour']),
         bookingCount: _int(json['booking_count']),
+      );
+}
+
+// ─── Reports overview (twelve cards) ────────────────────────────────────
+
+/// `get_reports_overview`'s twelve figures. Money is minor units; members,
+/// programs, coaches and students are headcounts that follow the dates.
+class ReportsOverviewMetrics {
+  const ReportsOverviewMetrics({
+    required this.totalRevenueMinor,
+    required this.totalExpensesMinor,
+    required this.netRevenueMinor,
+    required this.guestBookings,
+    required this.members,
+    required this.programs,
+    required this.coaches,
+    required this.students,
+    required this.guestBookingRevenueMinor,
+    required this.membershipRevenueMinor,
+    required this.coachingRevenueMinor,
+    required this.coachingExpensesMinor,
+  });
+
+  final int totalRevenueMinor;
+  final int totalExpensesMinor;
+  final int netRevenueMinor;
+  final int guestBookings;
+  final int members;
+  final int programs;
+  final int coaches;
+  final int students;
+  final int guestBookingRevenueMinor;
+  final int membershipRevenueMinor;
+  final int coachingRevenueMinor;
+  final int coachingExpensesMinor;
+
+  factory ReportsOverviewMetrics.fromJson(Map<String, dynamic> json) => ReportsOverviewMetrics(
+        totalRevenueMinor: _int(json['totalRevenueMinor']),
+        totalExpensesMinor: _int(json['totalExpensesMinor']),
+        netRevenueMinor: _int(json['netRevenueMinor']),
+        guestBookings: _int(json['guestBookings']),
+        members: _int(json['members']),
+        programs: _int(json['programs']),
+        coaches: _int(json['coaches']),
+        students: _int(json['students']),
+        guestBookingRevenueMinor: _int(json['guestBookingRevenueMinor']),
+        membershipRevenueMinor: _int(json['membershipRevenueMinor']),
+        coachingRevenueMinor: _int(json['coachingRevenueMinor']),
+        coachingExpensesMinor: _int(json['coachingExpensesMinor']),
+      );
+}
+
+/// One bucket of `get_reports_overview_trend`: minor units for money
+/// metrics, a plain count otherwise.
+class OverviewTrendPoint {
+  const OverviewTrendPoint({required this.date, required this.value});
+
+  /// yyyy-MM-dd: the day, the Monday of the week, or the 1st of the month.
+  final String date;
+  final int value;
+
+  factory OverviewTrendPoint.fromJson(Map<String, dynamic> json) =>
+      OverviewTrendPoint(date: '${json['bucket_date']}', value: _int(json['value']));
+}
+
+// ─── Memberships report: member counts + timings ────────────────────────
+
+class MembershipMemberCounts {
+  const MembershipMemberCounts({
+    required this.asOf,
+    required this.total,
+    required this.active,
+    required this.inactive,
+  });
+
+  final String asOf;
+  final int total;
+  final int active;
+  final int inactive;
+
+  factory MembershipMemberCounts.fromJson(Map<String, dynamic> json) => MembershipMemberCounts(
+        asOf: '${json['as_of']}',
+        total: _int(json['total_members']),
+        active: _int(json['active_members']),
+        inactive: _int(json['inactive_members']),
+      );
+}
+
+/// One timing of a membership session batch with the members in it. The row
+/// with a null [batchId] is "members counted for the dates who are in no
+/// batch".
+class MembershipBatchRow {
+  const MembershipBatchRow({
+    required this.facilitySportId,
+    required this.sportName,
+    required this.courtId,
+    required this.courtName,
+    required this.batchId,
+    required this.batchName,
+    required this.daysOfWeek,
+    required this.startTime,
+    required this.endTime,
+    required this.members,
+    required this.activeMembers,
+    required this.courtMembers,
+    required this.sportMembers,
+  });
+
+  final String? facilitySportId;
+  final String sportName;
+  final String? courtId;
+  final String? courtName;
+  final String? batchId;
+  final String? batchName;
+
+  /// 0 = Sunday … 6 = Saturday.
+  final List<int> daysOfWeek;
+  final String? startTime;
+  final String? endTime;
+  final int members;
+  final int activeMembers;
+
+  /// Distinct people across every timing on this court / in this sport.
+  final int courtMembers;
+  final int sportMembers;
+
+  factory MembershipBatchRow.fromJson(Map<String, dynamic> json) => MembershipBatchRow(
+        facilitySportId: json['facility_sport_id'] as String?,
+        sportName: (json['sport_name'] as String?) ?? '',
+        courtId: json['court_id'] as String?,
+        courtName: json['court_name'] as String?,
+        batchId: json['batch_id'] as String?,
+        batchName: json['batch_name'] as String?,
+        daysOfWeek: ((json['days_of_week'] as List<dynamic>?) ?? const []).map((e) => (e as num).toInt()).toList(),
+        startTime: json['start_time'] as String?,
+        endTime: json['end_time'] as String?,
+        members: _int(json['members']),
+        activeMembers: _int(json['active_members']),
+        courtMembers: _int(json['court_members']),
+        sportMembers: _int(json['sport_members']),
       );
 }

@@ -60,7 +60,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   bool _isReady = false;
   String? _loadError;
 
-  FinanceDateRange _range = const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
+  FinanceDateRange _range = currentMonthRange();
   LedgerTxnType? _txnType;
   String? _category;
   String? _paymentMethod;
@@ -286,15 +286,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               label: _paymentMethod ?? 'All Payment Modes',
                               onSelect: _methods.isEmpty ? () {} : _pickMethod,
                             ),
-                            const SizedBox(width: AppSpacing.sm),
-                            IntrinsicWidth(
-                              child: FinanceDateRangePicker(
-                                value: _range,
-                                onChanged: (next) => _applyFilterChange(() => _range = next),
-                              ),
-                            ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinanceDateRangePicker(
+                        value: _range,
+                        onChanged: (next) => _applyFilterChange(() => _range = next),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       if (_listError != null) ...[

@@ -30,8 +30,6 @@ class _ReportLink {
 final _links = <_ReportLink>[
   _ReportLink(Icons.insights_outlined, 'Overview', 'Business performance at a glance',
       AppRoutes.reportsOverview, (t) => t.primary),
-  _ReportLink(Icons.event_note_outlined, 'Bookings', 'Volume, status mix and demand by sport',
-      AppRoutes.reportsBookings, (t) => t.electricBlue),
   _ReportLink(Icons.donut_small_outlined, 'Court Utilization', 'How hard each court is working',
       AppRoutes.reportsCourtUtilization, (t) => t.violet),
   _ReportLink(Icons.trending_up_outlined, 'Revenue', 'Trend, breakdown and payment methods',

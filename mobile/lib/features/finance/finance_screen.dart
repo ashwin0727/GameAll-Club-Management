@@ -11,8 +11,11 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/utils/csv_export.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_metric_card.dart';
+import '../../shared/widgets/metric_trend_chart.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/skeleton.dart';
@@ -21,7 +24,6 @@ import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_period.dart';
 import 'finance_presentation.dart';
-import 'revenue_trend_chart.dart';
 
 /// The Finance Dashboard — mirrors
 /// src/features/finance/components/finance-dashboard.tsx.
@@ -41,10 +43,9 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   bool _isLoading = true;
   String? _loadError;
   String? _facilityId;
-  String _facilityName = '';
 
-  FinanceDateRange _range = const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
-  RevenueTrendGranularity _granularity = RevenueTrendGranularity.daily;
+  FinanceDateRange _range = currentMonthRange();
+  RevenueTrendGranularity _granularity = _granularityFor(currentMonthRange());
 
   FinanceSummary? _summary;
   FinanceSummary? _previous;
@@ -53,6 +54,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   List<RevenueTrendPoint>? _trend;
   List<FinanceTransaction> _recent = [];
   bool _rangeLoading = false;
+  bool _exporting = false;
   String? _rangeError;
 
   /// Guards against a slow response for an earlier range landing after a
@@ -75,7 +77,6 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       return;
     }
     _facilityId = facility.id;
-    _facilityName = facility.name;
     setState(() => _isLoading = false);
     await _loadRange();
   }
@@ -132,9 +133,56 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   Future<void> _refresh() => _loadRange();
 
+  /// Readable buckets for the span: daily up to a month, weekly up to six, monthly beyond.
+  static RevenueTrendGranularity _granularityFor(FinanceDateRange r) {
+    final s = r.startDate, e = r.endDate;
+    if (s == null || e == null) return RevenueTrendGranularity.daily;
+    final days = DateTime.parse(e).difference(DateTime.parse(s)).inDays + 1;
+    if (days <= 31) return RevenueTrendGranularity.daily;
+    if (days <= 183) return RevenueTrendGranularity.weekly;
+    return RevenueTrendGranularity.monthly;
+  }
+
+  Future<void> _export() async {
+    final s = _summary;
+    if (s == null) return;
+    setState(() => _exporting = true);
+    try {
+      final b = _breakdown;
+      final rows = <List<Object?>>[
+        ['Finance report', '${_range.startDate} to ${_range.endDate}'],
+        [],
+        ['Section', 'Item', 'Amount (INR)'],
+        ['Summary', 'Total revenue', s.grossRevenueMinor / 100],
+        ['Summary', 'Refunds', s.refundsMinor / 100],
+        ['Summary', 'Total expenses', s.expensesMinor / 100],
+        ['Summary', 'Net revenue', s.netRevenueMinor / 100],
+        ['Summary', 'Pending payments', s.outstandingMinor / 100],
+        if (b != null) ...[
+          ['Revenue breakdown', 'Guest bookings', b.guestBookingRevenueMinor / 100],
+          ['Revenue breakdown', 'Memberships', b.membershipRevenueMinor / 100],
+          ['Revenue breakdown', 'Member bookings', b.memberBookingRevenueMinor / 100],
+          ['Revenue breakdown', 'Coaching', b.coachingRevenueMinor / 100],
+          ['Revenue breakdown', 'Refunds', b.refundsMinor / 100],
+        ],
+        for (final m in _methods ?? const <PaymentMethodSlice>[])
+          ['Payment methods', '${m.paymentMethod} (${m.paymentCount})', m.amountMinor / 100],
+        for (final t in _trend ?? const <RevenueTrendPoint>[]) ['Revenue trend', t.date, t.netMinor / 100],
+      ];
+      await shareCsv(fileName: 'finance_${_range.startDate}_to_${_range.endDate}.csv', rows: rows);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   void _onRangeChanged(FinanceDateRange next) {
     setState(() {
       _range = next;
+      _granularity = _granularityFor(next);
       _previous = null;
     });
     _loadRange();
@@ -175,23 +223,20 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_facilityName.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                const Icon(Icons.place_outlined, size: 16, color: AppColors.muted),
-                                const SizedBox(width: AppSpacing.xs),
-                                Expanded(
-                                  child: Text(_facilityName,
-                                      style: AppTypography.secondary(context),
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
                           const _FinanceSectionsNav(),
                           const SizedBox(height: AppSpacing.md),
-                          FinanceDateRangePicker(value: _range, onChanged: _onRangeChanged),
+                          FinanceDateRangePicker(
+                            value: _range,
+                            onChanged: _onRangeChanged,
+                            trailing: OutlinedButton.icon(
+                              onPressed: _summary == null || _exporting ? null : _export,
+                              icon: _exporting
+                                  ? const SizedBox(
+                                      width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                  : const Icon(Icons.ios_share_rounded, size: 18),
+                              label: const Text('Export'),
+                            ),
+                          ),
                           const SizedBox(height: AppSpacing.lg),
                           if (_rangeError != null) ...[
                             Text(_rangeError!, style: const TextStyle(color: AppColors.destructive)),
@@ -217,7 +262,13 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                                   : _trend!.isEmpty
                                       ? Text('No revenue in this period yet.',
                                           style: AppTypography.secondary(context))
-                                      : RevenueTrendChart(points: _trend!),
+                                      : MetricTrendChart(
+                                          points: [
+                                            for (final t in _trend!) TrendPoint(t.date, t.grossMinor / 100),
+                                          ],
+                                          color: context.tokens.primary,
+                                          formatValue: (v) => financeAmount((v * 100).round()),
+                                        ),
                             ),
                             const SizedBox(height: AppSpacing.xl),
                             SectionHeader(title: 'Revenue Breakdown'),
@@ -276,40 +327,60 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   Widget _statCards() {
     final s = _summary;
     final p = _previous;
+    final tokens = context.tokens;
+    String money(num v) => financeAmount(v.round());
+    // A rise in spend or money owed is bad news, so those two carry no
+    // green/red arrow rather than a misleading one.
     final cards = <Widget>[
-      _StatCard(
+      AppMetricCard(
         label: 'Total Revenue',
-        value: s == null ? '—' : financeAmount(s.grossRevenueMinor),
-        pct: (s == null) ? null : changePct(current: s.grossRevenueMinor, previous: p?.grossRevenueMinor ?? 0),
+        value: s == null ? '—' : money(s.grossRevenueMinor),
+        icon: Icons.payments_outlined,
+        accentColor: tokens.primary,
+        changePercent: s == null ? null : changePct(current: s.grossRevenueMinor, previous: p?.grossRevenueMinor ?? 0),
+        countTo: s?.grossRevenueMinor,
+        formatValue: money,
       ),
-      _StatCard(
+      AppMetricCard(
         label: 'Total Expenses',
-        value: s == null ? '—' : financeAmount(s.expensesMinor),
-        pct: (s == null) ? null : changePct(current: s.expensesMinor, previous: p?.expensesMinor ?? 0),
-        // For spending, a rise is bad news.
-        invert: true,
+        value: s == null ? '—' : money(s.expensesMinor),
+        icon: Icons.receipt_long_outlined,
+        accentColor: tokens.destructive,
+        countTo: s?.expensesMinor,
+        formatValue: money,
+        entranceDelay: const Duration(milliseconds: 60),
       ),
-      _StatCard(
+      AppMetricCard(
         label: 'Net Revenue',
-        value: s == null ? '—' : financeAmount(s.netRevenueMinor),
-        pct: (s == null) ? null : changePct(current: s.netRevenueMinor, previous: p?.netRevenueMinor ?? 0),
+        value: s == null ? '—' : money(s.netRevenueMinor),
+        icon: Icons.account_balance_wallet_outlined,
+        accentColor: tokens.electricBlue,
+        changePercent: s == null ? null : changePct(current: s.netRevenueMinor, previous: p?.netRevenueMinor ?? 0),
+        countTo: s?.netRevenueMinor,
+        formatValue: money,
+        entranceDelay: const Duration(milliseconds: 120),
       ),
-      _StatCard(
-        label: 'Pending Payments',
-        value: s == null ? '—' : financeAmount(s.outstandingMinor),
-        pct: (s == null) ? null : changePct(current: s.outstandingMinor, previous: p?.outstandingMinor ?? 0),
-        invert: true,
+      InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         onTap: () async {
           await context.push(AppRoutes.financePendingPayments);
           if (mounted) _refresh();
         },
+        child: AppMetricCard(
+          label: 'Pending Payments',
+          value: s == null ? '—' : money(s.outstandingMinor),
+          icon: Icons.hourglass_empty_rounded,
+          accentColor: tokens.warning,
+          countTo: s?.outstandingMinor,
+          formatValue: money,
+          entranceDelay: const Duration(milliseconds: 180),
+        ),
       ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = (constraints.maxWidth / 170).floor().clamp(1, 2);
-        final width = (constraints.maxWidth - (AppSpacing.md * (columns - 1))) / columns;
+        final width = (constraints.maxWidth - AppSpacing.md) / 2;
         return Wrap(
           spacing: AppSpacing.md,
           runSpacing: AppSpacing.md,
@@ -508,85 +579,6 @@ String _granularityLabel(RevenueTrendGranularity g) {
 
 /// A headline figure for the selected range, with its change against the
 /// preceding window of equal length.
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    this.pct,
-    this.invert = false,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final double? pct;
-
-  /// For expenses and money owed, a rise is bad news — so the colour follows
-  /// what the change means, not just its direction.
-  final bool invert;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(label, style: AppTypography.caption(context))),
-              if (onTap != null) const Icon(Icons.chevron_right, size: 16, color: AppColors.muted),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _Delta(pct: pct, invert: invert),
-        ],
-      ),
-    );
-  }
-}
-
-class _Delta extends StatelessWidget {
-  const _Delta({required this.pct, required this.invert});
-
-  final double? pct;
-  final bool invert;
-
-  @override
-  Widget build(BuildContext context) {
-    if (pct == null) {
-      return Text('Vs last period', style: AppTypography.caption(context));
-    }
-    final good = invert ? pct! <= 0 : pct! >= 0;
-    final colour = good ? context.tokens.success : context.tokens.destructive;
-    final rounded = pct! == pct!.roundToDouble() ? pct!.toStringAsFixed(0) : pct!.toStringAsFixed(1);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(pct! >= 0 ? Icons.trending_up : Icons.trending_down, size: 13, color: colour),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text(
-            '${pct! > 0 ? '+' : ''}$rounded% vs last period',
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colour, fontSize: 11, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// The actionable queue callout — a current count (not date-filtered by the
 /// backend), linking to the Refunds screen where the owner resolves them.
 class _SettlementExceptionsCallout extends StatelessWidget {

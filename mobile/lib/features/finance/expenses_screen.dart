@@ -43,7 +43,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String? _loadError;
 
   List<ExpenseCategory> _categories = [];
-  FinanceDateRange _range = const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
+  FinanceDateRange _range = currentMonthRange();
   String? _categoryId;
   ExpensePaymentStatus? _paymentStatus;
   int _page = 0;
@@ -251,15 +251,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             label: _paymentStatus?.label ?? 'Any status',
                             onSelect: _pickPaymentStatus,
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          IntrinsicWidth(
-                            child: FinanceDateRangePicker(
-                              value: _range,
-                              onChanged: (next) => _applyFilterChange(() => _range = next),
-                            ),
-                          ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FinanceDateRangePicker(
+                      value: _range,
+                      onChanged: (next) => _applyFilterChange(() => _range = next),
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     if (_listError != null) ...[

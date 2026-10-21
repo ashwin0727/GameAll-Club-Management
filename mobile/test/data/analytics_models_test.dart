@@ -193,12 +193,22 @@ void main() {
   });
 
   group('analytics_filter helpers', () {
-    test('analyticsFilterFromQuery decodes preset + scope, falls back on garbage', () {
-      final f = analyticsFilterFromQuery({'preset': 'THIS_QUARTER', 'sport': 'fs-1'});
-      expect(f.preset, AnalyticsPreset.thisQuarter);
+    test('analyticsFilterFromQuery decodes From/To + scope, opens on the current month otherwise', () {
+      final f = analyticsFilterFromQuery({'from': '2026-09-01', 'to': '2026-09-20', 'sport': 'fs-1'});
+      expect(f.preset, AnalyticsPreset.custom);
+      expect(f.startDate, '2026-09-01');
+      expect(f.endDate, '2026-09-20');
       expect(f.facilitySportId, 'fs-1');
-      expect(analyticsFilterFromQuery({'preset': 'NONSENSE'}).preset, AnalyticsPreset.thisMonth);
-      expect(analyticsFilterFromQuery({'preset': 'CUSTOM', 'from': '2026-09-01'}).preset, AnalyticsPreset.thisMonth);
+      for (final q in [
+        {'preset': 'NONSENSE'},
+        {'preset': 'THIS_QUARTER'},
+        {'from': '2026-09-01'},
+      ]) {
+        final g = analyticsFilterFromQuery(q);
+        expect(g.preset, AnalyticsPreset.custom);
+        expect(g.isComplete, isTrue);
+        expect(g.startDate, endsWith('-01'));
+      }
     });
 
     test('pickAnalyticsGranularity by span', () {

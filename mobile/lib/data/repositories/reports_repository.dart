@@ -236,6 +236,62 @@ class ReportsRepository {
     }
   }
 
+  // ─── Overview (twelve cards) + membership counts ─────────────────────
+
+  Map<String, dynamic> _rangeArgs(String facilityId, AnalyticsFilter f) => {
+        'p_facility_id': facilityId,
+        'p_start_date': f.startDate,
+        'p_end_date': f.endDate,
+        'p_facility_sport_ids': null,
+      };
+
+  Future<ReportsOverviewMetrics> getReportsOverview(String facilityId, AnalyticsFilter filter) async {
+    try {
+      final data = await _client.rpc('get_reports_overview', params: _rangeArgs(facilityId, filter));
+      if (data is! Map) throw AppException(AppErrorCode.reportsDataError);
+      return ReportsOverviewMetrics.fromJson(data.cast<String, dynamic>());
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// [metric] is a web `OverviewMetricKey` (REVENUE, EXPENSES, NET, …).
+  Future<List<OverviewTrendPoint>> getReportsOverviewTrend(
+    String facilityId,
+    AnalyticsFilter filter,
+    String metric,
+    String granularity,
+  ) async {
+    try {
+      final data = await _client.rpc('get_reports_overview_trend', params: {
+        ..._rangeArgs(facilityId, filter),
+        'p_metric': metric,
+        'p_granularity': granularity,
+      });
+      return _rows(data).map(OverviewTrendPoint.fromJson).toList();
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<MembershipMemberCounts> getMembershipMemberCounts(String facilityId, AnalyticsFilter filter) async {
+    try {
+      final data = await _client.rpc('get_membership_member_counts', params: _rangeArgs(facilityId, filter));
+      return MembershipMemberCounts.fromJson(_firstRow(data));
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<List<MembershipBatchRow>> getMembershipBatchBreakdown(String facilityId, AnalyticsFilter filter) async {
+    try {
+      final data = await _client.rpc('get_membership_batch_breakdown', params: _rangeArgs(facilityId, filter));
+      return _rows(data).map(MembershipBatchRow.fromJson).toList();
+    } catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   // ─── Memberships ──────────────────────────────────────────────────────
 
   Future<MembershipAnalytics> getMembershipAnalytics(String facilityId, AnalyticsFilter filter) async {

@@ -11,6 +11,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/analytics.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/utils/csv_export.dart';
+import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
@@ -46,13 +48,13 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
 
   ReportStatus _status = ReportStatus.loading;
   RevenueSummary? _summary;
-  RevenueSummary? _previousSummary;
   List<RevenueTrendPoint> _trend = const [];
   ReportRevenueBreakdown? _breakdown;
   List<PaymentMethodSlice> _methods = const [];
   List<RevenueBySportRow> _bySport = const [];
   List<RevenueByCourtRow> _byCourt = const [];
   RevenueTrendGranularity? _granularityOverride;
+  bool _exporting = false;
   int _requestId = 0;
 
   bool get _scoped => _filter.isScoped;
@@ -78,7 +80,6 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
       if (_scoped) {
         setState(() {
           _summary = null;
-          _previousSummary = null;
           _trend = const [];
           _breakdown = null;
           _methods = const [];
@@ -107,18 +108,6 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
         _byCourt = byCourt;
         _status = summary.grossMinor == 0 ? ReportStatus.empty : ReportStatus.ready;
       });
-
-      final prevFilter = previousAnalyticsPeriod(_filter);
-      if (prevFilter != null) {
-        try {
-          final prev = await repo.getRevenueSummary(facility.id, prevFilter);
-          if (mounted && requestId == _requestId) setState(() => _previousSummary = prev);
-        } catch (_) {
-          if (mounted && requestId == _requestId) setState(() => _previousSummary = null);
-        }
-      } else if (mounted && requestId == _requestId) {
-        setState(() => _previousSummary = null);
-      }
     } on AppException {
       if (mounted && requestId == _requestId) setState(() => _status = ReportStatus.error);
     } catch (_) {
@@ -147,16 +136,41 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
     }
   }
 
+  Future<void> _export() async {
+    final x = _summary;
+    if (x == null) return;
+    setState(() => _exporting = true);
+    try {
+      String inr(int minor) => (minor / 100).toStringAsFixed(2);
+      final b = _breakdown;
+      final rows = <List<Object?>>[
+        ['Section', 'Label', 'Value'],
+        ['Period', 'From', _filter.startDate],
+        ['Period', 'To', _filter.endDate],
+        ['Summary', 'Total Revenue (INR)', inr(x.grossMinor)],
+        ['Summary', 'Refunds (INR)', inr(x.refundsMinor)],
+        ['Summary', 'Net Revenue (INR)', inr(x.netMinor)],
+        ['Summary', 'Expenses (INR)', inr(x.expensesMinor)],
+        if (b != null) ['Breakdown', 'Memberships (INR)', inr(b.membershipMinor)],
+        for (final m in _methods) ['Payment methods', '${m.method} (${m.count})', inr(m.amountMinor)],
+        for (final r in _bySport) ['Revenue by sport', r.sportName, inr(r.revenueMinor)],
+        for (final r in _byCourt) ['Revenue by court', '${r.courtName} · ${r.sportName}', inr(r.revenueMinor)],
+        for (final t in _trend) ['Revenue trend', t.date, inr(t.netMinor)],
+      ];
+      await shareCsv(fileName: 'revenue_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   void _drill(String path, {String? sportId, String? courtId}) {
     context.push(
       '$path?${Uri(queryParameters: analyticsFilterToQuery(_filter.copyWith(facilitySportId: sportId, courtId: courtId))).query}',
     );
-  }
-
-  double? _pct(num Function(RevenueSummary) pick) {
-    final s = _summary, p = _previousSummary;
-    if (s == null || p == null) return null;
-    return analyticsChangePct(current: pick(s), previous: pick(p));
   }
 
   @override
@@ -176,14 +190,18 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Header(filter: _filter, onFilterChanged: _onFilterChanged),
+                      const _Header(),
                       const SizedBox(height: AppSpacing.lg),
                       AnalyticsFilterControls(
-                        facilityId: facility.id,
                         filter: _filter,
                         onChanged: _onFilterChanged,
-                        showDate: false,
-                        leadingIcons: true,
+                        trailing: OutlinedButton.icon(
+                          onPressed: _summary == null || _exporting ? null : _export,
+                          icon: _exporting
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.ios_share_rounded, size: 18),
+                          label: const Text('Export'),
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       switch (_status) {
@@ -214,11 +232,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
 
   Widget _body(BuildContext context) {
     final b = _breakdown;
-    final sportRows = <RevenueBySportRow>[
-      ..._bySport,
-      if (b != null)
-        RevenueBySportRow(facilitySportId: '__membership__', sportName: 'Memberships', revenueMinor: b.membershipMinor),
-    ]..sort((a, c) => c.revenueMinor.compareTo(a.revenueMinor));
+    final sportRows = [..._bySport]..sort((a, c) => c.revenueMinor.compareTo(a.revenueMinor));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,170 +338,54 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
   // ── KPI grid ───────────────────────────────────────────────────────────
 
   Widget _kpiGrid(BuildContext context) {
-    final s = _summary!;
+    final x = _summary!;
     final tokens = context.tokens;
-    return Column(
-      children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _kpiCard(
-                  context,
-                  icon: Icons.paid_rounded,
-                  accent: tokens.primary,
-                  label: 'Total Revenue',
-                  value: analyticsAmount(s.grossMinor),
-                  pct: _pct((x) => x.grossMinor),
-                  showGlyph: true,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _kpiCard(
-                  context,
-                  icon: Icons.account_balance_wallet_rounded,
-                  accent: tokens.electricBlue,
-                  label: 'Net Revenue',
-                  value: analyticsAmount(s.netMinor),
-                  pct: _pct((x) => x.netMinor),
-                  showGlyph: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _kpiCard(
-                  context,
-                  icon: Icons.replay_rounded,
-                  accent: tokens.destructive,
-                  label: 'Refunds',
-                  value: analyticsAmount(s.refundsMinor),
-                  pct: _pct((x) => x.refundsMinor),
-                  invert: true,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _kpiCard(
-                  context,
-                  icon: Icons.description_rounded,
-                  accent: tokens.warning,
-                  label: 'Expenses',
-                  value: analyticsAmount(s.expensesMinor),
-                  pct: _pct((x) => x.expensesMinor),
-                  invert: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _kpiCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color accent,
-    required String label,
-    required String value,
-    double? pct,
-    bool invert = false,
-    bool showGlyph = false,
-  }) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: tokens.accentFill(accent),
-        border: Border.all(color: tokens.accentEdge(accent)),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+    String money(num v) => analyticsAmount(v.round());
+    final cards = <Widget>[
+      AppMetricCard(
+        label: 'Total Revenue',
+        value: money(x.grossMinor),
+        icon: Icons.paid_rounded,
+        accentColor: tokens.primary,
+        countTo: x.grossMinor,
+        formatValue: money,
       ),
-      child: Stack(
-        children: [
-          if (showGlyph)
-            Positioned(
-              right: -4,
-              bottom: -4,
-              child: Icon(Icons.show_chart_rounded, size: 46, color: accent.withValues(alpha: 0.14)),
-            ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: tokens.accentSolid(accent), shape: BoxShape.circle),
-                    child: Icon(icon, size: 15, color: tokens.onAccent(accent)),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12.5, color: tokens.textSecondary)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value,
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: tokens.textPrimary)),
-              ),
-              const SizedBox(height: 6),
-              _kpiDelta(context, pct, invert: invert),
-            ],
-          ),
-        ],
+      AppMetricCard(
+        label: 'Net Revenue',
+        value: money(x.netMinor),
+        icon: Icons.account_balance_wallet_rounded,
+        accentColor: tokens.electricBlue,
+        countTo: x.netMinor,
+        formatValue: money,
+        entranceDelay: const Duration(milliseconds: 60),
       ),
-    );
-  }
-
-  Widget _kpiDelta(BuildContext context, double? pct, {required bool invert}) {
-    final tokens = context.tokens;
-    if (pct == null || pct == 0) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.remove_rounded, size: 13, color: tokens.textSecondary),
-          const SizedBox(width: 3),
-          Flexible(
-            child: Text('0% vs last period',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: tokens.textSecondary)),
-          ),
-        ],
+      AppMetricCard(
+        label: 'Refunds',
+        value: money(x.refundsMinor),
+        icon: Icons.replay_rounded,
+        accentColor: tokens.destructive,
+        countTo: x.refundsMinor,
+        formatValue: money,
+        entranceDelay: const Duration(milliseconds: 120),
+      ),
+      AppMetricCard(
+        label: 'Expenses',
+        value: money(x.expensesMinor),
+        icon: Icons.description_rounded,
+        accentColor: tokens.warning,
+        countTo: x.expensesMinor,
+        formatValue: money,
+        entranceDelay: const Duration(milliseconds: 180),
+      ),
+    ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = (constraints.maxWidth - AppSpacing.md) / 2;
+      return Wrap(
+        spacing: AppSpacing.md,
+        runSpacing: AppSpacing.md,
+        children: [for (final c in cards) SizedBox(width: width, child: c)],
       );
-    }
-    final good = invert ? pct <= 0 : pct >= 0;
-    final color = good ? tokens.success : tokens.destructive;
-    final rounded = pct == pct.roundToDouble() ? pct.toStringAsFixed(0) : pct.toStringAsFixed(1);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(pct >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded, size: 13, color: color),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text('${pct > 0 ? '+' : ''}$rounded% vs last period',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-        ),
-      ],
-    );
+    });
   }
 
   // ── Revenue Trend — granularity toggle ────────────────────────────────
@@ -738,14 +636,12 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
         for (final r in live)
           _entityRow(
             context,
-            icon: r.facilitySportId == '__membership__' ? Icons.workspace_premium_rounded : sportVisual(tokens, r.sportName).icon,
-            accent: r.facilitySportId == '__membership__' ? tokens.destructive : sportVisual(tokens, r.sportName).accent,
+            icon: r.facilitySportId == null ? Icons.link_off_rounded : sportVisual(tokens, r.sportName).icon,
+            accent: r.facilitySportId == null ? tokens.textSecondary : sportVisual(tokens, r.sportName).accent,
             label: r.sportName,
             amountMinor: r.revenueMinor,
             pct: total == 0 ? 0 : r.revenueMinor / total * 100,
-            onTap: r.facilitySportId == '__membership__'
-                ? null
-                : () => _drill(AppRoutes.reportsRevenue, sportId: r.facilitySportId),
+            onTap: null,
           ),
       ],
     );
@@ -1011,52 +907,7 @@ class _RevenueReportSkeleton extends StatelessWidget {
 /// Utilization's own header exactly (same premium layout for every Reports
 /// screen), reusing the same preset picker sheet as [AnalyticsFilterControls].
 class _Header extends StatelessWidget {
-  const _Header({required this.filter, required this.onFilterChanged});
-
-  final AnalyticsFilter filter;
-  final ValueChanged<AnalyticsFilter> onFilterChanged;
-
-  Future<void> _pickPreset(BuildContext context) async {
-    final picked = await showModalBottomSheet<AnalyticsPreset>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final p in kAnalyticsPresets)
-              ListTile(
-                title: Text(p.label),
-                trailing: p == filter.preset ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.pop(ctx, p),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (picked == null || !context.mounted) return;
-    if (picked == AnalyticsPreset.custom) {
-      final range = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now().add(const Duration(days: 1)),
-      );
-      if (range == null) return;
-      onFilterChanged(filter.copyWith(
-        preset: AnalyticsPreset.custom,
-        startDate: _iso(range.start),
-        endDate: _iso(range.end),
-      ));
-      return;
-    }
-    onFilterChanged(filter.copyWith(preset: picked));
-  }
-
-  String get _dateLabel {
-    if (filter.preset == AnalyticsPreset.custom && filter.startDate != null && filter.endDate != null) {
-      return '${filter.startDate} – ${filter.endDate}';
-    }
-    return filter.preset.label;
-  }
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
@@ -1086,30 +937,6 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            InkWell(
-              onTap: () => _pickPreset(context),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: tokens.accentSolid(tokens.primary),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_today_rounded, size: 14, color: tokens.onAccent(tokens.primary)),
-                    const SizedBox(width: 6),
-                    Text(_dateLabel,
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w500, color: tokens.onAccent(tokens.primary))),
-                    const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: tokens.onAccent(tokens.primary)),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ],
@@ -1117,5 +944,3 @@ class _Header extends StatelessWidget {
   }
 }
 
-String _iso(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

@@ -163,14 +163,11 @@ class _CourtUtilizationReportScreenState extends ConsumerState<CourtUtilizationR
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Header(filter: _filter, onFilterChanged: _onFilterChanged),
+                      const _Header(),
                       const SizedBox(height: AppSpacing.lg),
                       AnalyticsFilterControls(
-                        facilityId: facility.id,
                         filter: _filter,
                         onChanged: _onFilterChanged,
-                        showDate: false,
-                        leadingIcons: true,
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       switch (_status) {
@@ -316,52 +313,7 @@ class _CourtUtilizationSkeleton extends StatelessWidget {
 /// this screen that intentionally departs from [ReportSectionHeader]'s
 /// AppBar to match the reference design exactly.
 class _Header extends StatelessWidget {
-  const _Header({required this.filter, required this.onFilterChanged});
-
-  final AnalyticsFilter filter;
-  final ValueChanged<AnalyticsFilter> onFilterChanged;
-
-  Future<void> _pickPreset(BuildContext context) async {
-    final picked = await showModalBottomSheet<AnalyticsPreset>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final p in kAnalyticsPresets)
-              ListTile(
-                title: Text(p.label),
-                trailing: p == filter.preset ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.pop(ctx, p),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (picked == null || !context.mounted) return;
-    if (picked == AnalyticsPreset.custom) {
-      final range = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime.now().add(const Duration(days: 1)),
-      );
-      if (range == null) return;
-      onFilterChanged(filter.copyWith(
-        preset: AnalyticsPreset.custom,
-        startDate: _iso(range.start),
-        endDate: _iso(range.end),
-      ));
-      return;
-    }
-    onFilterChanged(filter.copyWith(preset: picked));
-  }
-
-  String get _dateLabel {
-    if (filter.preset == AnalyticsPreset.custom && filter.startDate != null && filter.endDate != null) {
-      return '${filter.startDate} – ${filter.endDate}';
-    }
-    return filter.preset.label;
-  }
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
@@ -391,41 +343,12 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            InkWell(
-              onTap: () => _pickPreset(context),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: tokens.accentSolid(tokens.primary),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calendar_today_rounded, size: 14, color: tokens.onAccent(tokens.primary)),
-                    const SizedBox(width: 6),
-                    Text(_dateLabel,
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: tokens.onAccent(tokens.primary))),
-                    const SizedBox(width: 2),
-                    Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: tokens.onAccent(tokens.primary)),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ],
     );
   }
 }
-
-String _iso(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 /// The hero "Overall Utilization" card — a solid mint fill, the big
 /// percentage, a progress bar, and (when nothing's booked yet) an inline

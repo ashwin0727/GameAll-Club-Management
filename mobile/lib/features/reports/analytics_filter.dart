@@ -21,24 +21,14 @@ String reportDateShort(String iso) => _shortDate.format(DateTime.parse(iso));
 /// the web: preset / from / to / sport / court). Unknown or half-formed
 /// values fall back to the default.
 AnalyticsFilter analyticsFilterFromQuery(Map<String, String> q) {
-  AnalyticsPreset preset;
-  try {
-    preset = q['preset'] != null ? AnalyticsPreset.fromJson(q['preset']!) : AnalyticsPreset.thisMonth;
-  } catch (_) {
-    preset = AnalyticsPreset.thisMonth;
-  }
   final from = q['from'];
   final to = q['to'];
-  if (preset == AnalyticsPreset.custom && (from == null || to == null)) {
-    preset = AnalyticsPreset.thisMonth;
-  }
-  return AnalyticsFilter(
-    preset: preset,
-    startDate: preset == AnalyticsPreset.custom ? from : null,
-    endDate: preset == AnalyticsPreset.custom ? to : null,
-    facilitySportId: q['sport'],
-    courtId: q['court'],
-  );
+  // The reports are date-range driven: anything that is not a complete
+  // From/To pair (including an old preset-only link) opens on the current month.
+  final base = from != null && to != null
+      ? AnalyticsFilter(preset: AnalyticsPreset.custom, startDate: from, endDate: to)
+      : AnalyticsFilter.currentMonth();
+  return base.copyWith(facilitySportId: q['sport'], courtId: q['court']);
 }
 
 /// Encode a filter into query params for a drill-down link.

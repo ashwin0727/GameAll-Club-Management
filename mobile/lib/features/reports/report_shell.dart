@@ -32,6 +32,7 @@ class ReportShell extends ConsumerWidget {
     this.emptyMessage = 'No data for this period.',
     this.errorMessage = 'Unable to load this report. Please try again.',
     this.loadingSkeleton,
+    this.filterTrailing,
   });
 
   final String title;
@@ -48,6 +49,9 @@ class ReportShell extends ConsumerWidget {
   /// [LoadingView] skeleton-list for a report that hasn't supplied one yet.
   final Widget? loadingSkeleton;
 
+  /// Sits beside the filter's Apply button (e.g. Export).
+  final Widget? filterTrailing;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final facility = ref.watch(sessionControllerProvider).facility;
@@ -63,9 +67,9 @@ class ReportShell extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AnalyticsFilterControls(
-                      facilityId: facility.id,
                       filter: filter,
                       onChanged: onFilterChanged,
+                      trailing: filterTrailing,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     switch (status) {

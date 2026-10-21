@@ -30,7 +30,7 @@ class ProfitLossScreen extends ConsumerStatefulWidget {
 
 class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
   String? _facilityId;
-  FinanceDateRange _range = const FinanceDateRange(preset: FinanceDateRangePreset.thisMonth);
+  FinanceDateRange _range = currentMonthRange();
 
   ProfitAndLoss? _pnl;
   List<PnlTrendPoint> _trend = [];
@@ -44,18 +44,14 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// Readable buckets for the span: daily up to a month, weekly up to six, monthly beyond.
   RevenueTrendGranularity _granularity() {
-    switch (_range.preset) {
-      case FinanceDateRangePreset.today:
-      case FinanceDateRangePreset.yesterday:
-      case FinanceDateRangePreset.thisWeek:
-      case FinanceDateRangePreset.lastWeek:
-        return RevenueTrendGranularity.daily;
-      case FinanceDateRangePreset.thisYear:
-        return RevenueTrendGranularity.monthly;
-      default:
-        return RevenueTrendGranularity.daily;
-    }
+    final s = _range.startDate, e = _range.endDate;
+    if (s == null || e == null) return RevenueTrendGranularity.daily;
+    final days = DateTime.parse(e).difference(DateTime.parse(s)).inDays + 1;
+    if (days <= 31) return RevenueTrendGranularity.daily;
+    if (days <= 183) return RevenueTrendGranularity.weekly;
+    return RevenueTrendGranularity.monthly;
   }
 
   Future<void> _load() async {
