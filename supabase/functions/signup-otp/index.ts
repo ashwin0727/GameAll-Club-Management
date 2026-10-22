@@ -116,7 +116,9 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       // Don't leave a code nobody received. Never log the code or the email body.
       await admin.from("signup_otps").delete().eq("email", email);
-      console.error("signup-otp: resend failed", res.status);
+      // Resend's error body names the cause (unverified domain, bad key, malformed "from"); it holds no secrets.
+      const detail = (await res.text().catch(() => "")).slice(0, 300);
+      console.error("signup-otp: resend failed", res.status, detail);
       return fail("send_failed", "We couldn't send the verification email. Please try again.", 502);
     }
     return null;
