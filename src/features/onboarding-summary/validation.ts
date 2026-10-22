@@ -23,21 +23,51 @@ export function detectMissingOperatingHours(schedule: OperatingSchedule | null):
   return !schedule.days.some((day) => !day.isClosed);
 }
 
-/** Sport names that have no sport-level default rate configured. */
+function sportName(fs: FacilitySport, sports: Sport[]): string {
+  return fs.customSportName || sports.find((s) => s.id === fs.sportId)?.name || "this sport";
+}
+
+/** Does every court / turf of this sport have a rate of its own? (False when it has no courts at all.) */
+function everyCourtPriced(fs: FacilitySport, pricingRules: PricingRule[], playingAreas: PlayingArea[]): boolean {
+  const areas = playingAreas.filter((a) => a.facilitySportId === fs.id);
+  return areas.length > 0 && areas.every((a) => pricingRules.some((r) => r.playingAreaId === a.id));
+}
+
+/**
+ * Sport names that can't be priced yet. A sport is priced when it has a default rate, or when every one of its courts
+ * has a rate of its own (then nothing relies on a default).
+ */
 export function detectMissingPricing(
   facilitySports: FacilitySport[],
   sports: Sport[],
   pricingRules: PricingRule[],
+  playingAreas: PlayingArea[] = [],
 ): string[] {
-  const missing: string[] = [];
-  for (const fs of facilitySports) {
-    const hasSportLevelRule = pricingRules.some((r) => r.facilitySportId === fs.id && !r.playingAreaId);
-    if (!hasSportLevelRule) {
-      const sport = sports.find((s) => s.id === fs.sportId);
-      missing.push(fs.customSportName || sport?.name || "this sport");
-    }
-  }
-  return missing;
+  return facilitySports
+    .filter((fs) => {
+      const hasSportLevelRule = pricingRules.some((r) => r.facilitySportId === fs.id && !r.playingAreaId);
+      return !hasSportLevelRule && !everyCourtPriced(fs, pricingRules, playingAreas);
+    })
+    .map((fs) => sportName(fs, sports));
+}
+
+/**
+ * Of those, the sports where some courts have their own rate but there is no default for the rest — the owner should
+ * set the default (or finish pricing each court).
+ */
+export function detectPartiallyPricedSports(
+  facilitySports: FacilitySport[],
+  sports: Sport[],
+  pricingRules: PricingRule[],
+  playingAreas: PlayingArea[],
+): string[] {
+  return facilitySports
+    .filter((fs) => {
+      const hasSportLevelRule = pricingRules.some((r) => r.facilitySportId === fs.id && !r.playingAreaId);
+      const someCourtPriced = playingAreas.some((a) => a.facilitySportId === fs.id && pricingRules.some((r) => r.playingAreaId === a.id));
+      return !hasSportLevelRule && someCourtPriced && !everyCourtPriced(fs, pricingRules, playingAreas);
+    })
+    .map((fs) => sportName(fs, sports));
 }
 
 export function computeSetupStatus(missingRequirements: MissingRequirement[]): SetupStatus {
@@ -49,6 +79,10 @@ export function buildMissingRequirements(input: {
   missingPlayingAreas: boolean;
   missingOperatingHours: boolean;
   sportsMissingPricing: string[];
+  /** Subset of sportsMissingPricing that has some court rates but no default for the remaining courts. */
+  sportsPartiallyPriced?: string[];
+  /** True when no payout method (bank account / UPI) has been added yet. */
+  missingPayout?: boolean;
 }): MissingRequirement[] {
   const requirements: MissingRequirement[] = [];
 
@@ -79,9 +113,20 @@ export function buildMissingRequirements(input: {
   for (const sportName of input.sportsMissingPricing) {
     requirements.push({
       code: "PRICING",
-      message: `Pricing has not been configured for ${sportName}.`,
+      message: input.sportsPartiallyPriced?.includes(sportName)
+        ? `Set a default rate for ${sportName}, or a rate for each of its courts.`
+        : `Pricing has not been configured for ${sportName}.`,
       actionLabel: "Fix Pricing",
       actionHref: "/onboarding/pricing",
+    });
+  }
+
+  if (input.missingPayout) {
+    requirements.push({
+      code: "PAYOUT",
+      message: "Add a bank account or UPI ID to receive your payouts.",
+      actionLabel: "Add Payout Details",
+      actionHref: "/onboarding/payments",
     });
   }
 

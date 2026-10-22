@@ -1,4 +1,5 @@
 import type { PlayingArea, PlayingAreaInput } from "@/features/courts-setup/types";
+import type { CourtUsage } from "@/features/courts-setup/usage";
 
 /**
  * The playing-areas boundary the UI codes against ("courts" in the DB —
@@ -14,5 +15,7 @@ export interface PlayingAreasService {
   /** Soft delete — never removes the row, so history survives for future reporting. */
   removePlayingArea(id: string): Promise<void>;
   restorePlayingArea(id: string): Promise<PlayingArea>;
+  /** What is still ahead on this court. A court with upcoming work can't be removed or switched off. */
+  getUpcomingUsage(id: string): Promise<CourtUsage>;
   reorderPlayingAreas(facilitySportId: string, orderedIds: string[]): Promise<void>;
 }

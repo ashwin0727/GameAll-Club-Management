@@ -173,4 +173,21 @@ class AppRoutes {
   static const setPassword = '/set-password';
 
   static const profile = '/profile';
+
+  // Profile hub (opened from the facility card on Profile) and the facility pages under Profile → Facility.
+  static const profileHub = '/profile/hub';
+  static const profilePersonal = '/profile/hub/personal';
+  static const profileManageFacility = '/profile/hub/facility';
+  static const profilePayouts = '/profile/hub/payments';
+  static const profileSupport = '/profile/hub/support';
+  static const profileSettings = '/profile/hub/settings';
+  static const profileFacilityInfo = '/profile/facility-details';
+  static const profileSportsCourts = '/profile/sports-courts';
+  static const profileHours = '/profile/operating-hours';
+  static const profilePricing = '/profile/pricing-rules';
+
+  /// The setup screens opened in edit mode: saving goes back instead of on to the next onboarding step.
+  static const profileEditSports = '/profile/edit/sports';
+  static const profileEditHours = '/profile/edit/hours';
+  static const profileEditPricing = '/profile/edit/pricing';
 }

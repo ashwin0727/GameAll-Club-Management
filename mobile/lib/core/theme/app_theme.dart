@@ -4,6 +4,7 @@ import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
+import '../routing/page_transitions.dart';
 
 /// GameAll Design System 2026 — one centralized Material 3 theme, built
 /// twice (light + dark) from the same [AppColorTokens] source so both
@@ -191,6 +192,30 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.pill),
           side: BorderSide(color: tokens.borderColor),
         ),
+      ),
+      // Every route moves the same way, even ones not wrapped in slideOver / fadeThrough.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: AppPageTransitionsBuilder(),
+          TargetPlatform.iOS: AppPageTransitionsBuilder(),
+          TargetPlatform.windows: AppPageTransitionsBuilder(),
+          TargetPlatform.macOS: AppPageTransitionsBuilder(),
+          TargetPlatform.linux: AppPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: AppPageTransitionsBuilder(),
+        },
+      ),
+      // ⋮ menus and any other popup list: the same soft rounded card as the dropdowns.
+      popupMenuTheme: PopupMenuThemeData(
+        color: tokens.surface1,
+        surfaceTintColor: Colors.transparent,
+        elevation: 10,
+        shadowColor: Colors.black.withValues(alpha: tokens.isLight ? 0.22 : 0.6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide(color: tokens.borderColor.withValues(alpha: tokens.isLight ? 0.6 : 1)),
+        ),
+        menuPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: tokens.textPrimary),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: tokens.surface3,

@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Facility Details", "Sports", "Courts", "Operating Hours", "Pricing", "Setup"];
+const STEPS = ["Facility Details", "Sports", "Courts", "Operating Hours", "Pricing", "Payments", "Setup"];
 
 export function OnboardingProgress({ currentStep }: { currentStep: number }) {
   return (

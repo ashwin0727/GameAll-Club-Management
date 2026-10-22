@@ -19,6 +19,7 @@ import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
 import 'pricing_summary.dart';
 import 'pricing_validation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const List<({String value, String label})> _dayTypeOptions = [
   (value: 'ALL_DAYS', label: 'All Days'),
@@ -45,7 +46,10 @@ class _AreaOverrideState {
 }
 
 class PricingScreen extends ConsumerStatefulWidget {
-  const PricingScreen({super.key});
+  const PricingScreen({super.key, this.editMode = false});
+
+  /// Opened from Profile to change an already-finished setup: saving goes back instead of on to Operating Hours.
+  final bool editMode;
 
   @override
   ConsumerState<PricingScreen> createState() => _PricingScreenState();
@@ -60,6 +64,9 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
   List<PlayingArea> _areas = [];
   final Map<String, List<_PeriodState>> _defaultPeriods = {};
   final Map<String, _AreaOverrideState> _overrides = {};
+
+  /// Per sport: true = every court has its own rate (no sport-wide default); false = one default rate for all courts.
+  final Map<String, bool> _individual = {};
   bool _isSubmitting = false;
   String? _submitError;
 
@@ -103,10 +110,11 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
       final sport = _sports.where((x) => x.id == fs.sportId).firstOrNull;
       final areas = _areas.where((a) => a.facilitySportId == fs.id).toList();
       final label = playingAreaLabelFor(sport?.code ?? 'OTHER');
-      final defaults = (_defaultPeriods[fs.id] ?? const <_PeriodState>[]).map(_summaryPeriod).toList();
+      final individual = _individual[fs.id] ?? false;
+      final defaults = individual ? <SummaryPeriod>[] : (_defaultPeriods[fs.id] ?? const <_PeriodState>[]).map(_summaryPeriod).toList();
       final customized = [
         for (final a in areas)
-          if (_overrides[a.id]?.active ?? false) CustomizedArea(a.name, _overrides[a.id]!.periods.map(_summaryPeriod).toList()),
+          if (individual && (_overrides[a.id]?.active ?? false)) CustomizedArea(a.name, _overrides[a.id]!.periods.map(_summaryPeriod).toList()),
       ];
       final blocks = sportSummaryBlocks(defaults: defaults, customized: customized, areaCount: areas.length, areaLabel: label);
       if (defaults.any((p) => p.isPriced) || customized.any((c) => c.periods.any((p) => p.isPriced))) priced++;
@@ -247,6 +255,24 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
         );
       }
 
+      // A sport with any court-specific rate is in Individual mode: every court gets a draft, a court that had no rate
+      // of its own starting from the sport's rate.
+      _individual.clear();
+      for (final fs in facilitySports) {
+        final sportAreas = areas.where((a) => a.facilitySportId == fs.id).toList();
+        final any = sportAreas.any((a) => _overrides[a.id]?.active ?? false);
+        _individual[fs.id] = any;
+        if (any) {
+          for (final a in sportAreas) {
+            final o = _overrides[a.id]!;
+            if (!o.active) {
+              o.active = true;
+              o.periods = _cloneDefaults(fs.id);
+            }
+          }
+        }
+      }
+
       setState(() {
         _facilityId = facility.id;
         _facilitySports = facilitySports;
@@ -277,19 +303,38 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     period.draft.amountMinor = rupees == null ? 0 : (rupees * 100).round();
   }
 
-  /// True when the sport's own rate isn't needed: it has courts, every one is customized with a real price, and the
-  /// default itself was left blank. Mirrors the web, where a sport whose courts all have their own pricing doesn't
-  /// also need a default rate.
-  bool _defaultNotNeeded(String facilitySportId) {
-    final areas = _areas.where((a) => a.facilitySportId == facilitySportId).toList();
-    if (areas.isEmpty) return false;
-    final everyCourtPriced = areas.every((a) {
-      final o = _overrides[a.id];
-      if (o == null || !o.active || o.periods.isEmpty) return false;
-      return o.periods.every((p) => (num.tryParse(p.amountController.text.trim()) ?? 0) > 0);
+  /// True when the sport is priced per court: it has no sport-wide default to fill in or save.
+  bool _defaultNotNeeded(String facilitySportId) => _individual[facilitySportId] ?? false;
+
+  /// A copy of the sport's default periods — the starting point for each court's own rate.
+  List<_PeriodState> _cloneDefaults(String facilitySportId) {
+    final src = _defaultPeriods[facilitySportId] ?? const <_PeriodState>[];
+    if (src.isEmpty) return [_newPeriod()];
+    return [
+      for (final p in src)
+        _newPeriod(
+          dayType: p.draft.dayType,
+          coversFullDay: p.draft.coversFullDay,
+          startTime: p.draft.startTime,
+          endTime: p.draft.endTime,
+          amountMinor: ((num.tryParse(p.amountController.text.trim()) ?? 0) * 100).round(),
+        ),
+    ];
+  }
+
+  /// Switch a sport between one default rate and a rate per court. Each side keeps what was typed on it.
+  void _setMode(String facilitySportId, bool individual) {
+    setState(() {
+      _individual[facilitySportId] = individual;
+      if (!individual) return;
+      for (final a in _areas.where((a) => a.facilitySportId == facilitySportId)) {
+        final o = _overrides[a.id]!;
+        if (!o.active) {
+          o.active = true;
+          o.periods = _cloneDefaults(facilitySportId);
+        }
+      }
     });
-    final defaultBlank = (_defaultPeriods[facilitySportId] ?? const <_PeriodState>[]).every((p) => (num.tryParse(p.amountController.text.trim()) ?? 0) <= 0);
-    return everyCourtPriced && defaultBlank;
   }
 
   bool _validateAll() {
@@ -317,8 +362,11 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
           isValid = false;
         }
       }
-      for (final o in _overrides.values) {
-        if (!o.active) continue;
+      for (final entry in _overrides.entries) {
+        final o = entry.value;
+        final area = _areas.where((a) => a.id == entry.key).firstOrNull;
+        // Only a sport on Individual rates collects (and saves) its courts' rates.
+        if (area == null || !(_individual[area.facilitySportId] ?? false) || !o.active) continue;
         for (final p in o.periods) {
           _syncAmount(p);
           p.error = validatePricingPeriod(p.draft);
@@ -362,7 +410,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     }
     for (final area in _areas) {
       final o = _overrides[area.id]!;
-      if (!o.active) continue;
+      if (!(_individual[area.facilitySportId] ?? false) || !o.active) continue;
       for (final p in o.periods) {
         rules.add(
           PricingRule(
@@ -388,6 +436,11 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
 
     try {
       await ref.read(pricingRepositoryProvider).savePricingRules(_facilityId!, rules);
+      if (widget.editMode) {
+        if (!mounted) return;
+        context.pop(true);
+        return;
+      }
       await ref
           .read(facilityRepositoryProvider)
           .updateOnboardingStep(_facilityId!, OnboardingStep.operatingHours);
@@ -419,21 +472,23 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
     if (_isLoading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 2,
+        editing: widget.editMode,
         title: 'Set Your Pricing',
         onBack: () => context.go(AppRoutes.onboardingSportsCourts),
         footer: const SizedBox.shrink(),
         children: [
           SizedBox(
             height: 320,
-            child: _isLoading
+            child: SmoothSwitcher(child: _isLoading
                 ? const LoadingView(message: 'Loading pricing…')
-                : ErrorView(message: _loadError!, onRetry: _load),
+                : ErrorView(message: _loadError!, onRetry: _load)),
           ),
         ],
       );
     }
     return OnboardingScaffold(
       stepIndex: 2,
+      editing: widget.editMode,
       title: 'Set Your Pricing',
       subtitle: 'Define how much guests pay to use your courts and turfs.',
       onBack: () => context.go(AppRoutes.onboardingSportsCourts),
@@ -447,7 +502,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
             const SizedBox(height: AppSpacing.sm),
           ],
           AuthGradientButton(
-            label: 'Next · operating hours  ›',
+            label: widget.editMode ? 'Save changes' : 'Next · operating hours  ›',
             loadingLabel: 'Saving…',
             isLoading: _isSubmitting,
             onPressed: _submit,
@@ -469,30 +524,33 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              _PeriodsEditor(
-                                periods: _defaultPeriods[fs.id] ?? [],
-                                onAdd: () => setState(() => _defaultPeriods[fs.id]!.add(_newPeriod())),
-                                onRemove: (p) => setState(() {
-                                  _defaultPeriods[fs.id]!.remove(p);
-                                  p.dispose();
-                                }),
-                                onPickTime: _pickTime,
-                                onChanged: () => setState(() {}),
+                              _ModeSwitch(
+                                individual: _individual[fs.id] ?? false,
+                                areaNoun: (sport?.code == 'CRICKET' || sport?.code == 'FOOTBALL') ? 'turf' : 'court',
+                                onChanged: (v) => _setMode(fs.id, v),
                               ),
-                              if (areasForSport.isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.md),
-                                const Divider(),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'Customize individual court/turf pricing',
-                                  style: Theme.of(context).textTheme.labelLarge,
+                              const SizedBox(height: AppSpacing.md),
+                              if (!(_individual[fs.id] ?? false)) ...[
+                                _PeriodsEditor(
+                                  periods: _defaultPeriods[fs.id] ?? [],
+                                  onAdd: () => setState(() => _defaultPeriods[fs.id]!.add(_newPeriod())),
+                                  onRemove: (p) => setState(() {
+                                    _defaultPeriods[fs.id]!.remove(p);
+                                    p.dispose();
+                                  }),
+                                  onPickTime: _pickTime,
+                                  onChanged: () => setState(() {}),
                                 ),
-                                const SizedBox(height: AppSpacing.sm),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text('Applies to all ${areasForSport.length} ${areasForSport.length == 1 ? 'court / turf' : 'courts / turfs'}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+                              ] else
                                 ...areasForSport.map((area) {
                                   final o = _overrides[area.id]!;
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                                     child: Container(
+                                      width: double.infinity,
                                       padding: const EdgeInsets.all(AppSpacing.sm),
                                       decoration: BoxDecoration(
                                         border: Border.all(color: AppColors.border),
@@ -501,40 +559,23 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Row(
-                                            children: [
-                                              Expanded(child: Text(area.name)),
-                                              if (o.active)
-                                                TextButton(
-                                                  onPressed: () => setState(() => o.active = false),
-                                                  child: const Text('Use Default Rate'),
-                                                )
-                                              else
-                                                OutlinedButton(
-                                                  onPressed: () => setState(() => o.active = true),
-                                                  child: const Text('Customize'),
-                                                ),
-                                            ],
+                                          Text(area.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                          const SizedBox(height: AppSpacing.xs),
+                                          _PeriodsEditor(
+                                            periods: o.periods,
+                                            onAdd: () => setState(() => o.periods.add(_newPeriod())),
+                                            onRemove: (p) => setState(() {
+                                              o.periods.remove(p);
+                                              p.dispose();
+                                            }),
+                                            onPickTime: _pickTime,
+                                            onChanged: () => setState(() {}),
                                           ),
-                                          if (!o.active)
-                                            const Text('Uses default rate ✓', style: TextStyle(fontSize: 11, color: AppColors.muted)),
-                                          if (o.active)
-                                            _PeriodsEditor(
-                                              periods: o.periods,
-                                              onAdd: () => setState(() => o.periods.add(_newPeriod())),
-                                              onRemove: (p) => setState(() {
-                                                o.periods.remove(p);
-                                                p.dispose();
-                                              }),
-                                              onPickTime: _pickTime,
-                                              onChanged: () => setState(() {}),
-                                            ),
                                         ],
                                       ),
                                     ),
                                   );
                                 }),
-                              ],
                             ],
                           ),
                         ),
@@ -542,6 +583,57 @@ class _PricingScreenState extends ConsumerState<PricingScreen> {
                     }),
         _pricingSummary(context),
       ],
+    );
+  }
+}
+
+/// "Default rate" vs "Individual rate" — how a sport is priced.
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({required this.individual, required this.areaNoun, required this.onChanged});
+
+  final bool individual;
+  final String areaNoun;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    Widget option(bool value, String title, String hint) {
+      final selected = individual == value;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => selected ? null : onChanged(value),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: selected ? t.surface1 : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: selected ? t.primary.withValues(alpha: 0.6) : Colors.transparent),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? t.textPrimary : t.textSecondary)),
+                Text(hint, style: TextStyle(fontSize: 10.5, color: t.textSecondary)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: t.surface2, borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        children: [
+          option(false, 'Default rate', 'One rate for every $areaNoun'),
+          const SizedBox(width: 3),
+          option(true, 'Individual rate', 'A rate for each $areaNoun'),
+        ],
+      ),
     );
   }
 }

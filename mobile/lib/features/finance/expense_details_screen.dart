@@ -18,6 +18,7 @@ import '../../shared/widgets/states.dart';
 import 'edit_expense_sheet.dart';
 import 'finance_presentation.dart';
 import 'mark_expense_paid_sheet.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Finance → Expenses → one expense — mirrors
 /// src/features/finance/components/expense-details-page.tsx.
@@ -149,7 +150,7 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Expense')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _ExpenseDetailsSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -158,7 +159,7 @@ class _ExpenseDetailsScreenState extends ConsumerState<ExpenseDetailsScreen> {
                         title: 'Not Found',
                         message: 'This expense could not be found.',
                       )
-                    : _body(_expense!),
+                    : _body(_expense!)),
       ),
     );
   }

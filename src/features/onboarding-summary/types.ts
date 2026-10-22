@@ -4,7 +4,7 @@ import type { PlayingAreaLabel } from "@/features/courts-setup/constants";
 
 export type SetupStatus = "READY" | "ACTION_REQUIRED";
 
-export type MissingRequirementCode = "SPORTS" | "PLAYING_AREAS" | "OPERATING_HOURS" | "PRICING";
+export type MissingRequirementCode = "SPORTS" | "PLAYING_AREAS" | "OPERATING_HOURS" | "PRICING" | "PAYOUT";
 
 export interface MissingRequirement {
   code: MissingRequirementCode;

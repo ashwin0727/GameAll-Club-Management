@@ -56,8 +56,8 @@ class MembershipBatch {
       endTime: json['end_time'] as String,
       capacity: (json['capacity'] as num).toInt(),
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );
   }
 }
@@ -109,7 +109,7 @@ class MembershipBatchMember {
       batchId: json['batch_id'] as String,
       memberId: json['member_id'] as String,
       membershipId: json['membership_id'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 }
@@ -252,7 +252,7 @@ class MembershipSessionBooking {
       amountMinor: (json['amount_minor'] as num?)?.toInt(),
       currency: json['currency'] as String? ?? 'INR',
       createdBy: json['created_by'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 }

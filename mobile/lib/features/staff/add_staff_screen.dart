@@ -15,6 +15,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Users & Roles → Staff → Add — mirrors add-staff-page.tsx (3-step wizard).
 class AddStaffScreen extends ConsumerStatefulWidget {
@@ -134,7 +135,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Add Staff')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _AddStaffSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -240,7 +241,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                     ),
                   ),
                 ],
-              ),
+              )),
       ),
     );
   }

@@ -290,7 +290,7 @@ function QuickActionsCard({ onGo, delay }: { onGo: (href: string) => void; delay
   return (
     <DashCard title="Quick Actions" delay={delay}>
       <div className="space-y-2">
-        <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/calendar")}>
+        <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/guest-bookings/new")}>
           <span className="flex items-center gap-2">
             <CalendarPlus className="h-4 w-4" aria-hidden />
             New Booking

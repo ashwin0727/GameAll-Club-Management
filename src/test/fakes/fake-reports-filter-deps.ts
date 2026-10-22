@@ -78,6 +78,7 @@ export function installFakeReportsFilterDeps(opts: { facilities?: number } = {})
     removePlayingArea: async () => {},
     restorePlayingArea: async () => courts[0]!,
     reorderPlayingAreas: async () => {},
+    getUpcomingUsage: async () => ({ bookings: 0, membershipBatches: 0, membershipGuestSlots: 0, coachingSessions: 0, coachingBatches: 0, total: 0 }),
   } as PlayingAreasService);
 
   return { facilities, activeSports, facilitySports, courts };

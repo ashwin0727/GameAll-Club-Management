@@ -16,6 +16,7 @@ import {
   detectMissingOperatingHours,
   detectMissingPlayingAreas,
   detectMissingPricing,
+  detectPartiallyPricedSports,
   detectMissingSports,
   transformPricingSummary,
   transformSportsSummary,
@@ -47,13 +48,22 @@ export class SupabaseOnboardingService implements OnboardingService {
     const missingSports = detectMissingSports(facilitySports);
     const missingPlayingAreas = detectMissingPlayingAreas(playingAreas);
     const missingOperatingHours = detectMissingOperatingHours(schedule);
-    const sportsMissingPricing = missingSports ? [] : detectMissingPricing(facilitySports, sports, pricingRules);
+    const sportsMissingPricing = missingSports ? [] : detectMissingPricing(facilitySports, sports, pricingRules, playingAreas);
+    const payout = await this.supabase
+      .from("facility_payout_methods" as never)
+      .select("id", { count: "exact", head: true })
+      .eq("facility_id", facilityId);
+    // A failed lookup must not read as "missing" — treat it as present rather than block a finished setup.
+    const missingPayout = !payout.error && (payout.count ?? 0) === 0;
+    const sportsPartiallyPriced = detectPartiallyPricedSports(facilitySports, sports, pricingRules, playingAreas);
 
     const missingRequirements = buildMissingRequirements({
       missingSports,
       missingPlayingAreas,
       missingOperatingHours,
       sportsMissingPricing,
+      sportsPartiallyPriced,
+      missingPayout,
     });
 
     return {

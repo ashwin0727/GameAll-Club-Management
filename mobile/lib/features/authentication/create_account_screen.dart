@@ -68,6 +68,8 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
       // button must not return to idle while this screen is still on top.
       context.go(
         '${AppRoutes.emailVerification}?email=${Uri.encodeQueryComponent(_email.text.trim())}',
+        // In memory only (never the URL) so the verified owner can be signed in without retyping it.
+        extra: _password.text,
       );
     } on AppException catch (e) {
       if (!mounted) return;

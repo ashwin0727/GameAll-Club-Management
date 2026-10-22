@@ -306,6 +306,22 @@ class DashboardRepository {
         }
       }
 
+      // What else is on a court today. A membership batch holds its court at its time for its members whether or not a
+      // slot booking has been materialised yet, and a coaching session holds its court too — so both belong on the
+      // timeline (and in "On Court Now"), not just bookings and booked membership slots.
+      final todayKey = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final extraBlocks = await _todaysMembershipAndCoachingBlocks(
+        facilityId: facilityId,
+        now: now,
+        todayKey: todayKey,
+        playingAreaIds: playingAreaIds,
+        alreadyShown: membershipSessionRows
+            .cast<Map<String, dynamic>>()
+            .where((s) => s['session_date'] == todayKey)
+            .map((s) => '${s['court_id']}|${s['start_time']}|${s['end_time']}')
+            .toSet(),
+      );
+
       final timelineBookings =
           <({String id, String playingAreaId, DateTime startTime, DateTime endTime, String status, ScheduleBlockType type, String label})>[
         ...todayBookingMaps.map((b) {
@@ -342,6 +358,7 @@ class DashboardRepository {
                 label: 'Membership Session',
               ),
             ),
+        ...extraBlocks,
       ];
 
       final scheduleTimeline = DashboardCalculator.buildScheduleTimeline(
@@ -404,6 +421,89 @@ class DashboardRepository {
       throw mapSupabaseError(e);
     }
   }
+
+  /// Today's active membership batches (with members, not blocked today) and today's coaching sessions, as timeline
+  /// entries. Each read is best-effort: someone without access to coaching, say, simply sees no coaching blocks rather
+  /// than losing the dashboard.
+  Future<List<({String id, String playingAreaId, DateTime startTime, DateTime endTime, String status, ScheduleBlockType type, String label})>>
+      _todaysMembershipAndCoachingBlocks({
+    required String facilityId,
+    required DateTime now,
+    required String todayKey,
+    required Set<String> playingAreaIds,
+    required Set<String> alreadyShown,
+  }) async {
+    final out = <({String id, String playingAreaId, DateTime startTime, DateTime endTime, String status, ScheduleBlockType type, String label})>[];
+    final dow = now.weekday % 7; // 0 = Sunday, as in the database
+
+    try {
+      final batchRows = (await _client
+              .from('membership_batches')
+              .select('id, court_id, name, days_of_week, start_time, end_time')
+              .eq('facility_id', facilityId)
+              .eq('is_active', true) as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((b) => playingAreaIds.contains(b['court_id']) && ((b['days_of_week'] as List<dynamic>?) ?? const []).map((d) => (d as num).toInt()).contains(dow))
+          .toList();
+      if (batchRows.isNotEmpty) {
+        final ids = batchRows.map((b) => b['id'] as String).toList();
+        final withMembers = (await _client.from('membership_batch_members').select('batch_id').inFilter('batch_id', ids) as List<dynamic>)
+            .map((r) => (r as Map)['batch_id'] as String)
+            .toSet();
+        final blockedToday = (await _client.from('membership_batch_blocked_dates').select('batch_id').inFilter('batch_id', ids).eq('blocked_date', todayKey) as List<dynamic>)
+            .map((r) => (r as Map)['batch_id'] as String)
+            .toSet();
+        for (final b in batchRows) {
+          final id = b['id'] as String;
+          if (!withMembers.contains(id) || blockedToday.contains(id)) continue;
+          final start = b['start_time'] as String;
+          final end = b['end_time'] as String;
+          // A booked slot for this same session is already on the timeline.
+          if (alreadyShown.contains('${b['court_id']}|$start|$end')) continue;
+          out.add((
+            id: 'batch-$id',
+            playingAreaId: b['court_id'] as String,
+            startTime: DateTime.parse('${todayKey}T$start'),
+            endTime: DateTime.parse('${todayKey}T$end'),
+            status: 'confirmed',
+            type: ScheduleBlockType.session,
+            label: 'Membership · ${b['name']}',
+          ));
+        }
+      }
+    } catch (_) {
+      // Membership detail is a bonus on this timeline; the bookings already on it still show.
+    }
+
+    try {
+      final dayStart = DateTime(now.year, now.month, now.day);
+      final rows = (await _client
+              .from('coaching_sessions')
+              .select('id, court_id, start_at, end_at, status, coaching_programs(name)')
+              .eq('facility_id', facilityId)
+              .inFilter('status', ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'])
+              .gte('start_at', dayStart.toUtc().toIso8601String())
+              .lt('start_at', dayStart.add(const Duration(days: 1)).toUtc().toIso8601String()) as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .where((r) => playingAreaIds.contains(r['court_id']));
+      for (final r in rows) {
+        final program = (r['coaching_programs'] as Map?)?['name'] as String?;
+        out.add((
+          id: 'coaching-${r['id']}',
+          playingAreaId: r['court_id'] as String,
+          startTime: DateTime.parse(r['start_at'] as String).toLocal(),
+          endTime: DateTime.parse(r['end_at'] as String).toLocal(),
+          status: 'confirmed',
+          type: ScheduleBlockType.coaching,
+          label: program == null || program.isEmpty ? 'Coaching session' : 'Coaching · $program',
+        ));
+      }
+    } catch (_) {
+      // No access to coaching (or it isn't set up): no coaching blocks, nothing else changes.
+    }
+    return out;
+  }
+
 }
 
 extension _FirstOrNullSafe<T> on Iterable<T> {

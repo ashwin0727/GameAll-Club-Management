@@ -46,7 +46,7 @@ export function groupCustomized(customized: { areaName: string; periods: PeriodD
   return [...groups.values()];
 }
 
-function PeriodList({ periods, currency }: { periods: PeriodDraft[]; currency: string }) {
+export function PeriodList({ periods, currency }: { periods: PeriodDraft[]; currency: string }) {
   return (
     <ul className="space-y-0.5">
       {periods.map((p, i) => (

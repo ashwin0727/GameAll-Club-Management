@@ -174,9 +174,9 @@ class Refund {
       policyPercentApplied: (json['policy_percent_applied'] as num?)?.toInt(),
       failureReason: json['failure_reason'] as String?,
       initiatedBy: json['initiated_by'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      processedAt: json['processed_at'] != null ? DateTime.parse(json['processed_at'] as String) : null,
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+      processedAt: json['processed_at'] != null ? DateTime.parse(json['processed_at'] as String).toLocal() : null,
     );
   }
 }
@@ -257,8 +257,8 @@ class SettlementException {
       sourceId: json['source_id'] as String?,
       reason: SettlementExceptionReason.fromJson(json['reason'] as String),
       status: SettlementExceptionStatus.fromJson(json['status'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      resolvedAt: json['resolved_at'] != null ? DateTime.parse(json['resolved_at'] as String) : null,
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      resolvedAt: json['resolved_at'] != null ? DateTime.parse(json['resolved_at'] as String).toLocal() : null,
     );
   }
 }

@@ -133,7 +133,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               facilitySub: _facilitySub(facility),
               facilitySubLoading: _courts == null && _sports == null,
               logoUrl: facility?.logoUrl,
-              onFacilityTap: _soon,
+              onFacilityTap: () => context.push(AppRoutes.profileHub),
             ),
             const SizedBox(height: AppSpacing.xl),
 
@@ -298,24 +298,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _NavRow(
                   icon: Icons.storefront_outlined,
                   label: 'Facility Details',
-                  onTap: () => _facilityDetailsSheet(facility)),
+                  onTap: () => context.push(AppRoutes.profileFacilityInfo)),
               _NavRow(
                   icon: Icons.sports_tennis_outlined,
                   label: 'Sports & Courts',
                   trailing: _courts == null ? null : '$_courts',
                   trailingLoading: _courts == null,
-                  onTap: _soon),
+                  onTap: () => context.push(AppRoutes.profileSportsCourts)),
               _NavRow(
                   icon: Icons.schedule_outlined,
                   label: 'Operating Hours',
-                  onTap: _soon),
+                  onTap: () => context.push(AppRoutes.profileHours)),
               _NavRow(
                   icon: Icons.tune_rounded,
                   label: 'Pricing Rules',
                   trailing:
                       _pricingRules == null ? null : '$_pricingRules active',
                   trailingLoading: _pricingRules == null,
-                  onTap: _soon),
+                  onTap: () => context.push(AppRoutes.profilePricing)),
               _NavRow(
                   icon: Icons.link_rounded,
                   label: 'Public Booking & Join Links',
@@ -331,7 +331,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: paymentsLive ? 'Live' : 'Set up',
                 trailingTone: paymentsLive ? t.primary : t.warning,
                 trailingDot: paymentsLive,
-                onTap: _soon,
+                onTap: () => context.push(AppRoutes.profilePayouts),
               ),
               _NavRow(
                   icon: Icons.receipt_long_outlined,
@@ -478,72 +478,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
     if (mounted) setState(() {});
-  }
-
-  Future<void> _facilityDetailsSheet(Facility? f) async {
-    if (f == null) return _soon();
-    final t = context.tokens;
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: t.surface0,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      builder: (_) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Facility Details',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: AppSpacing.md),
-              _detailRow('Name', f.name),
-              _detailRow('Phone',
-                  f.businessPhone.isEmpty ? '—' : f.businessPhone),
-              _detailRow('Email',
-                  f.businessEmail.isEmpty ? '—' : f.businessEmail),
-              _detailRow(
-                  'Address',
-                  [
-                    f.address.line1,
-                    f.address.area,
-                    f.address.city,
-                    f.address.state,
-                    f.address.pinCode,
-                  ].where((s) => s.isNotEmpty).join(', ')),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String k, String v) {
-    final t = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-              width: 78,
-              child: Text(k,
-                  style:
-                      TextStyle(fontSize: 13, color: t.textSecondary))),
-          Expanded(
-            child: Text(v.isEmpty ? '—' : v,
-                style: const TextStyle(
-                    fontSize: 13.5, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _joinLinkSheet(Facility? f) async {

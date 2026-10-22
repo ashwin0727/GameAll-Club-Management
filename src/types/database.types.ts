@@ -32,6 +32,7 @@ export type DbOnboardingStep =
   | "SPORTS"
   | "COURTS"
   | "OPERATING_HOURS"
+  | "PAYMENTS"
   | "PRICING"
   | "COMPLETED";
 export type DbAreaType = "INDOOR" | "OUTDOOR";

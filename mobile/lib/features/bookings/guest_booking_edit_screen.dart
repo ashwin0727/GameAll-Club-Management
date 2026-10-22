@@ -18,6 +18,7 @@ import '../../shared/widgets/states.dart';
 import 'booking_slots.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 String _hm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 String _clock(DateTime d) => Formatters.time12h(_hm(d));
@@ -194,7 +195,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Guest Booking')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _GuestBookingEditSkeleton()
             : _notFound || _booking == null
                 ? const ErrorView(message: 'This booking could not be found.')
@@ -309,7 +310,7 @@ class _GuestBookingEditScreenState extends ConsumerState<GuestBookingEditScreen>
                         const SizedBox(height: AppSpacing.xl),
                       ],
                     ),
-                  ),
+                  )),
       ),
     );
   }

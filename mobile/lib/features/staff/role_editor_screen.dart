@@ -15,6 +15,7 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class RoleEditorScreen extends ConsumerStatefulWidget {
   const RoleEditorScreen({super.key, this.roleId, this.templateId});
@@ -154,7 +155,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.isEdit ? 'Edit Role' : 'Create Role')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _RoleEditorSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -278,7 +279,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-              ),
+              )),
       ),
     );
   }

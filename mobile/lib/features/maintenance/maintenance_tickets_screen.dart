@@ -13,6 +13,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_format.dart';
 import 'maintenance_status_chips.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Maintenance → Maintenance Tickets — mirrors
 /// src/features/maintenance/components/maintenance-tickets-page.tsx.
@@ -110,7 +111,7 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
-                child: _loading
+                child: SmoothSwitcher(child: _loading
                     ? const _MaintenanceTicketsSkeleton()
                     : _error != null
                         ? ErrorView(message: _error!, onRetry: _load)
@@ -124,7 +125,7 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
                                   ticket: _tickets![i],
                                   onReturn: _load,
                                 ),
-                              ),
+                              )),
               ),
             ),
           ],

@@ -27,6 +27,7 @@ import 'membership_plan_details_screen.dart';
 import 'membership_plans_tab.dart';
 import 'members_ordering.dart';
 import 'membership_plan_wizard_screen.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The Memberships hub — Members (the default tab) and Plans. Sessions, Schedule and Reports are one tap away
 /// from the Members tab, as they are on the Coaching hub.
@@ -301,7 +302,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
         ),
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _MembersScreenSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -329,7 +330,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
                         ),
                       ],
                     ),
-                  ),
+                  )),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.members),
       ),
@@ -350,10 +351,8 @@ class _MembersScreenState extends ConsumerState<MembersScreen>
 
 // ─────────────────────────────────────────────────────────────── Plans ──
 
-/// The photo hero card — a title, one big figure, and a row of small figures beneath a hairline.
-/// The Members tab shows the total member count in it.
-/// The Members page's single summary card: total + active members on the photo, then Overall Revenue and
-/// Payment Pending in a strip along the bottom.
+/// The Members page's summary card: total + active members on the photo, then Overall Revenue and Payment Pending in a
+/// strip along the bottom — the shared [HubSummaryCard], so Coaching, Programs and Students open the same way.
 class _MembersSummaryCard extends StatelessWidget {
   const _MembersSummaryCard({
     required this.total,
@@ -371,143 +370,29 @@ class _MembersSummaryCard extends StatelessWidget {
   final VoidCallback onRevenueTap;
   final VoidCallback onPendingTap;
 
-  static const _white = Color(0xFFFFFFFF);
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final hasPending = (pending?.count ?? 0) > 0;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Stack(
-        children: [
-          Positioned.fill(child: Image.asset('assets/images/members_card.png', fit: BoxFit.cover)),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withValues(alpha: 0.55), Colors.black.withValues(alpha: 0.75)],
-                ),
-              ),
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.groups_outlined, size: 16, color: _white),
-                        const SizedBox(width: 8),
-                        Text('Total members', style: TextStyle(fontSize: 14, color: _white.withValues(alpha: 0.9))),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text('$total',
-                            style: const TextStyle(fontSize: 44, height: 1, fontWeight: FontWeight.w800, color: _white)),
-                        const SizedBox(width: 16),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(color: tokens.success, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('$active active',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _white)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(height: 1, color: _white.withValues(alpha: 0.12)),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _SummaryCell(
-                        label: 'Overall Revenue',
-                        value: revenue == null ? '—' : Formatters.currencyInr(revenue!),
-                        valueColor: _white,
-                        sub: revenue == null ? null : 'All collected',
-                        subColor: tokens.success,
-                        onTap: onRevenueTap,
-                      ),
-                    ),
-                    Container(width: 1, color: _white.withValues(alpha: 0.12)),
-                    Expanded(
-                      child: _SummaryCell(
-                        label: 'Payment Pending',
-                        value: pending == null ? '—' : Formatters.currencyInr(pending!.amountInr),
-                        valueColor: hasPending ? tokens.warning : _white,
-                        sub: pending == null ? null : (hasPending ? '${pending!.count} unpaid' : 'Nothing pending'),
-                        subColor: hasPending ? _white.withValues(alpha: 0.75) : tokens.success,
-                        tint: hasPending ? tokens.warning.withValues(alpha: 0.12) : null,
-                        onTap: onPendingTap,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+    return HubSummaryCard(
+      icon: Icons.groups_outlined,
+      title: 'Total members',
+      value: '$total',
+      statusText: '$active active',
+      left: HubSummaryCell(
+        label: 'Overall Revenue',
+        value: revenue == null ? '—' : Formatters.currencyInr(revenue!),
+        sub: revenue == null ? null : 'All collected',
+        onTap: onRevenueTap,
       ),
-    );
-  }
-}
-
-class _SummaryCell extends StatelessWidget {
-  const _SummaryCell({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-    required this.subColor,
-    required this.onTap,
-    this.sub,
-    this.tint,
-  });
-
-  final String label;
-  final String value;
-  final Color valueColor;
-  final String? sub;
-  final Color subColor;
-  final Color? tint;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        color: tint,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(fontSize: 13, color: const Color(0xFFFFFFFF).withValues(alpha: 0.75))),
-            const SizedBox(height: 6),
-            Text(value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: valueColor)),
-            if (sub != null) ...[
-              const SizedBox(height: 4),
-              Text(sub!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: subColor)),
-            ],
-          ],
-        ),
+      right: HubSummaryCell(
+        label: 'Payment Pending',
+        value: pending == null ? '—' : Formatters.currencyInr(pending!.amountInr),
+        valueColor: hasPending ? tokens.warning : null,
+        sub: pending == null ? null : (hasPending ? '${pending!.count} unpaid' : 'Nothing pending'),
+        subColor: hasPending ? const Color(0xFFFFFFFF).withValues(alpha: 0.75) : null,
+        tint: hasPending ? tokens.warning.withValues(alpha: 0.12) : null,
+        onTap: onPendingTap,
       ),
     );
   }

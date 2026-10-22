@@ -9,6 +9,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_court_options.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class _Slot {
   const _Slot({required this.courtName, required this.start, required this.end, required this.kind, required this.label});
@@ -124,7 +125,7 @@ class _State extends ConsumerState<MaintenanceCourtScheduleScreen> {
         ],
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _MaintenanceCourtScheduleSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -159,7 +160,7 @@ class _State extends ConsumerState<MaintenanceCourtScheduleScreen> {
                         ],
                       ],
                     ),
-                  ),
+                  )),
       ),
     );
   }

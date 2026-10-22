@@ -6,6 +6,7 @@ import { PricingPeriodsEditor } from "@/features/pricing/components/pricing-peri
 import type { PeriodDraft } from "@/features/pricing/components/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { pluralizeLabel, type PlayingAreaLabel } from "@/features/courts-setup/constants";
+import { cn } from "@/lib/utils";
 
 export interface OverrideDraft {
   active: boolean;
@@ -14,6 +15,12 @@ export interface OverrideDraft {
   errors: string[];
 }
 
+/**
+ * One sport's pricing. The owner first chooses how the sport is priced:
+ *  - Default rate: one rate that every court / turf of the sport charges.
+ *  - Individual rate: each court / turf has its own rate, and there is no sport-wide default to fill in.
+ * Only the chosen mode's fields are shown and collected.
+ */
 export function SportPricingCard({
   sportName,
   sportIcon,
@@ -23,13 +30,11 @@ export function SportPricingCard({
   periods,
   advancedEnabled,
   errors,
-  customizeAreas,
+  individualPricing,
   overrides,
   onChangePeriods,
   onToggleAdvanced,
-  onToggleCustomizeAreas,
-  onCustomizeArea,
-  onUseDefaultForArea,
+  onChangePricingMode,
   onOverrideChange,
   onOverrideToggleAdvanced,
   onCopyRequest,
@@ -42,17 +47,21 @@ export function SportPricingCard({
   periods: PeriodDraft[];
   advancedEnabled: boolean;
   errors?: string[];
-  customizeAreas: boolean;
+  individualPricing: boolean;
   overrides: Record<string, OverrideDraft>;
   onChangePeriods: (periods: PeriodDraft[]) => void;
   onToggleAdvanced: (enabled: boolean) => void;
-  onToggleCustomizeAreas: (enabled: boolean) => void;
-  onCustomizeArea: (areaId: string) => void;
-  onUseDefaultForArea: (areaId: string) => void;
+  onChangePricingMode: (individual: boolean) => void;
   onOverrideChange: (areaId: string, periods: PeriodDraft[]) => void;
   onOverrideToggleAdvanced: (areaId: string, enabled: boolean) => void;
   onCopyRequest: () => void;
 }) {
+  const noun = areaLabel.toLowerCase();
+  const modes = [
+    { individual: false, title: "Default rate", hint: `One rate for every ${noun}` },
+    { individual: true, title: "Individual rate", hint: `A different rate for each ${noun}` },
+  ];
+
   return (
     <Card className="space-y-4 p-5">
       <div className="flex items-center justify-between gap-3">
@@ -62,55 +71,57 @@ export function SportPricingCard({
           </span>
           <h2 className="text-sm font-semibold">{sportName}</h2>
         </div>
-        <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onCopyRequest}>
-          Copy Pricing
-        </Button>
+        {!individualPricing && (
+          <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={onCopyRequest}>
+            Copy Pricing
+          </Button>
+        )}
       </div>
 
-      <PricingPeriodsEditor
-        periods={periods}
-        advancedEnabled={advancedEnabled}
-        currency={currency}
-        errors={errors}
-        onChangePeriods={onChangePeriods}
-        onToggleAdvanced={onToggleAdvanced}
-      />
+      <div role="radiogroup" aria-label={`How do you price ${sportName}?`} className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+        {modes.map((m) => {
+          const selected = individualPricing === m.individual;
+          return (
+            <button
+              key={m.title}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => !selected && onChangePricingMode(m.individual)}
+              className={cn(
+                "rounded-md px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                selected ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="block text-sm font-medium">{m.title}</span>
+              <span className="block text-[11px] text-muted-foreground">{m.hint}</span>
+            </button>
+          );
+        })}
+      </div>
 
-      <p className="text-xs text-muted-foreground">
-        {playingAreas.length} {pluralizeLabel(areaLabel, playingAreas.length)}
-      </p>
-
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={customizeAreas}
-        onClick={() => onToggleCustomizeAreas(!customizeAreas)}
-        className="text-xs font-medium text-primary underline underline-offset-2"
-      >
-        {customizeAreas ? "Hide individual pricing" : `Customize individual ${areaLabel.toLowerCase()} pricing →`}
-      </button>
-
-      {customizeAreas && (
-        <div className="space-y-2 border-t border-border pt-3">
+      {!individualPricing ? (
+        <>
+          <PricingPeriodsEditor
+            periods={periods}
+            advancedEnabled={advancedEnabled}
+            currency={currency}
+            errors={errors}
+            onChangePeriods={onChangePeriods}
+            onToggleAdvanced={onToggleAdvanced}
+          />
+          <p className="text-xs text-muted-foreground">
+            Applies to all {playingAreas.length} {pluralizeLabel(areaLabel, playingAreas.length)}
+          </p>
+        </>
+      ) : (
+        <div className="space-y-3">
           {playingAreas.map((area) => {
             const override = overrides[area.id];
-            const isCustom = override?.active ?? false;
             return (
               <div key={area.id} className="space-y-2 rounded-lg border border-border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium">{area.name}</span>
-                  {isCustom ? (
-                    <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => onUseDefaultForArea(area.id)}>
-                      Use Sport Default
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => onCustomizeArea(area.id)}>
-                      Customize
-                    </Button>
-                  )}
-                </div>
-                {!isCustom && <p className="text-xs text-muted-foreground">Uses default ✓</p>}
-                {isCustom && override && (
+                <span className="text-sm font-medium">{area.name}</span>
+                {override && (
                   <PricingPeriodsEditor
                     periods={override.periods}
                     advancedEnabled={override.advancedEnabled}

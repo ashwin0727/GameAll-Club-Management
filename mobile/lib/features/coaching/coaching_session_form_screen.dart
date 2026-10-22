@@ -14,6 +14,7 @@ import '../authentication/session_controller.dart';
 import '../maintenance/maintenance_court_options.dart';
 import '../staff/staff_common.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Create a coaching session — mirrors
 /// src/features/coaching/components/session-wizard-page.tsx. Court, coach and
@@ -162,7 +163,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
     return Scaffold(
       appBar: AppBar(title: const Text('New Session')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _CoachingSessionFormSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -268,7 +269,7 @@ class _CoachingSessionFormScreenState extends ConsumerState<CoachingSessionFormS
                   PrimaryButton(label: 'Create Session', loadingLabel: 'Creating…', isLoading: _saving, onPressed: _save),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-              ),
+              )),
       ),
     );
   }

@@ -12,7 +12,8 @@ const PREVIOUS_STEP_PATH: Record<string, string> = {
   "/onboarding/courts": "/onboarding/sports",
   "/onboarding/operating-hours": "/onboarding/courts",
   "/onboarding/pricing": "/onboarding/operating-hours",
-  "/onboarding/complete": "/onboarding/pricing",
+  "/onboarding/payments": "/onboarding/pricing",
+  "/onboarding/complete": "/onboarding/payments",
 };
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {

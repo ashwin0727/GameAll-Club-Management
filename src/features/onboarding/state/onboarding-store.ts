@@ -13,6 +13,7 @@ interface OnboardingState {
   courtsCompleted: boolean;
   operatingHoursCompleted: boolean;
   pricingCompleted: boolean;
+  paymentsCompleted: boolean;
   facility: Facility | null;
   draft: FacilityDraft;
   selectedSportIds: string[];
@@ -25,6 +26,7 @@ interface OnboardingState {
   completeCourts: () => void;
   completeOperatingHours: () => void;
   completePricing: () => void;
+  completePayments: () => void;
   reset: () => void;
 }
 
@@ -36,6 +38,7 @@ const INITIAL_STATE = {
   courtsCompleted: false,
   operatingHoursCompleted: false,
   pricingCompleted: false,
+  paymentsCompleted: false,
   facility: null as Facility | null,
   draft: {} as FacilityDraft,
   selectedSportIds: [] as string[],
@@ -79,6 +82,12 @@ export const useOnboardingStore = create<OnboardingState>()(
           pricingCompleted: true,
           currentStep: 6,
           completedSteps: s.completedSteps.includes(5) ? s.completedSteps : [...s.completedSteps, 5],
+        })),
+      completePayments: () =>
+        set((s) => ({
+          paymentsCompleted: true,
+          currentStep: 7,
+          completedSteps: s.completedSteps.includes(6) ? s.completedSteps : [...s.completedSteps, 6],
         })),
       reset: () => set({ ...INITIAL_STATE }),
     }),

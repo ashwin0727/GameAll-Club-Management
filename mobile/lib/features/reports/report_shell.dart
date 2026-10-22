@@ -15,6 +15,7 @@ import '../../data/models/analytics.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'analytics_filter_controls.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 enum ReportStatus { loading, error, empty, ready }
 
@@ -72,7 +73,7 @@ class ReportShell extends ConsumerWidget {
                       trailing: filterTrailing,
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    switch (status) {
+                    SmoothSwitcher(child: KeyedSubtree(key: ValueKey(status), child: switch (status) {
                       ReportStatus.loading => Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xl),
                           child: loadingSkeleton ?? const LoadingView(),
@@ -86,7 +87,7 @@ class ReportShell extends ConsumerWidget {
                           child: EmptyStateView(message: emptyMessage),
                         ),
                       ReportStatus.ready => body,
-                    },
+                    })),
                   ],
                 ),
               ),

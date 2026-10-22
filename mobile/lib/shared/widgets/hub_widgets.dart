@@ -267,3 +267,162 @@ class HubExpandPanel extends StatelessWidget {
     );
   }
 }
+
+/// One figure in the strip along the bottom of a [HubSummaryCard].
+class HubSummaryCell {
+  const HubSummaryCell({
+    required this.label,
+    required this.value,
+    this.sub,
+    this.subColor,
+    this.valueColor,
+    this.tint,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+
+  /// The small line under the figure ("All collected", "3 unpaid").
+  final String? sub;
+  final Color? subColor;
+  final Color? valueColor;
+
+  /// A wash behind the cell — used to flag something that needs attention.
+  final Color? tint;
+  final VoidCallback onTap;
+}
+
+/// The hub pages' summary card — the one Memberships opens with: a photo, a title, one big figure with a status dot and
+/// its note, then a strip of two more figures under a hairline. Coaching, Programs and Students use it too, so all four
+/// pages open the same way.
+class HubSummaryCard extends StatelessWidget {
+  const HubSummaryCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.statusText,
+    required this.left,
+    required this.right,
+    this.asset = 'assets/images/members_card.png',
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  /// Beside the big figure, after a green dot: "4 active".
+  final String statusText;
+  final HubSummaryCell left;
+  final HubSummaryCell right;
+  final String asset;
+
+  static const _white = Color(0xFFFFFFFF);
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Stack(
+        children: [
+          Positioned.fill(child: Image.asset(asset, fit: BoxFit.cover)),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withValues(alpha: 0.55), Colors.black.withValues(alpha: 0.75)],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 16, color: _white),
+                        const SizedBox(width: 8),
+                        Text(title, style: TextStyle(fontSize: 14, color: _white.withValues(alpha: 0.9))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(value, style: const TextStyle(fontSize: 44, height: 1, fontWeight: FontWeight.w800, color: _white)),
+                        const SizedBox(width: 16),
+                        Container(width: 8, height: 8, decoration: BoxDecoration(color: tokens.success, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(statusText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _white)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(height: 1, color: _white.withValues(alpha: 0.12)),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _HubSummaryCellView(cell: left)),
+                    Container(width: 1, color: _white.withValues(alpha: 0.12)),
+                    Expanded(child: _HubSummaryCellView(cell: right)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HubSummaryCellView extends StatelessWidget {
+  const _HubSummaryCellView({required this.cell});
+
+  final HubSummaryCell cell;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    const white = Color(0xFFFFFFFF);
+    return InkWell(
+      onTap: cell.onTap,
+      child: Container(
+        color: cell.tint,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(cell.label, style: TextStyle(fontSize: 13, color: white.withValues(alpha: 0.75))),
+            const SizedBox(height: 6),
+            Text(cell.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: cell.valueColor ?? white)),
+            if (cell.sub != null) ...[
+              const SizedBox(height: 4),
+              Text(cell.sub!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: cell.subColor ?? tokens.success)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

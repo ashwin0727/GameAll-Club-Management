@@ -17,6 +17,7 @@ import '../../shared/widgets/states.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../finance/finance_presentation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Owner-facing refund visibility (spec §13/§28/§29/§30) — mirrors
 /// `refunds-panel.tsx`: open settlement exceptions (payment received,
@@ -172,7 +173,7 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
         title: const Text('Refunds', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _RefundsSkeleton()
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
@@ -261,7 +262,7 @@ class _RefundsScreenState extends ConsumerState<RefundsScreen> {
                     ],
                   ),
                 ),
-              ),
+              )),
       ),
     );
   }

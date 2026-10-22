@@ -91,8 +91,8 @@ void main() {
       expect(o.description, 'Court 2 • 14 Aug • 06:00 PM');
       expect(o.facilityName, 'GameAll Arena');
       expect(o.courtName, 'Court 2');
-      expect(o.startsAt, DateTime.parse('2026-08-14T12:30:00Z'));
-      expect(o.endsAt, DateTime.parse('2026-08-14T13:30:00Z'));
+      expect(o.startsAt?.toUtc(), DateTime.parse('2026-08-14T12:30:00Z'));
+      expect(o.endsAt?.toUtc(), DateTime.parse('2026-08-14T13:30:00Z'));
       expect(o.totalMinor, 80000);
       expect(o.paidMinor, 30000);
       expect(o.outstandingMinor, 50000);

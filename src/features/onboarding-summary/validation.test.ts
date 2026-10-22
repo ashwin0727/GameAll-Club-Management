@@ -5,6 +5,7 @@ import {
   detectMissingOperatingHours,
   detectMissingPlayingAreas,
   detectMissingPricing,
+  detectPartiallyPricedSports,
   detectMissingSports,
   transformPricingSummary,
   transformSportsSummary,
@@ -119,6 +120,36 @@ describe("detectMissingPricing", () => {
   it("ignores a playing-area-only override — the sport still needs its own default", () => {
     const missing = detectMissingPricing([FACILITY_SPORT], [SPORT], [rule({ playingAreaId: "area-1" })]);
     expect(missing).toEqual(["Badminton"]);
+  });
+});
+
+describe("detectMissingPricing — rates per court", () => {
+  const area = (id: string): PlayingArea => ({ id, facilityId: "f1", facilitySportId: FACILITY_SPORT.id, name: id, status: "ACTIVE" } as unknown as PlayingArea);
+
+  it("accepts a sport whose every court has its own rate, with no default", () => {
+    const areas = [area("a1"), area("a2")];
+    const rules = [rule({ playingAreaId: "a1" }), rule({ playingAreaId: "a2" })];
+    expect(detectMissingPricing([FACILITY_SPORT], [SPORT], rules, areas)).toEqual([]);
+    expect(detectPartiallyPricedSports([FACILITY_SPORT], [SPORT], rules, areas)).toEqual([]);
+  });
+
+  it("asks for a default when only some courts have a rate", () => {
+    const areas = [area("a1"), area("a2")];
+    const rules = [rule({ playingAreaId: "a1" })];
+    expect(detectMissingPricing([FACILITY_SPORT], [SPORT], rules, areas)).toEqual(["Badminton"]);
+    expect(detectPartiallyPricedSports([FACILITY_SPORT], [SPORT], rules, areas)).toEqual(["Badminton"]);
+    const [req] = buildMissingRequirements({
+      missingSports: false,
+      missingPlayingAreas: false,
+      missingOperatingHours: false,
+      sportsMissingPricing: ["Badminton"],
+      sportsPartiallyPriced: ["Badminton"],
+    });
+    expect(req?.message).toBe("Set a default rate for Badminton, or a rate for each of its courts.");
+  });
+
+  it("is satisfied by a default rate whatever the courts have", () => {
+    expect(detectMissingPricing([FACILITY_SPORT], [SPORT], [rule()], [area("a1")])).toEqual([]);
   });
 });
 

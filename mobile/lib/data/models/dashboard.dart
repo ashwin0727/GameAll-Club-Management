@@ -54,7 +54,7 @@ class UtilizationSummary {
 /// The only block types with real backing data: a regular member booking, a
 /// regular guest booking, or actual usage of a membership-protected session.
 /// There is no "blocked"/"maintenance" table yet, so those are never fabricated.
-enum ScheduleBlockType { member, guest, session }
+enum ScheduleBlockType { member, guest, session, coaching }
 
 class ScheduleBlock {
   const ScheduleBlock({

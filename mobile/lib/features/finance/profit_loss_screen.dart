@@ -14,6 +14,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_presentation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Finance → Profit & Loss — mirrors
 /// src/features/finance/components/profit-loss-page.tsx.
@@ -96,7 +97,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
         title: const Text('Profit & Loss', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _ProfitLossSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -117,7 +118,7 @@ class _ProfitLossScreenState extends ConsumerState<ProfitLossScreen> {
                         const SizedBox(height: AppSpacing.xl),
                       ],
                     ),
-                  ),
+                  )),
       ),
     );
   }

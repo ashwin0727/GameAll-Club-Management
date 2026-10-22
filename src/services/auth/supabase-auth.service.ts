@@ -86,30 +86,46 @@ export class SupabaseAuthService implements AuthService {
     this.supabase = client ?? createClient();
   }
 
-  async register({ name, email, password }: SignupInput): Promise<RegisterResult> {
-    const { data, error } = await this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        // Consumed by the handle_new_user trigger to seed the profile row.
-        data: { full_name: name, account_type: "owner" },
-        emailRedirectTo: callbackUrl("/login?verified=1"),
-      },
-    });
-
-    if (error) throw toAuthError(error);
-
-    // Supabase does not error on a duplicate signup — it returns a user with no
-    // identities so an attacker cannot enumerate addresses. We surface it,
-    // because the person in front of us genuinely needs to know to sign in.
-    if (data.user && data.user.identities?.length === 0) {
-      throw new AuthError(
-        "email_taken",
-        "An account already exists for this email address. Sign in instead.",
-      );
+  /**
+   * Calls the `signup-otp` edge function. It creates the account unconfirmed and emails a 6-digit code (Resend) — no
+   * Supabase confirmation link is involved. Failures arrive as { ok: false, code, message } with a 4xx/5xx status.
+   */
+  private async signupOtp(body: Record<string, unknown>): Promise<void> {
+    const { error } = await this.supabase.functions.invoke("signup-otp", { body });
+    if (!error) return;
+    let code = "unknown";
+    let message = "Something went wrong. Please try again.";
+    const context = (error as { context?: Response }).context;
+    if (context && typeof context.json === "function") {
+      try {
+        const payload = (await context.json()) as { code?: string; message?: string };
+        code = payload.code ?? code;
+        message = payload.message ?? message;
+      } catch {
+        /* keep the generic message */
+      }
+    } else if (/fetch|network/i.test(error.message ?? "")) {
+      throw new AuthError("network", "Network error. Check your connection and try again.");
     }
+    const codes: Record<string, AuthErrorCode> = {
+      email_taken: "email_taken",
+      weak_password: "weak_password",
+      cooldown: "rate_limited",
+      rate_limited: "rate_limited",
+      locked: "rate_limited",
+      expired: "expired_link",
+      invalid_code: "invalid_code",
+    };
+    throw new AuthError(codes[code] ?? "unknown", message);
+  }
 
-    return { email, sessionActive: Boolean(data.session) };
+  async register({ name, email, password }: SignupInput): Promise<RegisterResult> {
+    await this.signupOtp({ action: "start", name, email, password });
+    return { email, sessionActive: false };
+  }
+
+  async verifySignupCode(email: string, code: string): Promise<void> {
+    await this.signupOtp({ action: "verify", email, code });
   }
 
   async login({ email, password }: LoginInput): Promise<AuthUser> {
@@ -185,12 +201,7 @@ export class SupabaseAuthService implements AuthService {
   }
 
   async sendVerificationEmail(email: string): Promise<void> {
-    const { error } = await this.supabase.auth.resend({
-      type: "signup",
-      email,
-      options: { emailRedirectTo: callbackUrl("/login?verified=1") },
-    });
-    if (error) throw toAuthError(error);
+    await this.signupOtp({ action: "resend", email });
   }
 
   async resendVerificationEmail(email: string): Promise<void> {

@@ -60,6 +60,8 @@ export class SupabaseSportsService implements SportsService {
       p_custom_sport_name: customSportName,
     });
 
+    // Removing a sport that still has upcoming work is refused with a message written for the owner (0150).
+    if (error?.code === "23514" && /move or cancel/i.test(error.message)) throw new ServiceError("DATABASE_ERROR", error.message);
     if (error) throw mapSupabaseError(error, { duplicate: "DUPLICATE_FACILITY_SPORT" });
     if (!data) throw new ServiceError("DATABASE_ERROR");
     return data.map(toFacilitySport);

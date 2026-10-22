@@ -18,6 +18,7 @@ import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
 import 'operating_hours_summary.dart';
 import 'operating_hours_validation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class _OverrideEntry {
   _OverrideEntry({required this.active, required this.days, this.initiallyActive = false});
@@ -28,7 +29,10 @@ class _OverrideEntry {
 }
 
 class OperatingHoursScreen extends ConsumerStatefulWidget {
-  const OperatingHoursScreen({super.key});
+  const OperatingHoursScreen({super.key, this.editMode = false});
+
+  /// Opened from Profile to change an already-finished setup: saving goes back instead of on to Payments.
+  final bool editMode;
 
   @override
   ConsumerState<OperatingHoursScreen> createState() => _OperatingHoursScreenState();
@@ -257,6 +261,12 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
           await hoursRepo.deletePlayingAreaOverride(area.id);
         }
       }
+      if (widget.editMode) {
+        if (!mounted) return;
+        setState(() => _dirty = false);
+        context.pop(true);
+        return;
+      }
       await ref
           .read(facilityRepositoryProvider)
           .updateOnboardingStep(_facilityId!, OnboardingStep.payments);
@@ -281,21 +291,23 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     if (_isLoading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 3,
+        editing: widget.editMode,
         title: 'When are you open?',
         onBack: () => context.go(AppRoutes.onboardingPricing),
         footer: const SizedBox.shrink(),
         children: [
           SizedBox(
             height: 320,
-            child: _isLoading
+            child: SmoothSwitcher(child: _isLoading
                 ? const LoadingView(message: 'Loading operating hours…')
-                : ErrorView(message: _loadError!, onRetry: _load),
+                : ErrorView(message: _loadError!, onRetry: _load)),
           ),
         ],
       );
     }
     return OnboardingScaffold(
       stepIndex: 3,
+      editing: widget.editMode,
       title: 'When are you open?',
       subtitle: "Bookings can't be made outside these hours. Set one pattern, "
           'then override any day.',
@@ -323,7 +335,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
           ),
           const SizedBox(height: AppSpacing.xs),
           AuthGradientButton(
-            label: 'Next · payments  ›',
+            label: widget.editMode ? 'Save changes' : 'Next · payments  ›',
             loadingLabel: 'Saving…',
             isLoading: _isSubmitting,
             onPressed: _submit,

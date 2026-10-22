@@ -22,6 +22,7 @@ import 'analytics_filter_controls.dart';
 import 'report_section_header.dart';
 import 'report_shell.dart';
 import 'sport_visuals.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Reports → Revenue — mirrors src/features/reports/components/revenue-report.tsx.
 ///
@@ -157,7 +158,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
         for (final r in _byCourt) ['Revenue by court', '${r.courtName} · ${r.sportName}', inr(r.revenueMinor)],
         for (final t in _trend) ['Revenue trend', t.date, inr(t.netMinor)],
       ];
-      await shareCsv(fileName: 'revenue_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
+      await saveCsv(context, fileName: 'revenue_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));
@@ -204,7 +205,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                      switch (_status) {
+                      SmoothSwitcher(child: KeyedSubtree(key: ValueKey(_status), child: switch (_status) {
                         ReportStatus.loading => const Padding(
                             padding: EdgeInsets.only(top: AppSpacing.xl),
                             child: _RevenueReportSkeleton(),
@@ -221,7 +222,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                             child: EmptyStateView(message: 'No revenue data for this period.'),
                           ),
                         ReportStatus.ready => _body(context),
-                      },
+                      })),
                     ],
                   ),
                 ),

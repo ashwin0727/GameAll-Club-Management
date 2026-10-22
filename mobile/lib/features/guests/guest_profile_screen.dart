@@ -18,6 +18,7 @@ import '../../shared/widgets/states.dart';
 import '../bookings/booking_status_presentation.dart';
 import '../bookings/bookings_screen.dart';
 import 'guest_form_sheet.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class GuestProfileScreen extends ConsumerStatefulWidget {
   const GuestProfileScreen({super.key, required this.facilityId, required this.guest});
@@ -113,7 +114,7 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
       child: Scaffold(
         appBar: AppBar(title: Text(_guest.name)),
         body: SafeArea(
-          child: _isLoading
+          child: SmoothSwitcher(child: _isLoading
               ? const _GuestProfileSkeleton()
               : _loadError != null
               ? ErrorView(message: _loadError!, onRetry: _load)
@@ -177,7 +178,7 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
                       ),
                     ],
                   ),
-                ),
+                )),
         ),
       ),
     );

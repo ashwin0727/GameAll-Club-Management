@@ -73,8 +73,8 @@ void main() {
       expect(details.amountMinor, 80000);
       expect(details.status, 'paid');
       expect(details.paymentMethod, 'UPI');
-      expect(details.occurredAt, DateTime.parse('2026-08-20T10:15:00Z'));
-      expect(details.createdAt, DateTime.parse('2026-08-20T10:14:30Z'));
+      expect(details.occurredAt.toUtc(), DateTime.parse('2026-08-20T10:15:00Z'));
+      expect(details.createdAt.toUtc(), DateTime.parse('2026-08-20T10:14:30Z'));
       expect(details.recordedBy, 'Asha Menon');
       expect(details.sourceReference, 'BOOK-AB12CD');
       expect(details.customerName, 'Rahul');

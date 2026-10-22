@@ -55,7 +55,9 @@ void main() {
 
       expect(entry.id, 'txn-1');
       expect(entry.reference, 'TXN-ABCD1234');
-      expect(entry.occurredAt, DateTime.parse('2026-08-20T10:15:00Z'));
+      expect(entry.occurredAt.toUtc(), DateTime.parse('2026-08-20T10:15:00Z'));
+      // Shown in the device's own time, not UTC: a payment taken at 6:31 PM must not read 13:01.
+      expect(entry.occurredAt.isUtc, isFalse);
       expect(entry.description, 'Guest Booking — Rahul');
       expect(entry.category, 'Guest Booking Revenue');
       expect(entry.txnType, LedgerTxnType.income);

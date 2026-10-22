@@ -19,6 +19,7 @@ import '../authentication/session_controller.dart';
 import '../reports/report_section_header.dart';
 import '../../shared/widgets/skeleton.dart';
 import 'finance_presentation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Finance → Daily Closing — mirrors
 /// src/features/finance/components/daily-closing-page.tsx.
@@ -171,7 +172,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
         title: const Text('Daily Closing', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _DailyClosingSkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -222,7 +223,7 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                         const SizedBox(height: AppSpacing.xl),
                       ],
                     ),
-                  ),
+                  )),
       ),
     );
   }

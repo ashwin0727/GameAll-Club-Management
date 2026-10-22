@@ -26,6 +26,7 @@ export function installFakeAuthService(overrides: Partial<AuthService> = {}): Au
     isEmailVerified: vi.fn(async () => true),
     sendVerificationEmail: vi.fn(async () => undefined),
     resendVerificationEmail: vi.fn(async () => undefined),
+    verifySignupCode: vi.fn(async () => undefined),
     changeEmail: vi.fn(async ({ email }) => ({ email, sessionActive: false })),
     resetPassword: vi.fn(async () => undefined),
     updatePassword: vi.fn(async () => undefined),

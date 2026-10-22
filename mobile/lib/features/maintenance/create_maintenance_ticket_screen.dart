@@ -16,6 +16,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'maintenance_court_options.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Maintenance → Create Ticket. Mobile uses one grouped, scrollable form
 /// (spec §"structured form" alternative to a multi-step wizard) with the
@@ -193,11 +194,11 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _CreateMaintenanceTicketSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
-                : _form(context),
+                : _form(context)),
       ),
       bottomNavigationBar: !ready
           ? null

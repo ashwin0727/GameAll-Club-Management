@@ -24,6 +24,7 @@ import 'add_member_wizard.dart' show autoPayCadence, autoPayNextCharge, autoPayS
 import 'edit_member_screen.dart';
 import 'membership_list_presentation.dart';
 import 'slot_format.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The Membership Details screen — mirrors
 /// src/features/memberships/components/membership-detail-page.tsx. Reached
@@ -226,11 +227,11 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
         ],
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _MembershipDetailSkeleton()
             : _error != null || d == null
                 ? ErrorView(message: _error ?? 'Membership not found.', onRetry: _load)
-                : ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: _content(context, d)),
+                : ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: _content(context, d))),
       ),
     );
   }

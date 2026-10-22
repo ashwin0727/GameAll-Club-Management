@@ -296,8 +296,8 @@ class UpcomingSession {
   final SessionStatus status;
   factory UpcomingSession.fromJson(Map<String, dynamic> j) => UpcomingSession(
         id: j['id'] as String,
-        startAt: DateTime.parse(j['startAt'] as String),
-        endAt: DateTime.parse(j['endAt'] as String),
+        startAt: DateTime.parse(j['startAt'] as String).toLocal(),
+        endAt: DateTime.parse(j['endAt'] as String).toLocal(),
         programName: j['programName'] as String? ?? '',
         coachName: j['coachName'] as String? ?? '',
         courtName: j['courtName'] as String? ?? '',
@@ -350,7 +350,7 @@ class RecentEnrollment {
         id: j['id'] as String,
         studentName: j['studentName'] as String? ?? '',
         programName: j['programName'] as String? ?? '',
-        enrolledAt: DateTime.parse(j['enrolledAt'] as String),
+        enrolledAt: DateTime.parse(j['enrolledAt'] as String).toLocal(),
         status: EnrollmentStatus.fromJson(j['status'] as String?),
       );
 }
@@ -514,8 +514,8 @@ class CoachDetail {
                 coachName: j['fullName'] as String,
                 courtId: '',
                 courtName: r['courtName'] as String? ?? '',
-                startAt: DateTime.parse(r['startAt'] as String),
-                endAt: DateTime.parse(r['endAt'] as String),
+                startAt: DateTime.parse(r['startAt'] as String).toLocal(),
+                endAt: DateTime.parse(r['endAt'] as String).toLocal(),
                 capacity: 0,
                 enrolledCount: 0,
                 status: SessionStatus.fromJson(r['status'] as String?),
@@ -924,8 +924,8 @@ class SessionRow {
         coachName: j['coach_name'] as String? ?? '',
         courtId: j['court_id'] as String? ?? '',
         courtName: j['court_name'] as String? ?? '',
-        startAt: DateTime.parse(j['start_at'] as String),
-        endAt: DateTime.parse(j['end_at'] as String),
+        startAt: DateTime.parse(j['start_at'] as String).toLocal(),
+        endAt: DateTime.parse(j['end_at'] as String).toLocal(),
         capacity: _int(j['capacity']),
         enrolledCount: _int(j['enrolled_count']),
         status: SessionStatus.fromJson(j['status'] as String?),
@@ -970,7 +970,7 @@ class SessionProgressNote {
         skillOrGoal: j['skillOrGoal'] as String?,
         note: j['note'] as String? ?? '',
         progressStatus: ProgressStatus.fromJson(j['progressStatus'] as String?),
-        createdAt: DateTime.parse(j['createdAt'] as String),
+        createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
       );
 }
 
@@ -984,7 +984,7 @@ class CoachingEventRow {
         id: j['id'] as String,
         summary: j['summary'] as String? ?? '',
         actorName: j['actorName'] as String? ?? j['actor_name'] as String?,
-        createdAt: DateTime.parse((j['createdAt'] ?? j['created_at']) as String),
+        createdAt: DateTime.parse((j['createdAt'] ?? j['created_at']) as String).toLocal(),
       );
 }
 
@@ -1047,8 +1047,8 @@ class SessionDetail {
         coachName: j['coachName'] as String? ?? '',
         courtId: j['courtId'] as String,
         courtName: j['courtName'] as String? ?? '',
-        startAt: DateTime.parse(j['startAt'] as String),
-        endAt: DateTime.parse(j['endAt'] as String),
+        startAt: DateTime.parse(j['startAt'] as String).toLocal(),
+        endAt: DateTime.parse(j['endAt'] as String).toLocal(),
         capacity: _int(j['capacity']),
         status: SessionStatus.fromJson(j['status'] as String?),
         notes: j['notes'] as String?,
@@ -1133,7 +1133,7 @@ class EnrollmentSessionRef {
   final SessionStatus status;
   factory EnrollmentSessionRef.fromJson(Map<String, dynamic> j) => EnrollmentSessionRef(
         id: j['id'] as String,
-        startAt: DateTime.parse(j['startAt'] as String),
+        startAt: DateTime.parse(j['startAt'] as String).toLocal(),
         programName: j['programName'] as String? ?? '',
         courtName: j['courtName'] as String? ?? '',
         status: SessionStatus.fromJson(j['status'] as String?),
@@ -1149,7 +1149,7 @@ class EnrollmentPaymentRef {
   factory EnrollmentPaymentRef.fromJson(Map<String, dynamic> j) => EnrollmentPaymentRef(
         id: j['id'] as String,
         amountMinor: _int(j['amountMinor']),
-        paidAt: DateTime.parse(j['paidAt'] as String),
+        paidAt: DateTime.parse(j['paidAt'] as String).toLocal(),
         method: j['method'] as String?,
       );
 }
@@ -1168,7 +1168,7 @@ class EnrollmentProgressNote {
         note: j['note'] as String? ?? '',
         progressStatus: ProgressStatus.fromJson(j['progressStatus'] as String?),
         coachName: j['coachName'] as String?,
-        createdAt: DateTime.parse(j['createdAt'] as String),
+        createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
       );
 }
 

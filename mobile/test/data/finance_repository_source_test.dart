@@ -257,8 +257,8 @@ void main() {
       expect(transaction.pendingRefundMinor, 0);
       // The view's own net_minor — not amount minus refunded computed here.
       expect(transaction.netMinor, 80000);
-      expect(transaction.paidAt, DateTime.parse('2026-08-27T10:00:05Z'));
-      expect(transaction.effectiveAt, DateTime.parse('2026-08-27T10:00:05Z'));
+      expect(transaction.paidAt?.toUtc(), DateTime.parse('2026-08-27T10:00:05Z'));
+      expect(transaction.effectiveAt.toUtc(), DateTime.parse('2026-08-27T10:00:05Z'));
     });
 
     test('an unpaid transaction has a null paid_at rather than a substituted created_at', () {

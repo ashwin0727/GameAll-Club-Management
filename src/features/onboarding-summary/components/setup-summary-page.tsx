@@ -253,7 +253,9 @@ export function SetupSummaryPage() {
                   <span className="font-medium text-foreground">{entry.sportName}</span>
                   <span className="text-muted-foreground">
                     {entry.defaultAmountMinor === null
-                      ? "Not set"
+                      ? entry.overrides.length > 0
+                        ? "Rate per court"
+                        : "Not set"
                       : `${formatCurrency(entry.defaultAmountMinor, entry.currency)} ${PRICING_UNIT_LABEL.PER_HOUR}`}
                   </span>
                 </div>

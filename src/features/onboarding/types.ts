@@ -42,6 +42,7 @@ export interface Facility {
     | "SPORTS"
     | "COURTS"
     | "OPERATING_HOURS"
+    | "PAYMENTS"
     | "PRICING"
     | "COMPLETED";
   onboardingCompletedAt?: string;

@@ -32,6 +32,7 @@ import 'membership_list_presentation.dart';
 import 'membership_plan_wizard_screen.dart';
 import 'slot_format.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _perPage = 10;
 
@@ -383,7 +384,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
         ],
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _MembershipsScreenSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
@@ -457,7 +458,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                         ],
                       ),
                     ),
-                  ),
+                  )),
       ),
       floatingActionButton: _facilityId == null
           ? null

@@ -97,7 +97,7 @@ class MembershipPlan {
       durationDays: (json['duration_days'] as num).toInt(),
       features: (json['features'] as List<dynamic>? ?? const []).cast<String>(),
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       description: json['description'] as String?,
       category: json['category'] as String?,
       planType: json['plan_type'] as String? ?? 'TIME_BASED',
@@ -182,7 +182,7 @@ class Membership {
       startDate: DateTime.parse(json['start_date'] as String),
       endDate: DateTime.parse(json['end_date'] as String),
       autoRenew: json['auto_renew'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 }
@@ -296,8 +296,8 @@ class Member {
       notes: json['notes'] as String?,
       status: json['status'] as String? ?? 'ACTIVE',
       userId: json['user_id'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );
   }
 }
@@ -751,7 +751,7 @@ class MemberStats {
     return MemberStats(
       totalVisits: (json['total_visits'] as num?)?.toInt() ?? 0,
       totalBookings: (json['total_bookings'] as num?)?.toInt() ?? 0,
-      lastVisit: json['last_visit'] != null ? DateTime.parse(json['last_visit'] as String) : null,
+      lastVisit: json['last_visit'] != null ? DateTime.parse(json['last_visit'] as String).toLocal() : null,
       totalAmountMinor: (json['total_amount_minor'] as num?)?.toInt() ?? 0,
       pendingAmountMinor: (json['pending_amount_minor'] as num?)?.toInt() ?? 0,
       sports: sportsJson
@@ -776,7 +776,7 @@ class MembershipTimelineEvent {
   factory MembershipTimelineEvent.fromJson(Map<String, dynamic> j) => MembershipTimelineEvent(
         label: j['label'] as String,
         actor: j['actor'] as String? ?? '',
-        at: DateTime.parse(j['at'] as String),
+        at: DateTime.parse(j['at'] as String).toLocal(),
       );
 }
 
@@ -871,7 +871,7 @@ class MembershipDetailMembership {
         totalAmountInr: (j['totalAmountInr'] as num?)?.toInt() ?? 0,
         monthlyPriceInr: (j['monthlyPriceInr'] as num?)?.toInt() ?? 0,
         autoRenew: j['autoRenew'] as bool? ?? false,
-        createdAt: DateTime.parse(j['createdAt'] as String),
+        createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
       );
 }
 
@@ -902,8 +902,8 @@ class MembershipDetailPayment {
         status: j['status'] as String? ?? 'created',
         settled: j['settled'] as bool? ?? (j['paidAt'] != null),
         method: j['method'] as String?,
-        paidAt: j['paidAt'] != null ? DateTime.parse(j['paidAt'] as String) : null,
-        createdAt: DateTime.parse(j['createdAt'] as String),
+        paidAt: j['paidAt'] != null ? DateTime.parse(j['paidAt'] as String).toLocal() : null,
+        createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
         transactionId: j['transactionId'] as String?,
       );
 }

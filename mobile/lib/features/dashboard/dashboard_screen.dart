@@ -8,6 +8,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
+import '../../core/routing/page_transitions.dart';
+import '../bookings/guest_booking_screen.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -33,6 +35,7 @@ import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const Map<DateRangePreset, String> _presetLabels = {
   DateRangePreset.today: 'Today',
@@ -69,10 +72,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// the same source the Pending Payments screen uses, so the two agree.
   int? _outstandingInr;
 
+  /// While the Today view is on screen the timeline, "On Court Now" and the figures refresh by themselves, so a booking
+  /// that starts (or is made) while the owner is looking at the page shows up without a manual pull-to-refresh.
+  static const _autoRefreshEvery = Duration(seconds: 10);
+  Timer? _autoRefresh;
+  bool _refreshing = false;
+  int _ticks = 0;
+
   @override
   void initState() {
     super.initState();
     _init();
+    _autoRefresh = Timer.periodic(_autoRefreshEvery, (_) => _silentRefresh());
+  }
+
+  @override
+  void dispose() {
+    _autoRefresh?.cancel();
+    super.dispose();
+  }
+
+  /// A refresh nobody sees: no skeleton, no error screen — the page keeps what it has and updates in place. It runs only
+  /// while Today is showing, the page is the one in front (not covered by another screen or a sheet) and the app is in the
+  /// foreground, and never overlaps a refresh that is still in flight.
+  Future<void> _silentRefresh() async {
+    if (!mounted || _isLoading || _refreshing || _facility == null) return;
+    if (_preset != DateRangePreset.today) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    final life = WidgetsBinding.instance.lifecycleState;
+    if (life != null && life != AppLifecycleState.resumed) return;
+
+    _refreshing = true;
+    _ticks++;
+    try {
+      final summary = await ref.read(dashboardRepositoryProvider).getDashboardSummary(
+        _facility!,
+        facilitySportId: _selectedSportId,
+        preset: _preset,
+        revenueMonthOffset: _revenueMonthOffset,
+      );
+      if (!mounted || _preset != DateRangePreset.today) return;
+      setState(() => _summary = summary);
+      // Money lists change less often; every third tick (30s) is plenty.
+      if (_ticks % 3 == 0) await _loadExtras();
+    } catch (_) {
+      // Keep showing the last good data; the next tick tries again.
+    } finally {
+      _refreshing = false;
+    }
   }
 
   Future<void> _init() async {
@@ -105,41 +152,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _summary = summary;
         _isLoading = false;
       });
-      // Best-effort extras — the dashboard renders fine without them.
-      try {
-        final fin = ref.read(financeRepositoryProvider);
-        // Today -> only what falls due today; any other period -> everything still owed.
-        String? dueTo;
-        if (_preset == DateRangePreset.today) {
-          final n = DateTime.now();
-          dueTo = '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-        }
-        final extras = await Future.wait([
-          fin.listLedger(ListLedgerInput(
-            facilityId: _facilityId!,
-            dateRange: const FinanceDateRange(
-                preset: FinanceDateRangePreset.thisMonth),
-            limit: 5,
-          )),
-          fin.listPendingPayments(ListPendingPaymentsInput(
-            facilityId: _facilityId!,
-            // Overdue first: the server orders by due date, oldest first. Today also stops at today.
-            filters: PendingPaymentFilters(to: dueTo),
-            limit: 500,
-          )),
-          fin.getPendingPaymentsSummary(_facilityId!, to: dueTo),
-        ]);
-        if (!mounted) return;
-        setState(() {
-          _recent = (extras[0] as LedgerPage).entries;
-          final pp = extras[1] as PendingPaymentsPage;
-          _needs = pp.obligations;
-          _needsCount = pp.totalCount;
-          _outstandingInr =
-              ((extras[2] as PendingPaymentsSummary).outstandingMinor / 100)
-                  .round();
-        });
-      } catch (_) {}
+      await _loadExtras();
     } on AppException catch (e) {
       setState(() {
         _isLoading = false;
@@ -156,6 +169,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _loadError = 'Unable to load your dashboard. Please try again.';
       });
     }
+  }
+
+  /// The recent-activity and "Needs you" lists. Best-effort: the dashboard renders fine without them.
+  Future<void> _loadExtras() async {
+    try {
+      final fin = ref.read(financeRepositoryProvider);
+      // Today -> only what falls due today; any other period -> everything still owed.
+      String? dueTo;
+      if (_preset == DateRangePreset.today) {
+        final n = DateTime.now();
+        dueTo = '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+      }
+      final extras = await Future.wait([
+        fin.listLedger(ListLedgerInput(
+          facilityId: _facilityId!,
+          dateRange: const FinanceDateRange(
+              preset: FinanceDateRangePreset.thisMonth),
+          limit: 5,
+        )),
+        fin.listPendingPayments(ListPendingPaymentsInput(
+          facilityId: _facilityId!,
+          // Overdue first: the server orders by due date, oldest first. Today also stops at today.
+          filters: PendingPaymentFilters(to: dueTo),
+          limit: 500,
+        )),
+        fin.getPendingPaymentsSummary(_facilityId!, to: dueTo),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _recent = (extras[0] as LedgerPage).entries;
+        final pp = extras[1] as PendingPaymentsPage;
+        _needs = pp.obligations;
+        _needsCount = pp.totalCount;
+        _outstandingInr =
+            ((extras[2] as PendingPaymentsSummary).outstandingMinor / 100)
+                .round();
+      });
+    } catch (_) {}
   }
 
   String _greeting() {
@@ -218,7 +269,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ],
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _DashboardSkeleton()
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
@@ -250,7 +301,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     onReturn: _load,
                   ),
                 ),
-              ),
+              )),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.today),
       ),
@@ -752,6 +803,8 @@ Color _blockTypeColor(BuildContext context, ScheduleBlockType t) {
       return tokens.electricBlue;
     case ScheduleBlockType.session:
       return tokens.violet;
+    case ScheduleBlockType.coaching:
+      return tokens.warning;
   }
 }
 
@@ -1067,7 +1120,15 @@ class _TopActionsRow extends StatelessWidget {
     final tokens = context.tokens;
 
     final actions = <(IconData, String, VoidCallback)>[
-      (Icons.add_rounded, 'Book', () => context.push(AppRoutes.bookings)),
+      (
+        Icons.add_rounded,
+        'Book',
+        // Straight into the Guest Booking wizard — the same page Create Booking opens on Guest Bookings.
+        () async {
+          await Navigator.of(context).push<bool>(AppPageRoute(builder: (_) => const GuestBookingScreen()));
+          onReturn();
+        }
+      ),
       (
         Icons.account_balance_wallet_outlined,
         'Collect',
@@ -1085,10 +1146,10 @@ class _TopActionsRow extends StatelessWidget {
         }
       ),
       (
-        Icons.currency_exchange_rounded,
-        'Refund',
+        Icons.account_balance_outlined,
+        'Finance',
         () async {
-          await context.push(AppRoutes.refunds);
+          await context.push(AppRoutes.finance);
           onReturn();
         }
       ),
@@ -1628,6 +1689,16 @@ class _NeedsYouSection extends StatelessWidget {
   }
 }
 
+/// When a recent activity happened, in the device's own time: "6:31 PM" today, "21 Oct, 6:31 PM" on another day.
+/// (The timestamp arrives in UTC — showing its raw hour is what made a 6:31 PM payment read 13:01.)
+String _activityTime(DateTime at) {
+  final t = at.toLocal();
+  final now = DateTime.now();
+  final clock = Formatters.time12h('${t.hour}:${t.minute}');
+  if (t.year == now.year && t.month == now.month && t.day == now.day) return clock;
+  return '${t.day} ${_monthNamesShort[t.month - 1]}, $clock';
+}
+
 // ──────────────────────────────────────────────── ON COURT NOW ──
 
 class _OnCourtNowSection extends StatelessWidget {
@@ -1946,7 +2017,7 @@ class _RecentActivitySection extends StatelessWidget {
                                   fontSize: 13, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
                           Text(
-                            '${e.occurredAt.hour.toString().padLeft(2, '0')}:${e.occurredAt.minute.toString().padLeft(2, '0')}',
+                            _activityTime(e.occurredAt),
                             style: TextStyle(
                                 fontSize: 11, color: tokens.textSecondary),
                           ),

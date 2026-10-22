@@ -11,7 +11,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../features/authentication/session_controller.dart';
 
 /// The primary destinations — Today, Calendar, Coaching and Memberships — and everything else behind
-/// [AppTab.more]. [AppTab.money] is no longer on the bar (Finance lives in the "+" menu), but the
+/// [AppTab.more]. [AppTab.money] is no longer on the bar (Finance is a shortcut on Today), but the
 /// Finance screens still say they are the current tab, so nothing on the bar is highlighted there.
 enum AppTab { today, courts, money, members, coaching, more }
 
@@ -54,17 +54,14 @@ const _tabs = <({
 
 /// Everything that doesn't fit the bar, reached through the "+" button.
 ///
-/// Deliberately short — this is a "things I do right now" menu, not a site
-/// map. Finance sits here now that it has left the bar, and the occasional/admin screens (Reports, Inventory, Users & Roles)
-/// live one tap away in Profile → Manage instead of crowding a menu meant
-/// to be scanned in a second — each still resolves to the ONE screen for
-/// that job, never a second copy of it. Creating a plan, membership or session
-/// happens inside the Members hub itself, not from this menu.
+/// Deliberately short — a "things I reach for often" menu, not a site map. Finance has its own shortcut on Today;
+/// the occasional/admin screens (Inventory, Users & Roles…) live one tap away in Profile → Manage. Each entry resolves to
+/// the ONE screen for that job, never a second copy of it.
 const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
-  (icon: Icons.account_balance_wallet_outlined, label: 'Finance', route: AppRoutes.finance, permission: null),
-  (icon: Icons.confirmation_number_outlined, label: 'Guest Bookings', route: AppRoutes.guestBookings, permission: null),
-  (icon: Icons.build_outlined, label: 'Maintenance', route: AppRoutes.maintenanceTicketNew, permission: null),
+  (icon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
+  (icon: Icons.account_balance_outlined, label: 'Payment Methods', route: AppRoutes.profilePayouts, permission: null),
   (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
+  (icon: Icons.groups_2_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
   (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),
 ];
 

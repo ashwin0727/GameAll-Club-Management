@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:file_saver/file_saver.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/responsive/responsive_layout.dart';
@@ -14,6 +11,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/finance.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/utils/csv_export.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
@@ -74,11 +72,13 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
       final bytes = await ref
           .read(financeRepositoryProvider)
           .downloadTransactionReceipt(details.id);
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/receipt-${details.reference}.pdf');
-      await file.writeAsBytes(bytes, flush: true);
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path, mimeType: 'application/pdf')]),
+      if (!mounted) return;
+      await saveFileToDevice(
+        context,
+        fileName: 'receipt-${details.reference}',
+        bytes: bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
       );
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);

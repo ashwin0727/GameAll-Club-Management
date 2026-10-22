@@ -192,8 +192,8 @@ class MembershipSessionDetail {
         capacity: (j['capacity'] as num?)?.toInt() ?? 0,
         isActive: j['isActive'] as bool? ?? true,
         createdByName: j['createdByName'] as String?,
-        createdAt: DateTime.parse(j['createdAt'] as String),
-        updatedAt: DateTime.parse(j['updatedAt'] as String),
+        createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
+        updatedAt: DateTime.parse(j['updatedAt'] as String).toLocal(),
         rosterCount: (j['rosterCount'] as num?)?.toInt() ?? 0,
         guestsBookedToday: (j['guestsBookedToday'] as num?)?.toInt() ?? 0,
         releasedToday: (j['releasedToday'] as num?)?.toInt() ?? 0,
@@ -262,7 +262,7 @@ class MembershipSessionBookingRow {
         slotSource: j['slot_source'] as String? ?? 'RELEASED',
         status: j['status'] as String? ?? 'CONFIRMED',
         amountMinor: (j['amount_minor'] as num?)?.toInt(),
-        createdAt: DateTime.parse(j['created_at'] as String),
+        createdAt: DateTime.parse(j['created_at'] as String).toLocal(),
       );
 }
 
@@ -278,6 +278,6 @@ class MembershipSessionActivity {
         kind: j['kind'] as String? ?? '',
         actor: j['actor'] as String?,
         detail: j['detail'] as String? ?? '',
-        at: DateTime.parse(j['at'] as String),
+        at: DateTime.parse(j['at'] as String).toLocal(),
       );
 }

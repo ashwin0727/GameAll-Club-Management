@@ -8,12 +8,12 @@ import { routerMock, setSearchParams } from "@/test/router-mock";
 const EMAIL = "owner@yourturf.com";
 
 describe("VerifyEmailPanel", () => {
-  it("shows the address the verification link went to", () => {
+  it("shows the address the code went to", () => {
     setSearchParams({ email: EMAIL });
     installFakeAuthService();
     renderWithProviders(<VerifyEmailPanel />);
 
-    expect(screen.getByText("We've sent a verification link to")).toBeInTheDocument();
+    expect(screen.getByText("We've sent a 6-digit code to")).toBeInTheDocument();
     expect(screen.getByText(EMAIL)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Continue to Sign In" })).toHaveAttribute(
       "href",
@@ -37,10 +37,10 @@ describe("VerifyEmailPanel", () => {
     const service = installFakeAuthService();
     renderWithProviders(<VerifyEmailPanel />);
 
-    await user.click(screen.getByRole("button", { name: /Resend Verification Email/ }));
+    await user.click(screen.getByRole("button", { name: /Resend Code/ }));
 
     await waitFor(() => expect(service.resendVerificationEmail).toHaveBeenCalledWith(EMAIL));
-    expect(await screen.findByText("Verification email sent again.")).toBeInTheDocument();
+    expect(await screen.findByText("A new code has been sent.")).toBeInTheDocument();
 
     const resend = screen.getByRole("button", { name: /Resend available in \d+s/ });
     expect(resend).toBeDisabled();
@@ -54,7 +54,7 @@ describe("VerifyEmailPanel", () => {
     });
     renderWithProviders(<VerifyEmailPanel />);
 
-    await user.click(screen.getByRole("button", { name: /Resend Verification Email/ }));
+    await user.click(screen.getByRole("button", { name: /Resend Code/ }));
 
     expect(
       await screen.findByText("Too many attempts. Please wait a moment and try again."),
@@ -108,5 +108,37 @@ describe("VerifyEmailPanel", () => {
     ).toBeInTheDocument();
     expect(service.changeEmail).not.toHaveBeenCalled();
     expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  it("verifies the code and moves on to sign-in when the password is gone from memory", async () => {
+    const user = userEvent.setup();
+    setSearchParams({ email: EMAIL });
+    const service = installFakeAuthService();
+    renderWithProviders(<VerifyEmailPanel />);
+
+    const submit = screen.getByRole("button", { name: /Verify & Continue/ });
+    expect(submit).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Verification Code"), "12a3456");
+    expect(screen.getByLabelText("Verification Code")).toHaveValue("123456");
+    await user.click(submit);
+
+    await waitFor(() => expect(service.verifySignupCode).toHaveBeenCalledWith(EMAIL, "123456"));
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(`/login?verified=1&email=${encodeURIComponent(EMAIL)}`),
+    );
+  });
+
+  it("shows an incorrect-code error and stays on the page", async () => {
+    const user = userEvent.setup();
+    setSearchParams({ email: EMAIL });
+    installFakeAuthService({ verifySignupCode: failing("invalid_code", "Incorrect code. 4 attempts left.") });
+    renderWithProviders(<VerifyEmailPanel />);
+
+    await user.type(screen.getByLabelText("Verification Code"), "000000");
+    await user.click(screen.getByRole("button", { name: /Verify & Continue/ }));
+
+    expect(await screen.findByText("Incorrect code. 4 attempts left.")).toBeInTheDocument();
+    expect(routerMock.replace).not.toHaveBeenCalled();
   });
 });

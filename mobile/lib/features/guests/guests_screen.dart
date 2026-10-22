@@ -17,6 +17,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'guest_profile_screen.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class GuestsScreen extends ConsumerStatefulWidget {
   const GuestsScreen({super.key});
@@ -222,7 +223,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _GuestsSkeleton()
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
@@ -274,7 +275,7 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
                       ),
                   ],
                 ),
-              ),
+              )),
       ),
     );
   }

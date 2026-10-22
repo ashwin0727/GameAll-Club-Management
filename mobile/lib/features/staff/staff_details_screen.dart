@@ -14,6 +14,7 @@ import '../../shared/widgets/states.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 class StaffDetailsScreen extends ConsumerStatefulWidget {
   const StaffDetailsScreen({super.key, required this.userId});
@@ -114,11 +115,11 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Staff Details')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _StaffDetailsSkeleton()
             : _error != null || _detail == null
                 ? ErrorView(message: _error ?? 'Unable to load this staff member.', onRetry: _load)
-                : _body(session),
+                : _body(session)),
       ),
     );
   }

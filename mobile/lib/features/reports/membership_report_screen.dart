@@ -23,6 +23,7 @@ import 'membership_timing.dart';
 import 'report_section_header.dart';
 import 'report_shell.dart';
 import 'report_widgets.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _allCourts = '__all__';
 
@@ -137,7 +138,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
           ],
         ['Guest release', 'Revenue (INR)', (g.revenueMinor / 100).toStringAsFixed(2)],
       ];
-      await shareCsv(fileName: 'memberships_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
+      await saveCsv(context, fileName: 'memberships_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));
@@ -178,7 +179,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                      switch (_status) {
+                      SmoothSwitcher(child: KeyedSubtree(key: ValueKey(_status), child: switch (_status) {
                         ReportStatus.loading => const Padding(
                             padding: EdgeInsets.only(top: AppSpacing.xl),
                             child: _MembershipReportSkeleton(),
@@ -191,7 +192,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
                             ),
                           ),
                         _ => _body(context),
-                      },
+                      })),
                     ],
                   ),
                 ),

@@ -17,6 +17,7 @@ import '../reports/report_widgets.dart';
 import '../../shared/widgets/skeleton.dart';
 import 'maintenance_format.dart';
 import 'maintenance_status_chips.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Maintenance → Overview — mirrors
 /// src/features/maintenance/components/maintenance-overview-page.tsx.
@@ -109,13 +110,13 @@ class _MaintenanceOverviewScreenState extends ConsumerState<MaintenanceOverviewS
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _load,
-          child: _loading
+          child: SmoothSwitcher(child: _loading
               ? const _MaintenanceOverviewSkeleton()
               : _error != null
                   ? ErrorView(message: _error!, onRetry: _load)
                   : _overview == null
                       ? const EmptyStateView(message: 'No maintenance data yet.')
-                      : _buildBody(_overview!),
+                      : _buildBody(_overview!)),
         ),
       ),
     );

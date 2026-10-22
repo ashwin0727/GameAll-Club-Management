@@ -8,6 +8,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/analytics.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/utils/csv_export.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/skeleton.dart';
 import 'report_section_header.dart';
@@ -84,6 +85,25 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
     _load();
   }
 
+  Future<void> _export() async {
+    final a = _analytics;
+    if (a == null) return;
+    await saveCsv(context, fileName: 'guest_bookings_${_filter.startDate ?? _filter.preset.name}_to_${_filter.endDate ?? 'today'}.csv', rows: [
+      ['Section', 'Label', 'Value'],
+      ['Summary', 'Total', a.total],
+      ['Summary', 'Completed', a.completed],
+      ['Summary', 'Cancelled', a.cancelled],
+      ['Summary', 'Guest Revenue', a.revenueMinor / 100],
+      ['Summary', 'Avg Booking Value', a.avgBookingValueMinor / 100],
+      ['Summary', 'Collected', a.collectedMinor / 100],
+      ['Summary', 'Outstanding', a.outstandingMinor / 100],
+      ['Summary', 'Collection Rate %', a.collectionRatePct],
+      for (final r in _bySport) ['By sport', r.sportName, r.bookingCount],
+      for (final r in _byCourt) ['By court', r.courtName, r.bookingCount],
+      for (final h in _peak) ['Peak hour', formatHourLabel(h.hour), h.bookingCount],
+    ]);
+  }
+
   void _drill({String? sportId, String? courtId}) {
     context.push(
       '${AppRoutes.reportsGuestBookings}?${Uri(queryParameters: analyticsFilterToQuery(_filter.copyWith(facilitySportId: sportId, courtId: courtId))).query}',
@@ -98,6 +118,11 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
       status: _status,
       filter: _filter,
       onFilterChanged: _onFilterChanged,
+      filterTrailing: OutlinedButton.icon(
+        onPressed: a == null ? null : _export,
+        icon: const Icon(Icons.download_rounded, size: 18),
+        label: const Text('Export'),
+      ),
       onRetry: _load,
       emptyMessage: 'No guest bookings for this period.',
       errorMessage: 'Unable to load the guest booking report. Please try again.',
@@ -107,7 +132,7 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ReportKpiGrid(items: [
+                ReportKpiGrid(showDelta: false, items: [
                   ReportKpi(label: 'Total Guest Bookings', value: a.total.toString()),
                   ReportKpi(label: 'Completed', value: a.completed.toString()),
                   ReportKpi(label: 'Cancelled', value: a.cancelled.toString()),

@@ -251,3 +251,22 @@ member's screen.
   webhook) — amount / currency / duplicate-payment checks, finance row, and `settle_payment` confirming the booking.
 - Deploy: `supabase functions deploy create-booking-payment-link razorpay-webhook`, apply migration 0124, and make
   sure the Razorpay webhook sends `payment_link.paid`, `payment_link.cancelled` and `payment_link.expired`.
+
+## signup-otp
+
+Email one-time-password verification for **new owner accounts** (web + Flutter). Actions: `start` (creates the auth
+user unconfirmed and emails a 6-digit code), `resend`, `verify` (confirms the email). Code is CSPRNG-generated, stored
+only as an HMAC (table `signup_otps`, service-role only — migration 0152), expires in 10 minutes, single use, locks
+after 5 wrong tries, 30 s resend cooldown, max 5 sends/hour/address.
+
+Secrets (Supabase Edge Function secrets — never in git or client env):
+
+```bash
+supabase secrets set RESEND_API_KEY=re_xxx
+supabase secrets set RESEND_FROM="GameAll <no-reply@yourdomain.com>"   # domain must be verified in Resend
+supabase secrets set SIGNUP_OTP_SECRET=$(openssl rand -hex 32)
+supabase secrets set SITE_URL=https://your-site.example               # serves /logo-icon.png for the email logo
+supabase functions deploy signup-otp
+```
+
+Keep Supabase Auth → "Confirm email" **ON**, so an account can't sign in until its code is verified.

@@ -168,8 +168,8 @@ class MaintenanceTicketListRow {
         status: MaintenanceStatusX.fromJson(_str(json['status'])),
         reportedByName: _str(json['reported_by_name']),
         assignedToName: _strOrNull(json['assigned_to_name']),
-        scheduledStart: json['scheduled_start'] == null ? null : DateTime.parse(json['scheduled_start'] as String),
-        reportedAt: DateTime.parse(_str(json['reported_at'])),
+        scheduledStart: json['scheduled_start'] == null ? null : DateTime.parse(json['scheduled_start'] as String).toLocal(),
+        reportedAt: DateTime.parse(_str(json['reported_at'])).toLocal(),
         actualCostMinor: _intOrNull(json['actual_cost_minor']),
         estimatedCostMinor: _intOrNull(json['estimated_cost_minor']),
       );
@@ -200,8 +200,8 @@ class AffectedBooking {
         bookingId: _str(json['bookingId'] ?? json['booking_id']),
         customerType: _str(json['customerType'] ?? json['customer_type']),
         guestName: _strOrNull(json['guestName'] ?? json['guest_name']),
-        startTime: DateTime.parse(_str(json['startTime'] ?? json['start_time'])),
-        endTime: DateTime.parse(_str(json['endTime'] ?? json['end_time'])),
+        startTime: DateTime.parse(_str(json['startTime'] ?? json['start_time'])).toLocal(),
+        endTime: DateTime.parse(_str(json['endTime'] ?? json['end_time'])).toLocal(),
         status: _str(json['status']),
         paymentStatus: _str(json['paymentStatus'] ?? json['payment_status']),
         amountMinor: _intOrNull(json['amountMinor'] ?? json['amount_minor']),
@@ -222,7 +222,7 @@ class MaintenanceActivityEntry {
         eventType: _str(json['eventType']),
         note: _strOrNull(json['note']),
         actorName: _strOrNull(json['actorName']),
-        createdAt: DateTime.parse(_str(json['createdAt'])),
+        createdAt: DateTime.parse(_str(json['createdAt'])).toLocal(),
       );
 }
 
@@ -314,7 +314,7 @@ class MaintenanceTicketDetail {
       priority: MaintenancePriorityX.fromJson(_str(json['priority'])),
       status: MaintenanceStatusX.fromJson(_str(json['status'])),
       reportedByName: _str(reportedBy['name']),
-      reportedAt: DateTime.parse(_str(json['reportedAt'])),
+      reportedAt: DateTime.parse(_str(json['reportedAt'])).toLocal(),
       assignedToName: assignedTo == null ? null : _str(assignedTo['name']),
       scheduledStart: dt(json['scheduledStart']),
       scheduledEnd: dt(json['scheduledEnd']),

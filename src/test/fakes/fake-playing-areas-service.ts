@@ -1,4 +1,5 @@
 import type { PlayingArea, PlayingAreaInput } from "@/features/courts-setup/types";
+import type { CourtUsage } from "@/features/courts-setup/usage";
 import type { PlayingAreasService } from "@/services/playing-areas/playing-areas.service";
 import { setPlayingAreasService } from "@/services/playing-areas";
 
@@ -44,6 +45,10 @@ export class FakePlayingAreasService implements PlayingAreasService {
     const updated: PlayingArea = { ...existing, archived: false, updatedAt: new Date().toISOString() };
     this.rows[index] = updated;
     return updated;
+  }
+
+  async getUpcomingUsage(): Promise<CourtUsage> {
+    return { bookings: 0, membershipBatches: 0, membershipGuestSlots: 0, coachingSessions: 0, coachingBatches: 0, total: 0 };
   }
 
   async reorderPlayingAreas(facilitySportId: string, orderedIds: string[]): Promise<void> {

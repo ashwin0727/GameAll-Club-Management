@@ -37,6 +37,10 @@ import '../../features/membership_sessions/membership_sessions_screen.dart';
 import '../../features/onboarding/courts_setup_screen.dart';
 import '../../features/onboarding/onboarding_welcome_screen.dart';
 import '../../features/onboarding/payments_screen.dart';
+import '../../features/profile/hub/account_screens.dart';
+import '../../features/profile/hub/facility_screens.dart';
+import '../../features/profile/hub/payouts_screen.dart';
+import '../../features/profile/hub/profile_hub_screen.dart';
 import '../../features/onboarding/facility_details_screen.dart';
 import '../../features/onboarding/operating_hours_screen.dart';
 import '../../features/onboarding/pricing_screen.dart';
@@ -168,6 +172,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state,
           EmailVerificationScreen(
             email: state.uri.queryParameters['email'] ?? '',
+            password: state.extra is String ? state.extra as String : null,
           ),
         ),
       ),
@@ -347,6 +352,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             slideOver(state, const ProfileScreen()),
       ),
+      GoRoute(path: AppRoutes.profileHub, pageBuilder: (context, state) => slideOver(state, const ProfileHubScreen())),
+      GoRoute(path: AppRoutes.profilePersonal, pageBuilder: (context, state) => slideOver(state, const PersonalInfoScreen())),
+      GoRoute(path: AppRoutes.profileManageFacility, pageBuilder: (context, state) => slideOver(state, const ManageFacilityScreen())),
+      GoRoute(path: AppRoutes.profilePayouts, pageBuilder: (context, state) => slideOver(state, const PayoutsScreen())),
+      GoRoute(path: AppRoutes.profileSupport, pageBuilder: (context, state) => slideOver(state, const SupportScreen())),
+      GoRoute(path: AppRoutes.profileSettings, pageBuilder: (context, state) => slideOver(state, const SettingsScreen())),
+      GoRoute(path: AppRoutes.profileFacilityInfo, pageBuilder: (context, state) => slideOver(state, const FacilityInfoScreen())),
+      GoRoute(path: AppRoutes.profileSportsCourts, pageBuilder: (context, state) => slideOver(state, const SportsCourtsOverviewScreen())),
+      GoRoute(path: AppRoutes.profileHours, pageBuilder: (context, state) => slideOver(state, const HoursOverviewScreen())),
+      GoRoute(path: AppRoutes.profilePricing, pageBuilder: (context, state) => slideOver(state, const PricingOverviewScreen())),
+      GoRoute(path: AppRoutes.profileEditSports, pageBuilder: (context, state) => slideOver(state, const SportsSetupScreen(editMode: true))),
+      GoRoute(path: AppRoutes.profileEditHours, pageBuilder: (context, state) => slideOver(state, const OperatingHoursScreen(editMode: true))),
+      GoRoute(path: AppRoutes.profileEditPricing, pageBuilder: (context, state) => slideOver(state, const PricingScreen(editMode: true))),
       GoRoute(
         path: AppRoutes.setPassword,
         pageBuilder: (context, state) =>

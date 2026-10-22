@@ -16,6 +16,7 @@ import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The period choices the Payment filter sheet offers — a superset of
 /// [FinanceDateRangePreset] (adds trailing multi-month windows and an
@@ -348,7 +349,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
         ],
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _MoneySkeleton()
             : _error != null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -459,7 +460,7 @@ class _MoneyScreenState extends ConsumerState<MoneyScreen> {
                         ],
                       ],
                     ),
-                  ),
+                  )),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.money),
       ),

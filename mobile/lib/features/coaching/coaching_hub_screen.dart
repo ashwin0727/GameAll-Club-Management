@@ -18,12 +18,12 @@ import '../../shared/widgets/hub_widgets.dart';
 import '../../shared/widgets/states.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../authentication/session_controller.dart';
-import '../memberships/members_insights.dart';
 import '../staff/staff_common.dart';
 import 'coaching_hub.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The Coaching hub — laid out like Memberships: a pill tab strip (Coaching · Programs · Students),
-/// a hero card with the page's headline number, a collapsible "View More Insights" panel, the list
+/// the shared summary card with the page's headline figures, the list
 /// itself, and a floating button that creates the thing on the current tab. Sessions, Coaches,
 /// Schedule and Reports stay one tap away from the Coaching tab.
 class CoachingHubScreen extends ConsumerStatefulWidget {
@@ -152,7 +152,7 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
           bottom: HubTabBar(controller: _tabs, labels: _labels),
         ),
         body: SafeArea(
-          child: _loading
+          child: SmoothSwitcher(child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
                   ? ErrorView(message: _error!, onRetry: _load)
@@ -166,7 +166,7 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
                           _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go, onChanged: _load),
                         ],
                       ),
-                    ),
+                    )),
         ),
         bottomNavigationBar: const AppBottomNav(current: AppTab.coaching),
       ),
@@ -275,7 +275,7 @@ Widget _empty(BuildContext context, IconData icon, String text) {
 
 // ── Coaching ────────────────────────────────────────────────────────────
 
-/// The Coaching tab: the headline figures, a collapsible "View More Insights", a collapsible
+/// The Coaching tab: the headline figures, a collapsible
 /// "Upcoming Coaching Sessions", then the coaches themselves — searchable and filterable. It only
 /// shows values; nothing here edits anything.
 class _CoachingTab extends StatefulWidget {
@@ -296,7 +296,6 @@ class _CoachingTab extends StatefulWidget {
 }
 
 class _CoachingTabState extends State<_CoachingTab> {
-  bool _insightsOpen = false;
   bool _upcomingOpen = false;
   String _query = '';
   CoachFilters _filters = const CoachFilters();
@@ -320,55 +319,23 @@ class _CoachingTabState extends State<_CoachingTab> {
     final coaches = filterCoaches(widget.coaches, query: _query, filters: _filters, perWeek: widget.perWeek);
 
     final header = <Widget>[
-      HubHeroCard(
+      HubSummaryCard(
         icon: Icons.person_pin_outlined,
-        title: 'Active Coaches',
-        value: '${o.activeCoaches}',
-        figs: [
-          (value: '${widget.coachTotal}', label: 'total coaches'),
-          (value: '${widget.programTotal}', label: 'total programs'),
-          (value: '${o.upcomingSessionsCount}', label: 'upcoming sessions'),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.md),
-      InsightsPanel(
-        open: _insightsOpen,
-        onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
-        subtitle: 'Students, sessions, coaches, revenue and more',
-        tiles: [
-          InsightData(
-            icon: Icons.groups_outlined,
-            color: tokens.electricBlue,
-            title: 'Total Coaches',
-            value: o.totalCoaches == null ? '—' : '${o.totalCoaches}',
-            sub: 'All coaches',
-            onTap: () => setState(() => _filters = _filters.copyWith(clearStatus: true)),
-          ),
-          InsightData(
-            icon: Icons.person_pin_outlined,
-            color: tokens.success,
-            title: 'Active Coaches',
-            value: '${o.activeCoaches}',
-            sub: o.coachesOnLeave > 0 ? 'Currently active · ${o.coachesOnLeave} on leave' : 'Currently active',
-            onTap: () => setState(() => _filters = _filters.copyWith(status: CoachStatus.active)),
-          ),
-          InsightData(
-            icon: Icons.account_balance_wallet_outlined,
-            color: tokens.warning,
-            title: 'Coaching Expense',
-            value: o.coachingExpenseMinor == null ? '—' : _rupees(o.coachingExpenseMinor!),
-            sub: 'This month',
-            onTap: () {},
-          ),
-          InsightData(
-            icon: Icons.schedule_rounded,
-            color: tokens.violet,
-            title: 'Scheduled Sessions',
-            value: '${o.upcomingSessionsCount}',
-            sub: 'Upcoming',
-            onTap: () => widget.onOpen(AppRoutes.coachingSchedule),
-          ),
-        ],
+        title: 'Total coaches',
+        value: o.totalCoaches == null ? '—' : '${o.totalCoaches}',
+        statusText: o.coachesOnLeave > 0 ? '${o.activeCoaches} active · ${o.coachesOnLeave} on leave' : '${o.activeCoaches} active',
+        left: HubSummaryCell(
+          label: 'Coach Expenses',
+          value: o.coachingExpenseMinor == null ? '—' : _rupees(o.coachingExpenseMinor!),
+          sub: 'This month',
+          onTap: () {},
+        ),
+        right: HubSummaryCell(
+          label: 'Scheduled Sessions',
+          value: '${o.upcomingSessionsCount}',
+          sub: 'Upcoming',
+          onTap: () => widget.onOpen(AppRoutes.coachingSchedule),
+        ),
       ),
       const SizedBox(height: AppSpacing.md),
       HubExpandPanel(
@@ -665,7 +632,6 @@ class _ProgramsTab extends StatefulWidget {
 }
 
 class _ProgramsTabState extends State<_ProgramsTab> {
-  bool _insightsOpen = false;
   String _query = '';
   ProgramStatus? _status;
 
@@ -682,55 +648,23 @@ class _ProgramsTabState extends State<_ProgramsTab> {
     }).toList();
 
     final header = <Widget>[
-      HubHeroCard(
+      HubSummaryCard(
         icon: Icons.school_outlined,
-        title: 'Total Programs',
-        value: '${stats.total}',
-        figs: [
-          (value: '${stats.active}', label: 'active'),
-          (value: '${stats.inactive}', label: 'inactive'),
-          (value: '${stats.students}', label: 'students'),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.md),
-      InsightsPanel(
-        open: _insightsOpen,
-        onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
-        subtitle: 'Programs, students, sessions and fees',
-        tiles: [
-          InsightData(
-            icon: Icons.school_outlined,
-            color: tokens.violet,
-            title: 'Total Programs',
-            value: '${widget.cardStats?.total ?? stats.total}',
-            sub: 'All programs',
-            onTap: () => setState(() => _status = null),
-          ),
-          InsightData(
-            icon: Icons.check_circle_outline,
-            color: tokens.success,
-            title: 'Active Programs',
-            value: widget.cardStats == null ? '—' : '${widget.cardStats!.active}',
-            sub: 'Currently running',
-            onTap: () => setState(() => _status = ProgramStatus.active),
-          ),
-          InsightData(
-            icon: Icons.groups_outlined,
-            color: tokens.electricBlue,
-            title: 'Enrolled Students',
-            value: '${widget.cardStats?.enrolled ?? stats.students}',
-            sub: 'Current enrollment',
-            onTap: () {},
-          ),
-          InsightData(
-            icon: Icons.event_seat_outlined,
-            color: tokens.warning,
-            title: 'Available Seats',
-            value: widget.cardStats == null ? '—' : '${widget.cardStats!.availableSeats}',
-            sub: 'Remaining capacity',
-            onTap: () {},
-          ),
-        ],
+        title: 'Total programs',
+        value: '${widget.cardStats?.total ?? stats.total}',
+        statusText: '${widget.cardStats?.active ?? stats.active} active',
+        left: HubSummaryCell(
+          label: 'Enrolled Students',
+          value: '${widget.cardStats?.enrolled ?? stats.students}',
+          sub: 'Current enrollment',
+          onTap: () {},
+        ),
+        right: HubSummaryCell(
+          label: 'Available Seats',
+          value: widget.cardStats == null ? '—' : '${widget.cardStats!.availableSeats}',
+          sub: 'Remaining capacity',
+          onTap: () {},
+        ),
       ),
       const SizedBox(height: AppSpacing.lg),
       Text('${rows.length} program${rows.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
@@ -803,7 +737,6 @@ class _StudentsTab extends StatefulWidget {
 enum _StudentFilter { all, active, inactive, pending }
 
 class _StudentsTabState extends State<_StudentsTab> {
-  bool _insightsOpen = false;
   String _query = '';
   _StudentFilter _filter = _StudentFilter.all;
 
@@ -831,56 +764,26 @@ class _StudentsTabState extends State<_StudentsTab> {
     }).toList();
 
     final header = <Widget>[
-      HubHeroCard(
+      HubSummaryCard(
         icon: Icons.groups_rounded,
-        title: 'Total Students',
-        value: '${stats.total}',
-        figs: [
-          (value: '${stats.active}', label: 'active'),
-          (value: '${stats.inactive}', label: 'inactive'),
-          (value: '${stats.paymentPending}', label: 'unpaid'),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.md),
-      InsightsPanel(
-        open: _insightsOpen,
-        onToggle: () => setState(() => _insightsOpen = !_insightsOpen),
-        subtitle: 'Students, payments and fees',
-        tiles: [
-          InsightData(
-            icon: Icons.groups_outlined,
-            color: tokens.electricBlue,
-            title: 'Total Students',
-            value: widget.cardStats == null ? '${stats.total}' : '${widget.cardStats!.totalStudents}',
-            sub: 'All student records',
-            onTap: () => setState(() => _filter = _StudentFilter.all),
-          ),
-          InsightData(
-            icon: Icons.check_circle_outline,
-            color: tokens.success,
-            title: 'Enrolled Students',
-            value: widget.cardStats == null ? '${stats.active}' : '${widget.cardStats!.enrolledStudents}',
-            sub: 'Currently enrolled',
-            onTap: () => setState(() => _filter = _StudentFilter.active),
-          ),
-          InsightData(
-            icon: Icons.account_balance_wallet_outlined,
-            color: tokens.violet,
-            title: 'Revenue Collected',
-            value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.revenueMinor),
-            sub: 'This month',
-            onTap: () {},
-          ),
-          InsightData(
-            icon: Icons.hourglass_bottom_rounded,
-            color: tokens.warning,
-            title: 'Payments Pending',
-            value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.pendingMinor),
-            sub: 'Needs follow-up',
-            subColor: tokens.warning,
-            onTap: () => setState(() => _filter = _StudentFilter.pending),
-          ),
-        ],
+        title: 'Total students',
+        value: widget.cardStats == null ? '${stats.total}' : '${widget.cardStats!.totalStudents}',
+        statusText: '${widget.cardStats == null ? stats.active : widget.cardStats!.enrolledStudents} enrolled',
+        left: HubSummaryCell(
+          label: 'Revenue',
+          value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.revenueMinor),
+          sub: 'This month',
+          onTap: () {},
+        ),
+        right: HubSummaryCell(
+          label: 'Pending Payments',
+          value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.pendingMinor),
+          valueColor: (widget.cardStats?.pendingMinor ?? 0) > 0 ? tokens.warning : null,
+          sub: (widget.cardStats?.pendingMinor ?? 0) > 0 ? 'Needs follow-up' : 'Nothing pending',
+          subColor: (widget.cardStats?.pendingMinor ?? 0) > 0 ? const Color(0xFFFFFFFF).withValues(alpha: 0.75) : null,
+          tint: (widget.cardStats?.pendingMinor ?? 0) > 0 ? tokens.warning.withValues(alpha: 0.12) : null,
+          onTap: () => setState(() => _filter = _StudentFilter.pending),
+        ),
       ),
       const SizedBox(height: AppSpacing.lg),
       Text('${rows.length} student${rows.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),

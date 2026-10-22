@@ -17,6 +17,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_progress_bar.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _uuid = Uuid();
 
@@ -205,7 +206,7 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
     return Scaffold(
       appBar: AppBar(title: const OnboardingProgressBar(currentStep: 2)),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const LoadingView(message: 'Loading courts & turfs…')
             : _loadError != null
             ? ErrorView(message: _loadError!, onRetry: _load)
@@ -270,7 +271,7 @@ class _CourtsSetupScreenState extends ConsumerState<CourtsSetupScreen> {
                     ),
                   ],
                 ),
-              ),
+              )),
       ),
     );
   }

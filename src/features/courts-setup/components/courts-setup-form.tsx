@@ -14,6 +14,8 @@ import { FacilityContextCard } from "@/features/sports-setup/components/facility
 import { PlayingAreaSummary } from "@/features/courts-setup/components/playing-area-summary";
 import { SportSection } from "@/features/courts-setup/components/sport-section";
 import { RemovePlayingAreaDialog } from "@/features/courts-setup/components/remove-playing-area-dialog";
+import { describeCourtUsage } from "@/features/courts-setup/usage";
+import { ServiceError } from "@/services/shared/service-error";
 import { SaveStatus } from "@/features/onboarding/components/save-status";
 import { OTHER_SPORT_CODE } from "@/features/sports-setup/constants";
 import { getSportsService } from "@/services/sports";
@@ -35,7 +37,11 @@ type LoadState = "loading" | "ready" | "forbidden";
 
 const DEBOUNCE_MS = 400;
 
-export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDelayMs?: number } = {}) {
+/**
+ * `onDone` turns the form into an in-place editor: saving calls it instead of advancing the onboarding step, so the
+ * same courts form can be used from a popup once the facility is already set up.
+ */
+export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS, onDone }: { autosaveDelayMs?: number; onDone?: () => void } = {}) {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const completeCourts = useOnboardingStore((s) => s.completeCourts);
@@ -49,7 +55,7 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
   const [sectionErrors, setSectionErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<{ id: string; label: string } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; label: string; blockedBy?: string } | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
 
   // Tracks which local playing-area ids have never made it to the service
@@ -152,8 +158,17 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
   function scheduleSave(id: string) {
     clearTimeout(timeouts.current[id]);
     timeouts.current[id] = setTimeout(() => {
-      persistArea(id).catch(() => {
-        setSaveError("Unable to save your changes. Please try again.");
+      persistArea(id).catch(async (e) => {
+        setSaveError(e instanceof ServiceError ? e.message : "Unable to save your changes. Please try again.");
+        // The change was refused (e.g. switching off a court that still has upcoming work): show what is really saved.
+        if (facility && !unsavedIds.current.has(id)) {
+          try {
+            const saved = await getPlayingAreasService().getPlayingAreas(facility.id);
+            setPlayingAreas((prev) => prev.map((a) => saved.find((x) => x.id === a.id) ?? a));
+          } catch {
+            /* the message above already tells them */
+          }
+        }
       });
     }, autosaveDelayMs);
   }
@@ -218,14 +233,20 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
     scheduleSave(id);
   }
 
-  function requestRemove(id: string, label: string) {
+  async function requestRemove(id: string, label: string) {
     if (unsavedIds.current.has(id)) {
       clearTimeout(timeouts.current[id]);
       unsavedIds.current.delete(id);
       setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
       return;
     }
-    setRemoveTarget({ id, label });
+    // A court with upcoming bookings, membership sessions or coaching can't be removed until they are moved.
+    try {
+      const usage = await getPlayingAreasService().getUpcomingUsage(id);
+      setRemoveTarget({ id, label, blockedBy: usage.total > 0 ? describeCourtUsage(usage) : undefined });
+    } catch {
+      setRemoveTarget({ id, label });
+    }
   }
 
   async function confirmRemove() {
@@ -237,8 +258,9 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
       await getPlayingAreasService().removePlayingArea(id);
       setPlayingAreas((prev) => prev.filter((a) => a.id !== id));
       setRemoveTarget(null);
-    } catch {
-      setSaveError("Unable to remove this. Please try again.");
+    } catch (e) {
+      setSaveError(e instanceof ServiceError ? e.message : "Unable to remove this. Please try again.");
+      setRemoveTarget(null);
     } finally {
       setIsRemoving(false);
     }
@@ -296,6 +318,11 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
         clearTimeout(timeouts.current[area.id]);
       }
       await Promise.all(playingAreas.map((area) => persistArea(area.id)));
+      if (onDone) {
+        setIsSaving(false);
+        onDone();
+        return;
+      }
       await getFacilityService().updateOnboardingStep(facility.id, "OPERATING_HOURS");
       completeCourts();
       setIsSaving(false);
@@ -374,7 +401,7 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
           pendingLabel="Saving…"
           className="w-auto sm:min-w-[10rem]"
         >
-          Continue →
+          {onDone ? "Save changes" : "Continue →"}
         </SubmitButton>
       </div>
 
@@ -385,6 +412,7 @@ export function CourtsSetupForm({ autosaveDelayMs = DEBOUNCE_MS }: { autosaveDel
             if (!open && !isRemoving) setRemoveTarget(null);
           }}
           label={removeTarget.label}
+          blockedBy={removeTarget.blockedBy}
           onConfirm={confirmRemove}
           pending={isRemoving}
         />

@@ -46,6 +46,34 @@ export function useSignup() {
   });
 }
 
+/**
+ * Completes signup: verifies the emailed 6-digit code, then signs the new owner in with the password they just chose
+ * and sends them to onboarding. If the password is no longer in memory (page reload), the verified account is sent to
+ * Sign In instead.
+ */
+export function useVerifySignup() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ email, code, password }: { email: string; code: string; password?: string }) => {
+      const auth = getAuthService();
+      await auth.verifySignupCode(email, code);
+      return password ? auth.login({ email, password }) : null;
+    },
+    onSuccess: (user, { email }) => {
+      if (!user) {
+        router.replace(`/login?verified=1&email=${encodeURIComponent(email)}`);
+        return;
+      }
+      markDeviceOnboarded();
+      queryClient.setQueryData(CURRENT_USER_KEY, user);
+      router.replace(user.onboardingCompleted ? "/dashboard" : "/onboarding/facility");
+      router.refresh();
+    },
+  });
+}
+
 export function useLogin() {
   const router = useRouter();
   const queryClient = useQueryClient();

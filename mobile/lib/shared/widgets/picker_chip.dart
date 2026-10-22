@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// A tap-to-choose chip — the mobile stand-in for the web's `<Select>`
@@ -68,9 +69,9 @@ class PickerChip extends StatelessWidget {
   }
 }
 
-/// The options sheet that pairs with [PickerChip]. Scrollable and
-/// bottom-inset aware so a long option list (or a large system font) can
-/// never overflow.
+/// The options list that pairs with [PickerChip]: a floating, rounded card with roomy rows and the chosen one picked
+/// out — the same look as every dropdown in the app. Scrollable and bottom-inset aware so a long option list (or a large
+/// system font) can never overflow.
 Future<T?> showPickerSheet<T>({
   required BuildContext context,
   required List<({T value, String label})> options,
@@ -79,21 +80,59 @@ Future<T?> showPickerSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
-    builder: (context) => SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: options
-              .map(
-                (option) => ListTile(
-                  title: Text(option.label),
-                  trailing: option.value == selected ? const Icon(Icons.check, color: AppColors.primary) : null,
-                  onTap: () => Navigator.pop(context, option.value),
-                ),
-              )
-              .toList(),
+    showDragHandle: false,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    builder: (sheetContext) {
+      final tokens = sheetContext.tokens;
+      final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.7;
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            decoration: BoxDecoration(
+              color: tokens.surface1,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(color: tokens.borderColor.withValues(alpha: tokens.isLight ? 0.6 : 1)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: tokens.isLight ? 0.2 : 0.55), blurRadius: 28, offset: const Offset(0, 10))],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final option in options)
+                    InkWell(
+                      onTap: () => Navigator.pop(sheetContext, option.value),
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 52),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                option.label,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: option.value == selected ? FontWeight.w700 : FontWeight.w500,
+                                  color: option.value == selected ? tokens.primary : tokens.textPrimary,
+                                ),
+                              ),
+                            ),
+                            if (option.value == selected) Icon(Icons.check_rounded, size: 20, color: tokens.primary),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }

@@ -22,6 +22,7 @@ import 'analytics_filter_controls.dart';
 import 'heatmap.dart';
 import 'peak_hours_chart.dart';
 import 'sport_visuals.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 enum _CourtSort { high, low, name }
 
@@ -118,18 +119,14 @@ class _CourtUtilizationReportScreenState extends ConsumerState<CourtUtilizationR
   }
 
   Future<void> _pickSort() async {
-    final picked = await showModalBottomSheet<_CourtSort>(
+    final picked = await showPickerSheet<_CourtSort>(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(title: const Text('Highest First'), onTap: () => Navigator.pop(ctx, _CourtSort.high)),
-            ListTile(title: const Text('Lowest First'), onTap: () => Navigator.pop(ctx, _CourtSort.low)),
-            ListTile(title: const Text('By Name'), onTap: () => Navigator.pop(ctx, _CourtSort.name)),
-          ],
-        ),
-      ),
+      selected: _sort,
+      options: const [
+        (value: _CourtSort.high, label: 'Highest First'),
+        (value: _CourtSort.low, label: 'Lowest First'),
+        (value: _CourtSort.name, label: 'By Name'),
+      ],
     );
     if (picked != null) setState(() => _sort = picked);
   }
@@ -170,7 +167,7 @@ class _CourtUtilizationReportScreenState extends ConsumerState<CourtUtilizationR
                         onChanged: _onFilterChanged,
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                      switch (_status) {
+                      SmoothSwitcher(child: KeyedSubtree(key: ValueKey(_status), child: switch (_status) {
                         _LoadStatus.loading => const Padding(
                             padding: EdgeInsets.only(top: AppSpacing.xl),
                             child: _CourtUtilizationSkeleton(),
@@ -183,7 +180,7 @@ class _CourtUtilizationReportScreenState extends ConsumerState<CourtUtilizationR
                             ),
                           ),
                         _LoadStatus.ready => _overall == null ? const SizedBox.shrink() : _body(tokens),
-                      },
+                      })),
                     ],
                   ),
                 ),

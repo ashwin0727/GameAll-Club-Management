@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../data/models/payout_method.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
+import '../profile/hub/payout_widgets.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
-/// Screen 5 of the redesigned onboarding — "Get paid online". The full
-/// Razorpay Route linked-account flow is a separate future project; this
-/// step presents the offer, opens the Razorpay dashboard, and can be
-/// deferred without blocking completion.
+/// The last onboarding step — "Payout details". The owner must add at least one
+/// bank account or UPI ID before reaching the dashboard: it is where what the
+/// facility collects is paid out. GameAll verifies each method by hand
+/// afterwards (shown as a pending/verified badge), so this step only needs it to
+/// be present. Mirrors the web `/onboarding/payments` step.
 class PaymentsScreen extends ConsumerStatefulWidget {
   const PaymentsScreen({super.key});
 
@@ -29,8 +32,9 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   bool _loading = true;
   String? _loadError;
   String? _facilityId;
-  bool _connected = false;
+  List<PayoutMethod> _methods = const [];
   bool _finishing = false;
+  bool _busy = false;
   String? _error;
 
   @override
@@ -50,8 +54,11 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
+      final methods = await ref.read(payoutRepositoryProvider).list(facility.id);
+      if (!mounted) return;
       setState(() {
         _facilityId = facility.id;
+        _methods = methods;
         _loading = false;
       });
     } on AppException catch (e) {
@@ -70,29 +77,45 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     }
   }
 
-  Future<void> _connectRazorpay() async {
-    final uri = Uri.parse('https://dashboard.razorpay.com/signin');
+  Future<void> _reload() async {
+    final id = _facilityId;
+    if (id == null) return;
+    final methods = await ref.read(payoutRepositoryProvider).list(id);
+    if (mounted) setState(() => _methods = methods);
+  }
+
+  Future<void> _run(Future<void> Function() action, String fallback) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      // Opening the browser is best-effort — still let them mark it done.
+      await action();
+      await _reload();
+    } on AppException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e, stack) {
+      debugPrint('Payout action failed: $e\n$stack');
+      if (mounted) setState(() => _error = fallback);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    setState(() => _connected = true);
+  }
+
+  Future<void> _add() async {
+    final facilityId = _facilityId;
+    if (facilityId == null) return;
+    if (await showPayoutMethodSheet(context, facilityId: facilityId, dark: true)) await _reload();
   }
 
   Future<void> _finish() async {
     final facilityId = _facilityId;
-    if (facilityId == null) return;
+    if (facilityId == null || _methods.isEmpty) return;
     setState(() {
       _finishing = true;
       _error = null;
     });
     try {
-      if (_connected) {
-        await ref
-            .read(facilityRepositoryProvider)
-            .setPaymentsConnected(facilityId, true);
-      }
       await ref.read(onboardingRepositoryProvider).completeSetup(facilityId);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
@@ -114,62 +137,85 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     if (_loading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 4,
-        title: 'Get Paid Online',
+        title: 'Payout Details',
         footer: const SizedBox.shrink(),
         children: [
           SizedBox(
             height: 320,
-            child: _loading
+            child: SmoothSwitcher(child: _loading
                 ? const LoadingView(message: 'Loading…')
-                : ErrorView(message: _loadError!, onRetry: _load),
+                : ErrorView(message: _loadError!, onRetry: _load)),
           ),
         ],
       );
     }
 
+    final tokens = context.tokens;
     return OnboardingScaffold(
       stepIndex: 4,
-      title: 'Get Paid Online',
-      subtitle: 'Connect Razorpay so guests can pay when they book. Cash and '
-          'pay-at-venue bookings work without this.',
+      title: 'Payout Details',
+      subtitle: 'Tell us where to send the money you collect for bookings and '
+          'other payments. You need this before you can use your dashboard.',
       onBack: () => context.go(AppRoutes.onboardingOperatingHours),
-      onSkip: _finishing ? null : _finish,
-      skipLabel: 'Later',
-      footer: _connected
-          ? AuthGradientButton(
-              label: 'Continue  ›',
-              loadingLabel: 'Finishing…',
-              isLoading: _finishing,
-              onPressed: _finish,
-            )
-          : _GhostButton(
-              label: 'Do This Later',
-              loading: _finishing,
-              onTap: _finish,
-            ),
+      footer: AuthGradientButton(
+        label: 'Continue  ›',
+        loadingLabel: 'Finishing…',
+        isLoading: _finishing,
+        onPressed: _methods.isEmpty || _busy ? null : _finish,
+      ),
       children: [
         if (_error != null) ...[
           _ErrorText(_error!),
           const SizedBox(height: AppSpacing.md),
         ],
-        _RazorpayCard(connected: _connected, onConnect: _connectRazorpay),
-        const SizedBox(height: AppSpacing.xxl),
-        Text(
-          "You'll need",
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: context.tokens.textPrimary,
+        if (_methods.isEmpty)
+          _EmptyCard(onAdd: _add)
+        else ...[
+          for (final m in _methods)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: PayoutMethodCard(
+                method: m,
+                busy: _busy,
+                onMakePrimary: () => _run(
+                  () => ref.read(payoutRepositoryProvider).setPrimary(m.id),
+                  'Could not change the primary method.',
+                ),
+                onDelete: () => _run(
+                  () => ref.read(payoutRepositoryProvider).delete(m.id),
+                  'Could not remove this payment method.',
+                ),
+              ),
+            ),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _add,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add another'),
           ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        const _NeedRow(icon: Icons.account_balance_outlined, label: 'Bank Account for Payouts', tag: 'Required'),
-        const _NeedRow(icon: Icons.badge_outlined, label: 'PAN and GSTIN', tag: 'Required'),
-        const _NeedRow(icon: Icons.description_outlined, label: 'Cancellation Policy', tag: 'Optional'),
+        ],
         const SizedBox(height: AppSpacing.xl),
-        const _InfoBanner(
-          'Verification usually clears in a day. Until then you can still take '
-          'cash and pay-at-venue bookings.',
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: tokens.violet.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: tokens.violet.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.verified_user_outlined, size: 20, color: tokens.violet),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  'We verify every payout method by hand before sending money to '
+                  'it — you’ll see a Verified badge once it’s done. Only you can '
+                  'see these details.',
+                  style: TextStyle(fontSize: 13, color: tokens.textPrimary, height: 1.45),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -178,182 +224,48 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
 
 // ─────────────────────────────────────────────────────────────────────────
 
-class _RazorpayCard extends StatelessWidget {
-  const _RazorpayCard({required this.connected, required this.onConnect});
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.onAdd});
 
-  final bool connected;
-  final VoidCallback onConnect;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: tokens.primary.withValues(alpha: 0.08),
+        color: tokens.surface1,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: tokens.primary.withValues(alpha: 0.35)),
+        border: Border.all(color: tokens.borderColor),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: tokens.primary.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(Icons.payments_outlined, color: tokens.primary, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Razorpay',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: tokens.textPrimary,
-                        )),
-                    const SizedBox(height: 2),
-                    Text('UPI, cards, netbanking, wallets',
-                        style: TextStyle(fontSize: 13, color: tokens.textSecondary)),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: tokens.primary.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.account_balance_outlined, color: tokens.primary),
           ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Where should we send your payouts?',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: tokens.textPrimary)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Add the bank account or UPI ID that receives what you collect.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: tokens.textSecondary, height: 1.4)),
           const SizedBox(height: AppSpacing.lg),
-          for (final line in const [
-            'Guests pay when they book, not at the gate',
-            'Refunds and settlements reconcile themselves',
-            'Payouts to your bank in 2 working days',
-          ])
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.check, size: 18, color: tokens.primary),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(line,
-                        style: TextStyle(
-                            fontSize: 14, height: 1.35, color: tokens.textPrimary)),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: connected ? null : onConnect,
-              icon: Icon(connected ? Icons.check_circle : Icons.open_in_new, size: 18),
-              label: Text(connected ? 'Razorpay opened' : 'Connect Razorpay'),
-            ),
+          ElevatedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add payment method'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _NeedRow extends StatelessWidget {
-  const _NeedRow({required this.icon, required this.label, required this.tag});
-
-  final IconData icon;
-  final String label;
-  final String tag;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: tokens.textSecondary),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(label,
-                style: TextStyle(fontSize: 15, color: tokens.textPrimary)),
-          ),
-          Text(
-            tag,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: tag == 'Required' ? tokens.warning : tokens.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoBanner extends StatelessWidget {
-  const _InfoBanner(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: tokens.violet.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: tokens.violet.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 20, color: tokens.violet),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(text,
-                style: TextStyle(fontSize: 13, color: tokens.textPrimary, height: 1.45)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GhostButton extends StatelessWidget {
-  const _GhostButton({required this.label, required this.loading, required this.onTap});
-
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Material(
-      color: tokens.surface1,
-      shape: StadiumBorder(side: BorderSide(color: tokens.borderColor)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: loading ? null : onTap,
-        child: Container(
-          height: 56,
-          alignment: Alignment.center,
-          child: loading
-              ? const SizedBox(
-                  height: 18, width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(label,
-                  style: TextStyle(color: tokens.textPrimary, fontWeight: FontWeight.w600)),
-        ),
       ),
     );
   }
@@ -373,8 +285,7 @@ class _ErrorText extends StatelessWidget {
         color: context.tokens.destructive.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Text(message,
-          style: TextStyle(color: context.tokens.destructive, fontSize: 13)),
+      child: Text(message, style: TextStyle(color: context.tokens.destructive, fontSize: 13)),
     );
   }
 }

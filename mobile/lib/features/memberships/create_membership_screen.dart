@@ -25,6 +25,7 @@ import 'membership_slot.dart';
 import 'membership_slot_section.dart';
 import 'membership_status.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The full Create Membership page — mirrors
 /// src/features/memberships/components/create-membership-page.tsx: a
@@ -523,11 +524,11 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
         ],
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _CreateMembershipSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
-                : _form(context),
+                : _form(context)),
       ),
       bottomNavigationBar: !ready
           ? null

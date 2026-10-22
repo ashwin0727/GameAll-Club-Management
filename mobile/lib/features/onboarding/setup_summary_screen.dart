@@ -13,6 +13,7 @@ import '../../data/models/facility.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Screen 6 of the redesigned onboarding — "You're open for business". By
 /// the time we land here the Payments step has already run
@@ -113,7 +114,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
             child: Scaffold(
             body: AuthGradientBackground(
               child: SafeArea(
-                child: _loading
+                child: SmoothSwitcher(child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
                         ? Center(
@@ -124,7 +125,7 @@ class _SetupSummaryScreenState extends ConsumerState<SetupSummaryScreen> {
                                   style: TextStyle(color: tokens.textSecondary)),
                             ),
                           )
-                        : _body(context, tokens),
+                        : _body(context, tokens)),
               ),
             ),
             ),

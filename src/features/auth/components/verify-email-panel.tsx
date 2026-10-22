@@ -11,7 +11,7 @@ import { SubmitButton } from "@/features/auth/components/submit-button";
 import { TextField } from "@/features/auth/components/text-field";
 import { FormMessage } from "@/features/auth/components/form-message";
 import { usePendingSignup } from "@/features/auth/context/pending-signup";
-import { useChangeEmail, useResendVerification } from "@/features/auth/hooks/use-auth";
+import { useChangeEmail, useResendVerification, useVerifySignup } from "@/features/auth/hooks/use-auth";
 import { changeEmailSchema, type ChangeEmailInput } from "@/features/auth/validation";
 import { RESEND_COOLDOWN_SECONDS } from "@/lib/constants";
 
@@ -56,7 +56,9 @@ export function VerifyEmailPanel() {
   const [editingEmail, setEditingEmail] = React.useState(false);
   const resend = useResendVerification();
   const changeEmail = useChangeEmail();
+  const verify = useVerifySignup();
   const cooldown = useCooldown(RESEND_COOLDOWN_SECONDS);
+  const [code, setCode] = React.useState("");
 
   const {
     register,
@@ -74,7 +76,7 @@ export function VerifyEmailPanel() {
     return (
       <div className="space-y-6">
         <FormMessage tone="info">
-          We don&apos;t have an address to verify. Create your account to get a confirmation link.
+          We don&apos;t have an address to verify. Create your account to get a verification code.
         </FormMessage>
         <Button asChild className="h-11 w-full">
           <Link href="/signup">Create Account</Link>
@@ -109,6 +111,12 @@ export function VerifyEmailPanel() {
   };
 
   const webmail = inboxUrl(email);
+
+  const onVerify = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (code.length !== 6 || verify.isPending) return;
+    verify.mutate({ email, code, password: pending?.password });
+  };
 
   if (editingEmail) {
     return (
@@ -155,24 +163,38 @@ export function VerifyEmailPanel() {
           <MailCheck className="h-5 w-5 text-primary" aria-hidden="true" />
         </div>
         <div className="min-w-0 space-y-1">
-          <p className="text-sm text-muted-foreground">We&apos;ve sent a verification link to</p>
+          <p className="text-sm text-muted-foreground">We&apos;ve sent a 6-digit code to</p>
           <p className="break-words text-sm font-semibold text-foreground">{email}</p>
         </div>
       </div>
 
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        Please check your inbox and click the verification link to continue. If it isn&apos;t there
-        within a minute, check your spam folder.
-      </p>
+      <form onSubmit={onVerify} className="space-y-4" noValidate>
+        {verify.isError && <FormMessage>{verify.error.message}</FormMessage>}
+        <TextField
+          id="verify-code"
+          label="Verification Code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          enterKeyHint="done"
+          placeholder="Enter 6-digit code"
+          className="text-center text-xl tracking-[0.5em]"
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          hint="Enter the code we emailed you. It expires in 10 minutes. Check your spam folder if you can't find it."
+        />
+        <SubmitButton pending={verify.isPending} disabled={code.length !== 6} pendingLabel="Verifying…">
+          Verify &amp; Continue
+        </SubmitButton>
+      </form>
 
       {resend.isError && <FormMessage>{resend.error.message}</FormMessage>}
       {resend.isSuccess && !resend.isError && cooldown.remaining > 0 && (
-        <FormMessage tone="success">Verification email sent again.</FormMessage>
+        <FormMessage tone="success">A new code has been sent.</FormMessage>
       )}
 
       <div className="space-y-3">
         {webmail && (
-          <Button asChild className="h-11 w-full">
+          <Button asChild variant="outline" className="h-11 w-full">
             <a href={webmail} target="_blank" rel="noopener noreferrer">
               Open Email
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -194,7 +216,7 @@ export function VerifyEmailPanel() {
           />
           {cooldown.remaining > 0
             ? `Resend available in ${cooldown.remaining}s`
-            : "Resend Verification Email"}
+            : "Resend Code"}
         </Button>
 
         <Button

@@ -151,20 +151,6 @@ class FacilityRepository {
     }
   }
 
-  /// Marks whether the owner linked a payments account on the Connect
-  /// Payments step. Full Razorpay Route onboarding is a later project; this
-  /// is just the remembered flag.
-  Future<void> setPaymentsConnected(String facilityId, bool connected) async {
-    try {
-      await _client
-          .from('facilities')
-          .update({'payments_connected': connected})
-          .eq('id', facilityId);
-    } on PostgrestException catch (e) {
-      throw mapSupabaseError(e);
-    }
-  }
-
   Future<void> updateOnboardingStep(String facilityId, OnboardingStep step) async {
     try {
       await _client

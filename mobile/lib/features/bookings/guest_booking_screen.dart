@@ -25,6 +25,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _steps = ['Court & Time', 'Guest Details', 'Review & Payment'];
 
@@ -468,11 +469,11 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _GuestBookingSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
-                : _wizard(),
+                : _wizard()),
       ),
       bottomNavigationBar: (_loading || _loadError != null || _booked.isNotEmpty)
           ? null

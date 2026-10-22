@@ -18,6 +18,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'add_coach_validation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// Add Coach — mirrors src/features/coaching/components/add-coach-page.tsx: pick an existing staff member or
 /// create a new person (photo, name, phone, email, date of birth, role), then the coaching details (sports,
@@ -239,7 +240,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Add Coach')),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _CoachFormSkeleton()
             : ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -339,7 +340,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-              ),
+              )),
       ),
     );
   }

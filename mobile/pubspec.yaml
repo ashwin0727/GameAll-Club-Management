@@ -64,6 +64,7 @@ dependencies:
   linked_scroll_controller: ^0.2.0
   # Plays the branded splash clip (assets/splash.mp4) on cold start.
   video_player: ^2.9.2
+  file_saver: ^0.7.0
 
 dev_dependencies:
   flutter_test:

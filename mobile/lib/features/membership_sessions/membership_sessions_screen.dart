@@ -14,15 +14,14 @@ import '../../data/models/membership_session_dashboard.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../../shared/widgets/app_metric_card.dart';
 import '../../shared/widgets/app_search_field.dart';
-import '../../shared/widgets/metric_carousel.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/picker_chip.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'membership_session_detail_screen.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _perPage = 10;
 
@@ -70,7 +69,6 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
   bool _isLoading = true;
   String? _loadError;
 
-  MembershipSessionsSummary? _summary;
   List<MembershipSessionListRow>? _rows;
   int _totalCount = 0;
 
@@ -139,9 +137,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
     if (facilityId == null) return;
     setState(() => _rows = null);
     try {
-      final results = await Future.wait([
-        ref.read(membershipSessionRepositoryProvider).getSessionsSummary(facilityId),
-        ref.read(membershipSessionRepositoryProvider).listSessionsAdmin(
+      final list = await ref.read(membershipSessionRepositoryProvider).listSessionsAdmin(
               facilityId,
               search: _search.isEmpty ? null : _search,
               facilitySportId: _sportId,
@@ -150,12 +146,9 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
               day: _day,
               limit: _perPage,
               offset: _page * _perPage,
-            ),
-      ]);
+            );
       if (!mounted) return;
       setState(() {
-        _summary = results[0] as MembershipSessionsSummary;
-        final list = results[1] as ({List<MembershipSessionListRow> rows, int totalCount});
         _rows = list.rows;
         _totalCount = list.totalCount;
       });
@@ -209,7 +202,7 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _MembershipSessionsSkeleton()
             : _loadError != null && _rows == null
                 ? ErrorView(message: _loadError!, onRetry: _load)
@@ -219,8 +212,6 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _kpiGrid(),
-                          const SizedBox(height: AppSpacing.lg),
                           _filters(),
                           const SizedBox(height: AppSpacing.lg),
                           _list(),
@@ -229,56 +220,8 @@ class _MembershipSessionsScreenState extends ConsumerState<MembershipSessionsScr
                         ],
                       ),
                     ),
-                  ),
+                  )),
       ),
-    );
-  }
-
-  Widget _kpiGrid() {
-    final s = _summary;
-    String n(num v) => v.round().toString();
-    return MetricCarousel(
-      cards: [
-        AppMetricCard(
-          label: 'Total Sessions',
-          value: s == null ? '—' : '${s.totalSessions}',
-          countTo: s?.totalSessions,
-          formatValue: n,
-          icon: Icons.event_repeat,
-        ),
-        AppMetricCard(
-          label: 'Active Sessions',
-          value: s == null ? '—' : '${s.activeSessions}',
-          countTo: s?.activeSessions,
-          formatValue: n,
-          icon: Icons.play_circle_outline,
-          accentColor: context.tokens.success,
-        ),
-        AppMetricCard(
-          label: "Today's Sessions",
-          value: s == null ? '—' : '${s.todaysSessions}',
-          countTo: s?.todaysSessions,
-          formatValue: n,
-          icon: Icons.today,
-          accentColor: context.tokens.electricBlue,
-        ),
-        AppMetricCard(
-          label: 'Guest Slots Released',
-          value: s == null ? '—' : '${s.guestSlotsReleased}',
-          countTo: s?.guestSlotsReleased,
-          formatValue: n,
-          icon: Icons.group_add_outlined,
-          accentColor: context.tokens.warning,
-        ),
-        AppMetricCard(
-          label: 'Utilization',
-          value: s == null ? '—' : '${s.avgUtilizationPct}%',
-          countTo: s?.avgUtilizationPct,
-          formatValue: (v) => '${v.round()}%',
-          icon: Icons.donut_small,
-          accentColor: context.tokens.violet,
-        ),
-      ],
     );
   }
 

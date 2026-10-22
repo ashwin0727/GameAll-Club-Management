@@ -36,8 +36,8 @@ class GuestPlayer {
       email: json['email'] as String?,
       notes: json['notes'] as String?,
       status: _statusFromDb(json['status'] as String? ?? 'ACTIVE'),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );
   }
 }
@@ -83,7 +83,7 @@ class GuestStats {
     return GuestStats(
       totalVisits: (json['total_visits'] as num?)?.toInt() ?? 0,
       totalBookings: (json['total_bookings'] as num?)?.toInt() ?? 0,
-      lastVisit: json['last_visit'] != null ? DateTime.parse(json['last_visit'] as String) : null,
+      lastVisit: json['last_visit'] != null ? DateTime.parse(json['last_visit'] as String).toLocal() : null,
       totalAmountMinor: (json['total_amount_minor'] as num?)?.toInt() ?? 0,
       pendingAmountMinor: (json['pending_amount_minor'] as num?)?.toInt() ?? 0,
       sports: sportsJson

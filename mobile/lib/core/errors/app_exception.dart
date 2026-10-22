@@ -132,6 +132,11 @@ AppException mapSupabaseError(
 
   if (error is PostgrestException) {
     final code = error.code;
+    // The database refuses to remove a court or sport that still has upcoming work (and to put new work on a removed
+    // one). Those messages are written for the owner, so they are passed through instead of becoming "something went wrong".
+    if (code == '23514' && RegExp(r'move or cancel|no longer available', caseSensitive: false).hasMatch(error.message)) {
+      return AppException(AppErrorCode.databaseError, error.message);
+    }
     if (code == '23505' && duplicate != null) return AppException(duplicate);
     if (code == '23503' && notFound != null) return AppException(notFound);
     if (code == '23514' && invalid != null) return AppException(invalid);

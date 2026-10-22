@@ -25,6 +25,7 @@ import 'booking_status_presentation.dart';
 import 'guest_booking_edit_screen.dart';
 import 'guest_booking_screen.dart';
 import 'potential_members_screen.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _perPage = 10;
 
@@ -438,7 +439,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
               },
             ),
       body: SafeArea(
-        child: _loading
+        child: SmoothSwitcher(child: _loading
             ? const _GuestBookingsSkeleton()
             : _loadError != null && _rows == null
             ? ErrorView(message: _loadError!, onRetry: _load)
@@ -457,7 +458,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
                     ],
                   ),
                 ),
-              ),
+              )),
       ),
     );
   }

@@ -36,6 +36,8 @@ import 'booking_slots.dart';
 import 'booking_status_presentation.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../authentication/session_controller.dart';
+import '../../shared/widgets/smooth_switcher.dart';
+import '../../shared/widgets/picker_chip.dart';
 
 enum _CourtAvailability { pickTime, available, conflict, outsideHours, checking }
 
@@ -264,42 +266,18 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   }
 
   Future<void> _openFilterSheet() async {
-    final picked = await showModalBottomSheet<String?>(
+    // The same list every dropdown in the app opens.
+    final picked = await showPickerSheet<String>(
       context: context,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        final tokens = sheetContext.tokens;
-        Widget tile(String label, String? value) {
-          final selected = value == _sportFilter;
-          return ListTile(
-            dense: true,
-            title: Text(label),
-            trailing: selected ? Icon(Icons.check, color: tokens.primary) : null,
-            onTap: () => Navigator.pop(sheetContext, value ?? '__all__'),
-          );
-        }
-
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xs),
-                child: Text('Filter by Sport',
-                    style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-              ),
-              tile('All sports', null),
-              for (final fs in _facilitySports)
-                tile(
-                  fs.customSportName ?? _sports.where((s) => s.id == fs.sportId).firstOrNull?.name ?? 'Sport',
-                  fs.id,
-                ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+      selected: _sportFilter ?? '__all__',
+      options: [
+        (value: '__all__', label: 'All sports'),
+        for (final fs in _facilitySports)
+          (
+            value: fs.id,
+            label: fs.customSportName ?? _sports.where((s) => s.id == fs.sportId).firstOrNull?.name ?? 'Sport',
           ),
-        );
-      },
+      ],
     );
     if (picked == null) return; // dismissed
     setState(() => _sportFilter = picked == '__all__' ? null : picked);
@@ -407,7 +385,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         ],
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _BookingsSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _load)
@@ -422,7 +400,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                       const SizedBox(height: AppSpacing.md),
                       Expanded(child: _buildSchedule()),
                     ],
-                  ),
+                  )),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.courts),
       ),

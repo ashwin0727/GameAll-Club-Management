@@ -36,7 +36,11 @@ const ErrorState = dynamic(() =>
 
 type LoadState = "loading" | "ready" | "forbidden";
 
-export function OperatingHoursForm() {
+/**
+ * `onDone` turns the form into an in-place editor: saving calls it instead of advancing the onboarding step, so the
+ * same operating hours form can be used from a popup once the facility is already set up.
+ */
+export function OperatingHoursForm({ onDone }: { onDone?: () => void } = {}) {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const completeOperatingHours = useOnboardingStore((s) => s.completeOperatingHours);
@@ -238,6 +242,11 @@ export function OperatingHoursForm() {
         }
       }
 
+      if (onDone) {
+        setIsSaving(false);
+        onDone();
+        return;
+      }
       await getFacilityService().updateOnboardingStep(facility.id, "PRICING");
       completeOperatingHours();
       setIsSaving(false);
@@ -358,7 +367,7 @@ export function OperatingHoursForm() {
             pendingLabel="Saving…"
             className="w-auto sm:min-w-[10rem]"
           >
-            Continue →
+            {onDone ? "Save changes" : "Continue →"}
           </SubmitButton>
         </div>
       </div>

@@ -17,6 +17,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
 import 'onboarding_scaffold.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 const _uuid = Uuid();
 
@@ -25,7 +26,10 @@ const _uuid = Uuid();
 /// count per sport with a stepper. Court rows are created/archived to match
 /// the count on Continue.
 class SportsSetupScreen extends ConsumerStatefulWidget {
-  const SportsSetupScreen({super.key});
+  const SportsSetupScreen({super.key, this.editMode = false});
+
+  /// Opened from Profile to change an already-finished setup: saving goes back instead of on to Pricing.
+  final bool editMode;
 
   @override
   ConsumerState<SportsSetupScreen> createState() => _SportsSetupScreenState();
@@ -191,6 +195,11 @@ class _SportsSetupScreenState extends ConsumerState<SportsSetupScreen> {
         }
       }
 
+      if (widget.editMode) {
+        if (!mounted) return;
+        context.pop(true);
+        return;
+      }
       await ref
           .read(facilityRepositoryProvider)
           .updateOnboardingStep(facilityId, OnboardingStep.pricing);
@@ -214,15 +223,16 @@ class _SportsSetupScreenState extends ConsumerState<SportsSetupScreen> {
     if (_isLoading || _loadError != null) {
       return OnboardingScaffold(
         stepIndex: 1,
+        editing: widget.editMode,
         title: 'What can people play?',
         onBack: () => context.go(AppRoutes.onboardingFacility),
         footer: const SizedBox.shrink(),
         children: [
           SizedBox(
             height: 320,
-            child: _isLoading
+            child: SmoothSwitcher(child: _isLoading
                 ? const LoadingView(message: 'Loading…')
-                : ErrorView(message: _loadError!, onRetry: _load),
+                : ErrorView(message: _loadError!, onRetry: _load)),
           ),
         ],
       );
@@ -233,12 +243,13 @@ class _SportsSetupScreenState extends ConsumerState<SportsSetupScreen> {
 
     return OnboardingScaffold(
       stepIndex: 1,
+      editing: widget.editMode,
       title: 'What can people play?',
       subtitle: 'Pick your sports, then set how many courts each one has. '
           'Court names are generated and editable later.',
       onBack: () => context.go(AppRoutes.onboardingFacility),
       footer: AuthGradientButton(
-        label: 'Next · pricing  ›',
+        label: widget.editMode ? 'Save changes' : 'Next · pricing  ›',
         loadingLabel: 'Saving…',
         isLoading: _isSubmitting,
         onPressed: _selected.isEmpty ? null : _submit,

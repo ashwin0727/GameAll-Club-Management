@@ -104,7 +104,7 @@ export function SignupForm() {
       </SubmitButton>
 
       <p className="text-center text-xs leading-relaxed text-muted-foreground">
-        We&apos;ll email you a link to confirm this address before your first sign-in.
+        We&apos;ll email you a 6-digit code to verify this address before you continue.
       </p>
     </form>
   );

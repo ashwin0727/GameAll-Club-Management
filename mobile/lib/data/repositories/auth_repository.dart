@@ -11,23 +11,37 @@ class AuthRepository {
 
   final SupabaseClient _client;
 
+  /// Calls the `signup-otp` edge function — same one the web uses. It creates the account unconfirmed and emails a
+  /// 6-digit code (Resend); no Supabase confirmation link is involved.
+  Future<void> _signupOtp(Map<String, dynamic> body) async {
+    try {
+      await _client.functions.invoke('signup-otp', body: body);
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final message = details is Map ? details['message'] : null;
+      throw AppException(
+        AppErrorCode.databaseError,
+        message is String && message.isNotEmpty ? message : null,
+      );
+    } on AuthException catch (e) {
+      throw mapSupabaseError(e);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   Future<void> register({
     required String name,
     required String email,
     required String password,
-  }) async {
-    try {
-      await _client.auth.signUp(
-        email: email,
-        password: password,
-        // Consumed by the handle_new_user trigger to seed the profile row —
-        // identical metadata shape to the web signup form.
-        data: {'full_name': name, 'account_type': 'owner'},
-      );
-    } on AuthException catch (e) {
-      throw mapSupabaseError(e);
-    }
-  }
+  }) =>
+      _signupOtp({'action': 'start', 'name': name, 'email': email, 'password': password});
+
+  /// Checks the code the owner received by email; on success the address is confirmed server-side.
+  Future<void> verifySignupCode({required String email, required String code}) =>
+      _signupOtp({'action': 'verify', 'email': email, 'code': code});
 
   Future<void> login({required String email, required String password}) async {
     try {
@@ -48,13 +62,7 @@ class AuthRepository {
     }
   }
 
-  Future<void> resendVerificationEmail(String email) async {
-    try {
-      await _client.auth.resend(type: OtpType.signup, email: email);
-    } on AuthException catch (e) {
-      throw mapSupabaseError(e);
-    }
-  }
+  Future<void> resendVerificationEmail(String email) => _signupOtp({'action': 'resend', 'email': email});
 
   /// Mirrors src/services/auth/supabase-auth.service.ts's `resetPassword` —
   /// a missing account must look identical to a real one, so only genuine

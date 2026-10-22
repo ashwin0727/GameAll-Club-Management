@@ -217,19 +217,17 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('three tabs, each with its own create button and insights', (tester) async {
+    testWidgets('three tabs, each with its own create button and its figures in the top cards', (tester) async {
       await open(tester);
       expect(find.text('Coaching'), findsWidgets);
       expect(find.text('Programs'), findsOneWidget);
       expect(find.text('Students'), findsOneWidget);
       expect(find.text('New coach'), findsOneWidget);
-      expect(find.text('View More Insights'), findsOneWidget);
-
-      // The hero speaks only about coaches.
-      expect(find.text('Active Coaches'), findsWidgets);
-      expect(find.text('total coaches'), findsOneWidget);
-      expect(find.text('total programs'), findsOneWidget);
-      expect(find.text('upcoming sessions'), findsOneWidget);
+      // The figures sit in the top cards themselves; there is no separate "View More Insights" to open.
+      expect(find.text('View More Insights'), findsNothing);
+      expect(find.text('Total coaches'), findsOneWidget);
+      expect(find.text('Coach Expenses'), findsOneWidget);
+      expect(find.text('Scheduled Sessions'), findsOneWidget);
       expect(find.text('Active students'), findsNothing);
 
       // The coaches themselves, as in the design — no reviews or stars.
@@ -249,24 +247,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Beginner Badminton'), findsOneWidget);
 
-      await tester.tap(find.text('View More Insights'));
-      await tester.pumpAndSettle();
-      expect(find.text('Total Coaches'), findsWidgets);
-      expect(find.text('Active Coaches'), findsWidgets);
-      expect(find.text('Coaching Expense'), findsOneWidget);
-      expect(find.text('Scheduled Sessions'), findsWidgets);
       expect(find.text('Active Sessions'), findsNothing);
       expect(find.text('Overall Revenue'), findsNothing);
 
       await tester.tap(find.text('Programs'));
       await tester.pumpAndSettle();
       expect(find.text('New program'), findsOneWidget);
-      expect(find.text('Total Programs'), findsWidgets);
-      await tester.tap(find.text('View More Insights'));
-      await tester.pumpAndSettle();
-      expect(find.text('Total Programs'), findsWidgets);
-      expect(find.text('Active Programs'), findsWidgets);
-      expect(find.text('Enrolled Students'), findsWidgets);
+      expect(find.text('View More Insights'), findsNothing);
+      expect(find.text('Total programs'), findsOneWidget);
+      expect(find.text('Enrolled Students'), findsOneWidget);
       expect(find.text('Available Seats'), findsOneWidget);
       expect(find.text('7'), findsOneWidget);
       expect(find.text('Average Fee'), findsNothing);
@@ -274,13 +263,10 @@ void main() {
       await tester.tap(find.text('Students'));
       await tester.pumpAndSettle();
       expect(find.text('New student'), findsOneWidget);
-      expect(find.text('Total Students'), findsWidgets);
-      await tester.tap(find.text('View More Insights'));
-      await tester.pumpAndSettle();
-      expect(find.text('Total Students'), findsWidgets);
-      expect(find.text('Enrolled Students'), findsWidgets);
-      expect(find.text('Revenue Collected'), findsWidgets);
-      expect(find.text('Payments Pending'), findsWidgets);
+      expect(find.text('View More Insights'), findsNothing);
+      expect(find.text('Total students'), findsOneWidget);
+      expect(find.text('Revenue'), findsOneWidget);
+      expect(find.text('Pending Payments'), findsOneWidget);
       expect(find.text('Payment Pending'), findsNothing);
     });
   });

@@ -12,7 +12,6 @@ import { getSportsService } from "@/services/sports";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { getPricingService } from "@/services/pricing";
-import { getOnboardingService } from "@/services/onboarding";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";
 import { FacilityContextCard } from "@/features/sports-setup/components/facility-context-card";
@@ -21,9 +20,9 @@ import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { playingAreaLabelFor } from "@/features/courts-setup/constants";
 import type { OperatingDay } from "@/features/operating-hours/types";
-import { clonePeriods, defaultPeriod, type PeriodDraft } from "@/features/pricing/components/types";
+import { clonePeriods, defaultPeriod, rulesToPeriods, type PeriodDraft } from "@/features/pricing/components/types";
 import type { PricingDayType, PricingRule } from "@/features/pricing/types";
-import { toMinorUnits, fromMinorUnits } from "@/features/pricing/money";
+import { toMinorUnits } from "@/features/pricing/money";
 import { validatePricingRules } from "@/features/pricing/validation";
 import { SportPricingCard, type OverrideDraft } from "@/features/pricing/components/sport-pricing-card";
 import { CopyPricingDialog } from "@/features/pricing/components/copy-pricing-dialog";
@@ -45,13 +44,7 @@ interface SportPricingState {
 
 function toPeriodDrafts(rules: PricingRule[], currency: string): { periods: PeriodDraft[]; advancedEnabled: boolean } {
   if (rules.length === 0) return { periods: [defaultPeriod()], advancedEnabled: false };
-  const periods = rules.map((r) => ({
-    dayType: r.dayType,
-    coversFullDay: r.coversFullDay,
-    startTime: r.startTime ?? "06:00",
-    endTime: r.endTime ?? "23:00",
-    amountInput: String(fromMinorUnits(r.amountMinor, currency)),
-  }));
+  const periods = rulesToPeriods(rules, currency);
   const advancedEnabled = rules.length > 1 || rules.some((r) => !r.coversFullDay || r.dayType !== "ALL_DAYS");
   return { periods, advancedEnabled };
 }
@@ -78,7 +71,11 @@ function periodsToRules(
     }));
 }
 
-export function PricingForm() {
+/**
+ * `onDone` turns the form into an in-place editor: saving calls it instead of advancing the onboarding step, so the
+ * same pricing form can be used from a popup once the facility is already set up.
+ */
+export function PricingForm({ onDone }: { onDone?: () => void } = {}) {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const completePricing = useOnboardingStore((s) => s.completePricing);
@@ -162,6 +159,14 @@ export function PricingForm() {
           }
         }
 
+        // A sport with any court-specific rate is in Individual mode: every court gets a draft, a court that had no
+        // rate of its own starting from the sport's rate.
+        if (hasOverride) {
+          for (const area of areasForSport) {
+            overrides[area.id] ??= { active: true, periods: clonePeriods(periods), advancedEnabled, errors: [] };
+          }
+        }
+
         nextState[fs.id] = { periods, advancedEnabled, customizeAreas: hasOverride, overrides, errors: [] };
       }
 
@@ -184,35 +189,20 @@ export function PricingForm() {
     setDirtyToken((t) => t + 1);
   }
 
-  function handleCustomizeArea(facilitySportId: string, areaId: string) {
+  /** Switch a sport between one default rate and a rate per court. Each side keeps what was typed on it. */
+  function handleChangePricingMode(facilitySportId: string, individual: boolean) {
     setSportState((prev) => {
       const sport = prev[facilitySportId]!;
-      if (sport.overrides[areaId]?.active) return prev;
-      return {
-        ...prev,
-        [facilitySportId]: {
-          ...sport,
-          overrides: {
-            ...sport.overrides,
-            [areaId]: {
-              active: true,
-              periods: clonePeriods(sport.periods),
-              advancedEnabled: sport.advancedEnabled,
-              errors: [],
-            },
-          },
-        },
-      };
-    });
-  }
-
-  function handleUseDefaultForArea(facilitySportId: string, areaId: string) {
-    setSportState((prev) => {
-      const sport = prev[facilitySportId]!;
+      if (!individual) return { ...prev, [facilitySportId]: { ...sport, customizeAreas: false, errors: [] } };
       const overrides = { ...sport.overrides };
-      delete overrides[areaId];
-      return { ...prev, [facilitySportId]: { ...sport, overrides } };
+      for (const area of playingAreas.filter((a) => a.facilitySportId === facilitySportId)) {
+        if (!overrides[area.id]?.active) {
+          overrides[area.id] = { active: true, periods: clonePeriods(sport.periods), advancedEnabled: sport.advancedEnabled, errors: [] };
+        }
+      }
+      return { ...prev, [facilitySportId]: { ...sport, customizeAreas: true, overrides, errors: [] } };
     });
+    setDirtyToken((t) => t + 1);
   }
 
   function handleOverrideChange(facilitySportId: string, areaId: string, periods: PeriodDraft[]) {
@@ -269,37 +259,33 @@ export function PricingForm() {
 
     for (const fs of facilitySports) {
       const sport = nextState[fs.id]!;
-      const sportRules = periodsToRules(sport.periods, fs.id, undefined, currency);
-      const sportResult = validatePricingRules(sportRules, operatingDays ?? undefined);
-
-      // Individual pricing only counts while it is switched on — a hidden override can't block Continue (or be
-      // saved) behind the user's back.
       const areasForSport = playingAreas.filter((a) => a.facilitySportId === fs.id);
-      const useOverrides = sport.customizeAreas;
       const overrides = { ...sport.overrides };
-      let everyAreaPriced = useOverrides && areasForSport.length > 0;
-      for (const [areaId, override] of Object.entries(overrides)) {
-        if (!useOverrides) continue;
-        const areaRules = periodsToRules(override.periods, fs.id, areaId, currency);
-        const areaResult = validatePricingRules(areaRules, operatingDays ?? undefined);
-        overrides[areaId] = { ...override, errors: areaResult.ruleErrors.length > 0 ? areaResult.ruleErrors : areaResult.overlapError ? [areaResult.overlapError] : [] };
-        if (!areaResult.isValid || areaRules.length === 0) hasErrors = true;
-        allRules.push(...areaRules);
-      }
-      if (useOverrides) {
+      let sportErrors: string[] = [];
+
+      if (!sport.customizeAreas) {
+        // Default rate: one rate for every court of the sport. Individual rates aren't collected or saved.
+        const sportRules = periodsToRules(sport.periods, fs.id, undefined, currency);
+        const result = validatePricingRules(sportRules, operatingDays ?? undefined);
+        if (sportRules.length === 0) result.ruleErrors.push("Set a rate for this sport.");
+        sportErrors = result.ruleErrors.length > 0 ? result.ruleErrors : result.overlapError ? [result.overlapError] : [];
+        allRules.push(...sportRules);
+      } else {
+        // Individual rate: every court needs its own rate, and the sport has no default to fill in.
         for (const area of areasForSport) {
-          const o = overrides[area.id];
-          if (!o?.active || periodsToRules(o.periods, fs.id, area.id, currency).length === 0) everyAreaPriced = false;
+          const override = overrides[area.id] ?? { active: true, periods: [defaultPeriod()], advancedEnabled: false, errors: [] };
+          const areaRules = periodsToRules(override.periods, fs.id, area.id, currency);
+          const result = validatePricingRules(areaRules, operatingDays ?? undefined);
+          const errors = result.ruleErrors.length > 0 ? result.ruleErrors : result.overlapError ? [result.overlapError] : [];
+          if (areaRules.length === 0) errors.push(`Set a rate for ${area.name}.`);
+          overrides[area.id] = { ...override, active: true, errors };
+          if (errors.length > 0) hasErrors = true;
+          allRules.push(...areaRules);
         }
       }
 
-      // The sport's own rate is only required when some court still relies on it.
-      if (sportRules.length === 0 && !everyAreaPriced) sportResult.ruleErrors.push("Set a rate for this sport.");
-
-      const errors = sportResult.ruleErrors.length > 0 ? sportResult.ruleErrors : sportResult.overlapError ? [sportResult.overlapError] : [];
-      nextState[fs.id] = { ...sport, overrides, errors };
-      if (errors.length > 0) hasErrors = true;
-      allRules.push(...sportRules);
+      nextState[fs.id] = { ...sport, overrides, errors: sportErrors };
+      if (sportErrors.length > 0) hasErrors = true;
     }
 
     setSportState(nextState);
@@ -316,14 +302,16 @@ export function PricingForm() {
 
     try {
       await getPricingService().savePricingRules(facility.id, allRules);
-      // Goes through the complete_facility_setup RPC (not a raw onboarding_step
-      // write) so profiles.onboarding_completed is flipped in the same
-      // transaction — otherwise the next sign-in would send the owner right
-      // back into onboarding despite the facility being fully set up.
-      await getOnboardingService().completeSetup(facility.id);
+      if (onDone) {
+        setIsSaving(false);
+        onDone();
+        return;
+      }
+      // Setup is completed on the next step, once a payout method has been added.
+      await getFacilityService().updateOnboardingStep(facility.id, "PAYMENTS");
       completePricing();
       setIsSaving(false);
-      router.push("/onboarding/complete");
+      router.push("/onboarding/payments");
     } catch {
       setSaveError("Unable to save pricing. Please try again.");
       setIsSaving(false);
@@ -356,7 +344,7 @@ export function PricingForm() {
       sportName: sport?.name ?? "Sport",
       areaLabel: label,
       areaCount: areasForSport.length,
-      periods: sportState[fs.id]?.periods ?? [],
+      periods: sportState[fs.id]?.customizeAreas ? [] : (sportState[fs.id]?.periods ?? []),
       // Each court/turf with its own pricing — what it really charges instead of the sport's rate.
       customized: areasForSport
         .filter((a) => sportState[fs.id]?.customizeAreas && sportState[fs.id]?.overrides[a.id]?.active)
@@ -391,13 +379,11 @@ export function PricingForm() {
               periods={state.periods}
               advancedEnabled={state.advancedEnabled}
               errors={state.errors}
-              customizeAreas={state.customizeAreas}
+              individualPricing={state.customizeAreas}
               overrides={state.overrides}
               onChangePeriods={(periods) => updateSport(fs.id, { periods })}
               onToggleAdvanced={(advancedEnabled) => updateSport(fs.id, { advancedEnabled })}
-              onToggleCustomizeAreas={(customizeAreas) => updateSport(fs.id, { customizeAreas })}
-              onCustomizeArea={(areaId) => handleCustomizeArea(fs.id, areaId)}
-              onUseDefaultForArea={(areaId) => handleUseDefaultForArea(fs.id, areaId)}
+              onChangePricingMode={(individual) => handleChangePricingMode(fs.id, individual)}
               onOverrideChange={(areaId, periods) => handleOverrideChange(fs.id, areaId, periods)}
               onOverrideToggleAdvanced={(areaId, enabled) => handleOverrideToggleAdvanced(fs.id, areaId, enabled)}
               onCopyRequest={() => setCopyDialogSportId(fs.id)}
@@ -419,7 +405,7 @@ export function PricingForm() {
           pendingLabel="Saving…"
           className="w-auto sm:min-w-[10rem]"
         >
-          Continue →
+          {onDone ? "Save changes" : "Continue →"}
         </SubmitButton>
       </div>
 

@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarCheck2, CalendarDays, DoorOpen, Gauge, Link2 } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { StatCard } from "@/components/shared/stat-card";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getMembershipSessionService } from "@/services/membership-sessions";
@@ -18,7 +17,6 @@ import { formatSlot } from "@/features/memberships/slot-format";
 import type {
   MembershipSessionListRow,
   MembershipSessionStatus,
-  MembershipSessionsSummary,
 } from "@/features/membership-sessions/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
@@ -56,7 +54,6 @@ export function MembershipSessionsPage() {
   const sportFilter = useSportFilter(facilityId);
   const sportIds = useMemo(() => (sportFilter.sportSet ? [...sportFilter.sportSet] : null), [sportFilter.sportSet]);
   const sportKey = sportIds ? sportIds.join("|") : "all";
-  const [summary, setSummary] = useState<MembershipSessionsSummary | null>(null);
   const [rows, setRows] = useState<MembershipSessionListRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -100,9 +97,7 @@ export function MembershipSessionsPage() {
     if (!facilityId || !sportFilter.ready) return;
     setRows(null);
     const svc = getMembershipSessionService();
-    const [sum, list] = await Promise.all([
-      svc.getSessionsSummary(facilityId, sportIds),
-      svc.listSessionsAdmin(facilityId, {
+    const list = await svc.listSessionsAdmin(facilityId, {
         search: debounced || undefined,
         facilitySportIds: sportIds,
         courtId: courtId || undefined,
@@ -110,9 +105,7 @@ export function MembershipSessionsPage() {
         day: day === "" ? undefined : Number(day),
         page,
         perPage: PER_PAGE,
-      }),
-    ]);
-    setSummary(sum);
+    });
     setRows(list.rows);
     setTotalCount(list.totalCount);
   }, [facilityId, sportFilter.ready, debounced, sportIds, courtId, status, day, page]);
@@ -138,21 +131,6 @@ export function MembershipSessionsPage() {
             <h1 className="text-xl font-semibold">Membership Sessions</h1>
             <p className="text-sm text-muted-foreground">Manage membership court sessions, member allocation and guest releases.</p>
           </div>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-          {summary ? (
-            <>
-              <StatCard icon={CalendarClock} label="Total Sessions" value={String(summary.totalSessions)} countTo={summary.totalSessions} format={(v) => String(v)} accent="#8B5CF6" index={0} />
-              <StatCard icon={CalendarCheck2} label="Active Sessions" value={String(summary.activeSessions)} countTo={summary.activeSessions} format={(v) => String(v)} accent="#00D084" index={1} />
-              <StatCard icon={CalendarDays} label="Today's Sessions" value={String(summary.todaysSessions)} countTo={summary.todaysSessions} format={(v) => String(v)} accent="#5B6CFF" index={2} />
-              <StatCard icon={DoorOpen} label="Guest Slots Released" value={String(summary.guestSlotsReleased)} countTo={summary.guestSlotsReleased} format={(v) => String(v)} accent="#FFB020" index={3} />
-              <StatCard icon={Gauge} label="Utilization" value={`${summary.avgUtilizationPct}%`} countTo={summary.avgUtilizationPct} format={(v) => `${v}%`} accent="#FF4D67" index={4} />
-            </>
-          ) : (
-            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
-          )}
         </div>
 
         {/* Filters */}

@@ -15,6 +15,7 @@ const ErrorState = dynamic(() =>
 );
 import { getFacilityService } from "@/services/facility";
 import { getSportsService } from "@/services/sports";
+import { ServiceError } from "@/services/shared/service-error";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility } from "@/features/onboarding/types";
 import { FacilityContextCard } from "@/features/sports-setup/components/facility-context-card";
@@ -43,7 +44,11 @@ function waitForOnboardingHydration(): Promise<void> {
   });
 }
 
-export function SportsSetupForm() {
+/**
+ * `onDone` turns the form into an in-place editor: saving calls it instead of advancing the onboarding step, so the
+ * same sports form can be used from a popup once the facility is already set up.
+ */
+export function SportsSetupForm({ onDone }: { onDone?: () => void } = {}) {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
   const setSelectedSportIdsInStore = useOnboardingStore((s) => s.setSelectedSportIds);
@@ -176,12 +181,17 @@ export function SportsSetupForm() {
         })),
       );
 
+      if (onDone) {
+        setIsSaving(false);
+        onDone();
+        return;
+      }
       await getFacilityService().updateOnboardingStep(facility.id, "COURTS");
       completeSports();
       setIsSaving(false);
       router.push("/onboarding/courts");
-    } catch {
-      setSaveError("Unable to save your sports. Please try again.");
+    } catch (e) {
+      setSaveError(e instanceof ServiceError ? e.message : "Unable to save your sports. Please try again.");
       setIsSaving(false);
     }
   }
@@ -239,7 +249,7 @@ export function SportsSetupForm() {
           pendingLabel="Saving…"
           className="w-auto sm:min-w-[10rem]"
         >
-          Continue →
+          {onDone ? "Save changes" : "Continue →"}
         </SubmitButton>
       </div>
     </div>

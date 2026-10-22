@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { PlayingArea, PlayingAreaInput } from "@/features/courts-setup/types";
+import type { CourtUsage } from "@/features/courts-setup/usage";
 import type { PlayingAreasService } from "@/services/playing-areas/playing-areas.service";
 import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
@@ -24,6 +25,17 @@ function toPlayingArea(row: CourtRow): PlayingArea {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/**
+ * The database refuses to remove a court that still has upcoming work, or to put new work on a removed one (0150). Those
+ * messages are written for the owner, so they are passed through instead of collapsing into "something went wrong".
+ */
+function ownerFacingError(error: { code?: string; message?: string }): ServiceError | null {
+  if (error.code === "23514" && error.message && /move or cancel|no longer available/i.test(error.message)) {
+    return new ServiceError("DATABASE_ERROR", error.message);
+  }
+  return null;
 }
 
 export class SupabasePlayingAreasService implements PlayingAreasService {
@@ -102,7 +114,7 @@ export class SupabasePlayingAreasService implements PlayingAreasService {
       .maybeSingle();
 
     if (error) {
-      throw mapSupabaseError(error, { duplicate: "DUPLICATE_PLAYING_AREA", invalid: "INVALID_PLAYING_AREA" });
+      throw ownerFacingError(error) ?? mapSupabaseError(error, { duplicate: "DUPLICATE_PLAYING_AREA", invalid: "INVALID_PLAYING_AREA" });
     }
     if (!data) throw new ServiceError("PLAYING_AREA_NOT_FOUND");
     return toPlayingArea(data);
@@ -110,7 +122,22 @@ export class SupabasePlayingAreasService implements PlayingAreasService {
 
   async removePlayingArea(id: string): Promise<void> {
     const { error } = await this.supabase.from("courts").update({ archived: true }).eq("id", id);
+    if (error) throw ownerFacingError(error) ?? mapSupabaseError(error);
+  }
+
+  async getUpcomingUsage(id: string): Promise<CourtUsage> {
+    // court_upcoming_usage (0150) is not in the generated database types yet.
+    const { data, error } = await (this.supabase as unknown as SupabaseClient).rpc("court_upcoming_usage", { p_court_id: id });
     if (error) throw mapSupabaseError(error);
+    const u = (data ?? {}) as Record<string, unknown>;
+    return {
+      bookings: Number(u.bookings ?? 0),
+      membershipBatches: Number(u.membershipBatches ?? 0),
+      membershipGuestSlots: Number(u.membershipGuestSlots ?? 0),
+      coachingSessions: Number(u.coachingSessions ?? 0),
+      coachingBatches: Number(u.coachingBatches ?? 0),
+      total: Number(u.total ?? 0),
+    };
   }
 
   async restorePlayingArea(id: string): Promise<PlayingArea> {

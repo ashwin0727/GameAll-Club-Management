@@ -185,7 +185,7 @@ class _ReportsOverviewScreenState extends ConsumerState<ReportsOverviewScreen> {
         for (final p in _trend ?? const <OverviewTrendPoint>[])
           [p.date, sel.kind == _Kind.money ? (p.value / 100).toStringAsFixed(2) : p.value],
       ];
-      await shareCsv(fileName: 'overview_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
+      await saveCsv(context, fileName: 'overview_${_filter.startDate}_to_${_filter.endDate}.csv', rows: rows);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));

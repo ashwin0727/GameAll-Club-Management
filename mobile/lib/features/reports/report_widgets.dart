@@ -44,9 +44,12 @@ class ReportKpi {
 /// A reflowing grid of [ReportKpi] cards — 1 or 2 columns by width, like the
 /// Finance dashboard.
 class ReportKpiGrid extends StatelessWidget {
-  const ReportKpiGrid({super.key, required this.items});
+  const ReportKpiGrid({super.key, required this.items, this.showDelta = true});
 
   final List<ReportKpi> items;
+
+  /// False hides the "vs last period" line on every card (reports that don't compare periods).
+  final bool showDelta;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +61,7 @@ class ReportKpiGrid extends StatelessWidget {
           spacing: AppSpacing.md,
           runSpacing: AppSpacing.md,
           children: [
-            for (final kpi in items) SizedBox(width: width, child: _KpiCard(kpi: kpi)),
+            for (final kpi in items) SizedBox(width: width, child: _KpiCard(kpi: kpi, showDelta: showDelta)),
           ],
         );
       },
@@ -67,9 +70,10 @@ class ReportKpiGrid extends StatelessWidget {
 }
 
 class _KpiCard extends StatelessWidget {
-  const _KpiCard({required this.kpi});
+  const _KpiCard({required this.kpi, required this.showDelta});
 
   final ReportKpi kpi;
+  final bool showDelta;
 
   @override
   Widget build(BuildContext context) {
@@ -109,8 +113,10 @@ class _KpiCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: AppSpacing.xs),
-          _KpiDelta(pct: kpi.pct, invert: kpi.invert),
+          if (showDelta) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _KpiDelta(pct: kpi.pct, invert: kpi.invert),
+          ],
         ],
       ),
     );
@@ -286,37 +292,66 @@ class ReportDataTable extends StatelessWidget {
     return Semantics(
       label: caption,
       container: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          // Flutter's DataTable shows a leading checkbox column by default —
-          // every report table on the app had one, unintentionally, until
-          // this was set.
-          showCheckboxColumn: false,
-          columnSpacing: AppSpacing.lg,
-          horizontalMargin: 0,
-          headingRowHeight: 36,
-          dataRowMinHeight: 44,
-          dataRowMaxHeight: 52,
-          dividerThickness: 0.6,
-          headingRowColor: WidgetStatePropertyAll(tokens.surface2),
-          headingTextStyle: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: tokens.textSecondary),
-          dataTextStyle: TextStyle(fontSize: 13.5, color: tokens.textPrimary),
-          columns: [
-            for (final c in columns) DataColumn(label: Text(c.label), numeric: c.numeric),
-          ],
-          rows: [
-            for (var i = 0; i < rows.length; i++)
-              DataRow(
-                onSelectChanged: onTapRow == null ? null : (_) => onTapRow!(i),
-                cells: [
-                  for (var j = 0; j < columns.length; j++)
-                    DataCell(Text(j < rows[i].length ? rows[i][j] : '—')),
-                ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Columns share the card's full width (the first one gets extra room); only when they can't fit at a
+          // readable size does the table scroll sideways instead.
+          const firstMin = 130.0;
+          const otherMin = 96.0;
+          final needed = firstMin + otherMin * (columns.length - 1);
+          final scrolls = needed > constraints.maxWidth;
+          final width = scrolls ? needed : constraints.maxWidth;
+
+          Widget cell(int row, int col, String text, {required bool heading}) {
+            final numeric = columns[col].numeric;
+            return Expanded(
+              flex: col == 0 ? 2 : 1,
+              child: Padding(
+                padding: EdgeInsets.only(left: col == 0 ? 0 : AppSpacing.sm),
+                child: Text(
+                  text,
+                  textAlign: numeric ? TextAlign.right : TextAlign.left,
+                  style: heading
+                      ? TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: tokens.textSecondary)
+                      : TextStyle(fontSize: 13.5, color: tokens.textPrimary),
+                ),
               ),
-          ],
-        ),
+            );
+          }
+
+          final table = SizedBox(
+            width: width,
+            child: Column(
+              children: [
+                Container(
+                  height: 36,
+                  alignment: Alignment.centerLeft,
+                  color: tokens.surface2,
+                  child: Row(children: [for (var j = 0; j < columns.length; j++) cell(-1, j, columns[j].label, heading: true)]),
+                ),
+                for (var i = 0; i < rows.length; i++)
+                  InkWell(
+                    onTap: onTapRow == null ? null : () => onTapRow!(i),
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        border: Border(bottom: BorderSide(color: tokens.borderColor, width: 0.6)),
+                      ),
+                      child: Row(
+                        children: [
+                          for (var j = 0; j < columns.length; j++)
+                            cell(i, j, j < rows[i].length ? rows[i][j] : '—', heading: false),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+          return scrolls ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: table) : table;
+        },
       ),
     );
   }

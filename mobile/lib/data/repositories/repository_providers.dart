@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_provider.dart';
 import 'auth_repository.dart';
 import 'facility_repository.dart';
+import 'payout_repository.dart';
+import 'profile_hub_repository.dart';
 import 'sports_repository.dart';
 import 'playing_area_repository.dart';
 import 'operating_hours_repository.dart';
@@ -27,6 +29,14 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 final facilityRepositoryProvider = Provider<FacilityRepository>((ref) {
   return FacilityRepository(ref.watch(supabaseClientProvider));
+});
+
+final profileHubRepositoryProvider = Provider<ProfileHubRepository>((ref) {
+  return ProfileHubRepository(ref.watch(supabaseClientProvider));
+});
+
+final payoutRepositoryProvider = Provider<PayoutRepository>((ref) {
+  return PayoutRepository(ref.watch(supabaseClientProvider));
 });
 
 final sportsRepositoryProvider = Provider<SportsRepository>((ref) {

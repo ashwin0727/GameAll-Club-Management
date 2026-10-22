@@ -281,7 +281,7 @@ class BookingPaymentLink {
       currency: j['currency'] as String?,
       status: paid ? 'PAID' : ((j['status'] as String?) ?? 'CREATED'),
       paid: paid,
-      expiresAt: j['expiresAt'] == null ? null : DateTime.tryParse(j['expiresAt'] as String),
+      expiresAt: j['expiresAt'] == null ? null : DateTime.tryParse(j['expiresAt'] as String)?.toLocal(),
       reused: j['reused'] == true,
     );
   }

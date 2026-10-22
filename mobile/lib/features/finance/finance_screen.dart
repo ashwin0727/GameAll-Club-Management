@@ -24,6 +24,7 @@ import '../authentication/session_controller.dart';
 import 'finance_date_range_picker.dart';
 import 'finance_period.dart';
 import 'finance_presentation.dart';
+import '../../shared/widgets/smooth_switcher.dart';
 
 /// The Finance Dashboard — mirrors
 /// src/features/finance/components/finance-dashboard.tsx.
@@ -169,7 +170,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           ['Payment methods', '${m.paymentMethod} (${m.paymentCount})', m.amountMinor / 100],
         for (final t in _trend ?? const <RevenueTrendPoint>[]) ['Revenue trend', t.date, t.netMinor / 100],
       ];
-      await shareCsv(fileName: 'finance_${_range.startDate}_to_${_range.endDate}.csv', rows: rows);
+      await saveCsv(context, fileName: 'finance_${_range.startDate}_to_${_range.endDate}.csv', rows: rows);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export the report.')));
@@ -213,7 +214,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Finance')),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _FinanceSkeleton()
             : _loadError != null
                 ? ErrorView(message: _loadError!, onRetry: _refresh)
@@ -318,7 +319,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                         ],
                       ),
                     ),
-                  ),
+                  )),
       ),
       bottomNavigationBar: const AppBottomNav(current: AppTab.money),
     );

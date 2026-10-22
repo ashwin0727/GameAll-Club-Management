@@ -26,6 +26,7 @@ class OnboardingScaffold extends StatelessWidget {
     this.onBack,
     this.onSkip,
     this.skipLabel = 'Skip',
+    this.editing = false,
   });
 
   /// 0-based index of the current step within [stepCount].
@@ -42,6 +43,9 @@ class OnboardingScaffold extends StatelessWidget {
   /// When null, the Skip/Later link is hidden.
   final VoidCallback? onSkip;
   final String skipLabel;
+
+  /// Editing an already-finished setup from Profile: no step bar, since there is no flow to progress through.
+  final bool editing;
 
   /// Built once — [AppTheme.dark] is pure and [ThemeData] is immutable, so
   /// rebuilding it on every keystroke would just be wasted work.
@@ -61,7 +65,7 @@ class OnboardingScaffold extends StatelessWidget {
                   children: [
                     _Header(
                       stepIndex: stepIndex,
-                      stepCount: stepCount,
+                      stepCount: editing ? 0 : stepCount,
                       onBack: onBack,
                       onSkip: onSkip,
                       skipLabel: skipLabel,

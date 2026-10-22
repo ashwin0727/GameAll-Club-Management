@@ -19,6 +19,7 @@ export type AuthErrorCode =
   | "weak_password"
   | "rate_limited"
   | "expired_link"
+  | "invalid_code"
   | "network"
   | "unknown";
 
@@ -48,6 +49,8 @@ export interface AuthService {
   logout(): Promise<void>;
   getCurrentUser(): Promise<AuthUser | null>;
   isEmailVerified(): Promise<boolean>;
+  /** Checks the 6-digit code emailed at signup and marks the address confirmed. */
+  verifySignupCode(email: string, code: string): Promise<void>;
   /** Sent automatically by `register`; exposed for explicit re-triggers. */
   sendVerificationEmail(email: string): Promise<void>;
   resendVerificationEmail(email: string): Promise<void>;

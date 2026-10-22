@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Building2, CalendarDays, Check, ChevronDown, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TopbarSearch } from "@/components/shared/topbar-search";
 import { useUiStore } from "@/stores/ui-store";
-import { useLogout } from "@/features/auth/hooks/use-auth";
+import { LogoutConfirm } from "@/features/auth/components/logout-confirm";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { resetsSportSelection, sportSelectionLabel, sportSelectionLocked } from "@/features/facility/sport-selection";
@@ -38,7 +39,7 @@ const CHIP = "flex h-10 items-center gap-2 rounded-lg border border-border bg-ca
 
 export function Topbar({ profile }: { profile: Profile }) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
-  const logout = useLogout();
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const { data: facility } = useFacility();
   // "All Sports" by default; the user can tick any combination and every page follows.
   const sports = useSportFilter(facility?.id);
@@ -155,7 +156,7 @@ export function Topbar({ profile }: { profile: Profile }) {
       {/* Account */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <button className="flex items-center gap-2.5 rounded-lg outline-none focus:outline-none focus-visible:outline-none">
             <Avatar className="h-9 w-9">
               <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
                 {getInitials(profile.full_name)}
@@ -174,19 +175,22 @@ export function Topbar({ profile }: { profile: Profile }) {
             <span className="text-xs font-normal text-muted-foreground">{ROLE_LABEL[profile.role]}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem disabled className="gap-2">
-            <User className="h-4 w-4" />
-            Profile
+          <DropdownMenuItem asChild className="gap-2">
+            <Link href="/profile">
+              <User className="h-4 w-4" />
+              Profile
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2 text-destructive focus:text-destructive"
-            onClick={() => logout.mutate()}
+            onSelect={() => setConfirmLogout(true)}
           >
             <LogOut className="h-4 w-4" />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <LogoutConfirm open={confirmLogout} facilityName={facility?.name} onCancel={() => setConfirmLogout(false)} />
     </header>
   );
 }

@@ -17,6 +17,7 @@ import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import 'batch_members_sheet.dart';
 import 'membership_sessions_screen.dart' show daysLabel;
+import '../../shared/widgets/smooth_switcher.dart';
 
 String _iso(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -242,7 +243,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
         ],
       ),
       body: SafeArea(
-        child: _isLoading
+        child: SmoothSwitcher(child: _isLoading
             ? const _MembershipSessionDetailSkeleton()
             : _error != null && d == null
                 ? ErrorView(message: _error!, onRetry: _load)
@@ -271,7 +272,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
                         _activityCard(),
                       ],
                     ),
-                  ),
+                  )),
       ),
       bottomNavigationBar: d == null
           ? null
