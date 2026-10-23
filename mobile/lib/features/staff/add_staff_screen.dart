@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +13,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import 'staff_credentials_card.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/smooth_switcher.dart';
 
@@ -27,7 +27,8 @@ class AddStaffScreen extends ConsumerStatefulWidget {
 
 class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
   int _step = 0;
-  final _name = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _notes = TextEditingController();
@@ -48,7 +49,8 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
     _email.dispose();
     _phone.dispose();
     _notes.dispose();
@@ -83,12 +85,15 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
     }
   }
 
+  String get _fullName => '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+
   bool get _emailValid => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(_email.text.trim());
 
   void _next() {
     setState(() => _error = null);
     if (_step == 0) {
-      if (_name.text.trim().isEmpty) return setState(() => _error = "Enter the staff member's full name.");
+      if (_firstName.text.trim().isEmpty) return setState(() => _error = "Enter the staff member's first name.");
+      if (_lastName.text.trim().isEmpty) return setState(() => _error = "Enter the staff member's last name.");
       if (!_emailValid) return setState(() => _error = 'Enter a valid email address.');
     }
     if (_step == 1 && _roleId == null) return setState(() => _error = 'Choose a role.');
@@ -105,7 +110,8 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
     try {
       final res = await ref.read(staffRepositoryProvider).createStaff(
             facilityId: fid,
-            fullName: _name.text.trim(),
+            firstName: _firstName.text.trim(),
+            lastName: _lastName.text.trim(),
             email: _email.text.trim(),
             phone: _phone.text.trim(),
             roleId: _roleId!,
@@ -152,12 +158,25 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                         if (_step == 0) ...[
                           const Text('Basic Information', style: TextStyle(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpacing.sm),
-                          TextField(controller: _name, decoration: const InputDecoration(labelText: 'Full name *')),
+                          TextField(
+                            controller: _firstName,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(labelText: 'First name *'),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          TextField(
+                            controller: _lastName,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(labelText: 'Last name *'),
+                          ),
                           const SizedBox(height: AppSpacing.sm),
                           TextField(
                             controller: _email,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(labelText: 'Email address *'),
+                            decoration: const InputDecoration(
+                              labelText: 'Email address *',
+                              helperText: 'For contact only — staff sign in with a login we generate.',
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           TextField(controller: _phone, decoration: const InputDecoration(labelText: 'Phone Number')),
@@ -199,16 +218,16 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                         ] else ...[
                           const Text('Review & Invite', style: TextStyle(fontWeight: FontWeight.w700)),
                           const SizedBox(height: AppSpacing.sm),
-                          _review('Full name', _name.text),
-                          _review('Email', _email.text),
+                          _review('Full name', _fullName),
+                          _review('Contact email', _email.text),
                           _review('Phone', _phone.text.isEmpty ? '—' : _phone.text),
                           _review('Role', selectedRole?.name ?? '—'),
                           _review('Facility', facilityName),
                           _review('Primary facility', _isPrimary ? 'Yes' : 'No'),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'An account will be created with a one-time password you’ll share with them. They must '
-                            'set their own password on first sign-in.',
+                            'A sign-in will be created for them — a @gameall.co login and a default password, shown to '
+                            'you once the staff member is added. They must set their own password on first sign-in.',
                             style: AppTypography.caption(context),
                           ),
                         ],
@@ -219,22 +238,25 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                         const SizedBox(height: AppSpacing.md),
                         Row(
                           children: [
-                            SecondaryButton(
-                              label: _step == 0 ? 'Cancel' : 'Back',
-                              onPressed: _busy
-                                  ? null
-                                  : () => _step == 0 ? context.pop() : setState(() => _step--),
-                            ),
-                            const Spacer(),
-                            if (_step < 2)
-                              PrimaryButton(label: 'Next', isLoading: false, onPressed: _next)
-                            else
-                              PrimaryButton(
-                                label: 'Add Staff Member',
-                                loadingLabel: 'Adding…',
-                                isLoading: _busy,
-                                onPressed: _submit,
+                            Expanded(
+                              child: SecondaryButton(
+                                label: _step == 0 ? 'Cancel' : 'Back',
+                                onPressed: _busy
+                                    ? null
+                                    : () => _step == 0 ? context.pop() : setState(() => _step--),
                               ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: _step < 2
+                                  ? PrimaryButton(label: 'Next', isLoading: false, onPressed: _next)
+                                  : PrimaryButton(
+                                      label: 'Add Staff',
+                                      loadingLabel: 'Adding…',
+                                      isLoading: _busy,
+                                      onPressed: _submit,
+                                    ),
+                            ),
                           ],
                         ),
                       ],
@@ -268,46 +290,28 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                 children: [
                   const Icon(Icons.check_circle_outline, size: 40, color: AppColors.success),
                   const SizedBox(height: AppSpacing.sm),
-                  Text(r.linked ? '${_name.text} was added' : '${_name.text} was invited',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  Text('$_fullName was added', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    r.linked
-                        ? 'They already had a GameAll account — access to $facilityName is active now.'
-                        : "Share the one-time password below. They'll set their own on first sign-in.",
+                    "Share these sign-in details with them. They'll set their own password the first time they sign in.",
                     textAlign: TextAlign.center,
                     style: AppTypography.secondary(context),
                   ),
-                  if (r.temporaryPassword != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(child: SelectableText(r.temporaryPassword!, style: const TextStyle(fontWeight: FontWeight.w700))),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 18),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: r.temporaryPassword!));
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password Copied')));
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text('Shown once and never stored.', style: AppTypography.caption(context)),
-                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  StaffCredentialsCard(loginEmail: r.loginEmail, password: r.temporaryPassword),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Lost the password? Open the staff member and choose Reset Password to generate and reveal a new '
+                    'one — the old one stops working.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.caption(context),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             PrimaryButton(
-              label: 'View ${_name.text}',
+              label: 'View $_fullName',
               isLoading: false,
               onPressed: () => context.pushReplacement('/users-roles/staff/${r.userId}'),
             ),

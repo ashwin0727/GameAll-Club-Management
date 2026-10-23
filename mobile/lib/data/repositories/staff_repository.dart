@@ -110,7 +110,8 @@ class StaffRepository {
 
   Future<CreateStaffResult> createStaff({
     required String facilityId,
-    required String fullName,
+    required String firstName,
+    required String lastName,
     required String email,
     String? phone,
     required String roleId,
@@ -122,7 +123,8 @@ class StaffRepository {
     try {
       final res = await _client.functions.invoke('create-staff', body: {
         'facilityId': facilityId,
-        'fullName': fullName,
+        'firstName': firstName,
+        'lastName': lastName,
         'email': email,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
         'roleId': roleId,
@@ -136,6 +138,28 @@ class StaffRepository {
         userId: data['userId'] as String,
         linked: data['linked'] as bool? ?? false,
         temporaryPassword: data['temporaryPassword'] as String?,
+        loginEmail: data['loginEmail'] as String? ?? '',
+      );
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Sets a NEW default password for a staff member (the old one stops working at once) and returns it to reveal to the
+  /// owner. The server refuses owners, yourself, and people who also work at another facility.
+  Future<StaffCredentials> resetStaffPassword(String facilityId, String userId) async {
+    try {
+      final res = await _client.functions.invoke('create-staff', body: {
+        'action': 'reset-password',
+        'facilityId': facilityId,
+        'userId': userId,
+        'roleId': '-',
+      });
+      final data = (res.data as Map).cast<String, dynamic>();
+      return StaffCredentials(
+        userId: data['userId'] as String,
+        loginEmail: data['loginEmail'] as String? ?? '',
+        password: data['temporaryPassword'] as String,
       );
     } catch (e) {
       throw _map(e);

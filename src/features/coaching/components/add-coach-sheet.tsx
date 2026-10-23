@@ -30,7 +30,7 @@ export function AddCoachSheet({
 }) {
   const router = useRouter();
   const form = useAddCoachForm(facilityId);
-  const [created, setCreated] = useState<{ id: string; name: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; name: string; credentials: { loginEmail: string; password: string } | null } | null>(null);
 
   // Reset to a blank form each time the sheet is opened fresh, rather than showing the previous
   // attempt's leftover state (or the just-added coach's success screen) on the next open.
@@ -40,8 +40,8 @@ export function AddCoachSheet({
 
   async function handleSubmit() {
     try {
-      const { coachId, name } = await form.submit();
-      setCreated({ id: coachId, name });
+      const { coachId, name, credentials } = await form.submit();
+      setCreated({ id: coachId, name, credentials });
       onCoachAdded?.();
     } catch {
       // form.error already carries the user-facing message; nothing else to do here.
@@ -62,7 +62,7 @@ export function AddCoachSheet({
               <SheetTitle className="sr-only">Coach Added Successfully</SheetTitle>
             </SheetHeader>
             <SheetBody>
-              <CoachAddedContent coachId={created.id} name={created.name} onNavigate={navigateAndClose} />
+              <CoachAddedContent coachId={created.id} name={created.name} credentials={created.credentials} onNavigate={navigateAndClose} />
             </SheetBody>
             <SheetFooter>
               <Button type="button" variant="outline" onClick={() => setCreated(null)}>

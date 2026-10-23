@@ -101,13 +101,14 @@ describe("AddCoachPage", () => {
   });
 
   it("creates a new staff member first when '+ New person' is used, then adds the coach with that user's id", async () => {
-    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123" });
+    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23102026153045@gameall.co" });
     const user = userEvent.setup();
     renderWithProviders(<AddCoachPage />);
     await waitFor(() => expect(listCoachCandidates).toHaveBeenCalled());
 
     await user.click(screen.getByRole("button", { name: "+ New person" }));
-    await user.type(screen.getByLabelText(/Full Name/i), "Arjun V");
+    await user.type(screen.getByLabelText(/First Name/i), "Arjun");
+    await user.type(screen.getByLabelText(/Last Name/i), "V");
     await user.type(screen.getByLabelText(/^Email/i), "arjun@x.com");
     await user.click(screen.getByRole("button", { name: "Badminton" }));
     await user.click(screen.getByRole("button", { name: "Beginner" }));
@@ -116,7 +117,7 @@ describe("AddCoachPage", () => {
 
     await waitFor(() =>
       expect(createStaff).toHaveBeenCalledWith(
-        expect.objectContaining({ facilityId: "f1", fullName: "Arjun V", email: "arjun@x.com", roleId: "role-coach" }),
+        expect.objectContaining({ facilityId: "f1", firstName: "Arjun", lastName: "V", email: "arjun@x.com", roleId: "role-coach" }),
       ),
     );
     await waitFor(() => expect(addCoach).toHaveBeenCalledWith("f1", "new-user-1", expect.anything()));
@@ -156,14 +157,15 @@ describe("AddCoachPage", () => {
   });
 
   it("uploads the chosen photo for a new person and passes its URL to createStaff", async () => {
-    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123" });
+    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23102026153045@gameall.co" });
     uploadAvatar.mockResolvedValue("https://cdn.example/avatars/u1/photo.png");
     const user = userEvent.setup();
     renderWithProviders(<AddCoachPage />);
     await waitFor(() => expect(listCoachCandidates).toHaveBeenCalled());
 
     await user.click(screen.getByRole("button", { name: "+ New person" }));
-    await user.type(screen.getByLabelText(/Full Name/i), "Arjun V");
+    await user.type(screen.getByLabelText(/First Name/i), "Arjun");
+    await user.type(screen.getByLabelText(/Last Name/i), "V");
     await user.type(screen.getByLabelText(/^Email/i), "arjun@x.com");
 
     const file = new File(["fake-bytes"], "photo.png", { type: "image/png" });
@@ -237,7 +239,8 @@ describe("AddCoachPage", () => {
 
   async function fillMinimumNewPersonFields(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: "+ New person" }));
-    await user.type(screen.getByLabelText(/Full Name/i), "Arjun V");
+    await user.type(screen.getByLabelText(/First Name/i), "Arjun");
+    await user.type(screen.getByLabelText(/Last Name/i), "V");
     await user.click(screen.getByRole("button", { name: "Badminton" }));
     await user.click(screen.getByRole("button", { name: "Beginner" }));
   }

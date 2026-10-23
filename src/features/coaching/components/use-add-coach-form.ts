@@ -21,7 +21,8 @@ export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const AVATAR_ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
 interface NewPersonDraft {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   email: string;
   dateOfBirth: string;
@@ -41,7 +42,7 @@ export function useAddCoachForm(facilityId: string | null) {
 
   const [mode, setMode] = useState<"pick" | "new">("pick");
   const [userId, setUserId] = useState("");
-  const [newPerson, setNewPerson] = useState<NewPersonDraft>({ fullName: "", phone: "", email: "", dateOfBirth: "", roleId: "" });
+  const [newPerson, setNewPerson] = useState<NewPersonDraft>({ firstName: "", lastName: "", phone: "", email: "", dateOfBirth: "", roleId: "" });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -119,7 +120,7 @@ export function useAddCoachForm(facilityId: string | null) {
   const canSubmit =
     (mode === "pick"
       ? Boolean(userId)
-      : Boolean(newPerson.fullName.trim() && newPerson.roleId) &&
+      : Boolean(newPerson.firstName.trim() && newPerson.lastName.trim() && newPerson.roleId) &&
         isValidEmail(newPerson.email) &&
         isValidPhoneDigits(newPerson.phone) &&
         isValidDateOfBirth(newPerson.dateOfBirth)) &&
@@ -127,13 +128,14 @@ export function useAddCoachForm(facilityId: string | null) {
     expertiseLevels.length > 0 &&
     (duration !== "custom" || Number(customDuration) > 0);
 
-  async function submit(): Promise<{ coachId: string; name: string }> {
+  async function submit(): Promise<{ coachId: string; name: string; credentials: { loginEmail: string; password: string } | null }> {
     if (!facilityId || !canSubmit) throw new Error("Form is incomplete");
     setBusy(true);
     setError(null);
     try {
       let coachUserId = userId;
       let displayName = selectedCandidate?.fullName ?? "";
+      let credentials: { loginEmail: string; password: string } | null = null;
 
       if (mode === "new") {
         let avatarUrl: string | null = null;
@@ -149,14 +151,16 @@ export function useAddCoachForm(facilityId: string | null) {
         try {
           const result = await getStaffService().createStaff({
             facilityId,
-            fullName: newPerson.fullName.trim(),
+            firstName: newPerson.firstName.trim(),
+            lastName: newPerson.lastName.trim(),
             email: newPerson.email.trim(),
             phone: newPerson.phone.trim() || null,
             roleId: newPerson.roleId,
             avatarUrl,
           });
           coachUserId = result.userId;
-          displayName = newPerson.fullName.trim();
+          displayName = `${newPerson.firstName.trim()} ${newPerson.lastName.trim()}`.trim();
+          if (result.temporaryPassword) credentials = { loginEmail: result.loginEmail, password: result.temporaryPassword };
         } finally {
           setCreatingStaff(false);
         }
@@ -172,7 +176,7 @@ export function useAddCoachForm(facilityId: string | null) {
         defaultSessionDurationMinutes: duration === "custom" ? Number(customDuration) : Number(duration),
         dateOfBirth: mode === "new" && newPerson.dateOfBirth ? newPerson.dateOfBirth : null,
       });
-      return { coachId, name: displayName };
+      return { coachId, name: displayName, credentials };
     } catch (e) {
       setError(e instanceof ServiceError ? e.message : "Could not add the coach.");
       throw e;

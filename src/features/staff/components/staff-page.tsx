@@ -228,7 +228,7 @@ export function StaffPage() {
                           </Avatar>
                           <span className="min-w-0">
                             <span className="block truncate font-medium hover:underline">{s.fullName}</span>
-                            <span className="block truncate text-xs text-muted-foreground">{s.email}</span>
+                            <span className="block truncate text-xs text-muted-foreground" title="Login email">{s.loginEmail}</span>
                           </span>
                         </Link>
                       </TableCell>
@@ -261,7 +261,7 @@ export function StaffPage() {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{s.fullName}</span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {s.roleName} · {s.email}
+                        {s.roleName} · {s.loginEmail}
                       </span>
                     </span>
                     {statusBadge(s.status)}

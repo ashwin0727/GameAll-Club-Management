@@ -60,6 +60,10 @@ export interface StaffRow {
   facilityCount: number;
   lastLoginAt: string | null;
   joinedAt: string;
+  /** What they sign in with — the generated @gameall.co login (or the original email for older staff). */
+  loginEmail: string;
+  firstName: string | null;
+  lastName: string | null;
 }
 
 export interface StaffPage {
@@ -99,6 +103,11 @@ export interface StaffDetail {
   phone: string | null;
   avatarUrl: string | null;
   mustResetPassword: boolean;
+  loginEmail: string;
+  firstName: string | null;
+  lastName: string | null;
+  /** True for accounts created with a generated login (so the password can be revealed/reset from the staff page). */
+  hasGeneratedLogin: boolean;
   assignment: {
     assignmentId: string;
     roleId: string | null;
@@ -176,7 +185,9 @@ export interface SecurityEventFilters {
 
 export interface CreateStaffInput {
   facilityId: string;
-  fullName: string;
+  firstName: string;
+  lastName?: string | null;
+  /** Contact email — never used to sign in. */
   email: string;
   phone?: string | null;
   roleId: string;
@@ -189,5 +200,13 @@ export interface CreateStaffInput {
 export interface CreateStaffResult {
   userId: string;
   linked: boolean;
+  /** The generated login (<first name><DDMMYYYY><HHMMSS>@gameall.co). */
+  loginEmail: string;
   temporaryPassword: string | null;
+}
+
+export interface ResetStaffPasswordResult {
+  userId: string;
+  loginEmail: string;
+  temporaryPassword: string;
 }

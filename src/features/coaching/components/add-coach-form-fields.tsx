@@ -134,13 +134,22 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
                 </div>
               </div>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="np-name">Full Name *</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="np-first">First Name *</Label>
               <Input
-                id="np-name"
-                value={form.newPerson.fullName}
-                onChange={(e) => form.setNewPerson((p) => ({ ...p, fullName: e.target.value }))}
-                placeholder="Enter full name"
+                id="np-first"
+                value={form.newPerson.firstName}
+                onChange={(e) => form.setNewPerson((p) => ({ ...p, firstName: e.target.value }))}
+                placeholder="Enter first name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="np-last">Last Name *</Label>
+              <Input
+                id="np-last"
+                value={form.newPerson.lastName}
+                onChange={(e) => form.setNewPerson((p) => ({ ...p, lastName: e.target.value }))}
+                placeholder="Enter last name"
               />
             </div>
             <div className="space-y-1.5">

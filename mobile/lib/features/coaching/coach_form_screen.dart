@@ -19,6 +19,7 @@ import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'add_coach_validation.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../staff/staff_credentials_card.dart';
 
 /// Add Coach — mirrors src/features/coaching/components/add-coach-page.tsx: pick an existing staff member or
 /// create a new person (photo, name, phone, email, date of birth, role), then the coaching details (sports,
@@ -40,7 +41,8 @@ class _FacilitySportChoice {
 class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
   static const _avatarMaxBytes = 2 * 1024 * 1024;
 
-  final _name = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
   final _phone = TextEditingController();
   final _email = TextEditingController();
   final _experience = TextEditingController();
@@ -70,12 +72,12 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
   bool _saving = false;
   String _stage = '';
   String? _error;
-  ({String coachId, String name})? _added;
+  ({String coachId, String name, StaffCredentials? credentials})? _added;
 
   @override
   void initState() {
     super.initState();
-    for (final c in [_name, _phone, _email, _experience, _certifications, _customDuration, _bio]) {
+    for (final c in [_firstName, _lastName, _phone, _email, _experience, _certifications, _customDuration, _bio]) {
       c.addListener(_refresh);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
@@ -83,7 +85,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _email, _experience, _certifications, _customDuration, _bio]) {
+    for (final c in [_firstName, _lastName, _phone, _email, _experience, _certifications, _customDuration, _bio]) {
       c.dispose();
     }
     super.dispose();
@@ -136,7 +138,8 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
 
   bool get _canSubmit {
     final person = _newPerson
-        ? _name.text.trim().isNotEmpty &&
+        ? _firstName.text.trim().isNotEmpty &&
+            _lastName.text.trim().isNotEmpty &&
             _roleId != null &&
             isValidEmail(_email.text) &&
             isValidPhoneDigits(_phone.text) &&
@@ -191,6 +194,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
     try {
       var coachUserId = _userId;
       var displayName = _selected?.fullName ?? '';
+      StaffCredentials? credentials;
       if (_newPerson) {
         String? avatarUrl;
         if (_avatarBytes != null) {
@@ -200,14 +204,19 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
         setState(() => _stage = 'Creating staff account…');
         final result = await ref.read(staffRepositoryProvider).createStaff(
               facilityId: fid,
-              fullName: _name.text.trim(),
+              firstName: _firstName.text.trim(),
+              lastName: _lastName.text.trim(),
               email: _email.text.trim(),
               phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
               roleId: _roleId!,
               avatarUrl: avatarUrl,
             );
         coachUserId = result.userId;
-        displayName = _name.text.trim();
+        displayName = '${_firstName.text.trim()} ${_lastName.text.trim()}'.trim();
+        final password = result.temporaryPassword;
+        if (password != null) {
+          credentials = StaffCredentials(userId: result.userId, loginEmail: result.loginEmail, password: password);
+        }
       }
       setState(() => _stage = 'Adding coach…');
       final exp = _experience.text.trim();
@@ -223,7 +232,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
             defaultSessionDurationMinutes: _duration == 'custom' ? int.parse(_customDuration.text.trim()) : int.parse(_duration),
             dateOfBirth: _newPerson && _dob != null ? _iso(_dob!) : null,
           );
-      if (mounted) setState(() { _saving = false; _added = (coachId: id, name: displayName); });
+      if (mounted) setState(() { _saving = false; _added = (coachId: id, name: displayName, credentials: credentials); });
     } on AppException catch (e) {
       if (mounted) setState(() { _saving = false; _error = e.message; });
     }
@@ -444,7 +453,9 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
         ),
       ]),
       const SizedBox(height: AppSpacing.md),
-      TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Full Name *')),
+      TextField(controller: _firstName, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'First Name *')),
+      const SizedBox(height: AppSpacing.sm),
+      TextField(controller: _lastName, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Last Name *')),
       const SizedBox(height: AppSpacing.sm),
       TextField(
         controller: _phone,
@@ -485,7 +496,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
     ];
   }
 
-  Widget _success(BuildContext context, ({String coachId, String name}) added) {
+  Widget _success(BuildContext context, ({String coachId, String name, StaffCredentials? credentials}) added) {
     final t = context.tokens;
     final actions = <({String title, String desc, IconData icon, VoidCallback onTap})>[
       (
@@ -529,6 +540,17 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: t.textSecondary),
             ),
+            if (added.credentials != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              const Text('Sign-in details', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: AppSpacing.sm),
+              StaffCredentialsCard(loginEmail: added.credentials!.loginEmail, password: added.credentials!.password),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'They set their own password on first sign-in. Lost it? Open the person under Users & Roles > Staff and choose Reset Password.',
+                style: TextStyle(fontSize: 12, color: t.textSecondary),
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             for (final a in actions)
               Padding(

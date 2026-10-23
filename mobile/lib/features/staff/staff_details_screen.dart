@@ -14,6 +14,7 @@ import '../../shared/widgets/states.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import 'staff_credentials_card.dart';
 import '../../shared/widgets/smooth_switcher.dart';
 
 class StaffDetailsScreen extends ConsumerStatefulWidget {
@@ -105,6 +106,57 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    final d = _detail;
+    final fid = _facilityId;
+    if (d == null || fid == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset password?'),
+        content: Text(
+          'This generates a new password for ${d.fullName}, signs them out everywhere, and stops their current '
+          'password from working.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Reset & reveal')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final creds = await ref.read(staffRepositoryProvider).resetStaffPassword(fid, widget.userId);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('New password ready'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Share these sign-in details with ${d.fullName}. The old password no longer works, and they will '
+                  'set their own at next sign-in.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                StaffCredentialsCard(loginEmail: creds.loginEmail, password: creds.password),
+              ],
+            ),
+          ),
+          actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done'))],
+        ),
+      );
+    } on AppException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
@@ -150,12 +202,21 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (session.can('USERS_MANAGE_ROLES'))
+              if (session.can('USERS_EDIT') && d.baseRole != 'owner') ...[
+                SecondaryButton(
+                  label: 'Reset Password',
+                  icon: Icons.key_rounded,
+                  onPressed: _busy ? null : _resetPassword,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              if (session.can('USERS_MANAGE_ROLES')) ...[
                 SecondaryButton(label: 'Change Role', onPressed: _busy ? null : _changeRole),
+                const SizedBox(height: AppSpacing.sm),
+              ],
               if (session.can('USERS_DEACTIVATE'))
                 SecondaryButton(
                   label: d.status == StaffStatus.inactive ? 'Reactivate' : 'Deactivate',
@@ -178,7 +239,8 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
               child: Column(
                 children: [
                   _kv('Full name', d.fullName),
-                  _kv('Email', d.email),
+                  _kv('Login email', d.loginEmail),
+                  if (d.email.isNotEmpty && d.email != d.loginEmail) _kv('Contact email', d.email),
                   _kv('Phone', d.phone ?? '—'),
                   _kv('Role', d.roleName),
                   _kv('Status', d.status.label),

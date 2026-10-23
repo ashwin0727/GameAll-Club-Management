@@ -7,6 +7,7 @@ import type { Database } from "@/types/database.types";
 import type {
   CreateStaffInput,
   CreateStaffResult,
+  ResetStaffPasswordResult,
   Permission,
   RoleDetail,
   RoleRow,
@@ -69,6 +70,9 @@ export class SupabaseStaffService {
         facilityCount: r.facility_count,
         lastLoginAt: r.last_login_at,
         joinedAt: r.joined_at,
+        loginEmail: r.login_email,
+        firstName: r.first_name,
+        lastName: r.last_name,
       })),
       totalCount: data?.[0]?.total_count ?? 0,
     };
@@ -100,7 +104,8 @@ export class SupabaseStaffService {
     const { data, error } = await this.supabase.functions.invoke("create-staff", {
       body: {
         facilityId: input.facilityId,
-        fullName: input.fullName,
+        firstName: input.firstName,
+        lastName: input.lastName ?? undefined,
         email: input.email,
         phone: input.phone ?? undefined,
         roleId: input.roleId,
@@ -119,8 +124,26 @@ export class SupabaseStaffService {
     return {
       userId: data.userId,
       linked: Boolean(data.linked),
+      loginEmail: data.loginEmail ?? "",
       temporaryPassword: data.temporaryPassword ?? null,
     };
+  }
+
+  /** Sets a NEW default password for a staff member (the old one stops working) and returns it to reveal to the owner. */
+  async resetStaffPassword(facilityId: string, userId: string): Promise<ResetStaffPasswordResult> {
+    const { data, error } = await this.supabase.functions.invoke("create-staff", {
+      body: { action: "reset-password", facilityId, userId, roleId: "-" },
+    });
+    if (error) {
+      let msg: string | undefined;
+      try {
+        msg = ((await (error as { context?: Response }).context?.json?.()) as { error?: string } | undefined)?.error;
+      } catch {
+        /* keep the generic message */
+      }
+      throw new ServiceError("STAFF_INVITE_FAILED", msg || "Could not reset the password.");
+    }
+    return { userId: data.userId, loginEmail: data.loginEmail ?? "", temporaryPassword: data.temporaryPassword };
   }
 
   async assignRole(facilityId: string, userId: string, roleId: string): Promise<void> {

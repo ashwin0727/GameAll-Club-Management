@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Copy, Check } from "lucide-react";
+import { ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
+import { StaffCredentialsCard } from "@/features/staff/components/staff-credentials-card";
 import type { CreateStaffResult, RoleRow } from "@/features/staff/types";
 
 const STEPS = ["Basic Information", "Access & Role", "Review & Invite"] as const;
@@ -29,9 +30,9 @@ export function AddStaffPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateStaffResult | null>(null);
-  const [copied, setCopied] = useState(false);
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -55,12 +56,14 @@ export function AddStaffPage() {
   }
 
   const selectedRole = roles.find((r) => r.id === roleId);
+  const fullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(" ");
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   function next() {
     setError(null);
     if (step === 0) {
-      if (!fullName.trim()) return setError("Enter the staff member's full name.");
+      if (!firstName.trim()) return setError("Enter the staff member's first name.");
+      if (!lastName.trim()) return setError("Enter the staff member's last name.");
       if (!emailValid) return setError("Enter a valid email address.");
     }
     if (step === 1 && !roleId) return setError("Choose a role.");
@@ -74,7 +77,8 @@ export function AddStaffPage() {
     try {
       const res = await getStaffService().createStaff({
         facilityId,
-        fullName: fullName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim() || null,
         roleId,
@@ -96,37 +100,18 @@ export function AddStaffPage() {
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
             <Check className="h-6 w-6 text-success" aria-hidden />
           </span>
-          <h1 className="mt-3 text-lg font-semibold">
-            {result.linked ? `${fullName} was added` : `${fullName} was invited`}
-          </h1>
+          <h1 className="mt-3 text-lg font-semibold">{fullName} was added</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {result.linked
-              ? "They already had a GameAll account — access to this facility is active now."
-              : "Share the one-time password below. They'll set their own on first sign-in."}
+            Share these sign-in details with them. They&apos;ll be asked to set their own password the first time they sign in.
           </p>
 
-          {result.temporaryPassword && (
-            <div className="mt-4 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 p-3">
-              <code className="text-sm font-medium">{result.temporaryPassword}</code>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(result.temporaryPassword ?? "");
-                  setCopied(true);
-                }}
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-          )}
-          {result.temporaryPassword && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              This password is shown once and is not stored. If you lose it, use “Reset password” on the staff member.
-            </p>
-          )}
+          <div className="mt-4">
+            <StaffCredentialsCard loginEmail={result.loginEmail} password={result.temporaryPassword} />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Lost the password? Open the staff member and choose “Reset Password” to generate and reveal a new one — the
+            old one stops working.
+          </p>
 
           <div className="mt-5 flex justify-center gap-2">
             <Button asChild variant="outline">
@@ -182,8 +167,11 @@ export function AddStaffPage() {
           <>
             <h2 className="text-sm font-semibold">Basic Information</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field id="s-name" label="Full Name" required>
-                <Input id="s-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter full name" />
+              <Field id="s-first" label="First Name" required>
+                <Input id="s-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Enter first name" autoComplete="off" />
+              </Field>
+              <Field id="s-last" label="Last Name" required>
+                <Input id="s-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Enter last name" autoComplete="off" />
               </Field>
               <Field id="s-email" label="Email Address" required>
                 <Input id="s-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
@@ -234,15 +222,16 @@ export function AddStaffPage() {
             <h2 className="text-sm font-semibold">Review &amp; Invite</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <Review label="Full Name" value={fullName} />
-              <Review label="Email" value={email} />
+              <Review label="Contact Email" value={email} />
               <Review label="Phone" value={phone || "—"} />
               <Review label="Role" value={selectedRole?.name ?? "—"} />
               <Review label="Facility" value={perms.facilityName} />
               <Review label="Primary Facility" value={isPrimary ? "Yes" : "No"} />
             </dl>
             <p className="text-xs text-muted-foreground">
-              An account will be created with a one-time password you&apos;ll share with them. They must set their own
-              password on first sign-in.
+              A sign-in will be created for them — a @gameall.co login and a default password, shown to you once the staff
+              member is added. They must set their own password on first sign-in. The email above is kept as a contact
+              email only.
             </p>
           </>
         )}

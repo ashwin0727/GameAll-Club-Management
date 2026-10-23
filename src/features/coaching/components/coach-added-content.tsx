@@ -5,6 +5,7 @@ import { Check, PartyPopper } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { initials } from "@/features/coaching/components/shared";
+import { StaffCredentialsCard } from "@/features/staff/components/staff-credentials-card";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,7 +13,18 @@ import { cn } from "@/lib/utils";
  * No outer wrapper or footer buttons: the full-page route wraps this in a centered Card, the
  * Add Coach sheet renders it straight inside its own SheetBody with a SheetFooter alongside.
  */
-export function CoachAddedContent({ coachId, name, onNavigate }: { coachId: string; name: string; onNavigate: (href: string) => void }) {
+export function CoachAddedContent({
+  coachId,
+  name,
+  onNavigate,
+  credentials,
+}: {
+  coachId: string;
+  name: string;
+  onNavigate: (href: string) => void;
+  /** Set when a new sign-in was created for this coach — shown once so the owner can pass it on. */
+  credentials?: { loginEmail: string; password: string } | null;
+}) {
   const actions = useMemo(
     () => [
       {
@@ -66,6 +78,16 @@ export function CoachAddedContent({ coachId, name, onNavigate }: { coachId: stri
           </Badge>
         </div>
       </div>
+
+      {credentials && (
+        <div className="space-y-2 text-left">
+          <h3 className="text-sm font-semibold">Sign-in details</h3>
+          <StaffCredentialsCard loginEmail={credentials.loginEmail} password={credentials.password} />
+          <p className="text-xs text-muted-foreground">
+            They must set their own password on first sign-in. Lost it? Open the person under Users &amp; Roles → Staff and choose “Reset Password”.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2 text-left">
         <h3 className="text-sm font-semibold">What would you like to do next?</h3>

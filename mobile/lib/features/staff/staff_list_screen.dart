@@ -250,7 +250,7 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(s.fullName, style: AppTypography.rowTitle(context)),
-                      Text('${s.roleName} · ${s.email}',
+                      Text('${s.roleName} · ${s.loginEmail}',
                           maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.caption(context)),
                     ],
                   ),

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Camera, ChevronRight, Pencil, Power, ShieldCheck, UserCog } from "lucide-react";
+import { Camera, ChevronRight, KeyRound, Pencil, Power, ShieldCheck, UserCog } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,9 +25,10 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
+import { StaffCredentialsCard } from "@/features/staff/components/staff-credentials-card";
 import { fmtDate, initials, statusBadge } from "@/features/staff/components/staff-page";
 import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from "@/features/coaching/components/use-add-coach-form";
-import type { Permission, RoleRow, StaffDetail } from "@/features/staff/types";
+import type { Permission, ResetStaffPasswordResult, RoleRow, StaffDetail } from "@/features/staff/types";
 
 const TABS = ["Overview", "Access & Permissions", "Activity", "Notes"] as const;
 
@@ -46,6 +47,8 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
   const [nextRoleId, setNextRoleId] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetResult, setResetResult] = useState<ResetStaffPasswordResult | null>(null);
 
   const load = useCallback(async () => {
     if (!facilityId) return;
@@ -139,7 +142,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
             </div>
             <p className="text-sm text-muted-foreground">{a?.roleName ?? "—"}</p>
             <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-              <Row label="Email" value={detail.email} />
+              <Row label="Login Email" value={detail.loginEmail} />
               <Row label="Phone" value={detail.phone ?? "—"} />
               <Row label="Joined" value={fmtDate(a?.joinedAt ?? null)} />
               <Row label="Last Active" value={fmtDate(a?.lastLoginAt ?? null)} />
@@ -151,6 +154,9 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
       <div className="flex flex-wrap gap-3">
         {perms.can("USERS_EDIT") && (
           <QuickAction icon={Pencil} label="Edit Profile" onClick={() => setEditingProfile(true)} />
+        )}
+        {perms.can("USERS_EDIT") && a && a.baseRole !== "owner" && (
+          <QuickAction icon={KeyRound} label="Reset Password" onClick={() => { setResetResult(null); setResetOpen(true); }} />
         )}
         {canManageRoles && (
           <QuickAction icon={UserCog} label="Change Role" onClick={() => (setNextRoleId(a?.roleId ?? roles.find((r) => r.key === a?.baseRole)?.id ?? ""), setChangeRole(true))} />
@@ -194,7 +200,8 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
             <h2 className="text-sm font-semibold">About</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <Row label="Full Name" value={detail.fullName} />
-              <Row label="Email" value={detail.email} />
+              <Row label="Login Email" value={detail.loginEmail} />
+              {detail.email && detail.email !== detail.loginEmail && <Row label="Contact Email" value={detail.email} />}
               <Row label="Phone" value={detail.phone ?? "—"} />
               <Row label="Role" value={a?.roleName ?? "—"} />
               <Row label="Status" value={a?.status ?? "—"} />
@@ -332,6 +339,47 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
             >
               {busy ? "Saving…" : "Change role"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={(o) => { if (!busy) setResetOpen(o); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{resetResult ? "New password ready" : "Reset password?"}</DialogTitle>
+            <DialogDescription>
+              {resetResult
+                ? `Share these sign-in details with ${detail.fullName}. The old password no longer works and they'll set their own at next sign-in.`
+                : `This generates a new password for ${detail.fullName}, signs them out everywhere, and stops their current password from working.`}
+            </DialogDescription>
+          </DialogHeader>
+          {resetResult && <StaffCredentialsCard loginEmail={resetResult.loginEmail} password={resetResult.temporaryPassword} />}
+          <DialogFooter>
+            {resetResult ? (
+              <Button type="button" onClick={() => setResetOpen(false)}>Done</Button>
+            ) : (
+              <>
+                <Button type="button" variant="outline" onClick={() => setResetOpen(false)} disabled={busy}>Cancel</Button>
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      setResetResult(await getStaffService().resetStaffPassword(facilityId!, userId));
+                    } catch (e) {
+                      setResetOpen(false);
+                      setError(e instanceof ServiceError ? e.message : "Could not reset the password.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {busy ? "Resetting…" : "Reset & reveal password"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2249,6 +2249,9 @@ export interface Database {
           facility_count: number;
           last_login_at: string | null;
           joined_at: string;
+          login_email: string;
+          first_name: string | null;
+          last_name: string | null;
           total_count: number;
         }[];
       };

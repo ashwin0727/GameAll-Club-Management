@@ -71,7 +71,10 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     if (!session.can('USERS_VIEW')) {
-      return const StaffPermissionDenied(message: "You don't have permission to view roles.", title: 'Roles & Permissions');
+      return const StaffPermissionDenied(
+        message: "You don't have permission to view roles.",
+        title: 'Roles & Permissions',
+      );
     }
     final canManage = session.can('USERS_MANAGE_ROLES');
 
@@ -94,91 +97,133 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
         child: _roles == null && _error == null
             ? const _RolesSkeleton()
             : RefreshIndicator(
-          onRefresh: _load,
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              Text('Manage roles and module permissions for your facility.', style: AppTypography.secondary(context)),
-              const SizedBox(height: AppSpacing.md),
-              SegmentedTabs(
-                tabs: ['Roles${_roles != null ? ' (${_roles!.length})' : ''}', 'Permissions'],
-                index: _tab,
-                onChanged: (i) => setState(() => _tab = i),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (_error != null)
-                ErrorView(message: _error!, onRetry: _load)
-              else if (_roles == null)
-                const LoadingView(message: 'Loading…')
-              else if (_tab == 0) ...[
-                ..._roles!.map((r) => _roleCard(r, canManage)),
-                if (canManage && _templates.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Need a custom role?', style: TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
-                        Text('Start from a pre-configured template and adjust the permissions.',
-                            style: AppTypography.caption(context)),
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: [
+                    Text(
+                      'Manage roles and module permissions for your facility.',
+                      style: AppTypography.secondary(context),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    SegmentedTabs(
+                      tabs: [
+                        'Roles${_roles != null ? ' (${_roles!.length})' : ''}',
+                        'Permissions',
+                      ],
+                      index: _tab,
+                      onChanged: (i) => setState(() => _tab = i),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    if (_error != null)
+                      ErrorView(message: _error!, onRetry: _load)
+                    else if (_roles == null)
+                      const LoadingView(message: 'Loading…')
+                    else if (_tab == 0) ...[
+                      ..._roles!.map((r) => _roleCard(r, canManage)),
+                      if (canManage && _templates.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.sm),
-                        Wrap(
-                          spacing: AppSpacing.sm,
-                          runSpacing: AppSpacing.sm,
-                          children: _templates
-                              .map((t) => OutlinedButton(
-                                    onPressed: () async {
-                                      await context.push('${AppRoutes.roleNew}?template=${t.id}');
-                                      if (mounted) _load();
-                                    },
-                                    child: Text(t.name),
-                                  ))
-                              .toList(),
+                        AppCard(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Need a custom role?',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Start from a pre-configured template and adjust the permissions.',
+                                style: AppTypography.caption(context),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
+                                children: _templates
+                                    .map(
+                                      (t) => OutlinedButton(
+                                        onPressed: () async {
+                                          await context.push(
+                                            '${AppRoutes.roleNew}?template=${t.id}',
+                                          );
+                                          if (mounted) _load();
+                                        },
+                                        child: Text(t.name),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ] else ...[
-                for (final mod in _catalog.map((p) => p.module).toSet())
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(mod, style: AppTypography.caption(context)),
-                        const SizedBox(height: 4),
-                        ..._catalog.where((p) => p.module == mod).map((p) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(p.isDangerous ? Icons.warning_amber_rounded : Icons.circle,
-                                      size: p.isDangerous ? 14 : 6, color: Theme.of(context).colorScheme.outline),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(p.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                        if (p.description != null)
-                                          Text(p.description!, style: AppTypography.caption(context)),
-                                      ],
+                    ] else ...[
+                      for (final mod in _catalog.map((p) => p.module).toSet())
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(mod, style: AppTypography.caption(context)),
+                              const SizedBox(height: 4),
+                              ..._catalog
+                                  .where((p) => p.module == mod)
+                                  .map(
+                                    (p) => Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(
+                                            p.isDangerous
+                                                ? Icons.warning_amber_rounded
+                                                : Icons.circle,
+                                            size: p.isDangerous ? 14 : 6,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .outline,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  p.label,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                if (p.description != null)
+                                                  Text(
+                                                    p.description!,
+                                                    style:
+                                                        AppTypography.caption(
+                                                          context,
+                                                        ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            )),
-                      ],
-                    ),
-                  ),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
-        ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -193,42 +238,59 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
           children: [
             Row(
               children: [
-                Expanded(child: Text(r.name, style: AppTypography.rowTitle(context))),
-                StatusBadge(label: r.isActive ? 'Active' : 'Inactive', tone: r.isActive ? StatusTone.success : StatusTone.danger),
+                Expanded(
+                  child: Text(r.name, style: AppTypography.rowTitle(context)),
+                ),
+                StatusBadge(
+                  label: r.isActive ? 'Active' : 'Inactive',
+                  tone: r.isActive ? StatusTone.success : StatusTone.danger,
+                ),
               ],
             ),
-            if (r.description != null) Text(r.description!, style: AppTypography.caption(context)),
+            if (r.description != null)
+              Text(r.description!, style: AppTypography.caption(context)),
             const SizedBox(height: 4),
-            Text('${r.staffCount} staff · ${r.permissionCount} permissions', style: AppTypography.caption(context)),
+            Text(
+              '${r.staffCount} staff · ${r.permissionCount} permissions',
+              style: AppTypography.caption(context),
+            ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                SecondaryButton(
-                  label: canManage ? 'Edit' : 'View',
-                  onPressed: () async {
-                    await context.push('/users-roles/roles/${r.id}/edit');
-                    if (mounted) _load();
-                  },
+                Expanded(
+                  child: SecondaryButton(
+                    label: canManage ? 'Edit' : 'View',
+                    onPressed: () async {
+                      await context.push('/users-roles/roles/${r.id}/edit');
+                      if (mounted) _load();
+                    },
+                  ),
                 ),
                 if (canManage && r.isCustom && r.staffCount == 0) ...[
                   const SizedBox(width: AppSpacing.sm),
-                  SecondaryButton(
-                    label: 'Delete',
-                    onPressed: _busy
-                        ? null
-                        : () async {
-                            setState(() => _busy = true);
-                            try {
-                              await ref.read(staffRepositoryProvider).deleteRole(r.id, _facilityId!);
-                              await _load();
-                            } on AppException catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                  Expanded(
+                    child: SecondaryButton(
+                      label: 'Delete',
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              setState(() => _busy = true);
+                              try {
+                                await ref
+                                    .read(staffRepositoryProvider)
+                                    .deleteRole(r.id, _facilityId!);
+                                await _load();
+                              } on AppException catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.message)),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _busy = false);
                               }
-                            } finally {
-                              if (mounted) setState(() => _busy = false);
-                            }
-                          },
+                            },
+                    ),
                   ),
                 ],
               ],

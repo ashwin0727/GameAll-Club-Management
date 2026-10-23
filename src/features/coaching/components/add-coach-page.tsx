@@ -23,7 +23,7 @@ export function AddCoachPage() {
   const router = useRouter();
   const facilityId = perms?.facilityId ?? null;
   const form = useAddCoachForm(facilityId);
-  const [created, setCreated] = useState<{ id: string; name: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; name: string; credentials: { loginEmail: string; password: string } | null } | null>(null);
 
   if (!perms?.can("COACHING_MANAGE_COACHES")) {
     return <PermissionDenied message="You don't have permission to manage coaches." />;
@@ -31,8 +31,8 @@ export function AddCoachPage() {
 
   async function handleSubmit() {
     try {
-      const { coachId, name } = await form.submit();
-      setCreated({ id: coachId, name });
+      const { coachId, name, credentials } = await form.submit();
+      setCreated({ id: coachId, name, credentials });
     } catch {
       // form.error already carries the user-facing message; nothing else to do here.
     }
@@ -42,7 +42,7 @@ export function AddCoachPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
         <Card className="p-6">
-          <CoachAddedContent coachId={created.id} name={created.name} onNavigate={(href) => router.push(href)} />
+          <CoachAddedContent coachId={created.id} name={created.name} credentials={created.credentials} onNavigate={(href) => router.push(href)} />
           <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => window.location.reload()}>
               Add Another Coach

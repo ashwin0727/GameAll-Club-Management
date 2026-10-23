@@ -72,11 +72,17 @@ class StaffRow {
     required this.facilityCount,
     required this.lastLoginAt,
     required this.joinedAt,
+    required this.loginEmail,
   });
 
   final String userId;
   final String fullName;
+
+  /// Contact email (never used to sign in for accounts with a generated login).
   final String email;
+
+  /// What they sign in with — the generated @gameall.co login (or the original email for older staff).
+  final String loginEmail;
   final String? phone;
   final String? avatarUrl;
   final String? roleId;
@@ -100,6 +106,7 @@ class StaffRow {
         facilityCount: (j['facility_count'] as num?)?.toInt() ?? 1,
         lastLoginAt: j['last_login_at'] as String?,
         joinedAt: j['joined_at'] as String,
+        loginEmail: (j['login_email'] as String?) ?? (j['email'] as String),
       );
 }
 
@@ -172,11 +179,17 @@ class StaffDetail {
     required this.facilityAccess,
     required this.permissions,
     required this.recentActivity,
+    required this.loginEmail,
+    required this.hasGeneratedLogin,
   });
 
   final String userId;
   final String fullName;
   final String email;
+  final String loginEmail;
+
+  /// True for accounts created with a generated login — the password can be revealed / reset from the staff page.
+  final bool hasGeneratedLogin;
   final String? phone;
   final String? avatarUrl;
   final String? roleId;
@@ -197,6 +210,8 @@ class StaffDetail {
       userId: j['userId'] as String,
       fullName: j['fullName'] as String,
       email: j['email'] as String,
+      loginEmail: (j['loginEmail'] as String?) ?? (j['email'] as String),
+      hasGeneratedLogin: j['hasGeneratedLogin'] as bool? ?? false,
       phone: j['phone'] as String?,
       avatarUrl: j['avatarUrl'] as String?,
       roleId: a?['roleId'] as String?,
@@ -333,8 +348,24 @@ class SecurityEventPage {
 }
 
 class CreateStaffResult {
-  const CreateStaffResult({required this.userId, required this.linked, required this.temporaryPassword});
+  const CreateStaffResult({
+    required this.userId,
+    required this.linked,
+    required this.temporaryPassword,
+    this.loginEmail = '',
+  });
   final String userId;
   final bool linked;
   final String? temporaryPassword;
+
+  /// The generated login (first name + DDMMYYYY + HHMMSS + @gameall.co).
+  final String loginEmail;
+}
+
+/// A staff member's sign-in details, revealed to the owner after a password reset.
+class StaffCredentials {
+  const StaffCredentials({required this.userId, required this.loginEmail, required this.password});
+  final String userId;
+  final String loginEmail;
+  final String password;
 }
