@@ -11,6 +11,7 @@ import { getRefundService } from "@/services/refunds";
 import type { Refund, RefundStatus, SettlementException } from "@/features/refunds/types";
 import type { PaymentSourceType } from "@/features/payments/types";
 import { ServiceError } from "@/services/shared/service-error";
+import { EditOnly } from "@/features/access/edit-only";
 
 function refundStatusTone(status: Refund["status"]): "success" | "warning" | "destructive" | "secondary" {
   switch (status) {
@@ -135,9 +136,11 @@ export function RefundsPanel() {
                     {ex.reason.replace(/_/g, " ").toLowerCase()} · {formatDateTime(ex.createdAt)}
                   </p>
                 </div>
-                <Button type="button" size="sm" variant="outline" disabled={workingId === ex.id} onClick={() => refundException(ex.id)}>
-                  {workingId === ex.id ? "Refunding…" : "Initiate Refund"}
-                </Button>
+                <EditOnly>
+                  <Button type="button" size="sm" variant="outline" disabled={workingId === ex.id} onClick={() => refundException(ex.id)}>
+                    {workingId === ex.id ? "Refunding…" : "Initiate Refund"}
+                  </Button>
+                </EditOnly>
               </div>
             ))}
           </div>

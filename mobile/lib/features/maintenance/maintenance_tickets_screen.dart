@@ -14,6 +14,7 @@ import '../authentication/session_controller.dart';
 import 'maintenance_format.dart';
 import 'maintenance_status_chips.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 /// Maintenance → Maintenance Tickets — mirrors
 /// src/features/maintenance/components/maintenance-tickets-page.tsx.
@@ -69,7 +70,7 @@ class _MaintenanceTicketsScreenState extends ConsumerState<MaintenanceTicketsScr
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Maintenance Tickets')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: !ref.watch(sessionControllerProvider).canEditPage(accessPageMaintenance) ? null : FloatingActionButton(
         onPressed: () async {
           await context.push(AppRoutes.maintenanceTicketNew);
           if (mounted) _load();

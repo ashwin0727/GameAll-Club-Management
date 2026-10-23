@@ -14,6 +14,7 @@ import type { FacilitySport, Sport } from "@/features/sports-setup/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { GuestFormDialog } from "@/features/guests/components/guest-form-dialog";
 import { BookingDialog } from "@/features/bookings/components/booking-dialog";
+import { EditOnly } from "@/features/access/edit-only";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
@@ -134,12 +135,16 @@ export function GuestProfileDialog({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
-              Edit Guest
-            </Button>
-            <Button type="button" onClick={() => setBookOpen(true)}>
-              Book Court
-            </Button>
+            <EditOnly>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
+                Edit Guest
+              </Button>
+            </EditOnly>
+            <EditOnly>
+              <Button type="button" onClick={() => setBookOpen(true)}>
+                Book Court
+              </Button>
+            </EditOnly>
           </DialogFooter>
         </DialogContent>
       </Dialog>

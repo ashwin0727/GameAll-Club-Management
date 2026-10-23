@@ -358,7 +358,7 @@ class CreateStaffResult {
   final bool linked;
   final String? temporaryPassword;
 
-  /// The generated login (first name + DDMMYYYY + HHMMSS + @gameall.co).
+  /// The generated login (first name + DDMM + MMSS + @gameall.co).
   final String loginEmail;
 }
 

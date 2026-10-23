@@ -12,6 +12,7 @@ import type { GuestPlayer } from "@/features/guests/types";
 import { GuestFormDialog } from "@/features/guests/components/guest-form-dialog";
 import { GuestProfileDialog } from "@/features/guests/components/guest-profile-dialog";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
+import { EditOnly } from "@/features/access/edit-only";
 
 export function GuestList() {
   const { data: facility, isLoading: facilityLoading, isError: facilityError } = useFacility();
@@ -116,9 +117,11 @@ export function GuestList() {
             <option value="">All</option>
           </DropdownSelect>
         </div>
-        <Button type="button" onClick={() => setAddOpen(true)}>
-          + Add Guest
-        </Button>
+        <EditOnly>
+          <Button type="button" onClick={() => setAddOpen(true)}>
+            + Add Guest
+          </Button>
+        </EditOnly>
       </div>
 
       {listLoading || sportLoading ? (

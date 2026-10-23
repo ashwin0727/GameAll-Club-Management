@@ -18,6 +18,7 @@ import '../../shared/widgets/skeleton.dart';
 import 'maintenance_format.dart';
 import 'maintenance_status_chips.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 /// Maintenance → Overview — mirrors
 /// src/features/maintenance/components/maintenance-overview-page.tsx.
@@ -69,7 +70,7 @@ class _MaintenanceOverviewScreenState extends ConsumerState<MaintenanceOverviewS
       appBar: AppBar(
         title: const Text('Court Maintenance', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      floatingActionButton: Material(
+      floatingActionButton: !ref.watch(sessionControllerProvider).canEditPage(accessPageMaintenance) ? null : Material(
         color: tokens.primary,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         clipBehavior: Clip.antiAlias,

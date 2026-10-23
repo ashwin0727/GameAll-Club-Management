@@ -17,6 +17,8 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import 'finance_presentation.dart';
+import '../../core/access/access.dart';
+import '../authentication/session_controller.dart';
 
 /// Finance → Transaction Details — mirrors
 /// src/features/finance/components/transaction-details-page.tsx.
@@ -95,7 +97,7 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
       appBar: AppBar(
         title: const Text('Transaction Details'),
         actions: [
-          if (_state == _State.ready)
+          if (_state == _State.ready && ref.watch(sessionControllerProvider).canEditPage(accessPageFinanceTransactions))
             TextButton.icon(
               onPressed: _downloading ? null : _downloadReceipt,
               icon: const Icon(Icons.download, size: 18),

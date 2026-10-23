@@ -97,7 +97,7 @@ export function MobileOtpVerifier({
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            We're calling +91 {sentTo} with your 6-digit OTP. Please <strong>accept the incoming call</strong>, listen to the code and enter it below.
+            We&apos;re calling +91 {sentTo} with your 6-digit OTP. Please <strong>accept the incoming call</strong>, listen to the code and enter it below.
           </p>
           <div className="flex items-center gap-2">
             <Input

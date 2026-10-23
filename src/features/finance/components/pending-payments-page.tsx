@@ -17,6 +17,7 @@ import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
+import { EditOnly } from "@/features/access/edit-only";
 import type {
   ObligationSort,
   ObligationSource,
@@ -370,9 +371,11 @@ export function PendingPaymentsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(o.dueOn)}</td>
                       <td className="px-4 py-3 text-right">
-                        <Button asChild size="sm">
-                          <Link href={`/finance/pending-payments/${o.sourceId}/record`}>Record</Link>
-                        </Button>
+                        <EditOnly>
+                          <Button asChild size="sm">
+                            <Link href={`/finance/pending-payments/${o.sourceId}/record`}>Record</Link>
+                          </Button>
+                        </EditOnly>
                       </td>
                     </tr>
                   ))}
@@ -403,11 +406,13 @@ export function PendingPaymentsPage() {
                     </div>
                   </dl>
 
-                  <Button asChild className="mt-3 min-h-11 w-full">
-                    <Link href={`/finance/pending-payments/${o.sourceId}/record`}>
-                      Record {formatCurrency(o.outstandingMinor, "INR")}
-                    </Link>
-                  </Button>
+                  <EditOnly>
+                    <Button asChild className="mt-3 min-h-11 w-full">
+                      <Link href={`/finance/pending-payments/${o.sourceId}/record`}>
+                        Record {formatCurrency(o.outstandingMinor, "INR")}
+                      </Link>
+                    </Button>
+                  </EditOnly>
                 </li>
               ))}
             </ul>

@@ -18,6 +18,7 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
+import '../../core/access/access.dart';
 
 /// Profile & settings — the owner's home for everything that isn't day-to-day
 /// operations: their identity, the facility's configuration, business setup,
@@ -142,112 +143,122 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // permission-gated exactly as the web hides them, so a staff member never sees a door
             // they can't open. Members and Membership Schedule are tabs inside the Memberships hub
             // rather than separate screens, so the hub appears once, as "Dashboard".
-            _sectionLabel('General'),
-            _GroupCard(children: [
+            _Section(label: 'General', children: [
               _NavRow(
                   icon: Icons.emoji_events_outlined,
                   label: 'Tournaments',
+                  pages: [accessPageTournaments],
                   onTap: () => context.push(AppRoutes.tournaments)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('Guest Management'),
-            _GroupCard(children: [
+
+            _Section(label: 'Guest Management', children: [
               _NavRow(
                   icon: Icons.confirmation_number_outlined,
                   label: 'Guest Booking',
+                  pages: [accessPageGuestBookings],
                   onTap: () => context.push(AppRoutes.guestBookings)),
               _NavRow(
                   icon: Icons.groups_2_outlined,
                   label: 'Guest Players',
+                  pages: [accessPageGuestPlayers],
                   onTap: () => context.push(AppRoutes.guests)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('Memberships Management'),
-            _GroupCard(children: [
+
+            _Section(label: 'Memberships Management', children: [
               _NavRow(
                   icon: Icons.dashboard_outlined,
                   label: 'Dashboard',
+                  pages: [accessPageMembershipDashboard],
                   onTap: () => context.push(AppRoutes.memberships)),
               _NavRow(
                   icon: Icons.calendar_view_week_outlined,
                   label: 'Membership Schedule',
+                  pages: [accessPageMembershipSchedule],
                   onTap: () => context.push(AppRoutes.membershipSchedule)),
               _NavRow(
                   icon: Icons.style_outlined,
                   label: 'Membership Plan',
+                  pages: [accessPageMembershipPlans],
                   // The Plans tab of the Memberships hub (web: /memberships/v1/plans).
                   onTap: () => context.push('${AppRoutes.memberships}?tab=plans')),
               _NavRow(
                   icon: Icons.event_repeat_outlined,
                   label: 'Membership Sessions',
+                  pages: [accessPageMembershipSessions],
                   onTap: () => context.push(AppRoutes.membershipSessions)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            if (session.can('COACHING_VIEW')) ...[
-              _sectionLabel('Coaching Management'),
-              _GroupCard(children: [
+
+            ...[
+              _Section(label: 'Coaching Management', children: [
                 _NavRow(
                     icon: Icons.school_outlined,
                     label: 'Coaching',
+                  pages: [accessPageCoachingOverview],
                     onTap: () => context.push(AppRoutes.coaching)),
                 _NavRow(
                     icon: Icons.menu_book_outlined,
                     label: 'Program',
+                  pages: [accessPageCoachingPrograms],
                     onTap: () => context.push(AppRoutes.coachingPrograms)),
                 _NavRow(
                     icon: Icons.groups_outlined,
                     label: 'Students',
+                  pages: [accessPageCoachingStudents],
                     onTap: () => context.push(AppRoutes.coachingStudents)),
                 _NavRow(
                     icon: Icons.bar_chart_rounded,
                     label: 'Report',
+                  pages: [accessPageCoachingReports],
                     onTap: () => context.push(AppRoutes.coachingReports)),
               ]),
-              const SizedBox(height: AppSpacing.xl),
+
 
             ],
-            _sectionLabel('Maintenance Management'),
-            _GroupCard(children: [
+            _Section(label: 'Maintenance Management', children: [
               _NavRow(
                   icon: Icons.handyman_outlined,
                   label: 'Maintenance',
+                  pages: [accessPageMaintenance],
                   onTap: () => context.push(AppRoutes.maintenance)),
               _NavRow(
                   icon: Icons.assignment_outlined,
                   label: 'Maintenance Tracker',
+                  pages: [accessPageMaintenance],
                   onTap: () => context.push(AppRoutes.maintenanceTickets)),
               _NavRow(
                   icon: Icons.category_outlined,
                   label: 'Issue Category',
+                  pages: [accessPageMaintenanceCategories],
                   onTap: () => context.push(AppRoutes.maintenanceIssueCategories)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            if (session.can('USERS_VIEW')) ...[
-              _sectionLabel('Staff Management'),
-              _GroupCard(children: [
+
+            ...[
+              _Section(label: 'Staff Management', children: [
                 _NavRow(
                     icon: Icons.admin_panel_settings_outlined,
                     label: 'Staff',
+                  pages: [accessPageStaff],
                     onTap: () => context.push(AppRoutes.usersRoles)),
                 _NavRow(
                     icon: Icons.vpn_key_outlined,
                     label: 'Roles & Permission',
+                  pages: [accessPageRoles],
                     onTap: () => context.push(AppRoutes.roles)),
                 _NavRow(
                     icon: Icons.history_rounded,
                     label: 'Access History',
+                  pages: [accessPageAccessHistory],
                     onTap: () => context.push(AppRoutes.accessHistory)),
               ]),
-              const SizedBox(height: AppSpacing.xl),
+
 
             ],
             if (AppConfig.inventoryEnabled && session.can('INVENTORY_VIEW')) ...[
-              _sectionLabel('Inventory Management'),
-              _GroupCard(children: [
+              _Section(label: 'Inventory Management', children: [
                 _NavRow(
                     icon: Icons.inventory_2_outlined,
                     label: 'Inventory Tracker',
@@ -273,45 +284,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     label: 'Categories',
                     onTap: () => context.push(AppRoutes.inventoryCategories)),
               ]),
-              const SizedBox(height: AppSpacing.xl),
+
 
             ],
-            _sectionLabel('Finance'),
-            _GroupCard(children: [
+            _Section(label: 'Finance', children: [
               _NavRow(
                   icon: Icons.account_balance_wallet_outlined,
                   label: 'Payments',
+                  pages: [accessPageFinanceOverview],
                   onTap: () => context.push(AppRoutes.finance)),
               _NavRow(
                   icon: Icons.bar_chart_rounded,
                   label: 'Reports & Analytics',
+                  pages: [accessPageReportOverview, accessPageReportCourtUtilization, accessPageReportRevenue, accessPageReportMemberships, accessPageReportGuestBookings],
                   onTap: () => context.push(AppRoutes.reports)),
               _NavRow(
                   icon: Icons.currency_exchange_rounded,
                   label: 'Refunds',
+                  pages: [accessPageRefunds],
                   onTap: () => context.push(AppRoutes.refunds)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('Facility'),
-            _GroupCard(children: [
+
+            _Section(label: 'Facility', children: [
               _NavRow(
                   icon: Icons.storefront_outlined,
                   label: 'Facility Details',
+                  pages: [accessPageFacilitySettings],
                   onTap: () => context.push(AppRoutes.profileFacilityInfo)),
               _NavRow(
                   icon: Icons.sports_tennis_outlined,
                   label: 'Sports & Courts',
+                  pages: [accessPageFacilitySettings],
                   trailing: _courts == null ? null : '$_courts',
                   trailingLoading: _courts == null,
                   onTap: () => context.push(AppRoutes.profileSportsCourts)),
               _NavRow(
                   icon: Icons.schedule_outlined,
                   label: 'Operating Hours',
+                  pages: [accessPageFacilitySettings],
                   onTap: () => context.push(AppRoutes.profileHours)),
               _NavRow(
                   icon: Icons.tune_rounded,
                   label: 'Pricing Rules',
+                  pages: [accessPageFacilitySettings],
                   trailing:
                       _pricingRules == null ? null : '$_pricingRules active',
                   trailingLoading: _pricingRules == null,
@@ -319,15 +335,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _NavRow(
                   icon: Icons.link_rounded,
                   label: 'Public Booking & Join Links',
+                  pages: [accessPageFacilitySettings],
                   onTap: () => _joinLinkSheet(facility)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('Business'),
-            _GroupCard(children: [
+
+            _Section(label: 'Business', children: [
               _NavRow(
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'Payments & Payouts',
+                  pages: [accessPageFacilitySettings],
                 trailing: paymentsLive ? 'Live' : 'Set up',
                 trailingTone: paymentsLive ? t.primary : t.warning,
                 trailingDot: paymentsLive,
@@ -342,25 +359,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _NavRow(
                   icon: Icons.receipt_outlined,
                   label: 'Expenses',
+                  pages: [accessPageFinanceExpenses],
                   onTap: () => context.push(AppRoutes.financeExpenses)),
               _NavRow(
                   icon: Icons.pending_actions_outlined,
                   label: 'Pending Payments',
+                  pages: [accessPageFinancePayments],
                   onTap: () =>
                       context.push(AppRoutes.financePendingPayments)),
               _NavRow(
                   icon: Icons.point_of_sale_outlined,
                   label: 'Daily Closing',
+                  pages: [accessPageFinanceDailyClosing],
                   onTap: () => context.push(AppRoutes.financeDailyClosing)),
               _NavRow(
                   icon: Icons.trending_up_rounded,
                   label: 'Profit & Loss',
+                  pages: [accessPageFinancePnl],
                   onTap: () => context.push(AppRoutes.financeProfitLoss)),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('App'),
-            _GroupCard(children: [
+
+            _Section(label: 'App', children: [
               _ToggleRow(
                 icon: Icons.notifications_none_rounded,
                 label: 'Notifications',
@@ -378,10 +398,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   trailing: 'English',
                   onTap: _soon),
             ]),
-            const SizedBox(height: AppSpacing.xl),
 
-            _sectionLabel('Support'),
-            _GroupCard(children: [
+
+            _Section(label: 'Support', children: [
               _NavRow(
                   icon: Icons.help_outline_rounded,
                   label: 'Help Centre',
@@ -395,7 +414,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: "What's new",
                   onTap: _soon),
             ]),
-            const SizedBox(height: AppSpacing.xxl),
+
 
             _SignOutButton(onTap: _confirmSignOut),
             const SizedBox(height: AppSpacing.xxl),
@@ -567,15 +586,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   static String _titleCase(String v) =>
       v.isEmpty ? v : v[0].toUpperCase() + v.substring(1);
-
-  Widget _sectionLabel(String text) => Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: context.tokens.textSecondary)),
-      );
 }
 
 // ─────────────────────────────────────────────────────── header card ──
@@ -791,7 +801,11 @@ class _NavRow extends StatelessWidget {
     this.trailingTone,
     this.trailingDot = false,
     this.trailingLoading = false,
+    this.pages = const [],
   });
+
+  /// The row is hidden unless the person can view at least one of these pages (empty = always shown).
+  final List<String> pages;
 
   final IconData icon;
   final String label;
@@ -925,6 +939,39 @@ class _SignOutButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// One titled group of menu rows. Rows whose page the person's role doesn't include are dropped, and a group left with
+/// no rows disappears entirely (title and spacing too).
+class _Section extends ConsumerWidget {
+  const _Section({required this.label, required this.children});
+
+  final String label;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionControllerProvider);
+    final visible = children.where((c) {
+      if (c is _NavRow && c.pages.isNotEmpty) return c.pages.any(session.canViewPage);
+      return true;
+    }).toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+            child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary)),
+          ),
+          _GroupCard(children: visible),
+        ],
       ),
     );
   }

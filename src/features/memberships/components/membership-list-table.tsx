@@ -19,6 +19,7 @@ import { useDeleteMemberFlow } from "@/features/memberships/components/use-delet
 import { bucketForRow, rowStatus, type PlanBucket, type RowStatus } from "@/features/memberships/dashboard-stats";
 import { formatClock, formatDayRange } from "@/features/memberships/slot-format";
 import type { MembershipListRow } from "@/features/memberships/types";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 type Tab = "all" | "active" | "expiring" | "inactive";
 type Sort = "recent" | "name" | "ending";
@@ -95,6 +96,8 @@ function csvCell(v: string | number): string {
  * status / sort toolbar, the table itself, and paging along the bottom.
  */
 export function MembershipListTable({ rows }: { rows: MembershipListRow[] | undefined }) {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   const router = useRouter();
   const queryClient = useQueryClient();
   const now = useMemo(() => new Date(), []);
@@ -250,24 +253,28 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem disabled={chosen.length === 0} onClick={() => exportCsv(chosen)}>
-                <Download className="mr-2 h-4 w-4" />
-                Export selected ({chosen.length})
-              </DropdownMenuItem>
+              {canExport && (
+                <DropdownMenuItem disabled={chosen.length === 0} onClick={() => exportCsv(chosen)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export selected ({chosen.length})
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem disabled={chosen.length === 0} onClick={() => setSelected(new Set())}>
                 Clear selection
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <button
-            type="button"
-            onClick={() => exportCsv(filtered)}
-            className={cn(CONTROL, "flex items-center gap-2 font-medium hover:bg-accent")}
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            Export
-          </button>
+          {canExport && (
+            <button
+              type="button"
+              onClick={() => exportCsv(filtered)}
+              className={cn(CONTROL, "flex items-center gap-2 font-medium hover:bg-accent")}
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Export
+            </button>
+          )}
         </div>
       </div>
 

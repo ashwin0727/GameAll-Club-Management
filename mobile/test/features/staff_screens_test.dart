@@ -35,7 +35,7 @@ final _staffRow = <String, dynamic>{
   'user_id': 'u1',
   'full_name': 'Ravi Kumar',
   'email': 'ravi@x.com',
-  'login_email': 'ravi23102026153045@gameall.co',
+  'login_email': 'ravi23103045@gameall.co',
   'first_name': 'Ravi',
   'last_name': 'Kumar',
   'phone': '9876543210',
@@ -95,7 +95,7 @@ class _FakeStaffRepository implements StaffRepository {
         'userId': 'u1',
         'fullName': 'Ravi Kumar',
         'email': 'ravi@x.com',
-        'loginEmail': 'ravi23102026153045@gameall.co',
+        'loginEmail': 'ravi23103045@gameall.co',
         'firstName': 'Ravi',
         'lastName': 'Kumar',
         'hasGeneratedLogin': true,
@@ -148,7 +148,7 @@ void main() {
     await _pump(tester, const StaffListScreen());
     expect(tester.takeException(), isNull);
     expect(find.text('Ravi Kumar'), findsOneWidget);
-    expect(find.textContaining('ravi23102026153045@gameall.co'), findsOneWidget);
+    expect(find.textContaining('ravi23103045@gameall.co'), findsOneWidget);
   });
 
   testWidgets('Roles loads', (tester) async {
@@ -167,7 +167,7 @@ void main() {
     await _pump(tester, const StaffDetailsScreen(userId: 'u1'));
     expect(tester.takeException(), isNull);
     expect(find.text('Ravi Kumar'), findsWidgets);
-    expect(find.textContaining('ravi23102026153045@gameall.co'), findsWidgets);
+    expect(find.textContaining('ravi23103045@gameall.co'), findsWidgets);
     expect(find.text('Reset Password'), findsOneWidget);
   });
 }

@@ -20,6 +20,7 @@ import { DayRangeFilter } from "@/features/finance/components/day-range-filter";
 import { currentMonthRange, toFinanceDateRange, type DayRange } from "@/features/finance/day-range";
 import { MembershipStatCard, MembershipStatCardSkeleton } from "@/features/memberships/components/membership-stat-card";
 import { ServiceError } from "@/services/shared/service-error";
+import { RequirePermission } from "@/features/access/edit-only";
 import type {
   ExpenseCategory,
   ExpensePaymentStatus,
@@ -166,7 +167,9 @@ export function ExpensesPage() {
         <div className="flex flex-wrap items-start gap-3">
           <DayRangeFilter value={range} onApply={setRange} />
           <div className="pt-5">
-            <AddExpenseDialog onCreated={() => void load()} />
+            <RequirePermission permission="FINANCE_MANAGE_EXPENSES">
+              <AddExpenseDialog onCreated={() => void load()} />
+            </RequirePermission>
           </div>
         </div>
       </div>

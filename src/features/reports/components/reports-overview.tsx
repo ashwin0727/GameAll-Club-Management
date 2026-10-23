@@ -38,6 +38,7 @@ import { PeakHoursChart } from "./peak-hours-chart";
 import { OVERVIEW_METRICS, buildOverviewCsv, metricDef, scopeWord, trendGranularity } from "../overview-metrics";
 import { filterToSearchParams } from "../url-state";
 import type { AnalyticsFilter, CourtUtilizationRow, OverviewMetricKey, OverviewTrendPoint, PeakHourRow, ReportsOverviewMetrics } from "../types";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 const INR = "INR";
 
@@ -63,6 +64,8 @@ const CARD_STYLE: Record<OverviewMetricKey, { icon: LucideIcon; bg: string; fg: 
  * database (get_reports_overview / get_reports_overview_trend, migration 0140).
  */
 export function ReportsOverview() {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
   const sports = useSportFilter(facilityId);
@@ -161,19 +164,21 @@ export function ReportsOverview() {
         </div>
         <div className="flex flex-wrap items-start gap-3">
           <DayRangeFilter value={range} onApply={setRange} onDirtyChange={setDirty} />
-          <div className="pt-5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-9"
-              disabled={!metrics || dirty}
-              title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
-              onClick={handleExport}
-            >
-              <Download className="h-4 w-4" aria-hidden /> Export
-            </Button>
-          </div>
+          {canExport && (
+            <div className="pt-5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-9"
+                disabled={!metrics || dirty}
+                title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
+                onClick={handleExport}
+              >
+                <Download className="h-4 w-4" aria-hidden /> Export
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -6,7 +6,6 @@ import { Search } from "lucide-react";
 import { NAV_GROUP_LABELS, NAV_ITEMS } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
-import type { PermissionKey } from "@/features/staff/types";
 import { cn } from "@/lib/utils";
 
 interface SearchEntry {
@@ -32,11 +31,12 @@ export function TopbarSearch({ role }: { role: Role }) {
   const entries = useMemo<SearchEntry[]>(() => {
     const out: SearchEntry[] = [];
     for (const item of NAV_ITEMS) {
-      if (!item.roles.includes(role)) continue;
-      if (item.permission && perms && !perms.can(item.permission as PermissionKey)) continue;
+      if (!perms && !item.roles.includes(role)) continue;
+      if (perms && !perms.canAccessPath(item.href)) continue;
       out.push({ label: item.label, href: item.href, section: NAV_GROUP_LABELS[item.group] ?? "Page" });
       for (const child of item.children ?? []) {
         if (child.href === item.href) continue;
+        if (perms && !perms.canAccessPath(child.href)) continue;
         out.push({ label: child.label, href: child.href, section: item.label });
       }
     }

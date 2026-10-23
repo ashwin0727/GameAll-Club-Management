@@ -7,7 +7,7 @@
 //   * the service role — used only to create / update the auth account. It never touches facility data directly.
 //
 // Staff do NOT sign in with their own email. Every new account gets a generated login
-//     <first name><DDMMYYYY of joining><HHMMSS of creation>@gameall.co
+//     <first name><DDMM of joining><MMSS of creation>@gameall.co
 // and a default password
 //     <Facility full name>@<HH:MM:SS>
 // (date/time in the facility's timezone). The email the owner types is stored as a contact email only

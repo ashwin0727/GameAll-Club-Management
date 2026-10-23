@@ -45,6 +45,8 @@ import type {
 import { courtsNow, type ActivityStatus, type CourtNow } from "@/features/dashboard/court-activity";
 import { cn, formatCurrencyINR } from "@/lib/utils";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
+import { PageGate } from "@/features/access/edit-only";
 
 /** The Home page always reports on today. */
 const PRESET: DateRangePreset = "TODAY";
@@ -287,9 +289,14 @@ function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
 }
 
 function QuickActionsCard({ onGo, delay }: { onGo: (href: string) => void; delay: number }) {
+  const perms = usePermissionContext();
+  const can = (href: string) => !perms || perms.canAccessPath(href);
+  const actions = QUICK_ACTIONS.filter((a) => can(a.href));
+  if (!can("/guest-bookings/new") && actions.length === 0) return null;
   return (
     <DashCard title="Quick Actions" delay={delay}>
       <div className="space-y-2">
+        {can("/guest-bookings/new") && (
         <Button type="button" className="h-11 w-full justify-between" onClick={() => onGo("/guest-bookings/new")}>
           <span className="flex items-center gap-2">
             <CalendarPlus className="h-4 w-4" aria-hidden />
@@ -297,8 +304,9 @@ function QuickActionsCard({ onGo, delay }: { onGo: (href: string) => void; delay
           </span>
           <ChevronRight className="h-4 w-4" aria-hidden />
         </Button>
+        )}
         <div className="grid grid-cols-2 gap-2">
-          {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
+          {actions.map(({ label, href, icon: Icon }) => (
             <button
               key={href}
               type="button"
@@ -635,110 +643,134 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <DashKpi
-          delay={0}
-          icon={BadgeIndianRupee}
-          tone="bg-success/15 text-success"
-          label={isToday ? "Today's Revenue" : "Revenue"}
-          value={formatCurrencyINR(summary.kpis.revenueInr.value)}
-          sub={revenueTrend?.text}
-          subClass={revenueTrend?.cls}
-        />
-        <DashKpi
-          delay={60}
-          icon={CalendarClock}
-          tone="bg-blue-500/15 text-blue-600 dark:text-blue-400"
-          label="Total Bookings"
-          value={String(bookingBlocks.length)}
-          sub={isToday ? `${upcomingCount} upcoming` : undefined}
-          subClass="text-blue-600 dark:text-blue-400"
-          href="/calendar"
-        />
-        <DashKpi
-          delay={120}
-          icon={Gauge}
-          tone="bg-purple-500/15 text-purple-600 dark:text-purple-400"
-          label="Courts Occupied"
-          value={`${occupied} / ${courts.length}`}
-          sub={`${utilization}% utilization`}
-        >
-          <div className="h-1 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full rounded-full bg-purple-500"
-              style={{ width: `${Math.min(Math.max(utilization, 0), 100)}%` }}
-            />
-          </div>
-        </DashKpi>
-        <DashKpi
-          delay={180}
-          icon={Users}
-          tone="bg-success/15 text-success"
-          label="Active Members"
-          value={String(summary.kpis.activeMemberships.value)}
-          sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} expiring soon` : undefined}
-          subClass="text-warning"
-          href="/memberships/v1"
-        />
-        <DashKpi
-          delay={240}
-          icon={GraduationCap}
-          tone="bg-warning/15 text-warning"
-          label="Active Students"
-          value={studentStats ? String(studentStats.enrolledStudents) : "—"}
-          sub="Enrolled in programs"
-          subClass="text-warning"
-          href="/coaching/students"
-        />
+        <PageGate pages={["FINANCE_OVERVIEW", "REPORT_REVENUE", "REPORT_OVERVIEW"]}>
+          <DashKpi
+            delay={0}
+            icon={BadgeIndianRupee}
+            tone="bg-success/15 text-success"
+            label={isToday ? "Today's Revenue" : "Revenue"}
+            value={formatCurrencyINR(summary.kpis.revenueInr.value)}
+            sub={revenueTrend?.text}
+            subClass={revenueTrend?.cls}
+          />
+        </PageGate>
+        <PageGate pages={["CALENDAR"]}>
+          <DashKpi
+            delay={60}
+            icon={CalendarClock}
+            tone="bg-blue-500/15 text-blue-600 dark:text-blue-400"
+            label="Total Bookings"
+            value={String(bookingBlocks.length)}
+            sub={isToday ? `${upcomingCount} upcoming` : undefined}
+            subClass="text-blue-600 dark:text-blue-400"
+            href="/calendar"
+          />
+        </PageGate>
+        <PageGate pages={["CALENDAR"]}>
+          <DashKpi
+            delay={120}
+            icon={Gauge}
+            tone="bg-purple-500/15 text-purple-600 dark:text-purple-400"
+            label="Courts Occupied"
+            value={`${occupied} / ${courts.length}`}
+            sub={`${utilization}% utilization`}
+          >
+            <div className="h-1 overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-purple-500"
+                style={{ width: `${Math.min(Math.max(utilization, 0), 100)}%` }}
+              />
+            </div>
+          </DashKpi>
+        </PageGate>
+        <PageGate pages={["MEMBERSHIP_DASHBOARD"]}>
+          <DashKpi
+            delay={180}
+            icon={Users}
+            tone="bg-success/15 text-success"
+            label="Active Members"
+            value={String(summary.kpis.activeMemberships.value)}
+            sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} expiring soon` : undefined}
+            subClass="text-warning"
+            href="/memberships/v1"
+          />
+        </PageGate>
+        <PageGate pages={["COACHING_STUDENTS"]}>
+          <DashKpi
+            delay={240}
+            icon={GraduationCap}
+            tone="bg-warning/15 text-warning"
+            label="Active Students"
+            value={studentStats ? String(studentStats.enrolledStudents) : "—"}
+            sub="Enrolled in programs"
+            subClass="text-warning"
+            href="/coaching/students"
+          />
+        </PageGate>
       </div>
 
       {/* Court activity | Court status | Quick actions */}
       <div className={ROW_GRID}>
-        <CourtActivityCard rows={courtRows} delay={300} />
-        <CourtStatusCard rows={courtRows} delay={340} />
+        <PageGate pages={["CALENDAR"]}>
+          <CourtActivityCard rows={courtRows} delay={300} />
+        </PageGate>
+        <PageGate pages={["MAINTENANCE", "CALENDAR"]}>
+          <CourtStatusCard rows={courtRows} delay={340} />
+        </PageGate>
         <QuickActionsCard onGo={(href) => router.push(href)} delay={380} />
       </div>
 
       {/* Bookings | Membership | Attention */}
       <div className={ROW_GRID}>
-        <TodaysBookingsCard blocks={allBlocks} delay={420} />
-        <MembershipCard summary={summary} delay={460} />
-        <AttentionCard summary={summary} onGo={(href) => router.push(href)} delay={500} />
+        <PageGate pages={["CALENDAR"]}>
+          <TodaysBookingsCard blocks={allBlocks} delay={420} />
+        </PageGate>
+        <PageGate pages={["MEMBERSHIP_DASHBOARD"]}>
+          <MembershipCard summary={summary} delay={460} />
+        </PageGate>
+        <PageGate pages={["FINANCE_PAYMENTS", "MEMBERSHIP_DASHBOARD", "CALENDAR"]}>
+          <AttentionCard summary={summary} onGo={(href) => router.push(href)} delay={500} />
+        </PageGate>
       </div>
 
       {/* Revenue | Recent activity | Upcoming */}
       <div className={ROW_GRID}>
-        <DashCard
-          title="Revenue Overview"
-          delay={540}
-          loading={revenueLoading}
-          action={
-            <DropdownSelect
-              aria-label="Revenue Month"
-              value={revenueMonthOffset}
-              disabled={revenueLoading}
-              onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
-              className="h-7 rounded-md border border-input bg-secondary/60 px-2 text-[11px]"
-            >
-              {MONTH_OPTIONS.map((opt) => (
-                <option key={opt.offset} value={opt.offset}>
-                  {opt.label}
-                </option>
-              ))}
-            </DropdownSelect>
-          }
-        >
-          <RevenueOverviewPanel overview={summary.revenueOverview} />
-        </DashCard>
+        <PageGate pages={["FINANCE_OVERVIEW", "REPORT_REVENUE", "REPORT_OVERVIEW"]}>
+          <DashCard
+            title="Revenue Overview"
+            delay={540}
+            loading={revenueLoading}
+            action={
+              <DropdownSelect
+                aria-label="Revenue Month"
+                value={revenueMonthOffset}
+                disabled={revenueLoading}
+                onChange={(e) => setRevenueMonthOffset(Number(e.target.value))}
+                className="h-7 rounded-md border border-input bg-secondary/60 px-2 text-[11px]"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <option key={opt.offset} value={opt.offset}>
+                    {opt.label}
+                  </option>
+                ))}
+              </DropdownSelect>
+            }
+          >
+            <RevenueOverviewPanel overview={summary.revenueOverview} />
+          </DashCard>
+        </PageGate>
         <DashCard title="Recent Activity" delay={580}>
           <EmptyNote>Activity feed isn&apos;t tracked yet.</EmptyNote>
         </DashCard>
-        <DashCard title="Upcoming" delay={620}>
-          <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <CalendarCheck2 className="h-5 w-5 text-muted-foreground" aria-hidden />
-            <p className="text-xs text-muted-foreground">No upcoming events yet.</p>
-            <CardLink href="/coaching/schedule">Coaching schedule</CardLink>
-          </div>
-        </DashCard>
+        <PageGate pages={["COACHING_SCHEDULE", "COACHING_SESSIONS"]}>
+          <DashCard title="Upcoming" delay={620}>
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <CalendarCheck2 className="h-5 w-5 text-muted-foreground" aria-hidden />
+              <p className="text-xs text-muted-foreground">No upcoming events yet.</p>
+              <CardLink href="/coaching/schedule">Coaching schedule</CardLink>
+            </div>
+          </DashCard>
+        </PageGate>
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ import { getFacilityService } from "@/services/facility";
 import { getFinanceService } from "@/services/finance";
 import { ServiceError } from "@/services/shared/service-error";
 import type { DailyClosingRow, DailyClosingSummary } from "@/features/finance/types";
+import { EditOnly } from "@/features/access/edit-only";
 
 function todayISO(): string {
   const d = new Date();
@@ -285,9 +286,11 @@ export function DailyClosingPage() {
                       <p className="text-xs text-muted-foreground">Reason: {s.varianceReason}</p>
                     )}
                     <p className="text-xs text-muted-foreground">Closed {s.closedAt ? fmtDate(s.closedAt) : ""}.</p>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setReopen(true)}>
-                      Reopen Day
-                    </Button>
+                    <EditOnly>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setReopen(true)}>
+                        Reopen Day
+                      </Button>
+                    </EditOnly>
                   </div>
                 ) : (
                   <Button

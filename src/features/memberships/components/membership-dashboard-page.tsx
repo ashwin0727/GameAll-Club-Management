@@ -26,6 +26,7 @@ import { QuickActionsPanel } from "@/features/memberships/components/quick-actio
 import { MembershipPlansDialog } from "@/features/memberships/components/membership-plans-dialog";
 import { todayIso } from "@/features/memberships/revenue-window";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 const inrFmt = (v: number) => `₹${Math.round(v).toLocaleString("en-IN")}`;
 
@@ -38,6 +39,7 @@ const EMPTY_BATCHES: MembershipBatch[] = [];
  * /memberships, one click away via "View All".
  */
 export function MembershipDashboardPage() {
+  const canEdit = useCanEditHere();
   const router = useRouter();
   const { data: facility, isLoading: facilityLoading } = useFacility();
   const facilityId = facility?.id ?? null;
@@ -100,7 +102,7 @@ export function MembershipDashboardPage() {
         subtitle="Manage your members, plans, schedules and grow your community."
         tagline="More Members. More Play. A Stronger Community."
         taglineSub="Keep your members active and engaged."
-        onAddMember={() => router.push("/memberships/v1/new")}
+        onAddMember={canEdit ? () => router.push("/memberships/v1/new") : undefined}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

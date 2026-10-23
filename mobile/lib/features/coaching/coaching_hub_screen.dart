@@ -21,6 +21,7 @@ import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'coaching_hub.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 /// The Coaching hub — laid out like Memberships: a pill tab strip (Coaching · Programs · Students),
 /// the shared summary card with the page's headline figures, the list
@@ -34,11 +35,19 @@ class CoachingHubScreen extends ConsumerStatefulWidget {
 }
 
 class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with SingleTickerProviderStateMixin {
-  static const _labels = ['Coaching', 'Programs', 'Students'];
   // Each page's list is capped at this many rows; the hero numbers use the real totals.
   static const _pageSize = 100;
 
-  late final TabController _tabs = TabController(length: 3, vsync: this);
+  // Programs and Students only appear for a role that can open those pages; the Coaching tab is always there.
+  late final List<_HubKind> _kinds = () {
+    final session = ref.read(sessionControllerProvider);
+    return [
+      _HubKind.coaching,
+      if (session.canViewPage(accessPageCoachingPrograms)) _HubKind.programs,
+      if (session.canViewPage(accessPageCoachingStudents)) _HubKind.students,
+    ];
+  }();
+  late final TabController _tabs = TabController(length: _kinds.length, vsync: this);
   int _tabIndex = 0;
 
   bool _loading = true;
@@ -77,30 +86,36 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
       return;
     }
     setState(() {
-      _loading = _overview == null;
+      _loading = _coaches.isEmpty && _overview == null && _programs.programs.isEmpty;
       _error = null;
     });
     try {
       final repo = ref.read(coachingRepositoryProvider);
+      final session = ref.read(sessionControllerProvider);
+      // A coach-style role sees only their own profile / sessions / programs / students: no facility-wide figures.
+      final scoped = session.limitCoachingToOwn;
+      final canPrograms = session.canViewPage(accessPageCoachingPrograms);
+      final canStudents = session.canViewPage(accessPageCoachingStudents);
+      final canSessions = session.canViewPage(accessPageCoachingSessions) || session.canViewPage(accessPageCoachingSchedule);
       final now = DateTime.now();
       final week = weekRange(now);
-      final results = await Future.wait<Object>([
-        repo.getOverview(fid),
-        repo.listPrograms(facilityId: fid, limit: _pageSize),
-        repo.listEnrollments(facilityId: fid, limit: _pageSize),
+      final results = await Future.wait<Object?>([
+        scoped ? Future<Object?>.value(null) : repo.getOverview(fid),
+        canPrograms ? repo.listPrograms(facilityId: fid, limit: _pageSize) : Future<Object?>.value(null),
+        canStudents ? repo.listEnrollments(facilityId: fid, limit: _pageSize) : Future<Object?>.value(null),
         repo.listCoaches(facilityId: fid, limit: _pageSize),
-        repo.listSessions(facilityId: fid, from: week.start, to: week.end, limit: 500),
+        canSessions ? repo.listSessions(facilityId: fid, from: week.start, to: week.end, limit: 500) : Future<Object?>.value(null),
       ]);
-      final cardStats = await repo.getProgramCardStats(fid);
-      final studentStats = await repo.getStudentCardStats(fid);
+      final cardStats = canPrograms && !scoped ? await repo.getProgramCardStats(fid) : null;
+      final studentStats = canStudents && !scoped ? await repo.getStudentCardStats(fid) : null;
       if (!mounted) return;
       setState(() {
-        _overview = results[0] as CoachingOverview;
-        _programs = results[1] as ProgramPage;
-        _students = results[2] as EnrollmentPage;
+        _overview = results[0] as CoachingOverview?;
+        _programs = (results[1] as ProgramPage?) ?? const ProgramPage(programs: [], totalCount: 0);
+        _students = (results[2] as EnrollmentPage?) ?? const EnrollmentPage(enrollments: [], totalCount: 0);
         _coaches = (results[3] as CoachPage).coaches;
         _coachTotal = (results[3] as CoachPage).totalCount;
-        _perWeek = sessionsPerWeek((results[4] as SessionPage).sessions, now);
+        _perWeek = results[4] == null ? const {} : sessionsPerWeek((results[4] as SessionPage).sessions, now);
         _programStats = cardStats;
         _studentStats = studentStats;
         _loading = false;
@@ -149,7 +164,7 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
             ),
             const SizedBox(width: AppSpacing.lg),
           ],
-          bottom: HubTabBar(controller: _tabs, labels: _labels),
+          bottom: _kinds.length < 2 ? null : HubTabBar(controller: _tabs, labels: [for (final k in _kinds) k.label]),
         ),
         body: SafeArea(
           child: SmoothSwitcher(child: _loading
@@ -161,9 +176,12 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
                       child: TabBarView(
                         controller: _tabs,
                         children: [
-                          _CoachingTab(overview: _overview!, coaches: _coaches, coachTotal: _coachTotal, programTotal: _programs.totalCount, perWeek: _perWeek, onTab: _tabs.animateTo, onOpen: _go),
-                          _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go, onChanged: _load),
-                          _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go, onChanged: _load),
+                          for (final k in _kinds)
+                            switch (k) {
+                              _HubKind.coaching => _CoachingTab(overview: _overview, session: session, coaches: _coaches, coachTotal: _coachTotal, programTotal: _programs.totalCount, perWeek: _perWeek, onTab: _tabs.animateTo, onOpen: _go),
+                              _HubKind.programs => _ProgramsTab(page: _programs, cardStats: _programStats, onOpen: _go, onChanged: _load),
+                              _HubKind.students => _StudentsTab(page: _students, cardStats: _studentStats, onOpen: _go, onChanged: _load),
+                            },
                         ],
                       ),
                     )),
@@ -177,10 +195,10 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
   /// new student — each only for people allowed to do it.
   Widget? _fab(SessionState session) {
     if (_loading || _error != null) return null;
-    final (label, icon, route, allowed) = switch (_tabIndex) {
-      0 => ('New coach', Icons.person_add_alt_1, AppRoutes.coachingCoachAdd, session.can('COACHING_MANAGE_COACHES')),
-      1 => ('New program', Icons.add_task_outlined, AppRoutes.coachingProgramNew, session.can('COACHING_MANAGE_PROGRAMS')),
-      _ => ('New student', Icons.person_add_alt_1, AppRoutes.coachingStudentNew, session.can('COACHING_MANAGE_ENROLLMENTS')),
+    final (label, icon, route, allowed) = switch (_kinds[_tabIndex.clamp(0, _kinds.length - 1)]) {
+      _HubKind.coaching => ('New coach', Icons.person_add_alt_1, AppRoutes.coachingCoachAdd, session.can('COACHING_MANAGE_COACHES')),
+      _HubKind.programs => ('New program', Icons.add_task_outlined, AppRoutes.coachingProgramNew, session.can('COACHING_MANAGE_PROGRAMS')),
+      _HubKind.students => ('New student', Icons.person_add_alt_1, AppRoutes.coachingStudentNew, session.can('COACHING_MANAGE_ENROLLMENTS')),
     };
     if (!allowed) return null;
     return HubCreateAction(key: ValueKey(label), label: label, icon: icon, onTap: () => _go(route));
@@ -279,9 +297,11 @@ Widget _empty(BuildContext context, IconData icon, String text) {
 /// "Upcoming Coaching Sessions", then the coaches themselves — searchable and filterable. It only
 /// shows values; nothing here edits anything.
 class _CoachingTab extends StatefulWidget {
-  const _CoachingTab({required this.overview, required this.coaches, required this.coachTotal, required this.programTotal, required this.perWeek, required this.onTab, required this.onOpen});
+  const _CoachingTab({required this.overview, required this.session, required this.coaches, required this.coachTotal, required this.programTotal, required this.perWeek, required this.onTab, required this.onOpen});
 
-  final CoachingOverview overview;
+  /// Null for a coach-style role (they get no facility-wide figures).
+  final CoachingOverview? overview;
+  final SessionState session;
   final List<CoachRow> coaches;
 
   /// Every coach and every program at the facility (the lists may be capped pages of them).
@@ -315,10 +335,11 @@ class _CoachingTabState extends State<_CoachingTab> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final o = widget.overview;
-    final sessions = nextSessions(o.upcomingSessions);
+    final sessions = o == null ? const [] : nextSessions(o.upcomingSessions);
     final coaches = filterCoaches(widget.coaches, query: _query, filters: _filters, perWeek: widget.perWeek);
 
     final header = <Widget>[
+      if (o != null) ...[
       HubSummaryCard(
         icon: Icons.person_pin_outlined,
         title: 'Total coaches',
@@ -362,16 +383,18 @@ class _CoachingTabState extends State<_CoachingTab> {
               ),
       ),
       const SizedBox(height: AppSpacing.md),
+      ],
       Wrap(
         spacing: AppSpacing.sm,
         runSpacing: AppSpacing.sm,
         children: [
-          for (final (label, icon, route) in [
-            ('Sessions', Icons.event_note_outlined, AppRoutes.coachingSessions),
-            ('Schedule', Icons.calendar_view_week_outlined, AppRoutes.coachingSchedule),
-            ('Reports', Icons.bar_chart_rounded, AppRoutes.coachingReports),
+          for (final (label, icon, route, page) in [
+            ('Sessions', Icons.event_note_outlined, AppRoutes.coachingSessions, accessPageCoachingSessions),
+            ('Schedule', Icons.calendar_view_week_outlined, AppRoutes.coachingSchedule, accessPageCoachingSchedule),
+            ('Reports', Icons.bar_chart_rounded, AppRoutes.coachingReports, accessPageCoachingReports),
           ])
-            ActionChip(avatar: Icon(icon, size: 16), label: Text(label), onPressed: () => widget.onOpen(route)),
+            if (widget.session.canViewPage(page))
+              ActionChip(avatar: Icon(icon, size: 16), label: Text(label), onPressed: () => widget.onOpen(route)),
         ],
       ),
       const SizedBox(height: AppSpacing.lg),
@@ -841,4 +864,14 @@ class _StudentsTabState extends State<_StudentsTab> {
       },
     );
   }
+}
+
+/// The hub's tabs: Coaching always, Programs / Students only for a role that can open those pages.
+enum _HubKind {
+  coaching('Coaching'),
+  programs('Programs'),
+  students('Students');
+
+  const _HubKind(this.label);
+  final String label;
 }

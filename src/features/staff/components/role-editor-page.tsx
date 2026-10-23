@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ChevronRight } from "lucide-react";
@@ -16,6 +16,8 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
+import { PageAccessMatrix } from "@/features/staff/components/page-access-matrix";
+import { ACCESS_PAGES, COACHING_OWN_ONLY, editorLevelFor } from "@/features/access/access";
 import type { Permission, RoleDetail } from "@/features/staff/types";
 
 const STEPS = ["Role Details", "Permissions", "Review"] as const;
@@ -30,7 +32,6 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
   const [step, setStep] = useState(0);
   const [catalog, setCatalog] = useState<Permission[]>([]);
   const [existing, setExisting] = useState<RoleDetail | null>(null);
-  const [activeModule, setActiveModule] = useState<string>("Dashboard");
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +46,6 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
     try {
       const c = await getStaffService().listPermissions();
       setCatalog(c);
-      setActiveModule(c[0]?.module ?? "Dashboard");
       if (mode === "edit" && roleId) {
         const r = await getStaffService().getRole(roleId);
         setExisting(r);
@@ -72,14 +72,9 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
     void load();
   }, [load]);
 
-  const byModule = useMemo(() => {
-    const m = new Map<string, Permission[]>();
-    for (const p of catalog) m.set(p.module, [...(m.get(p.module) ?? []), p]);
-    return m;
-  }, [catalog]);
-  const modules = [...byModule.keys()];
   const heldByCaller = perms?.permissions ?? new Set<string>();
 
+  const canGrant = (key: string) => perms?.baseRole === "owner" || heldByCaller.has(key);
   const canManage = perms?.can("USERS_MANAGE_ROLES") ?? false;
   const dangerousSelected = catalog.filter((p) => p.isDangerous && selected.has(p.key));
 
@@ -94,25 +89,6 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
         </Button>
       </div>
     );
-
-  function toggle(key: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(key)) n.delete(key);
-      else n.add(key);
-      return n;
-    });
-  }
-  function setModule(mod: string, on: boolean) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      for (const p of byModule.get(mod) ?? []) {
-        if (on) n.add(p.key);
-        else n.delete(p.key);
-      }
-      return n;
-    });
-  }
 
   async function save() {
     if (!facilityId || busy) return;
@@ -158,10 +134,8 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
     }
   }
 
-  const modulePerms = byModule.get(activeModule) ?? [];
-
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="space-y-4">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted-foreground">
         <Link href="/users-roles/staff" className="hover:text-foreground">
           Users &amp; Roles
@@ -225,74 +199,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
           </div>
         )}
 
-        {step === 1 && (
-          <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-            <ul className="space-y-0.5 text-sm">
-              {modules.map((m) => {
-                const list = byModule.get(m) ?? [];
-                const on = list.filter((p) => selected.has(p.key)).length;
-                return (
-                  <li key={m}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveModule(m)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left transition-colors",
-                        activeModule === m ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent",
-                      )}
-                    >
-                      <span>{m}</span>
-                      {on > 0 && <span className="text-[11px]">{on}</span>}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">{activeModule} permissions</h3>
-                <div className="flex gap-1.5">
-                  <Button type="button" size="sm" variant="outline" onClick={() => setModule(activeModule, true)}>
-                    Select All
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setModule(activeModule, false)}>
-                    Clear
-                  </Button>
-                </div>
-              </div>
-              <ul className="space-y-1.5">
-                {modulePerms.map((p) => {
-                  const cannotGrant = perms?.baseRole !== "owner" && !heldByCaller.has(p.key);
-                  return (
-                    <li key={p.key}>
-                      <label className={cn("flex items-start gap-2 rounded-md border border-border p-2.5 text-sm", cannotGrant && "opacity-50")}>
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4"
-                          checked={selected.has(p.key)}
-                          disabled={cannotGrant}
-                          onChange={() => toggle(p.key)}
-                        />
-                        <span>
-                          <span className="flex items-center gap-1.5 font-medium">
-                            {p.label}
-                            {p.isDangerous && <Badge variant="warning">Sensitive</Badge>}
-                          </span>
-                          {p.description && <span className="block text-xs text-muted-foreground">{p.description}</span>}
-                          {cannotGrant && (
-                            <span className="block text-xs text-muted-foreground">
-                              You don&apos;t hold this permission yourself.
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        )}
+        {step === 1 && <PageAccessMatrix selected={selected} onChange={setSelected} canGrant={canGrant} />}
 
         {step === 2 && (
           <div className="space-y-3 text-sm">
@@ -301,15 +208,25 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
               <p className="font-medium">{name || "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Permissions ({selected.size})</p>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {catalog.filter((p) => selected.has(p.key)).map((p) => (
-                  <Badge key={p.key} variant={p.isDangerous ? "warning" : "secondary"}>
-                    {p.label}
-                  </Badge>
-                ))}
-                {selected.size === 0 && <span className="text-xs text-muted-foreground">No permissions selected.</span>}
-              </div>
+              <p className="text-xs text-muted-foreground">Page access</p>
+              <ul className="mt-1 divide-y divide-border rounded-lg border border-border">
+                {ACCESS_PAGES.map((p) => ({ p, level: editorLevelFor(p, selected) }))
+                  .filter((r) => r.level !== "none")
+                  .map(({ p, level }) => (
+                    <li key={p.key} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                      <span>{p.label}</span>
+                      <Badge variant={level === "edit" ? "success" : "secondary"}>
+                        {level === "edit" ? (p.editLabel ?? "Edit") : level === "custom" ? "Custom" : "View"}
+                      </Badge>
+                    </li>
+                  ))}
+                {ACCESS_PAGES.every((p) => editorLevelFor(p, selected) === "none") && (
+                  <li className="px-3 py-2 text-xs text-muted-foreground">No pages selected — this role can&apos;t open anything.</li>
+                )}
+              </ul>
+              {selected.has(COACHING_OWN_ONLY) && (
+                <p className="mt-2 text-xs text-muted-foreground">Coaching is limited to the person&apos;s own coach profile.</p>
+              )}
             </div>
             {dangerousSelected.length > 0 && (
               <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs">

@@ -46,6 +46,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { autoPayNextCharge, autoPayStatusLabel, autoPayCadence, effectiveAutoPayStatus } from "@/features/memberships/autopay";
 import { CopyLinkButton } from "@/features/bulk-upload/components/bulk-success-view";
 import type { MembershipAutoPay, MembershipDetail, MembershipListStatus } from "@/features/memberships/types";
+import { EditOnly } from "@/features/access/edit-only";
 
 function inr(v: number): string {
   return `₹${v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -198,38 +199,46 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
         {detail && (
           <div className="flex flex-wrap items-center gap-2">
             {detail.displayStatus === "payment_incomplete" && detail.membership.rawStatus !== "cancelled" && (
-              <Button type="button" size="sm" onClick={() => { setActionError(null); setConfirm("record"); }}>
-                <IndianRupee className="mr-1.5 h-4 w-4" />
-                Record Payment
-              </Button>
-            )}
-            <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/memberships/v1/${membershipId}/edit`)}>
-              <Pencil className="mr-1.5 h-4 w-4" />
-              Edit
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => router.push("/memberships/new")}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Create Membership
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
-                  <MoreVertical className="h-4 w-4" />
+              <EditOnly>
+                <Button type="button" size="sm" onClick={() => { setActionError(null); setConfirm("record"); }}>
+                  <IndianRupee className="mr-1.5 h-4 w-4" />
+                  Record Payment
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {detail.displayStatus === "active" && detail.membership.rawStatus !== "cancelled" && (
-                  <DropdownMenuItem onClick={() => { setActionError(null); setConfirm("cancel"); }}>
-                    <Ban className="mr-2 h-4 w-4" />
-                    Cancel membership
+              </EditOnly>
+            )}
+            <EditOnly>
+              <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/memberships/v1/${membershipId}/edit`)}>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                Edit
+              </Button>
+            </EditOnly>
+            <EditOnly>
+              <Button type="button" variant="outline" size="sm" onClick={() => router.push("/memberships/new")}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Create Membership
+              </Button>
+            </EditOnly>
+            <EditOnly>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" aria-label="More Actions">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {detail.displayStatus === "active" && detail.membership.rawStatus !== "cancelled" && (
+                    <DropdownMenuItem onClick={() => { setActionError(null); setConfirm("cancel"); }}>
+                      <Ban className="mr-2 h-4 w-4" />
+                      Cancel membership
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFlow.start({ memberId: detail.member.id, name: detail.member.fullName, membershipId: detail.membershipId })}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete member
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteFlow.start({ memberId: detail.member.id, name: detail.member.fullName, membershipId: detail.membershipId })}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete member
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </EditOnly>
           </div>
         )}
       </div>

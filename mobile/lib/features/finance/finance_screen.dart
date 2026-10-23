@@ -25,6 +25,7 @@ import 'finance_date_range_picker.dart';
 import 'finance_period.dart';
 import 'finance_presentation.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 /// The Finance Dashboard — mirrors
 /// src/features/finance/components/finance-dashboard.tsx.
@@ -229,7 +230,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                           FinanceDateRangePicker(
                             value: _range,
                             onChanged: _onRangeChanged,
-                            trailing: OutlinedButton.icon(
+                            trailing: !ref.watch(sessionControllerProvider).canEditPage(accessPageFinanceOverview) ? null : OutlinedButton.icon(
                               onPressed: _summary == null || _exporting ? null : _export,
                               icon: _exporting
                                   ? const SizedBox(

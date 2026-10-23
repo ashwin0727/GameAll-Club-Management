@@ -46,6 +46,7 @@ import {
 import type { Booking } from "@/features/bookings/types";
 import { formatCurrency } from "@/features/pricing/money";
 import { cn } from "@/lib/utils";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
@@ -93,6 +94,8 @@ export function BookingListTab({
   /** Where the filter row is drawn — a full-width strip above the table and side panels, like the calendar's. */
   toolbarSlot: HTMLElement | null;
 }) {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   const [range, setRange] = useState(() => {
     const monday = startOfWeek(new Date());
     return { from: iso(monday), to: iso(addDays(monday, 6)) };
@@ -345,18 +348,20 @@ export function BookingListTab({
           </button>
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => exportRows(filtered, "")}
-        disabled={filtered.length === 0}
-        className={cn(
-          SELECT,
-          "flex items-center gap-2 px-4 font-medium hover:bg-accent disabled:opacity-50",
-        )}
-      >
-        <Download className="h-4 w-4" aria-hidden />
-        Export
-      </button>
+      {canExport && (
+        <button
+          type="button"
+          onClick={() => exportRows(filtered, "")}
+          disabled={filtered.length === 0}
+          className={cn(
+            SELECT,
+            "flex items-center gap-2 px-4 font-medium hover:bg-accent disabled:opacity-50",
+          )}
+        >
+          <Download className="h-4 w-4" aria-hidden />
+          Export
+        </button>
+      )}
     </div>
   );
 
@@ -368,13 +373,15 @@ export function BookingListTab({
         {selectedRows.length > 0 && (
           <div className="mx-4 mb-3 flex flex-wrap items-center gap-3 rounded-[8px] bg-primary/10 px-3 py-2 text-sm">
             <span className="font-medium">{selectedRows.length} selected</span>
-            <button
-              type="button"
-              onClick={() => exportRows(selectedRows, "-selected")}
-              className="font-medium text-primary hover:underline"
-            >
-              Export Selected
-            </button>
+            {canExport && (
+              <button
+                type="button"
+                onClick={() => exportRows(selectedRows, "-selected")}
+                className="font-medium text-primary hover:underline"
+              >
+                Export Selected
+              </button>
+            )}
             <button
               type="button"
               onClick={copyReferences}

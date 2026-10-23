@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/access/access.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
@@ -15,55 +16,50 @@ import '../../features/authentication/session_controller.dart';
 /// Finance screens still say they are the current tab, so nothing on the bar is highlighted there.
 enum AppTab { today, courts, money, members, coaching, more }
 
-const _tabs = <({
-  AppTab tab,
-  IconData icon,
-  IconData activeIcon,
-  String label,
-  String? route,
-})>[
-  (
-    tab: AppTab.today,
-    icon: Icons.today_outlined,
-    activeIcon: Icons.today_rounded,
-    label: 'Today',
-    route: AppRoutes.dashboard,
-  ),
-  (
-    tab: AppTab.courts,
-    icon: Icons.calendar_month_outlined,
-    activeIcon: Icons.calendar_month_rounded,
-    label: 'Calendar',
-    route: AppRoutes.bookings,
-  ),
-  (
-    tab: AppTab.coaching,
-    icon: Icons.school_outlined,
-    activeIcon: Icons.school_rounded,
-    label: 'Coaching',
-    route: AppRoutes.coaching,
-  ),
-  (
-    tab: AppTab.members,
-    icon: Icons.groups_outlined,
-    activeIcon: Icons.groups_rounded,
-    label: 'Memberships',
-    route: AppRoutes.memberships,
-  ),
+/// A place the bottom bar / "+" menu can open. [pages] = the person needs View on at least one of them to see it.
+typedef _Dest = ({AppTab? tab, IconData icon, IconData activeIcon, String label, String route, List<String> pages});
+
+const _reportPages = [
+  accessPageReportOverview,
+  accessPageReportCourtUtilization,
+  accessPageReportRevenue,
+  accessPageReportMemberships,
+  accessPageReportGuestBookings,
 ];
 
-/// Everything that doesn't fit the bar, reached through the "+" button.
-///
-/// Deliberately short — a "things I reach for often" menu, not a site map. Finance has its own shortcut on Today;
-/// the occasional/admin screens (Inventory, Users & Roles…) live one tap away in Profile → Manage. Each entry resolves to
-/// the ONE screen for that job, never a second copy of it.
-const _moreDestinations = <({IconData icon, String label, String route, String? permission})>[
-  (icon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, permission: null),
-  (icon: Icons.account_balance_outlined, label: 'Payment Methods', route: AppRoutes.profilePayouts, permission: null),
-  (icon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, permission: null),
-  (icon: Icons.groups_2_outlined, label: 'Guest Players', route: AppRoutes.guests, permission: null),
-  (icon: Icons.person_outline_rounded, label: 'Profile', route: AppRoutes.profile, permission: null),
+/// Every destination in priority order. The first four the person can open fill the bar; whatever else they can open
+/// goes behind the "+" button (then Profile, which is always there). The usual four — Today, Calendar, Coaching,
+/// Memberships — come first, so someone with all of them sees exactly the bar they always did; a role missing one of
+/// them gets the next destination in its place instead of an empty slot.
+const _destinations = <_Dest>[
+  (tab: AppTab.today, icon: Icons.today_outlined, activeIcon: Icons.today_rounded, label: 'Today', route: AppRoutes.dashboard, pages: [accessPageHome]),
+  (tab: AppTab.courts, icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Calendar', route: AppRoutes.bookings, pages: [accessPageCalendar]),
+  (tab: AppTab.coaching, icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: 'Coaching', route: AppRoutes.coaching, pages: [accessPageCoachingOverview]),
+  (tab: AppTab.members, icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Memberships', route: AppRoutes.memberships, pages: [accessPageMembershipDashboard]),
+  (tab: null, icon: Icons.confirmation_number_outlined, activeIcon: Icons.confirmation_number_rounded, label: 'Guest Booking', route: AppRoutes.guestBookings, pages: [accessPageGuestBookings]),
+  (tab: null, icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet_rounded, label: 'Finance', route: AppRoutes.finance, pages: [accessPageFinanceOverview]),
+  (tab: null, icon: Icons.handyman_outlined, activeIcon: Icons.handyman_rounded, label: 'Maintenance', route: AppRoutes.maintenance, pages: [accessPageMaintenance]),
+  (tab: null, icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings_rounded, label: 'Staff', route: AppRoutes.usersRoles, pages: [accessPageStaff]),
+  (tab: null, icon: Icons.bar_chart_rounded, activeIcon: Icons.bar_chart_rounded, label: 'Reports & Analytics', route: AppRoutes.reports, pages: _reportPages),
+  (tab: null, icon: Icons.currency_rupee, activeIcon: Icons.currency_rupee, label: 'Refunds', route: AppRoutes.refunds, pages: [accessPageRefunds]),
+  (tab: null, icon: Icons.groups_2_outlined, activeIcon: Icons.groups_2_rounded, label: 'Guest Players', route: AppRoutes.guests, pages: [accessPageGuestPlayers]),
+  (tab: null, icon: Icons.account_balance_outlined, activeIcon: Icons.account_balance_rounded, label: 'Payment Methods', route: AppRoutes.profilePayouts, pages: [accessPageFacilitySettings]),
 ];
+
+const _profileDestination = (
+  tab: AppTab.more,
+  icon: Icons.person_outline_rounded,
+  activeIcon: Icons.person_rounded,
+  label: 'Profile',
+  route: AppRoutes.profile,
+  pages: <String>[],
+);
+
+/// What this person gets: up to four on the bar, the rest (plus Profile) behind "+".
+({List<_Dest> bar, List<_Dest> more}) _layoutFor(SessionState session) {
+  final accessible = _destinations.where((d) => d.pages.any(session.canViewPage)).toList();
+  return (bar: accessible.take(4).toList(), more: [...accessible.skip(4), _profileDestination]);
+}
 
 /// Floating bottom navigation — a rounded, shadowed bar that hovers above
 /// the content, with a sliding green highlight that animates between tabs
@@ -110,9 +106,9 @@ class _AppBottomNavState extends ConsumerState<AppBottomNav>
 
   void _openMenu() {
     final session = ref.read(sessionControllerProvider);
-    final destinations = _moreDestinations
-        .where((d) => d.permission == null || session.can(d.permission!))
-        .toList();
+    final destinations = [
+      for (final d in _layoutFor(session).more) (icon: d.icon, label: d.label, route: d.route, pages: d.pages),
+    ];
     _entry = OverlayEntry(
       builder: (_) => _SpeedDialOverlay(
         animation: _menu,
@@ -167,15 +163,21 @@ class _AppBottomNavState extends ConsumerState<AppBottomNav>
           ),
           child: Row(
             children: [
-              for (final t in _tabs)
+              // Up to four destinations the person's role can open; anything beyond that is behind "+".
+              for (final t in _layoutFor(session).bar)
                 Expanded(
                   child: _NavItem(
-                    icon: t.tab == widget.current ? t.activeIcon : t.icon,
+                    icon: t.tab != null && t.tab == widget.current ? t.activeIcon : t.icon,
                     label: t.label,
-                    selected: t.tab == widget.current,
+                    selected: t.tab != null && t.tab == widget.current,
                     onTap: () {
-                      if (t.tab == widget.current) return;
-                      context.go(t.route!);
+                      if (t.tab != null && t.tab == widget.current) return;
+                      // The usual four are tabs (replace); the others open on top, so Back returns to where you were.
+                      if (t.tab != null) {
+                        context.go(t.route);
+                      } else {
+                        context.push(t.route);
+                      }
                     },
                   ),
                 ),
@@ -366,7 +368,7 @@ class _SpeedDialOverlay extends StatelessWidget {
   });
 
   final Animation<double> animation;
-  final List<({IconData icon, String label, String route, String? permission})> destinations;
+  final List<({IconData icon, String label, String route, List<String> pages})> destinations;
   final VoidCallback onClose;
   final ValueChanged<String> onSelect;
 
@@ -403,13 +405,21 @@ class _SpeedDialOverlay extends StatelessWidget {
             Positioned(
               right: 20,
               bottom: buttonBottom + 48 + 14,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < count; i++)
-                    _dialItem(context, tokens, i, count, v),
-                ],
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height - (buttonBottom + 48 + 14) - MediaQuery.of(context).padding.top - 16,
+                ),
+                child: SingleChildScrollView(
+                  reverse: true,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (var i = 0; i < count; i++)
+                        _dialItem(context, tokens, i, count, v),
+                    ],
+                  ),
+                ),
               ),
             ),
 

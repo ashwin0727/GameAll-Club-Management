@@ -18,6 +18,7 @@ import { groupCustomized, PeriodList } from "@/features/pricing/components/prici
 import { rulesToPeriods } from "@/features/pricing/components/types";
 import type { PricingRule } from "@/features/pricing/types";
 import type { PricingSummaryEntry, SportSummaryEntry } from "@/features/onboarding-summary/types";
+import { EditOnly } from "@/features/access/edit-only";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -60,9 +61,11 @@ function CourtsAndSportsCard({
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold">Courts</h2>
         {onManage && (
-          <Button type="button" variant="outline" size="sm" onClick={onManage}>
-            <Pencil className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Manage
-          </Button>
+          <EditOnly>
+            <Button type="button" variant="outline" size="sm" onClick={onManage}>
+              <Pencil className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Manage
+            </Button>
+          </EditOnly>
         )}
       </div>
 
@@ -169,9 +172,11 @@ export function FacilityDetailsPage() {
   const [editing, setEditing] = useState<SetupSection | null>(null);
   const edit = (section: SetupSection, label: string) =>
     isOwner ? (
-      <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditing(section)}>
-        {label}
-      </Button>
+      <EditOnly>
+        <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditing(section)}>
+          {label}
+        </Button>
+      </EditOnly>
     ) : undefined;
 
   const header = (
@@ -293,9 +298,11 @@ export function FacilityDetailsPage() {
           </div>
         )}
         {isOwner && s.sports.length > 0 && (
-          <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditing("courts")}>
-            Edit courts
-          </Button>
+          <EditOnly>
+            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditing("courts")}>
+              Edit courts
+            </Button>
+          </EditOnly>
         )}
       </SectionCard>
 

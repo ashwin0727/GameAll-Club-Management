@@ -33,6 +33,7 @@ import 'membership_plan_wizard_screen.dart';
 import 'slot_format.dart';
 import '../authentication/session_controller.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 const _perPage = 10;
 
@@ -431,8 +432,8 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                               message: _search.isNotEmpty || _status != null
                                   ? 'No memberships match these filters.'
                                   : 'No memberships yet — create your first one.',
-                              actionLabel: _search.isEmpty && _status == null ? 'Create Membership' : null,
-                              onAction: _search.isEmpty && _status == null ? _openCreate : null,
+                              actionLabel: _search.isEmpty && _status == null && ref.read(sessionControllerProvider).canEditPage(accessPageMembershipDashboard) ? 'Create Membership' : null,
+                              onAction: _search.isEmpty && _status == null && ref.read(sessionControllerProvider).canEditPage(accessPageMembershipDashboard) ? _openCreate : null,
                             )
                           else ...[
                             ..._list.rows.map((row) => Padding(
@@ -460,7 +461,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                     ),
                   )),
       ),
-      floatingActionButton: _facilityId == null
+      floatingActionButton: _facilityId == null || !ref.watch(sessionControllerProvider).canEditPage(accessPageMembershipDashboard)
           ? null
           : FloatingActionButton.extended(
               onPressed: _openCreate,

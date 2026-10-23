@@ -41,6 +41,11 @@ export function SessionsPage() {
   const [programs, setPrograms] = useState<ProgramOption[]>([]);
 
   const canCreate = perms?.can("COACHING_CREATE_SESSION") ?? false;
+  // Coach-style role: the list is already limited to them by the database; the filter just shows (and locks) that.
+  const ownOnly = perms?.coachingOwnOnly ?? false;
+  useEffect(() => {
+    if (ownOnly && coaches[0]) setCoachId(coaches[0].id);
+  }, [ownOnly, coaches]);
 
   const { sportIds, ready: sportsReady, key: sportKey } = useSportIds(facilityId);
   useEffect(() => setPage(0), [status, coachId, programId, sportKey]);
@@ -101,7 +106,7 @@ export function SessionsPage() {
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <Filter label="Status" value={status} onChange={setStatus} options={[{ value: ALL, label: "All Status" }, ...(Object.keys(SESSION_STATUS_LABEL) as SessionStatus[]).map((s) => ({ value: s, label: SESSION_STATUS_LABEL[s] }))]} />
-          <Filter label="Coach" value={coachId} onChange={setCoachId} options={[{ value: ALL, label: "All Coaches" }, ...coaches.map((c) => ({ value: c.id, label: c.name }))]} />
+          <Filter label="Coach" value={coachId} onChange={setCoachId} disabled={ownOnly} options={[{ value: ALL, label: "All Coaches" }, ...coaches.map((c) => ({ value: c.id, label: c.name }))]} />
           <Filter label="Program" value={programId} onChange={setProgramId} options={[{ value: ALL, label: "All Programs" }, ...programs.map((p) => ({ value: p.id, label: p.name }))]} />
         </div>
       </Card>
@@ -158,16 +163,18 @@ function Filter({
   value,
   onChange,
   options,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <span className="block text-xs text-muted-foreground">{label}</span>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger className="w-[12rem]">
           <SelectValue />
         </SelectTrigger>

@@ -22,6 +22,7 @@ import type { MaintenanceOverview } from "@/features/maintenance/types";
 import { getFacilityService } from "@/services/facility";
 import { getMaintenanceService } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { EditOnly } from "@/features/access/edit-only";
 
 export function MaintenanceOverviewPage() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
@@ -72,11 +73,13 @@ export function MaintenanceOverviewPage() {
           <h1 className="text-xl font-semibold">Court Maintenance</h1>
           <p className="text-sm text-muted-foreground">Keep your courts in top condition. Track issues, schedule maintenance and manage court availability.</p>
         </div>
-        <Button asChild>
-          <Link href="/maintenance/tickets/new">
-            <Plus className="mr-1.5 h-4 w-4" /> New Maintenance Ticket
-          </Link>
-        </Button>
+<EditOnly>
+          <Button asChild>
+            <Link href="/maintenance/tickets/new">
+              <Plus className="mr-1.5 h-4 w-4" /> New Maintenance Ticket
+            </Link>
+          </Button>
+        </EditOnly>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -108,12 +111,14 @@ export function MaintenanceOverviewPage() {
         <Card className="space-y-1.5 p-4">
           <h2 className="text-sm font-semibold">Quick Actions</h2>
           <div className="grid gap-1.5">
-            <Button variant="outline" size="sm" className="justify-start" asChild>
-              <Link href="/maintenance/tickets/new">Report an Issue</Link>
-            </Button>
-            <Button variant="outline" size="sm" className="justify-start" asChild>
-              <Link href="/maintenance/tickets/new">Schedule Maintenance</Link>
-            </Button>
+<EditOnly>
+              <Button variant="outline" size="sm" className="justify-start" asChild>
+                <Link href="/maintenance/tickets/new">Report an Issue</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="justify-start" asChild>
+                <Link href="/maintenance/tickets/new">Schedule Maintenance</Link>
+              </Button>
+            </EditOnly>
             <Button variant="outline" size="sm" className="justify-start" asChild>
               <Link href="/maintenance/tickets">View All Tickets</Link>
             </Button>

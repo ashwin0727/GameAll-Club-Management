@@ -14,6 +14,7 @@ import { getFacilityService } from "@/services/facility";
 import { getMaintenanceService } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
+import { EditOnly } from "@/features/access/edit-only";
 
 const PAGE_SIZE = 20;
 const STATUSES: MaintenanceStatus[] = ["REPORTED", "ASSIGNED", "SCHEDULED", "IN_PROGRESS", "RESOLVED", "CLOSED"];
@@ -77,11 +78,13 @@ export function MaintenanceTicketsPage() {
           <h1 className="text-xl font-semibold">Maintenance Tickets</h1>
           <p className="text-sm text-muted-foreground">Track, assign and resolve court maintenance issues.</p>
         </div>
-        <Button asChild>
-          <Link href="/maintenance/tickets/new">
-            <Plus className="mr-1.5 h-4 w-4" /> New Ticket
-          </Link>
-        </Button>
+<EditOnly>
+          <Button asChild>
+            <Link href="/maintenance/tickets/new">
+              <Plus className="mr-1.5 h-4 w-4" /> New Ticket
+            </Link>
+          </Button>
+        </EditOnly>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -3,6 +3,8 @@ import '../../data/models/app_user.dart';
 import '../../data/models/facility.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../data/services/supabase_provider.dart';
+import '../../core/access/access.dart';
+import '../../core/routing/app_routes.dart';
 
 class SessionState {
   const SessionState({
@@ -30,6 +32,50 @@ class SessionState {
   /// A facility owner implicitly holds everything, mirroring has_permission.
   bool can(String key) => baseRole == 'owner' || permissions.contains(key);
   bool canAny(Iterable<String> keys) => keys.any(can);
+
+  // ── Page access matrix (None / View / Edit per page) ──
+
+  /// None / View / Edit on a page. Owners have Edit everywhere.
+  AccessLevel pageLevel(String pageKey) {
+    final page = accessPageFor(pageKey);
+    if (page == null) return AccessLevel.none;
+    return accessLevelFor(page, permissions, isOwner: baseRole == 'owner');
+  }
+
+  bool canViewPage(String pageKey) => pageLevel(pageKey) != AccessLevel.none;
+
+  /// Edit on the page: may create, change, cancel, record and export there.
+  bool canEditPage(String pageKey) => pageLevel(pageKey) == AccessLevel.edit;
+
+  /// Whether the person may open this screen (Edit for create / edit sub-screens). Unguarded screens are open.
+  bool canAccessPath(String path) {
+    final hit = accessPageForPath(path);
+    if (hit == null) return true;
+    final level = pageLevel(hit.page);
+    return hit.needsEdit ? level == AccessLevel.edit : level != AccessLevel.none;
+  }
+
+  /// Coach-style role: Coaching shows only their own coach profile, sessions, programs and students.
+  bool get limitCoachingToOwn => baseRole != 'owner' && permissions.contains(coachingOwnOnly);
+
+  /// Where to land when Today isn't available to this person: the first thing they can open.
+  String get landingRoute {
+    const order = <(String, String)>[
+      (accessPageHome, AppRoutes.dashboard),
+      (accessPageCalendar, AppRoutes.bookings),
+      (accessPageCoachingOverview, AppRoutes.coaching),
+      (accessPageMembershipDashboard, AppRoutes.memberships),
+      (accessPageGuestBookings, AppRoutes.guestBookings),
+      (accessPageFinanceOverview, AppRoutes.finance),
+      (accessPageReportOverview, AppRoutes.reports),
+      (accessPageMaintenance, AppRoutes.maintenance),
+      (accessPageStaff, AppRoutes.usersRoles),
+    ];
+    for (final (page, route) in order) {
+      if (canViewPage(page)) return route;
+    }
+    return AppRoutes.profile;
+  }
 
   SessionState copyWith({
     AppUser? user,

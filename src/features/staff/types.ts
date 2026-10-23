@@ -200,7 +200,7 @@ export interface CreateStaffInput {
 export interface CreateStaffResult {
   userId: string;
   linked: boolean;
-  /** The generated login (<first name><DDMMYYYY><HHMMSS>@gameall.co). */
+  /** The generated login (<first name><DDMM><MMSS>@gameall.co). */
   loginEmail: string;
   temporaryPassword: string | null;
 }

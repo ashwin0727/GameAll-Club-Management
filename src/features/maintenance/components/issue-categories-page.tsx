@@ -14,6 +14,7 @@ import { CategoryFormDialog } from "@/features/maintenance/components/category-f
 import { getFacilityService } from "@/services/facility";
 import { getMaintenanceService } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { EditOnly } from "@/features/access/edit-only";
 
 /**
  * Issue Categories — the taxonomy every Maintenance Ticket is classified
@@ -82,14 +83,16 @@ export function IssueCategoriesPage() {
           <h1 className="text-xl font-semibold">Issue Categories</h1>
           <p className="text-sm text-muted-foreground">Manage and organize maintenance issue categories for better tracking and reporting.</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="mr-1.5 h-4 w-4" /> Add Issue Category
-        </Button>
+        <EditOnly>
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Add Issue Category
+          </Button>
+        </EditOnly>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -163,18 +166,20 @@ export function IssueCategoriesPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-2.5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={c.isShared}
-                          title={c.isShared ? "Default categories cannot be edited" : "Edit"}
-                          onClick={() => {
-                            setEditing(c);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
+                        <EditOnly>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={c.isShared}
+                            title={c.isShared ? "Default categories cannot be edited" : "Edit"}
+                            onClick={() => {
+                              setEditing(c);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </EditOnly>
                       </td>
                     </tr>
                   );

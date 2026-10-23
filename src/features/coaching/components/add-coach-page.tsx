@@ -40,7 +40,7 @@ export function AddCoachPage() {
 
   if (created) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="space-y-4">
         <Card className="p-6">
           <CoachAddedContent coachId={created.id} name={created.name} credentials={created.credentials} onNavigate={(href) => router.push(href)} />
           <div className="mt-6 flex items-center justify-between border-t border-border pt-4">

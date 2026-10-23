@@ -149,6 +149,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return OnboardingRouteResolver.entryRouteFor(session.facility);
       }
 
+      // Page access matrix: a screen the person's role doesn't include isn't reachable (a missing Today sends them to
+      // the first thing they can open). Only once the facility is set up — onboarding screens are never gated.
+      if (session.facility?.onboardingStep == OnboardingStep.completed && !session.canAccessPath(path)) {
+        final landing = session.landingRoute;
+        return landing == path ? AppRoutes.profile : landing;
+      }
+
       // Reaching /dashboard with onboarding still incomplete resumes the
       // correct step instead of showing a dashboard for a facility that
       // isn't fully configured yet (item 28).

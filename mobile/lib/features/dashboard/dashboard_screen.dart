@@ -36,6 +36,7 @@ import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 const Map<DateRangePreset, String> _presetLabels = {
   DateRangePreset.today: 'Today',
@@ -246,14 +247,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () async {
-              await context.push(AppRoutes.refunds);
-              if (mounted) _load();
-            },
-            icon: Icon(Icons.notifications_none_rounded,
-                color: context.tokens.textSecondary),
-          ),
+          if (session.canViewPage(accessPageRefunds))
+            IconButton(
+              onPressed: () async {
+                await context.push(AppRoutes.refunds);
+                if (mounted) _load();
+              },
+              icon: Icon(Icons.notifications_none_rounded,
+                  color: context.tokens.textSecondary),
+            ),
           Padding(
             padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.lg),
             child: InkWell(
@@ -277,6 +279,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 onRefresh: _load,
                 child: ResponsivePage(
                   child: _DashboardBody(
+                    session: session,
                     summary: _summary!,
                     greeting: _greeting(),
                     firstName: user?.fullName.split(' ').first,
@@ -544,6 +547,7 @@ String revenueMonthLabel(int offset) {
 /// (dashboard summary, finance ledger, pending obligations, today's schedule).
 class _DashboardBody extends StatelessWidget {
   const _DashboardBody({
+    required this.session,
     required this.summary,
     required this.greeting,
     required this.firstName,
@@ -561,6 +565,8 @@ class _DashboardBody extends StatelessWidget {
     required this.onReturn,
   });
 
+  /// What the signed-in person's role may open — every card below shows only when its page is viewable.
+  final SessionState session;
   final DashboardSummary summary;
   final String greeting;
   final String? firstName;
@@ -620,6 +626,10 @@ class _DashboardBody extends StatelessWidget {
       }
     }
     final tokens = context.tokens;
+    bool can(String page) => session.canViewPage(page);
+    final canMoney = [accessPageFinanceOverview, accessPageFinancePayments, accessPageReportRevenue, accessPageReportOverview].any(can);
+    final canRevenueCharts = [accessPageFinanceOverview, accessPageReportRevenue, accessPageReportOverview].any(can);
+    final canNeeds = [accessPageFinancePayments, accessPageMembershipDashboard, accessPageCalendar].any(can);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -678,34 +688,38 @@ class _DashboardBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // ── LIVE NOW ──────────────────────────────────────────────
-        _LiveNowCard(
-          isToday: _isToday,
-          courts: orderedCourts,
-        ),
-        const SizedBox(height: AppSpacing.md),
+        if (can(accessPageCalendar)) ...[
+          _LiveNowCard(
+            isToday: _isToday,
+            courts: orderedCourts,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
 
         // ── quick top actions ─────────────────────────────────────
-        _TopActionsRow(onReturn: onReturn),
-        const SizedBox(height: AppSpacing.md),
+        _TopActionsRow(onReturn: onReturn, session: session),
 
         // ── money row ─────────────────────────────────────────────
-        _MoneyRow(
-          collectedInr: summary.kpis.revenueInr.value.round(),
-          collectedChange: summary.kpis.revenueInr.changePercent,
-          periodLabel: _presetLabels[preset]!,
-          toCollectInr: outstandingInr ?? summary.payments.pendingInr,
-          bookings: summary.kpis.totalBookings.value.round(),
-          weekPoints: summary.revenueOverview.points,
-          onReturn: onReturn,
-        ),
+        if (canMoney) ...[
+          const SizedBox(height: AppSpacing.md),
+          _MoneyRow(
+            collectedInr: summary.kpis.revenueInr.value.round(),
+            collectedChange: summary.kpis.revenueInr.changePercent,
+            periodLabel: _presetLabels[preset]!,
+            toCollectInr: outstandingInr ?? summary.payments.pendingInr,
+            bookings: summary.kpis.totalBookings.value.round(),
+            weekPoints: summary.revenueOverview.points,
+            onReturn: onReturn,
+          ),
+        ],
 
-        if (summary.memberships.expiringSoon > 0) ...[
+        if (summary.memberships.expiringSoon > 0 && can(accessPageMembershipDashboard)) ...[
           const SizedBox(height: AppSpacing.md),
           _ExpiringMembershipCard(count: summary.memberships.expiringSoon),
         ],
 
         // ── NEEDS YOU ─────────────────────────────────────────────
-        if (needs.isNotEmpty || _attention(summary).isNotEmpty) ...[
+        if (canNeeds && (needs.isNotEmpty || _attention(summary).isNotEmpty)) ...[
           const SizedBox(height: AppSpacing.xl),
           _NeedsYouSection(
               obligations: needs,
@@ -715,7 +729,7 @@ class _DashboardBody extends StatelessWidget {
         ],
 
         // ── ON COURT NOW ──────────────────────────────────────────
-        if (_isToday && liveBlocks.isNotEmpty) ...[
+        if (_isToday && liveBlocks.isNotEmpty && can(accessPageCalendar)) ...[
           const SizedBox(height: AppSpacing.xl),
           _OnCourtNowSection(liveBlocks: liveBlocks, nowMin: nowMin),
         ],
@@ -731,26 +745,30 @@ class _DashboardBody extends StatelessWidget {
         ],
 
         // ── THIS WEEK ─────────────────────────────────────────────
-        const SizedBox(height: AppSpacing.xl),
-        _DashSection(
-          title: 'This Week',
-          child: _WeekBarsCard(points: summary.revenueOverview.points),
-        ),
+        if (canRevenueCharts) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _DashSection(
+            title: 'This Week',
+            child: _WeekBarsCard(points: summary.revenueOverview.points),
+          ),
 
-        // ── REVENUE ───────────────────────────────────────────────
-        const SizedBox(height: AppSpacing.xl),
-        _DashSection(
-          title: 'Revenue Overview',
-          trailing: _SelectorChip(
-              label: revenueMonthLabel(revenueMonthOffset),
-              onSelect: onPickRevenueMonth,
-              dense: true),
-          child: _RevenueOverviewCard(overview: summary.revenueOverview),
-        ),
+          // ── REVENUE ───────────────────────────────────────────────
+          const SizedBox(height: AppSpacing.xl),
+          _DashSection(
+            title: 'Revenue Overview',
+            trailing: _SelectorChip(
+                label: revenueMonthLabel(revenueMonthOffset),
+                onSelect: onPickRevenueMonth,
+                dense: true),
+            child: _RevenueOverviewCard(overview: summary.revenueOverview),
+          ),
+        ],
 
         // ── SHARE LINK ────────────────────────────────────────────
-        const SizedBox(height: AppSpacing.xl),
-        _ShareLinkCard(facilityId: facilityId),
+        if (can(accessPageGuestBookings)) ...[
+          const SizedBox(height: AppSpacing.xl),
+          _ShareLinkCard(facilityId: facilityId),
+        ],
 
         // ── QUICK ACTIONS ──────────────────────────────────────────
         // Hidden for now per request — the widget is kept intact below so
@@ -1111,15 +1129,17 @@ class _LiveNowCardState extends State<_LiveNowCard> {
 // ─────────────────────────────────────────────── TOP ACTIONS ──
 
 class _TopActionsRow extends StatelessWidget {
-  const _TopActionsRow({required this.onReturn});
+  const _TopActionsRow({required this.onReturn, required this.session});
 
   final Future<void> Function() onReturn;
+  final SessionState session;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
     final actions = <(IconData, String, VoidCallback)>[
+      if (session.canEditPage(accessPageGuestBookings))
       (
         Icons.add_rounded,
         'Book',
@@ -1129,6 +1149,7 @@ class _TopActionsRow extends StatelessWidget {
           onReturn();
         }
       ),
+      if (session.canViewPage(accessPageFinancePayments))
       (
         Icons.account_balance_wallet_outlined,
         'Collect',
@@ -1137,6 +1158,7 @@ class _TopActionsRow extends StatelessWidget {
           onReturn();
         }
       ),
+      if (session.canEditPage(accessPageMaintenance))
       (
         Icons.build_outlined,
         'Maintenance',
@@ -1145,6 +1167,7 @@ class _TopActionsRow extends StatelessWidget {
           onReturn();
         }
       ),
+      if (session.canViewPage(accessPageFinanceOverview))
       (
         Icons.account_balance_outlined,
         'Finance',
@@ -1154,6 +1177,7 @@ class _TopActionsRow extends StatelessWidget {
         }
       ),
     ];
+    if (actions.isEmpty) return const SizedBox.shrink();
     return Row(
       children: [
         for (var i = 0; i < actions.length; i++) ...[

@@ -19,6 +19,7 @@ import { PageMessage, SubPageHeader } from "@/features/profile/components/profil
 import type { PayoutMethod, PayoutMethodType, PayoutVerification } from "@/features/profile/types";
 import { getProfileService } from "@/services/profile";
 import { cn } from "@/lib/utils";
+import { EditOnly } from "@/features/access/edit-only";
 
 const VERIFICATION: Record<PayoutVerification, { label: string; icon: React.ComponentType<{ className?: string }>; className: string }> = {
   VERIFIED: { label: "Verified", icon: BadgeCheck, className: "bg-success/15 text-success" },
@@ -91,24 +92,30 @@ export function MethodCard({
       </div>
       <div className="flex gap-2">
         {!method.isPrimary && (
-          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onMakePrimary}>
-            Make primary
-          </Button>
+          <EditOnly>
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onMakePrimary}>
+              Make primary
+            </Button>
+          </EditOnly>
         )}
-        <Button type="button" variant="ghost" size="icon" disabled={busy} onClick={onEdit} aria-label="Edit payment method">
-          <Pencil className="h-4 w-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive"
-          disabled={busy}
-          onClick={onDelete}
-          aria-label={`Remove ${method.type === "BANK" ? method.bankName : "UPI"} payment method`}
-        >
-          <Trash2 className="h-4 w-4" aria-hidden />
-        </Button>
+        <EditOnly>
+          <Button type="button" variant="ghost" size="icon" disabled={busy} onClick={onEdit} aria-label="Edit payment method">
+            <Pencil className="h-4 w-4" aria-hidden />
+          </Button>
+        </EditOnly>
+        <EditOnly>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-destructive"
+            disabled={busy}
+            onClick={onDelete}
+            aria-label={`Remove ${method.type === "BANK" ? method.bankName : "UPI"} payment method`}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </Button>
+        </EditOnly>
       </div>
     </Card>
   );
@@ -275,9 +282,11 @@ export function PaymentMethodsPage() {
       description="Where the money you collect for bookings and other payments is paid out to."
       action={
         isOwner && (
-          <Button type="button" onClick={() => setAdding(true)}>
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add method
-          </Button>
+          <EditOnly>
+            <Button type="button" onClick={() => setAdding(true)}>
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add method
+            </Button>
+          </EditOnly>
         )
       }
     />
@@ -337,9 +346,11 @@ export function PaymentMethodsPage() {
               Add a bank account or UPI ID so we know where to pay out what you collect.
             </p>
           </div>
-          <Button type="button" onClick={() => setAdding(true)}>
-            <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add payment method
-          </Button>
+          <EditOnly>
+            <Button type="button" onClick={() => setAdding(true)}>
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add payment method
+            </Button>
+          </EditOnly>
         </Card>
       ) : (
         <div className="space-y-3">

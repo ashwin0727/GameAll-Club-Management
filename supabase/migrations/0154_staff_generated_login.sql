@@ -1,6 +1,6 @@
 -- Staff accounts no longer log in with the person's own email.
 --
--- A new staff account is created with a generated login "<first name><DDMMYYYY of joining><HHMMSS of creation>@gameall.co"
+-- A new staff account is created with a generated login "<first name><DDMM of joining><MMSS of creation>@gameall.co"
 -- (see the create-staff edge function). The email the owner typed is kept as a contact email only. Existing staff keep
 -- logging in with their original email (staff_login stays null; the login shown falls back to profiles.email).
 --

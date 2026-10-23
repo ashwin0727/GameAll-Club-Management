@@ -23,6 +23,7 @@ import 'report_section_header.dart';
 import 'report_shell.dart';
 import 'sport_visuals.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 /// Reports → Revenue — mirrors src/features/reports/components/revenue-report.tsx.
 ///
@@ -196,7 +197,7 @@ class _RevenueReportScreenState extends ConsumerState<RevenueReportScreen> {
                       AnalyticsFilterControls(
                         filter: _filter,
                         onChanged: _onFilterChanged,
-                        trailing: OutlinedButton.icon(
+                        trailing: !ref.watch(sessionControllerProvider).canEditPage(accessPageReportRevenue) ? null : OutlinedButton.icon(
                           onPressed: _summary == null || _exporting ? null : _export,
                           icon: _exporting
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))

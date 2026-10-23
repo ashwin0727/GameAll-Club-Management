@@ -25,6 +25,8 @@ import 'edit_member_screen.dart';
 import 'membership_list_presentation.dart';
 import 'slot_format.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../authentication/session_controller.dart';
+import '../../core/access/access.dart';
 
 /// The Membership Details screen — mirrors
 /// src/features/memberships/components/membership-detail-page.tsx. Reached
@@ -386,6 +388,7 @@ class _MembershipDetailScreenState extends ConsumerState<MembershipDetailScreen>
                 .toList(),
       ),
       const SizedBox(height: AppSpacing.xl),
+      if (ref.read(sessionControllerProvider).canEditPage(accessPageMembershipDashboard))
       PrimaryButton(
         label: 'Create Membership',
         onPressed: () async {

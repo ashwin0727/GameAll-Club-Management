@@ -43,7 +43,6 @@ import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_GROUP_ORDER
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
-import type { PermissionKey } from "@/features/staff/types";
 import { activeHrefFor } from "@/lib/nav-active";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -94,12 +93,15 @@ export function Sidebar({ role }: { role: Role }) {
   const perms = usePermissionContext();
   const items = NAV_ITEMS.filter(
     (item) =>
-      item.roles.includes(role) &&
-      // A permission-gated section is hidden until the user holds the key for
-      // the active facility (or there is no permission context yet — e.g.
-      // mid-onboarding — in which case fall back to the role gate above).
-      (!item.permission || !perms || perms.can(item.permission as PermissionKey)),
-  );
+      // With a facility context the page-access matrix decides; the account-level role only gates the pre-onboarding shell.
+      (perms ? true : item.roles.includes(role)) &&
+      // Page access matrix: no View on the page, no menu entry.
+      (!perms || perms.canAccessPath(item.href)),
+  ).map((item) => ({
+    ...item,
+    // Sub-pages follow the same rule as their parent: only the ones the role can open.
+    children: item.children?.filter((child) => !perms || perms.canAccessPath(child.href)),
+  }));
 
   // One entry is "current": the most specific href matching this page, across flat items and
   // Finance's sub-pages alike.

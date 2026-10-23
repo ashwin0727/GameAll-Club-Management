@@ -1,6 +1,6 @@
 // Generated staff credentials. Pure functions so the formats are easy to test.
 //
-//   login    : <first name><DDMMYYYY of joining><HHMMSS of creation>@gameall.co   e.g. ravi23102026153045@gameall.co
+//   login    : <first name><DDMM of joining><MMSS of creation>@gameall.co        e.g. ravi23103045@gameall.co
 //   password : <Facility full name>@<HH:MM:SS>                                  e.g. Champz Turf@15:30:45
 //
 // Date and time are read in the facility's own timezone, so they match the clock the owner sees.
@@ -46,7 +46,7 @@ export function loginNamePart(firstName: string): string {
 export function buildStaffLogin(firstName: string, now: Date, timeZone?: string, attempt = 0): string {
   const c = clockParts(now, timeZone);
   const suffix = attempt > 0 ? String(attempt) : "";
-  return `${loginNamePart(firstName)}${c.dd}${c.mm}${c.yyyy}${c.hh}${c.mi}${c.ss}${suffix}@${STAFF_LOGIN_DOMAIN}`;
+  return `${loginNamePart(firstName)}${c.dd}${c.mm}${c.mi}${c.ss}${suffix}@${STAFF_LOGIN_DOMAIN}`;
 }
 
 export function buildDefaultPassword(facilityName: string, now: Date, timeZone?: string): string {

@@ -19,6 +19,7 @@ import { membershipRowsForSport, plansForSport } from "@/features/memberships/sp
 import { getMembershipService } from "@/services/memberships";
 import type { MembershipPlan } from "@/features/memberships/types";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
+import { EditOnly } from "@/features/access/edit-only";
 
 /** A stable empty array, so a `?? EMPTY_BATCHES` fallback doesn't create a new reference every render. */
 const EMPTY_BATCHES: MembershipBatch[] = [];
@@ -216,14 +217,16 @@ export function MembershipPlansPage() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push("/memberships/v1/plans/new")}
-            className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#0B7A55] text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Create New Plan
-          </button>
+          <EditOnly>
+            <button
+              type="button"
+              onClick={() => router.push("/memberships/v1/plans/new")}
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#0B7A55] text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Create New Plan
+            </button>
+          </EditOnly>
         </Card>
       </div>
 

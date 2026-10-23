@@ -34,6 +34,9 @@ export function CoachingOverviewPage() {
   const perms = usePermissionContext();
   const facilityId = perms?.facilityId ?? null;
 
+  // Coach-style role: no facility-wide figures, just their own coach profile and sessions.
+  const ownOnly = perms?.coachingOwnOnly ?? false;
+
   const [data, setData] = useState<CoachingOverview | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +54,7 @@ export function CoachingOverviewPage() {
   const { sportIds, ready: sportsReady } = useSportIds(facilityId);
 
   const load = useCallback(async () => {
-    if (!facilityId || !sportsReady) return;
+    if (!facilityId || !sportsReady || ownOnly) return;
     setState("loading");
     setError(null);
     try {
@@ -61,17 +64,17 @@ export function CoachingOverviewPage() {
       setError(e instanceof ServiceError ? e.message : "Unable to load the coaching overview.");
       setState("error");
     }
-  }, [facilityId, sportIds, sportsReady]);
+  }, [facilityId, sportIds, sportsReady, ownOnly]);
 
   const loadInsights = useCallback(async () => {
-    if (!facilityId || !sportsReady) return;
+    if (!facilityId || !sportsReady || ownOnly) return;
     setInsightsError(null);
     try {
       setInsights(await getCoachingService().getInsights(facilityId, insightsDays, sportIds));
     } catch (e) {
       setInsightsError(e instanceof ServiceError ? e.message : "Unable to load coaching insights.");
     }
-  }, [facilityId, insightsDays, sportIds, sportsReady]);
+  }, [facilityId, insightsDays, sportIds, sportsReady, ownOnly]);
 
   useEffect(() => {
     void load();
@@ -87,6 +90,26 @@ export function CoachingOverviewPage() {
   const canProgram = perms?.can("COACHING_MANAGE_PROGRAMS") ?? false;
 
   if (!facilityId) return null;
+
+  if (ownOnly) {
+    return (
+      <div className="space-y-4">
+        <MembershipDashboardHero
+          title="My Coaching"
+          subtitle="Your coach profile, sessions and students."
+          tagline="Better Coaching. Stronger Players."
+          taglineSub="Everything you coach, in one place."
+        />
+        <CoachesListPanel facilityId={facilityId} />
+        <Card className="flex items-center justify-between gap-3 p-4">
+          <p className="text-sm text-muted-foreground">See and manage the sessions assigned to you.</p>
+          <Link href="/coaching/sessions" className="text-sm font-medium text-primary hover:underline">
+            My sessions
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   if (state === "error") {
     return (

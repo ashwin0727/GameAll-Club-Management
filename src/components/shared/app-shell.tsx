@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/shared/sidebar";
 import { Topbar } from "@/components/shared/topbar";
+import { RouteGuard } from "@/features/access/route-guard";
 import { PermissionProvider } from "@/features/auth/context/permission-provider";
 import type { FacilityContext } from "@/features/auth/api/auth.api";
 import type { Profile } from "@/features/auth/types";
@@ -20,7 +21,7 @@ export function AppShell({
       <Sidebar role={profile.role} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar profile={profile} />
-        <main className="min-w-0 flex-1 overflow-x-hidden bg-[var(--light-page-bg)] p-3 dark:bg-muted/20 lg:p-4">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden bg-[var(--light-page-bg)] p-3 dark:bg-muted/20 lg:p-4"><RouteGuard>{children}</RouteGuard></main>
       </div>
     </div>
   );

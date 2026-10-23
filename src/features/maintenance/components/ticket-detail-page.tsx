@@ -23,6 +23,7 @@ import { AssignDialog } from "@/features/maintenance/components/assign-dialog";
 import { CostDialog } from "@/features/maintenance/components/cost-dialog";
 import { getMaintenanceService } from "@/services/maintenance";
 import { ServiceError } from "@/services/shared/service-error";
+import { EditOnly } from "@/features/access/edit-only";
 
 export function TicketDetailPage({ ticketId }: { ticketId: string }) {
   const [ticket, setTicket] = useState<MaintenanceTicketDetail | null>(null);
@@ -235,9 +236,11 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                 placeholder="Add a note…"
                 className="h-9 flex-1 rounded-md border border-input bg-background px-2.5 text-sm"
               />
-              <Button type="submit" size="sm" disabled={busy === "note"}>
-                Add
-              </Button>
+              <EditOnly>
+                <Button type="submit" size="sm" disabled={busy === "note"}>
+                  Add
+                </Button>
+              </EditOnly>
             </form>
             <ol className="space-y-2 border-l border-border pl-3">
               {ticket.activity.map((e) => (
@@ -268,27 +271,31 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
             </ol>
           </Card>
 
-          <Card className="space-y-2 p-4">
-            <h2 className="text-sm font-semibold">Quick Actions</h2>
-            <TicketActions
-              status={ticket.status}
-              busy={busy}
-              onAssign={() => setAssignOpen(true)}
-              onSchedule={() => setScheduleOpen(true)}
-              onStart={() => void run("start", () => getMaintenanceService().startMaintenance(ticket.id))}
-              onCost={() => setCostOpen(true)}
-              onResolve={() => void run("resolve", () => getMaintenanceService().resolveTicket(ticket.id))}
-              onReopen={() => void run("reopen", () => getMaintenanceService().reopenTicket(ticket.id))}
-              onClose={() => void run("close", () => getMaintenanceService().closeTicket(ticket.id))}
-            />
-          </Card>
+<EditOnly>
+            <Card className="space-y-2 p-4">
+              <h2 className="text-sm font-semibold">Quick Actions</h2>
+              <TicketActions
+                status={ticket.status}
+                busy={busy}
+                onAssign={() => setAssignOpen(true)}
+                onSchedule={() => setScheduleOpen(true)}
+                onStart={() => void run("start", () => getMaintenanceService().startMaintenance(ticket.id))}
+                onCost={() => setCostOpen(true)}
+                onResolve={() => void run("resolve", () => getMaintenanceService().resolveTicket(ticket.id))}
+                onReopen={() => void run("reopen", () => getMaintenanceService().reopenTicket(ticket.id))}
+                onClose={() => void run("close", () => getMaintenanceService().closeTicket(ticket.id))}
+              />
+            </Card>
+          </EditOnly>
 
           <Card className="space-y-2 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Cost</h2>
-              <Button variant="ghost" size="sm" onClick={() => setCostOpen(true)}>
-                Edit
-              </Button>
+<EditOnly>
+                <Button variant="ghost" size="sm" onClick={() => setCostOpen(true)}>
+                  Edit
+                </Button>
+              </EditOnly>
             </div>
             <InfoRow label="Estimated" value={formatMoney(ticket.estimatedCostMinor, ticket.currency)} />
             <InfoRow label="Actual" value={formatMoney(ticket.actualCostMinor, ticket.currency)} />

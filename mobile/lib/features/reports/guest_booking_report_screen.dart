@@ -16,6 +16,7 @@ import '../authentication/session_controller.dart';
 import 'analytics_filter.dart';
 import 'report_shell.dart';
 import 'report_widgets.dart';
+import '../../core/access/access.dart';
 
 /// Reports → Guest Bookings — mirrors
 /// src/features/reports/components/guest-booking-report.tsx.
@@ -118,7 +119,7 @@ class _GuestBookingReportScreenState extends ConsumerState<GuestBookingReportScr
       status: _status,
       filter: _filter,
       onFilterChanged: _onFilterChanged,
-      filterTrailing: OutlinedButton.icon(
+      filterTrailing: !ref.watch(sessionControllerProvider).canEditPage(accessPageReportGuestBookings) ? null : OutlinedButton.icon(
         onPressed: a == null ? null : _export,
         icon: const Icon(Icons.download_rounded, size: 18),
         label: const Text('Export'),

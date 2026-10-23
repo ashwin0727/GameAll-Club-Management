@@ -36,6 +36,7 @@ import { currentMonthRange, fillTrendBuckets, iso, toFinanceDateRange, type DayR
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { RevenueTrendChart } from "@/features/finance/components/revenue-trend-chart";
 import { ServiceError } from "@/services/shared/service-error";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 const INR = "INR";
 
@@ -69,6 +70,8 @@ function changePct(current: number, previous: number): number | null {
  * authoritative totals.
  */
 export function FinanceDashboard() {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "none" | "error">("loading");
   // The whole current month by default. Editing the dates changes only the draft; "Apply" loads them, and Export is
@@ -211,17 +214,19 @@ export function FinanceDashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <DayRangeFilter value={applied} onApply={setApplied} onDirtyChange={setDirty} />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-h-9"
-          disabled={exporting || dirty || !summary}
-          title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
-          onClick={() => void exportCsv()}
-        >
-          <Download className="h-4 w-4" aria-hidden /> {exporting ? "Exporting…" : "Export"}
-        </Button>
+        {canExport && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-9"
+            disabled={exporting || dirty || !summary}
+            title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
+            onClick={() => void exportCsv()}
+          >
+            <Download className="h-4 w-4" aria-hidden /> {exporting ? "Exporting…" : "Export"}
+          </Button>
+        )}
       </div>
 
       {rangeError && <p className="text-sm text-destructive">{rangeError}</p>}

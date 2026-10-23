@@ -20,6 +20,7 @@ import { currentMonthRange, isCurrentMonth, toFinanceDateRange, type DayRange } 
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import Link from "next/link";
 import { ServiceError } from "@/services/shared/service-error";
+import { RequirePermission } from "@/features/access/edit-only";
 
 const PAGE_SIZE = 10;
 const ALL = "ALL";
@@ -188,7 +189,9 @@ export function TransactionsList() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Transactions</h1>
-        <AddExpenseDialog onCreated={() => void load()} />
+        <RequirePermission permission="FINANCE_MANAGE_EXPENSES">
+              <AddExpenseDialog onCreated={() => void load()} />
+            </RequirePermission>
       </div>
 
       {sportIds && (

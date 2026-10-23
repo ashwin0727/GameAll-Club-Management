@@ -7,6 +7,7 @@ import { SelectField } from "@/components/shared/select-field";
 import { SELECT } from "@/features/bookings/components/booking-toolbar";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 export type GuestTab = "all" | "upcoming" | "completed" | "cancelled";
 
@@ -68,6 +69,8 @@ export function GuestBookingsFilterCard({
   onExport: () => void;
   exportDisabled: boolean;
 }) {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   return (
     <Card className="space-y-4 p-4">
       <div className="flex gap-6 border-b border-border/60" role="tablist" aria-label="Booking View">
@@ -141,15 +144,17 @@ export function GuestBookingsFilterCard({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={exportDisabled}
-          className={cn(CONTROL, "flex items-center gap-2 px-4 font-medium hover:bg-accent disabled:opacity-50")}
-        >
-          <Download className="h-4 w-4" aria-hidden />
-          Export
-        </button>
+        {canExport && (
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={exportDisabled}
+            className={cn(CONTROL, "flex items-center gap-2 px-4 font-medium hover:bg-accent disabled:opacity-50")}
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Export
+          </button>
+        )}
       </div>
     </Card>
   );

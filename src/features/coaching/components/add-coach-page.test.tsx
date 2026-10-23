@@ -101,7 +101,7 @@ describe("AddCoachPage", () => {
   });
 
   it("creates a new staff member first when '+ New person' is used, then adds the coach with that user's id", async () => {
-    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23102026153045@gameall.co" });
+    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23103045@gameall.co" });
     const user = userEvent.setup();
     renderWithProviders(<AddCoachPage />);
     await waitFor(() => expect(listCoachCandidates).toHaveBeenCalled());
@@ -157,7 +157,7 @@ describe("AddCoachPage", () => {
   });
 
   it("uploads the chosen photo for a new person and passes its URL to createStaff", async () => {
-    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23102026153045@gameall.co" });
+    createStaff.mockResolvedValue({ userId: "new-user-1", linked: true, temporaryPassword: "temp123", loginEmail: "arjun23103045@gameall.co" });
     uploadAvatar.mockResolvedValue("https://cdn.example/avatars/u1/photo.png");
     const user = userEvent.setup();
     renderWithProviders(<AddCoachPage />);

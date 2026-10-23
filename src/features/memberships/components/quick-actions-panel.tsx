@@ -2,6 +2,7 @@
 
 import { ChevronRight, ClipboardList, Plus, UserPlus } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { EditOnly } from "@/features/access/edit-only";
 
 function Action({
   icon: Icon,
@@ -49,7 +50,9 @@ export function QuickActionsPanel({
   return (
     <Card className="stat-enter space-y-1 p-4 sm:p-5" style={{ "--stat-delay": "260ms" } as React.CSSProperties}>
       <h3 className="mb-2 text-sm font-semibold">Quick Actions</h3>
-      <Action icon={UserPlus} tone="bg-success/15 text-success" title="Add New Member" sub="Register a new member" onClick={onAddMember} />
+      <EditOnly>
+        <Action icon={UserPlus} tone="bg-success/15 text-success" title="Add New Member" sub="Register a new member" onClick={onAddMember} />
+      </EditOnly>
       <Action
         icon={Plus}
         tone="bg-blue-500/15 text-blue-600 dark:text-blue-400"

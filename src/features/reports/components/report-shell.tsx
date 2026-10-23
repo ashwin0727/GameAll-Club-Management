@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartSkeleton } from "@/components/shared/chart-skeleton";
+import { useCanEditHere } from "@/features/auth/context/permission-provider";
 
 export type ReportStatus = "loading" | "error" | "empty" | "ready";
 
@@ -37,6 +38,8 @@ export function ReportShell({
   exportDisabled?: boolean;
   children: React.ReactNode;
 }) {
+  // Exporting is an Edit-level action: View-only roles can look, but not take the data away.
+  const canExport = useCanEditHere();
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -44,7 +47,7 @@ export function ReportShell({
           <h1 className="text-xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
-        {status === "ready" && onExportCsv && (
+        {status === "ready" && onExportCsv && canExport && (
           <Button
             variant="outline"
             size="sm"

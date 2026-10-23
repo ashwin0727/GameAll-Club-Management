@@ -51,7 +51,13 @@ class _CoachingSessionsScreenState extends ConsumerState<CoachingSessionsScreen>
     if (fid == null) return;
     try {
       final coaches = await ref.read(coachingRepositoryProvider).listCoachOptions(fid);
-      if (mounted) setState(() => _coaches = coaches);
+      if (mounted) {
+        setState(() {
+          _coaches = coaches;
+          // The database already limits the list to them; this just shows (and locks) the filter on them.
+          if (ref.read(sessionControllerProvider).limitCoachingToOwn && coaches.isNotEmpty) _coachId = coaches.first.id;
+        });
+      }
     } on AppException {
       // filter still works
     }
@@ -103,6 +109,7 @@ class _CoachingSessionsScreenState extends ConsumerState<CoachingSessionsScreen>
   }
 
   Future<void> _pickCoach() async {
+    if (ref.read(sessionControllerProvider).limitCoachingToOwn) return;
     final picked = await showPickerSheet<String>(
       context: context,
       selected: _coachId ?? 'ALL',
@@ -156,7 +163,11 @@ class _CoachingSessionsScreenState extends ConsumerState<CoachingSessionsScreen>
                 runSpacing: AppSpacing.sm,
                 children: [
                   PickerChip(label: _status?.label ?? 'All Status', onSelect: _pickStatus),
-                  PickerChip(label: coachLabel, onSelect: _pickCoach),
+                  PickerChip(
+                    label: coachLabel,
+                    onSelect: _pickCoach,
+                    icon: session.limitCoachingToOwn ? Icons.lock_outline : Icons.arrow_drop_down,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),

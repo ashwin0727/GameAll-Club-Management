@@ -11,10 +11,10 @@ import '../../data/models/staff.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../authentication/session_controller.dart';
 import 'staff_common.dart';
+import 'page_access_matrix.dart';
 import '../../shared/widgets/smooth_switcher.dart';
 
 class RoleEditorScreen extends ConsumerStatefulWidget {
@@ -35,9 +35,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
   bool _isActive = true;
   final Set<String> _selected = {};
 
-  List<Permission> _catalog = const [];
   RoleDetail? _existing;
-  String _module = '';
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -62,7 +60,6 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
     if (fid == null) return;
     try {
       final repo = ref.read(staffRepositoryProvider);
-      final catalog = await repo.listPermissions();
       if (widget.isEdit) {
         final r = await repo.getRole(widget.roleId!);
         _existing = r;
@@ -82,11 +79,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
         }
       }
       if (!mounted) return;
-      setState(() {
-        _catalog = catalog;
-        _module = catalog.isEmpty ? '' : catalog.first.module;
-        _loading = false;
-      });
+      setState(() => _loading = false);
     } on AppException catch (e) {
       if (mounted) {
         setState(() {
@@ -148,9 +141,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
     if (!session.can('USERS_MANAGE_ROLES')) {
       return const StaffPermissionDenied(message: "You don't have permission to manage roles.", title: 'Edit Role');
     }
-    final modules = _catalog.map((p) => p.module).toSet().toList();
-    final modulePerms = _catalog.where((p) => p.module == _module).toList();
-    final dangerous = _catalog.where((p) => p.isDangerous && _selected.contains(p.key)).toList();
+    bool canGrant(String key) => session.baseRole == 'owner' || session.permissions.contains(key);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.isEdit ? 'Edit Role' : 'Create Role')),
@@ -192,80 +183,15 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: modules
-                          .map((m) => Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(m),
-                                  selected: _module == m,
-                                  onSelected: (_) => setState(() => _module = m),
-                                ),
-                              ))
-                          .toList(),
-                    ),
+                  PageAccessMatrix(
+                    selected: _selected,
+                    canGrant: canGrant,
+                    onChanged: (next) => setState(() {
+                      _selected
+                        ..clear()
+                        ..addAll(next);
+                    }),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: Text('$_module permissions', style: const TextStyle(fontWeight: FontWeight.w700))),
-                            TextButton(
-                              onPressed: () => setState(() => _selected.addAll(modulePerms.map((p) => p.key))),
-                              child: const Text('All'),
-                            ),
-                            TextButton(
-                              onPressed: () => setState(() => _selected.removeAll(modulePerms.map((p) => p.key))),
-                              child: const Text('Clear'),
-                            ),
-                          ],
-                        ),
-                        ...modulePerms.map((p) {
-                          final cannot = session.baseRole != 'owner' && !session.permissions.contains(p.key);
-                          return CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            value: _selected.contains(p.key),
-                            onChanged: cannot
-                                ? null
-                                : (v) => setState(() => v == true ? _selected.add(p.key) : _selected.remove(p.key)),
-                            title: Row(
-                              children: [
-                                Flexible(child: Text(p.label)),
-                                if (p.isDangerous) ...[
-                                  const SizedBox(width: 6),
-                                  const StatusBadge(label: 'Sensitive', tone: StatusTone.warning),
-                                ],
-                              ],
-                            ),
-                            subtitle: p.description != null
-                                ? Text(cannot ? "You don't hold this permission yourself." : p.description!)
-                                : null,
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                  if (dangerous.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'This role includes sensitive permissions: ${dangerous.map((p) => p.label).join(", ")}.',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
                   if (_error != null) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Text(_error!, style: const TextStyle(color: AppColors.destructive)),

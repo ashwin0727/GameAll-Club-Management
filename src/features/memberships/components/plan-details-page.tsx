@@ -49,6 +49,7 @@ import { getFinanceService } from "@/services/finance";
 import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipPlan } from "@/features/memberships/types";
 import { cn } from "@/lib/utils";
+import { EditOnly } from "@/features/access/edit-only";
 
 type TabKey = "overview" | "benefits" | "slots" | "members" | "payments";
 const TABS: { key: TabKey; label: string }[] = [
@@ -256,32 +257,36 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDialog("plan")}
-              className="flex h-10 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-              Edit Plan
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="More Actions"
-                  disabled={busy}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={toggleActive}>
-                  <Power className="mr-2 h-4 w-4" />
-                  {plan.isActive ? "Deactivate" : "Activate"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <EditOnly>
+              <button
+                type="button"
+                onClick={() => setDialog("plan")}
+                className="flex h-10 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+                Edit Plan
+              </button>
+            </EditOnly>
+            <EditOnly>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More Actions"
+                    disabled={busy}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={toggleActive}>
+                    <Power className="mr-2 h-4 w-4" />
+                    {plan.isActive ? "Deactivate" : "Activate"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </EditOnly>
           </div>
         </div>
         {notice && <p className="mt-3 text-sm text-destructive">{notice}</p>}
@@ -368,14 +373,16 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               <h2 className="text-base font-bold text-black dark:text-foreground">Included Benefits</h2>
               <p className="text-xs text-muted-foreground">{featureCountLabel(features.length)} with this plan.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setDialog("benefits")}
-              className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-3 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-              Edit Benefits
-            </button>
+            <EditOnly>
+              <button
+                type="button"
+                onClick={() => setDialog("benefits")}
+                className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-3 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Edit Benefits
+              </button>
+            </EditOnly>
           </div>
           <ul className="space-y-3">
             {features.map((f) => (
@@ -413,14 +420,16 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
             )}
             {slots.length > 0 && (
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setDialog("capacity")}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden />
-                  Edit
-                </button>
+                <EditOnly>
+                  <button
+                    type="button"
+                    onClick={() => setDialog("capacity")}
+                    className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    Edit
+                  </button>
+                </EditOnly>
               </div>
             )}
           </Card>
@@ -432,14 +441,16 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
                 <p className="text-xs text-muted-foreground">Members with this plan can book the following time slots.</p>
               </div>
               {slots.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setDialog("slots")}
-                  className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
-                >
-                  <Pencil className="h-3.5 w-3.5" aria-hidden />
-                  Edit Slots
-                </button>
+                <EditOnly>
+                  <button
+                    type="button"
+                    onClick={() => setDialog("slots")}
+                    className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    Edit Slots
+                  </button>
+                </EditOnly>
               )}
             </div>
             <div className="divide-y divide-border rounded-lg border border-border">

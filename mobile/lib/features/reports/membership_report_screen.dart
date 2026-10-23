@@ -24,6 +24,7 @@ import 'report_section_header.dart';
 import 'report_shell.dart';
 import 'report_widgets.dart';
 import '../../shared/widgets/smooth_switcher.dart';
+import '../../core/access/access.dart';
 
 const _allCourts = '__all__';
 
@@ -170,7 +171,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
                       AnalyticsFilterControls(
                         filter: _filter,
                         onChanged: _onFilterChanged,
-                        trailing: OutlinedButton.icon(
+                        trailing: !ref.watch(sessionControllerProvider).canEditPage(accessPageReportMemberships) ? null : OutlinedButton.icon(
                           onPressed: _status != ReportStatus.ready || _exporting ? null : _export,
                           icon: _exporting
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))

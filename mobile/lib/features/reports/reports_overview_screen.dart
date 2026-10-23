@@ -15,6 +15,7 @@ import '../authentication/session_controller.dart';
 import 'analytics_filter.dart';
 import 'report_section_header.dart';
 import 'report_shell.dart';
+import '../../core/access/access.dart';
 
 enum _Kind { money, count }
 
@@ -205,7 +206,7 @@ class _ReportsOverviewScreenState extends ConsumerState<ReportsOverviewScreen> {
       status: _status,
       filter: _filter,
       onFilterChanged: _onFilterChanged,
-      filterTrailing: OutlinedButton.icon(
+      filterTrailing: !ref.watch(sessionControllerProvider).canEditPage(accessPageReportOverview) ? null : OutlinedButton.icon(
         onPressed: m == null || _exporting ? null : _export,
         icon: _exporting
             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))

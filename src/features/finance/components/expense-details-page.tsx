@@ -25,6 +25,7 @@ import { getFinanceService } from "@/services/finance";
 import { MarkExpensePaidDialog } from "@/features/finance/components/mark-expense-paid-dialog";
 import { ServiceError } from "@/services/shared/service-error";
 import type { ExpenseCategory, ExpenseDetail, ExpenseRow } from "@/features/finance/types";
+import { EditOnly } from "@/features/access/edit-only";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -144,13 +145,15 @@ export function ExpenseDetailsPage({ expenseId }: { expenseId: string }) {
           </p>
         </div>
         {expense.status !== "VOID" && (
-          <div className="flex flex-wrap gap-2">
-            {expense.paymentStatus !== "PAID" && <MarkExpensePaidDialog expense={asRow} onDone={() => void load()} />}
-            <EditExpenseDialog expense={expense} onSaved={() => void load()} />
-            <Button type="button" variant="outline" size="sm" disabled={voiding} onClick={voidExpense}>
-              <Undo2 className="h-3.5 w-3.5" aria-hidden /> {voiding ? "Voiding…" : "Void"}
-            </Button>
-          </div>
+          <EditOnly>
+            <div className="flex flex-wrap gap-2">
+              {expense.paymentStatus !== "PAID" && <MarkExpensePaidDialog expense={asRow} onDone={() => void load()} />}
+              <EditExpenseDialog expense={expense} onSaved={() => void load()} />
+              <Button type="button" variant="outline" size="sm" disabled={voiding} onClick={voidExpense}>
+                <Undo2 className="h-3.5 w-3.5" aria-hidden /> {voiding ? "Voiding…" : "Void"}
+              </Button>
+            </div>
+          </EditOnly>
         )}
       </div>
 

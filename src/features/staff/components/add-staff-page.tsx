@@ -95,7 +95,7 @@ export function AddStaffPage() {
 
   if (result) {
     return (
-      <div className="mx-auto max-w-lg space-y-4">
+      <div className="space-y-4">
         <Card className="p-6 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
             <Check className="h-6 w-6 text-success" aria-hidden />
@@ -127,7 +127,7 @@ export function AddStaffPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="space-y-4">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-muted-foreground">
         <Link href="/users-roles/staff" className="hover:text-foreground">
           Users &amp; Roles

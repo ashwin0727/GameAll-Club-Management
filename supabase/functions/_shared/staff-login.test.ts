@@ -4,8 +4,8 @@ import { buildDefaultPassword, buildStaffLogin, loginNamePart } from "./staff-lo
 // 2026-10-23 10:00:45 UTC = 15:30:45 in Asia/Kolkata (UTC+5:30)
 const NOW = new Date("2026-10-23T10:00:45Z");
 
-Deno.test("staff login is first name + DDMMYYYY + HHMMSS @gameall.co in the facility timezone", () => {
-  assertEquals(buildStaffLogin("Ravi", NOW, "Asia/Kolkata"), "ravi23102026153045@gameall.co");
+Deno.test("staff login is first name + DDMM + MMSS @gameall.co in the facility timezone", () => {
+  assertEquals(buildStaffLogin("Ravi", NOW, "Asia/Kolkata"), "ravi23103045@gameall.co");
 });
 
 Deno.test("staff login cleans the name and falls back when nothing usable is left", () => {
@@ -15,7 +15,7 @@ Deno.test("staff login cleans the name and falls back when nothing usable is lef
 });
 
 Deno.test("a clash appends a counter", () => {
-  assertEquals(buildStaffLogin("Ravi", NOW, "Asia/Kolkata", 2), "ravi231020261530452@gameall.co");
+  assertEquals(buildStaffLogin("Ravi", NOW, "Asia/Kolkata", 2), "ravi231030452@gameall.co");
 });
 
 Deno.test("default password is Facility name @ HH:MM:SS", () => {
