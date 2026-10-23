@@ -134,7 +134,8 @@ Deno.serve(async (req) => {
       const existing = await userStatus();
       if (existing?.confirmed) return fail("email_taken", "An account already exists for this email address. Sign in instead.", 409);
 
-      const meta = { full_name: name, account_type: "owner" };
+      // require_mobile: new owners must also verify a mobile number (mobile-otp) before onboarding.
+      const meta = { full_name: name, account_type: "owner", require_mobile: true };
       if (existing) {
         // An earlier, never-verified attempt: refresh its details and re-issue a code.
         const { error } = await admin.auth.admin.updateUserById(existing.id, { password, user_metadata: meta });

@@ -7,6 +7,7 @@ class AppUser {
     required this.role,
     required this.onboardingCompleted,
     this.mustResetPassword = false,
+    this.mobileVerificationPending = false,
   });
 
   final String id;
@@ -18,6 +19,19 @@ class AppUser {
   /// A staff account created by an administrator: signed in with a one-time
   /// password and must set their own before doing anything else.
   final bool mustResetPassword;
+
+  /// A new owner who still has to verify a mobile number (SMS OTP) before onboarding.
+  final bool mobileVerificationPending;
+
+  AppUser withMobileVerificationPending(bool pending) => AppUser(
+        id: id,
+        fullName: fullName,
+        email: email,
+        role: role,
+        onboardingCompleted: onboardingCompleted,
+        mustResetPassword: mustResetPassword,
+        mobileVerificationPending: pending,
+      );
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(

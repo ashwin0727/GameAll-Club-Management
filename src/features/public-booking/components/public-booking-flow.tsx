@@ -60,6 +60,8 @@ import {
   type GuestFieldErrors,
 } from "../guest-form";
 import { PublicBookingHeader } from "./public-booking-header";
+import { MobileOtpVerifier } from "@/features/mobile-otp/components/mobile-otp-verifier";
+import { tenDigitMobile } from "@/features/mobile-otp/mobile-otp";
 import { BOOKING_PURPOSES, type PublicBookingConfirmation, type PublicBookingCourt, type PublicBookingFacility, type PublicGuestDetails } from "../types";
 
 type Step = "select" | "details" | "review" | "pay" | "done";
@@ -130,6 +132,8 @@ export function PublicBookingFlow({
   const [courtIds, setCourtIds] = useState<string[]>([]);
   const summary = useMemo(() => (picks.length > 0 ? summarise(picks) : null), [picks]);
   const [guest, setGuest] = useState<PublicGuestDetails>(EMPTY_GUEST);
+  // Set once the guest has proven they own guest.phone by SMS; the booking function refuses to book without it.
+  const [mobileProof, setMobileProof] = useState<{ proof: string; phone: string } | null>(null);
   const [errors, setErrors] = useState<GuestFieldErrors>({});
 
   const [step, setStep] = useState<Step>("select");
@@ -210,6 +214,9 @@ export function PublicBookingFlow({
 
   function goToReview() {
     const found = validateGuest(guest);
+    if (!found.phone && mobileProof?.phone !== tenDigitMobile(guest.phone)) {
+      found.phone = "Please verify your mobile number with the OTP we text you.";
+    }
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     setFormError(null);
@@ -240,6 +247,7 @@ export function PublicBookingFlow({
             startTime: r.startTime,
             endTime: r.endTime,
             guest,
+            mobileProof: mobileProof?.proof,
           }),
         );
       }
@@ -250,6 +258,11 @@ export function PublicBookingFlow({
     if (failure && made.length === 0) {
       if (failure instanceof SlotUnavailableError) {
         returnToSelection("Sorry, this court is no longer available. Please choose another time.");
+      } else if (failure.message.startsWith("Please verify your mobile")) {
+        // The 30-minute proof lapsed — verify again.
+        setMobileProof(null);
+        setErrors({ phone: failure.message });
+        setStep("details");
       } else {
         setFormError(failure.message);
       }
@@ -501,7 +514,17 @@ export function PublicBookingFlow({
               )}
 
               {step === "details" && (
-                <DetailsStep guest={guest} errors={errors} onChange={setGuest} />
+                <DetailsStep
+                  guest={guest}
+                  errors={errors}
+                  onChange={setGuest}
+                  mobileVerified={mobileProof?.phone === tenDigitMobile(guest.phone)}
+                  onMobileVerified={(proof, phone) => {
+                    if (proof) setMobileProof({ proof, phone });
+                    setErrors((e) => ({ ...e, phone: undefined }));
+                  }}
+                  onMobileReset={() => setMobileProof(null)}
+                />
               )}
 
               {step === "pay" && (
@@ -928,10 +951,16 @@ function DetailsStep({
   guest,
   errors,
   onChange,
+  mobileVerified,
+  onMobileVerified,
+  onMobileReset,
 }: {
   guest: PublicGuestDetails;
   errors: GuestFieldErrors;
   onChange: (g: PublicGuestDetails) => void;
+  mobileVerified: boolean;
+  onMobileVerified: (proof: string | undefined, phone: string) => void;
+  onMobileReset: () => void;
 }) {
   const set = (key: keyof PublicGuestDetails) => (value: string) => onChange({ ...guest, [key]: value });
 
@@ -958,6 +987,13 @@ function DetailsStep({
             autoComplete="tel"
             placeholder="Enter 10-digit mobile number"
             invalid={Boolean(errors.phone)}
+          />
+          <MobileOtpVerifier
+            phone={guest.phone}
+            purpose="booking"
+            verified={mobileVerified}
+            onVerified={onMobileVerified}
+            onReset={onMobileReset}
           />
         </Field>
 

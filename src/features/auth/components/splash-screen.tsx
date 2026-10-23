@@ -20,9 +20,11 @@ const SPLASH_DURATION_MS = 1600;
 export function SplashScreen({
   signedIn,
   onboardingCompleted,
+  mobileVerificationPending = false,
 }: {
   signedIn: boolean;
   onboardingCompleted: boolean;
+  mobileVerificationPending?: boolean;
 }) {
   const router = useRouter();
 
@@ -31,13 +33,14 @@ export function SplashScreen({
       signedIn,
       deviceOnboarded: hasDeviceOnboarded(),
       onboardingCompleted,
+      mobileVerificationPending,
     });
     // Prefetch during the hold so the transition lands instantly.
     router.prefetch(next);
 
     const timer = window.setTimeout(() => router.replace(next), SPLASH_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [router, signedIn, onboardingCompleted]);
+  }, [router, signedIn, onboardingCompleted, mobileVerificationPending]);
 
   return (
     <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6">

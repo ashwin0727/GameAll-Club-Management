@@ -13,9 +13,11 @@ class AuthRepository {
 
   /// Calls the `signup-otp` edge function — same one the web uses. It creates the account unconfirmed and emails a
   /// 6-digit code (Resend); no Supabase confirmation link is involved.
-  Future<void> _signupOtp(Map<String, dynamic> body) async {
+  Future<void> _signupOtp(Map<String, dynamic> body) => _signupOtpFunction('signup-otp', body);
+
+  Future<void> _signupOtpFunction(String function, Map<String, dynamic> body) async {
     try {
-      await _client.functions.invoke('signup-otp', body: body);
+      await _client.functions.invoke(function, body: body);
     } on FunctionException catch (e) {
       final details = e.details;
       final message = details is Map ? details['message'] : null;
@@ -42,6 +44,14 @@ class AuthRepository {
   /// Checks the code the owner received by email; on success the address is confirmed server-side.
   Future<void> verifySignupCode({required String email, required String code}) =>
       _signupOtp({'action': 'verify', 'email': email, 'code': code});
+
+  /// Texts a 6-digit code to [phone] (10-digit Indian mobile) — the `mobile-otp` edge function, same as the web.
+  Future<void> sendMobileOtp(String phone) =>
+      _signupOtpFunction('mobile-otp', {'action': 'send', 'purpose': 'signup', 'phone': phone});
+
+  /// Checks the SMS code; on success the number is recorded against the signed-in account server-side.
+  Future<void> verifyMobileOtp({required String phone, required String code}) =>
+      _signupOtpFunction('mobile-otp', {'action': 'verify', 'purpose': 'signup', 'phone': phone, 'code': code});
 
   Future<void> login({required String email, required String password}) async {
     try {
@@ -97,6 +107,17 @@ class AuthRepository {
         .eq('id', authUser.id)
         .maybeSingle();
 
+    // New owners (signup-otp sets require_mobile) must verify a mobile number before onboarding.
+    var pending = false;
+    if (authUser.userMetadata?['require_mobile'] == true) {
+      final verified = await _client
+          .from('user_verified_phones')
+          .select('user_id')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+      pending = verified == null;
+    }
+
     if (profile == null) {
       return AppUser(
         id: authUser.id,
@@ -104,8 +125,9 @@ class AuthRepository {
         email: authUser.email ?? '',
         role: 'member',
         onboardingCompleted: false,
+        mobileVerificationPending: pending,
       );
     }
-    return AppUser.fromJson(profile);
+    return AppUser.fromJson(profile).withMobileVerificationPending(pending);
   }
 }

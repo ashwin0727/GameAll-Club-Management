@@ -81,6 +81,8 @@ export async function createPublicGuestBooking(input: {
   endTime: string;
   guest: PublicGuestDetails;
   partySize?: number;
+  /** Signed proof from the SMS verification of guest.phone (mobile-otp). */
+  mobileProof?: string;
 }): Promise<PublicBookingConfirmation> {
   const supabase = createClient();
   const { guest } = input;
@@ -107,6 +109,7 @@ export async function createPublicGuestBooking(input: {
         purpose: guest.purpose || null,
         notes: notes || null,
         partySize: input.partySize ?? 1,
+        mobileProof: input.mobileProof,
       },
     },
   );

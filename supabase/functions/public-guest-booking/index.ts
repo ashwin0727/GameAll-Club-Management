@@ -22,6 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { normalizeIndianMobile, verifyMobileProof } from "../_shared/mobile-otp.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +41,8 @@ interface BookingRequest {
   notes?: string | null;
   partySize?: number;
   captchaToken?: string;
+  /** Signed proof from mobile-otp that this phone number passed SMS verification. */
+  mobileProof?: string;
 }
 
 function jsonResponse(body: unknown, status: number): Response {
@@ -99,6 +102,14 @@ Deno.serve(async (req) => {
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
   const ipHash = ip ? await sha256Hex(ip + ipSalt) : "";
   const phoneDigits = body.phone.replace(/\D/g, "");
+
+  // The guest must have verified this mobile number by SMS (mobile-otp). The proof is signed, bound to the number and
+  // short-lived, so it can't be forged, reused for another number, or skipped by calling this function directly.
+  const otpSecret = Deno.env.get("SIGNUP_OTP_SECRET");
+  const verifiedPhone = normalizeIndianMobile(body.phone);
+  if (!otpSecret || !verifiedPhone || !body.mobileProof || !(await verifyMobileProof(verifiedPhone, body.mobileProof, otpSecret))) {
+    return jsonResponse({ error: "Please verify your mobile number to continue.", code: "MOBILE_NOT_VERIFIED" }, 403);
+  }
 
   // CAPTCHA is enforced only once a secret is configured — until then the
   // rate limit is the sole gate.

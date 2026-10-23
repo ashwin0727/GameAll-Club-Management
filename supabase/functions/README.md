@@ -270,3 +270,19 @@ supabase functions deploy signup-otp
 ```
 
 Keep Supabase Auth → "Confirm email" **ON**, so an account can't sign in until its code is verified.
+
+## mobile-otp
+
+SMS one-time-password verification of a mobile number via **2Factor.in**. `purpose: "signup"` (a signed-in new owner;
+recorded in `user_verified_phones`, copied to `profiles.phone`) and `purpose: "booking"` (anonymous guest on /book;
+returns a signed 30-minute `proof` that `public-guest-booking` requires). Migration 0153. Same protections as
+signup-otp, plus a per-IP hourly cap so the endpoint can't be used to text arbitrary numbers.
+
+```bash
+supabase secrets set TWOFACTOR_API_KEY=<2factor api key>
+# optional — a DLT-approved template name; omit to use 2Factor's default OTP route
+supabase secrets set TWOFACTOR_TEMPLATE_NAME=<template>
+supabase functions deploy mobile-otp
+supabase functions deploy signup-otp          # now flags new owners as requiring mobile verification
+supabase functions deploy public-guest-booking # now requires the mobile proof — deploy together with the web app
+```

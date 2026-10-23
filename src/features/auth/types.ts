@@ -27,7 +27,9 @@ export interface AuthUser {
   email: string;
   emailVerified: boolean;
   onboardingCompleted: boolean;
+  /** A new owner who still has to verify a mobile number (SMS OTP) before onboarding. */
+  mobileVerificationPending?: boolean;
 }
 
 /** Where the splash screen sends the visitor once session state is known. */
-export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/facility";
+export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/facility" | "/verify-mobile";

@@ -79,6 +79,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
       await repo.login(email: widget.email, password: password);
       await ref.read(sessionControllerProvider.notifier).refresh();
       // Keep the spinner running into the navigation rather than flicking back to idle first.
+      // The router sends a new owner on to mobile verification, then onboarding.
       if (mounted) context.go(AppRoutes.onboardingWelcome);
     } on AppException catch (e) {
       if (!mounted) return;

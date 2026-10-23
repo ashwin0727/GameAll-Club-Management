@@ -68,7 +68,9 @@ export function useVerifySignup() {
       }
       markDeviceOnboarded();
       queryClient.setQueryData(CURRENT_USER_KEY, user);
-      router.replace(user.onboardingCompleted ? "/dashboard" : "/onboarding/facility");
+      router.replace(
+        user.mobileVerificationPending ? "/verify-mobile" : user.onboardingCompleted ? "/dashboard" : "/onboarding/facility",
+      );
       router.refresh();
     },
   });
@@ -83,7 +85,9 @@ export function useLogin() {
     onSuccess: async (user) => {
       markDeviceOnboarded();
       queryClient.setQueryData(CURRENT_USER_KEY, user);
-      router.replace(user.onboardingCompleted ? "/dashboard" : "/onboarding/facility");
+      router.replace(
+        user.mobileVerificationPending ? "/verify-mobile" : user.onboardingCompleted ? "/dashboard" : "/onboarding/facility",
+      );
       // Server components hold the old (signed-out) session until refreshed.
       router.refresh();
     },

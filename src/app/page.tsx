@@ -11,6 +11,10 @@ export default async function RootPage() {
   const user = await getCurrentAuthUser();
 
   return (
-    <SplashScreen signedIn={Boolean(user)} onboardingCompleted={user?.onboardingCompleted ?? false} />
+    <SplashScreen
+      signedIn={Boolean(user)}
+      onboardingCompleted={user?.onboardingCompleted ?? false}
+      mobileVerificationPending={user?.mobileVerificationPending ?? false}
+    />
   );
 }

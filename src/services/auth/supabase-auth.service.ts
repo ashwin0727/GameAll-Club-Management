@@ -182,6 +182,16 @@ export class SupabaseAuthService implements AuthService {
       facilityCompleted = Boolean(facility);
     }
 
+    let mobileVerificationPending = false;
+    if (user.user_metadata?.require_mobile === true) {
+      const { data: verified } = await this.supabase
+        .from("user_verified_phones" as never)
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      mobileVerificationPending = !verified;
+    }
+
     return {
       id: user.id,
       email: user.email ?? "",
@@ -190,6 +200,7 @@ export class SupabaseAuthService implements AuthService {
       name: profile?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? "",
       emailVerified: Boolean(user.email_confirmed_at),
       onboardingCompleted: (profile?.onboarding_completed ?? false) || facilityCompleted,
+      mobileVerificationPending,
     };
   }
 

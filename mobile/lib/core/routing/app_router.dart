@@ -5,6 +5,7 @@ import '../../data/models/facility.dart';
 import '../config/app_config.dart';
 import '../../features/authentication/create_account_screen.dart';
 import '../../features/authentication/email_verification_screen.dart';
+import '../../features/authentication/verify_mobile_screen.dart';
 import '../../features/authentication/forgot_password_screen.dart';
 import '../../features/authentication/session_controller.dart';
 import '../../features/authentication/sign_in_screen.dart';
@@ -136,6 +137,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return path == AppRoutes.setPassword ? null : AppRoutes.setPassword;
       }
 
+      // A new owner must verify a mobile number (SMS OTP) before onboarding.
+      if (session.user!.mobileVerificationPending) {
+        return path == AppRoutes.verifyMobile ? null : AppRoutes.verifyMobile;
+      }
+      if (path == AppRoutes.verifyMobile) {
+        return OnboardingRouteResolver.entryRouteFor(session.facility);
+      }
+
       if (path == AppRoutes.splash || isAuthRoute) {
         return OnboardingRouteResolver.entryRouteFor(session.facility);
       }
@@ -175,6 +184,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             password: state.extra is String ? state.extra as String : null,
           ),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyMobile,
+        pageBuilder: (context, state) => slideOver(state, const VerifyMobileScreen()),
       ),
       GoRoute(
         path: AppRoutes.forgotPassword,

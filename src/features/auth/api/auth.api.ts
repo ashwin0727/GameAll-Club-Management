@@ -65,12 +65,19 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const onboardingCompleted =
     (profile?.onboarding_completed ?? false) || (await hasCompletedFacility(supabase, user.id));
 
+  let mobileVerificationPending = false;
+  if (user.user_metadata?.require_mobile === true) {
+    const { data: verified } = await supabase.from("user_verified_phones" as never).select("user_id").eq("user_id", user.id).maybeSingle();
+    mobileVerificationPending = !verified;
+  }
+
   return {
     id: user.id,
     email: user.email ?? "",
     name: profile?.full_name ?? (user.user_metadata?.full_name as string | undefined) ?? "",
     emailVerified: Boolean(user.email_confirmed_at),
     onboardingCompleted,
+    mobileVerificationPending,
   };
 });
 
