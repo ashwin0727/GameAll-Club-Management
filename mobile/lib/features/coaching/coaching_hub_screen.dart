@@ -146,7 +146,9 @@ class _CoachingHubScreenState extends ConsumerState<CoachingHubScreen> with Sing
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('COACHING_VIEW')) {
+    if (![
+      'COACHING_OVERVIEW', 'COACHING_PROGRAMS', 'COACHING_STUDENTS', 'COACHING_SESSIONS', 'COACHING_SCHEDULE', 'COACHING_REPORTS',
+    ].any(session.canViewPage)) {
       return const StaffPermissionDenied(title: 'Coaching', message: "You don't have permission to view coaching.");
     }
     return TabPopScope(

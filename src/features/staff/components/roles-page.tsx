@@ -51,7 +51,7 @@ export function RolesPage() {
     return [...m.entries()];
   }, [catalog]);
 
-  if (!perms?.can("USERS_VIEW")) return <PermissionDenied message="You don't have permission to view roles." />;
+  if (!perms?.can("ROLES_VIEW")) return <PermissionDenied message="You don't have permission to view roles." />;
 
   return (
     <div className="space-y-4">

@@ -155,7 +155,7 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('COACHING_VIEW')) {
+    if (!session.canViewPage('COACHING_STUDENTS')) {
       return const StaffPermissionDenied(title: 'Enrollments', message: "You don't have permission to view coaching.");
     }
     final totalPages = _total == 0 ? 1 : ((_total + _pageSize - 1) ~/ _pageSize);

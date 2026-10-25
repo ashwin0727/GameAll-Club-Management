@@ -90,7 +90,7 @@ class _AccessHistoryScreenState extends ConsumerState<AccessHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('USERS_VIEW')) {
+    if (!session.canViewPage('ACCESS_HISTORY')) {
       return const StaffPermissionDenied(message: "You don't have permission to view access history.", title: 'Access History');
     }
     final totalPages = _total == 0 ? 1 : ((_total + _pageSize - 1) ~/ _pageSize);

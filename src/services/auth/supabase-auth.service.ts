@@ -180,6 +180,17 @@ export class SupabaseAuthService implements AuthService {
         .limit(1)
         .maybeSingle();
       facilityCompleted = Boolean(facility);
+      if (!facilityCompleted) {
+        // A staff member added by an owner has no facility of their own and nothing to set up: they belong to one already.
+        const { data: assignment } = await this.supabase
+          .from("facility_users")
+          .select("facility_id")
+          .eq("user_id", user.id)
+          .eq("status", "ACTIVE")
+          .limit(1)
+          .maybeSingle();
+        facilityCompleted = Boolean(assignment);
+      }
     }
 
     let mobileVerificationPending = false;

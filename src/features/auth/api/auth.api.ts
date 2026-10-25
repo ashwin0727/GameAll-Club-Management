@@ -55,7 +55,16 @@ async function hasCompletedFacility(supabase: SupabaseClient<Database>, userId: 
     .eq("onboarding_step", "COMPLETED")
     .limit(1)
     .maybeSingle();
-  return Boolean(data);
+  if (data) return true;
+  // A staff member added by an owner has no facility of their own and nothing to set up: they belong to one already.
+  const { data: assignment } = await supabase
+    .from("facility_users")
+    .select("facility_id")
+    .eq("user_id", userId)
+    .eq("status", "ACTIVE")
+    .limit(1)
+    .maybeSingle();
+  return Boolean(assignment);
 }
 
 /** Profile joined with the auth facts the UI needs (verification state). */
@@ -143,3 +152,12 @@ export const getFacilityContext = cache(async (): Promise<FacilityContext | null
     plan: toPlanSnapshot(plan),
   };
 });
+/**
+ * Whether the person may use the dashboard shell at all: an owner / admin / staff profile, or anyone assigned to a facility
+ * (staff created by an owner carry the plain "member" profile role). What they can open inside is decided per page by
+ * the page-access matrix (RouteGuard in the UI, has_permission in the database).
+ */
+export async function hasDashboardAccess(profile: Profile): Promise<boolean> {
+  if (profile.role === "admin" || profile.role === "staff") return true;
+  return (await getFacilityContext()) !== null;
+}

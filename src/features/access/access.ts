@@ -83,3 +83,10 @@ export const ACCESS_GROUPS: { label: string; pages: AccessPage[] }[] = (() => {
   }
   return groups;
 })();
+
+/** Whether the person can open at least one page whose key starts with [prefix] (e.g. "COACHING_"). Owners always can. */
+export function canViewAnyPage(held: readonly string[], isOwner: boolean, prefix: string[]): boolean {
+  if (isOwner) return true;
+  const set = new Set(held);
+  return ACCESS_PAGES.some((p) => prefix.some((x) => p.key === x || p.key.startsWith(x)) && levelFor(p, set, false) !== "none");
+}

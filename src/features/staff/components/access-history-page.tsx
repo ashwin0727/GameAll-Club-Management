@@ -69,7 +69,7 @@ export function AccessHistoryPage() {
     };
   }, [load]);
 
-  if (!perms?.can("USERS_VIEW")) return <PermissionDenied message="You don't have permission to view access history." />;
+  if (!perms?.can("ACCESS_HISTORY_VIEW")) return <PermissionDenied message="You don't have permission to view access history." />;
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 

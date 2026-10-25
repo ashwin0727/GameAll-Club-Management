@@ -89,7 +89,7 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('COACHING_VIEW')) {
+    if (!session.canViewPage('COACHING_PROGRAMS')) {
       return const StaffPermissionDenied(title: 'Program', message: "You don't have permission to view coaching.");
     }
     final canManage = session.can('COACHING_MANAGE_PROGRAMS');

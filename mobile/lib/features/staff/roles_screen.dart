@@ -70,7 +70,7 @@ class _RolesScreenState extends ConsumerState<RolesScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('USERS_VIEW')) {
+    if (!session.canViewPage('ROLES')) {
       return const StaffPermissionDenied(
         message: "You don't have permission to view roles.",
         title: 'Roles & Permissions',

@@ -59,7 +59,7 @@ class _CoachingReportsScreenState extends ConsumerState<CoachingReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('COACHING_VIEW')) {
+    if (!session.canViewPage('COACHING_REPORTS')) {
       return const StaffPermissionDenied(title: 'Reports', message: "You don't have permission to view coaching.");
     }
     final presetLabel = _presets.firstWhere((p) => p.value == _preset).label;

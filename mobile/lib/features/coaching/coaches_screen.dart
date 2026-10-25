@@ -116,7 +116,7 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    if (!session.can('COACHING_VIEW')) {
+    if (!session.canViewPage('COACHING_OVERVIEW')) {
       return const StaffPermissionDenied(title: 'Coaches', message: "You don't have permission to view coaching.");
     }
     final canAdd = session.can('COACHING_MANAGE_COACHES');

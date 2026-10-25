@@ -1,4 +1,5 @@
 import { getFacilityContext } from "@/features/auth/api/auth.api";
+import { canViewAnyPage } from "@/features/access/access";
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 
 /**
@@ -9,8 +10,7 @@ import { PermissionDenied } from "@/features/staff/components/permission-denied"
  */
 export default async function UsersRolesLayout({ children }: { children: React.ReactNode }) {
   const context = await getFacilityContext();
-  const allowed =
-    context && (context.baseRole === "owner" || context.permissions.includes("USERS_VIEW"));
+  const allowed = context && canViewAnyPage(context.permissions, context.baseRole === "owner", ["STAFF", "ROLES", "ACCESS_HISTORY"]);
 
   if (!allowed) {
     return <PermissionDenied message="You don't have permission to manage staff and roles." />;
