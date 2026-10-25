@@ -173,20 +173,19 @@ export function Sidebar({ role }: { role: Role }) {
           })}
         </nav>
 
-        {/* Promo only — there is no billing/plans route to link to yet. */}
         <div className="m-3 space-y-2 rounded-xl border border-border bg-secondary/40 p-3">
           <Crown className="h-4 w-4 text-warning" aria-hidden />
           <p className="text-xs font-semibold text-foreground">Upgrade Your Club</p>
           <p className="text-[11px] leading-snug text-muted-foreground">
             Unlock advanced features and grow faster.
           </p>
-          <button
-            type="button"
-            disabled
-            className="h-8 w-full rounded-md border border-border bg-card text-xs font-medium text-foreground opacity-80"
+          <Link
+            href="/plans"
+            onClick={() => setSidebarOpen(false)}
+            className="flex h-8 w-full items-center justify-center rounded-md border border-border bg-card text-xs font-medium text-foreground transition-colors hover:bg-secondary"
           >
             View Plans
-          </button>
+          </Link>
         </div>
       </aside>
     </>

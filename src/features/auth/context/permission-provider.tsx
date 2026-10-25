@@ -6,6 +6,8 @@ import type { FacilityContext } from "@/features/auth/api/auth.api";
 import type { PermissionKey } from "@/features/staff/types";
 import { COACHING_OWN_ONLY, accessPage, levelFor, type AccessLevel, type PageKey } from "@/features/access/access";
 import { pageForPath } from "@/features/access/routes";
+import { planHasFeature, planIncludesPage } from "@/features/plans/plans";
+import type { PlanSnapshot } from "@/features/plans/types";
 
 interface PermissionContextValue {
   facilityId: string;
@@ -24,6 +26,12 @@ interface PermissionContextValue {
   canAccessPath: (path: string) => boolean;
   /** Coach-style role: Coaching shows only their own coach profile, sessions, programs and students. */
   coachingOwnOnly: boolean;
+  /** The club's plan (null = none chosen, unrestricted). */
+  plan: PlanSnapshot | null;
+  /** Whether the plan includes a feature switch such as AUTOPAY. */
+  planHasFeature: (feature: string) => boolean;
+  /** Whether the plan includes the page — separate from the person's own access. */
+  pageInPlan: (page: PageKey) => boolean;
 }
 
 const PermissionContext = createContext<PermissionContextValue | null>(null);
@@ -42,7 +50,9 @@ export function PermissionProvider({
     const isOwner = context.baseRole === "owner";
     const pageLevel = (page: PageKey): AccessLevel => {
       const def = accessPage(page);
-      return def ? levelFor(def, set, isOwner) : "none";
+      // Plan first: a page outside the club's plan does not exist for anyone there, owner included.
+      if (!def || !planIncludesPage(context.plan, page)) return "none";
+      return levelFor(def, set, isOwner);
     };
     return {
       facilityId: context.facilityId,
@@ -61,6 +71,9 @@ export function PermissionProvider({
         return hit.needs === "edit" ? level === "edit" : level !== "none";
       },
       coachingOwnOnly: context.baseRole !== "owner" && set.has(COACHING_OWN_ONLY),
+      plan: context.plan,
+      planHasFeature: (feature) => planHasFeature(context.plan, feature),
+      pageInPlan: (page) => planIncludesPage(context.plan, page),
     };
   }, [context]);
 

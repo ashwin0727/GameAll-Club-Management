@@ -103,6 +103,14 @@ Deno.serve(async (req) => {
 
   if (ctx.outstandingMinor <= 0) return jsonResponse({ error: "There is nothing left to collect for this enrollment." }, 400);
 
+  // Monthly Auto Pay is part of the Advanced plan (one-time payment links are in every plan).
+  if (ctx.feeType === "MONTHLY") {
+    const { data: autoPayAllowed } = await supabase.rpc("plan_has_feature", { p_facility: ctx.facilityId, p_feature: "AUTOPAY" });
+    if (autoPayAllowed === false) {
+      return jsonResponse({ error: "Auto Pay is part of the Advanced plan. Upgrade the plan to use it." }, 403);
+    }
+  }
+
   const contact = toRazorpayContact(ctx.memberPhone);
   const email = ctx.memberEmail?.trim() || null;
 

@@ -15,7 +15,8 @@ interface RazorpayInstance {
 
 interface RazorpaySuccessResponse {
   razorpay_payment_id: string;
-  razorpay_order_id: string;
+  razorpay_order_id?: string;
+  razorpay_subscription_id?: string;
   razorpay_signature: string;
 }
 
@@ -25,9 +26,10 @@ interface RazorpayFailureResponse {
 
 interface RazorpayOptions {
   key: string;
-  order_id: string;
-  amount: number;
-  currency: string;
+  order_id?: string;
+  subscription_id?: string;
+  amount?: number;
+  currency?: string;
   name: string;
   description?: string;
   prefill?: { name?: string; contact?: string; email?: string };
@@ -124,4 +126,41 @@ export function isCheckoutCancellation(reason: unknown): boolean {
 /** True when a rejection from {@link openRazorpayCheckout} was a reported Razorpay failure. */
 export function isCheckoutFailure(reason: unknown): reason is CheckoutFailure {
   return typeof reason === "object" && reason !== null && "description" in reason;
+}
+
+/**
+ * Opens Razorpay Checkout for a subscription (an AutoPay mandate). The amount comes from the subscription itself; when its first
+ * charge is in the future this only authorises the mandate. Settles like {@link openRazorpayCheckout}.
+ */
+export async function openRazorpaySubscriptionCheckout(
+  info: { keyId: string; subscriptionId: string },
+  options: { description?: string; prefill?: { name?: string; contact?: string; email?: string } } = {},
+): Promise<CheckoutOutcome> {
+  await loadRazorpayScript();
+  if (!window.Razorpay) throw new Error("Razorpay Checkout failed to initialize.");
+
+  return new Promise<CheckoutOutcome>((resolve, reject) => {
+    let settled = false;
+    const razorpay = new window.Razorpay!({
+      key: info.keyId,
+      subscription_id: info.subscriptionId,
+      name: "GameAll",
+      description: options.description,
+      prefill: options.prefill,
+      handler: (response) => {
+        settled = true;
+        resolve({ razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature });
+      },
+      modal: {
+        ondismiss: () => {
+          if (!settled) reject(null);
+        },
+      },
+    });
+    razorpay.on("payment.failed", (response) => {
+      settled = true;
+      reject({ razorpayPaymentId: response.error.metadata?.payment_id, description: response.error.description } satisfies CheckoutFailure);
+    });
+    razorpay.open();
+  });
 }

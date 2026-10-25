@@ -60,7 +60,7 @@ export function PayoutSetupForm() {
     mutationFn: () => getOnboardingService().completeSetup(facility!.id),
     onSuccess: () => {
       completePayments();
-      router.push("/onboarding/complete");
+      router.push("/onboarding/plan");
     },
     onError: () => setError("We couldn't finish your setup. Please try again."),
   });

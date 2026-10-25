@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { AuthUser, Profile } from "@/features/auth/types";
+import { toPlanSnapshot } from "@/features/plans/plans";
+import type { PlanSnapshot } from "@/features/plans/types";
 
 /**
  * Server-side session reads. Client components go through
@@ -96,6 +98,8 @@ export interface FacilityContext {
   facilityName: string;
   baseRole: "owner" | "manager" | "staff";
   permissions: string[];
+  /** The club's plan; null = none chosen yet, which leaves every page open. */
+  plan: PlanSnapshot | null;
 }
 
 export const getFacilityContext = cache(async (): Promise<FacilityContext | null> => {
@@ -112,7 +116,7 @@ export const getFacilityContext = cache(async (): Promise<FacilityContext | null
   if (!facility) return null;
 
   // Neither call depends on the other's result, only on facility.id.
-  const [{ data: assignment }, { data: permissions }] = await Promise.all([
+  const [{ data: assignment }, { data: permissions }, { data: plan }] = await Promise.all([
     supabase
       .from("facility_users")
       .select("role")
@@ -120,6 +124,12 @@ export const getFacilityContext = cache(async (): Promise<FacilityContext | null
       .eq("user_id", user.id)
       .maybeSingle(),
     supabase.rpc("my_facility_permissions", { p_facility: facility.id }),
+    // Newer than the generated types; an error (e.g. migration 0157 not applied yet) reads as "no plan" = unrestricted.
+    (supabase.rpc as unknown as (fn: string, args: object) => Promise<{ data: Record<string, unknown> | null }>).call(
+      supabase,
+      "my_facility_plan",
+      { p_facility_id: facility.id },
+    ),
   ]);
 
   return {
@@ -130,5 +140,6 @@ export const getFacilityContext = cache(async (): Promise<FacilityContext | null
       | "manager"
       | "staff",
     permissions: permissions ?? [],
+    plan: toPlanSnapshot(plan),
   };
 });

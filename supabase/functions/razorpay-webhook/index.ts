@@ -249,6 +249,17 @@ async function processSubscriptionEvent(supabase: SupabaseClient, payload: Webho
     return;
   }
 
+  // The club's own GameAll plan (Basic / Advanced) subscription? The RPC answers false when the id is not one.
+  {
+    const { data: isPlan, error } = await supabase.rpc("apply_plan_subscription_webhook", {
+      p_razorpay_subscription_id: sub.id,
+      p_event: payload.event,
+      p_current_end: unixToDateString(sub.current_end),
+    });
+    if (error) throw new Error(`apply_plan_subscription_webhook failed: ${error.message}`);
+    if (isPlan) return;
+  }
+
   // A subscription created for a coaching enrollment is handled entirely by
   // the coaching RPCs (they report whether the id is theirs); everything else
   // is a membership subscription and continues below unchanged.

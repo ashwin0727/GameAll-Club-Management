@@ -97,6 +97,12 @@ Deno.serve(async (req) => {
   if (mErr) return jsonResponse({ error: "Lookup failed." }, 500);
   if (!membership) return jsonResponse({ error: "Membership not found." }, 404);
 
+  // Auto Pay is part of the Advanced plan. A club with no plan yet is unrestricted.
+  const { data: autoPayAllowed } = await supabase.rpc("plan_has_feature", { p_facility: membership.facility_id, p_feature: "AUTOPAY" });
+  if (autoPayAllowed === false) {
+    return jsonResponse({ error: "Auto Pay is part of the Advanced plan. Upgrade the plan to use it." }, 403);
+  }
+
   const { data: existing } = await supabase
     .from("membership_subscriptions")
     .select("razorpay_subscription_id, short_url")
