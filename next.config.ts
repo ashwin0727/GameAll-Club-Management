@@ -1,7 +1,11 @@
+import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // A stray lockfile in the parent folder (F:\shuttlepro) made Next infer the
+  // wrong workspace root. Pin it to this project.
+  turbopack: { root: path.resolve(__dirname) },
   // Lets `next build` write to a separate output dir (e.g.
   // `NEXT_DIST_DIR=.next-prod next build`) so a production build never
   // collides with a running `next dev` on the shared `.next/` — a real
