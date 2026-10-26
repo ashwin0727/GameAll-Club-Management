@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -222,7 +222,8 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
 
   Future<void> _pickImage() async {
     setState(() => _imageError = null);
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1800, imageQuality: 85);
+    final file = await pickPhoto(context, maxWidth: 1800);
+    if (!mounted) return;
     if (file == null) return;
     final lower = file.name.toLowerCase();
     final type = lower.endsWith('.png') ? 'image/png' : lower.endsWith('.webp') ? 'image/webp' : (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) ? 'image/jpeg' : null;

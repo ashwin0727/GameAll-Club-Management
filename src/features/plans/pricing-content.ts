@@ -60,6 +60,20 @@ export const PRICING_MODULES: PricingModule[] = [
     },
   },
   {
+    key: "player-app",
+    label: "Player App",
+    basic: {
+      title: "Player App",
+      sub: "Guest booking only",
+      description: "Your club is visible in the GameAll Player App, and players can book guest slots with you. Memberships are not open to players.",
+    },
+    advanced: {
+      title: "Player App",
+      sub: "Guest booking & membership enrolment",
+      description: "Your club is visible in the GameAll Player App. Players can book guest slots and enrol in your memberships themselves.",
+    },
+  },
+  {
     key: "memberships",
     label: "Memberships",
     basic: {

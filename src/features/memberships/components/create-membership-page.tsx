@@ -16,6 +16,7 @@ import type { MembershipPaymentMode, MembershipPlan, MembershipType } from "@/fe
 import { CourtTimeSlotSection } from "@/features/memberships/components/court-time-slot-section";
 import { validateSlotSelection, toNewBatchPayload, ALL_DAYS, type SlotSelection } from "@/features/memberships/slot-form";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
 
 const DURATIONS = [
   { label: "1 Month", days: 30 },
@@ -74,6 +75,8 @@ function Field({ label, required, hint, children }: { label: string; required?: 
 const selectCls = "h-10 w-full rounded-md border border-input bg-secondary/60 px-3 text-sm";
 
 export function CreateMembershipPage({ membershipId }: { membershipId?: string } = {}) {
+  const planPerms = usePermissionContext();
+  const autoPayAllowed = planPerms ? planPerms.planHasFeature("AUTOPAY") : true;
   const router = useRouter();
   const queryClient = useQueryClient();
   const isEdit = !!membershipId;
@@ -589,11 +592,19 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
               <Input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="Enter transaction / reference number" />
             </Field>
             <label className="flex items-start gap-2 text-sm sm:col-span-2">
-              <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="mt-0.5" />
+              <input
+                type="checkbox"
+                checked={recurring && autoPayAllowed}
+                disabled={!autoPayAllowed}
+                onChange={(e) => setRecurring(e.target.checked)}
+                className="mt-0.5"
+              />
               <span>
                 Recurring UPI AutoPay
                 <span className="block text-xs text-muted-foreground">
-                  Generates a Razorpay mandate link — the total is then charged automatically each cycle.
+                  {autoPayAllowed
+                    ? "Generates a Razorpay mandate link — the total is then charged automatically each cycle."
+                    : "Auto Pay is part of the Advanced plan. On your current plan you record each payment yourself."}
                 </span>
               </span>
             </label>

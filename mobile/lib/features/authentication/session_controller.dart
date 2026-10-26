@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/app_user.dart';
 import '../../data/models/facility.dart';
+import '../../data/models/plan.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../data/services/supabase_provider.dart';
 import '../../core/access/access.dart';
@@ -12,6 +13,7 @@ class SessionState {
     this.facility,
     this.baseRole,
     this.permissions = const <String>{},
+    this.plan,
     this.isLoading = true,
   });
 
@@ -24,6 +26,9 @@ class SessionState {
 
   /// The permission keys the user holds for [facility] (my_facility_permissions).
   final Set<String> permissions;
+
+  /// The club's GameAll plan (Basic / Advanced). Null = none chosen yet, which leaves every page and feature open.
+  final PlanSnapshot? plan;
   final bool isLoading;
 
   bool get isAuthenticated => user != null;
@@ -39,8 +44,16 @@ class SessionState {
   AccessLevel pageLevel(String pageKey) {
     final page = accessPageFor(pageKey);
     if (page == null) return AccessLevel.none;
+    // Plan first: a page outside the club's plan does not exist for anyone there, owner included.
+    if (!pageInPlan(pageKey)) return AccessLevel.none;
     return accessLevelFor(page, permissions, isOwner: baseRole == 'owner');
   }
+
+  /// Whether the club's plan includes the page — separate from the person's own access.
+  bool pageInPlan(String pageKey) => plan == null || plan!.includesPage(pageKey);
+
+  /// Whether the club's plan includes a feature switch such as Auto Pay.
+  bool planHasFeature(String feature) => plan == null || plan!.hasFeature(feature);
 
   bool canViewPage(String pageKey) => pageLevel(pageKey) != AccessLevel.none;
 
@@ -82,6 +95,7 @@ class SessionState {
     Facility? facility,
     String? baseRole,
     Set<String>? permissions,
+    PlanSnapshot? plan,
     bool? isLoading,
   }) {
     return SessionState(
@@ -89,6 +103,7 @@ class SessionState {
       facility: facility ?? this.facility,
       baseRole: baseRole ?? this.baseRole,
       permissions: permissions ?? this.permissions,
+      plan: plan ?? this.plan,
       isLoading: isLoading ?? this.isLoading,
     );
   }
@@ -118,6 +133,7 @@ class SessionController extends Notifier<SessionState> {
     Facility? facility;
     String? baseRole;
     var permissions = const <String>{};
+    PlanSnapshot? plan;
 
     if (user != null) {
       facility = await ref.read(facilityRepositoryProvider).getFacility();
@@ -133,6 +149,7 @@ class SessionController extends Notifier<SessionState> {
         final staff = ref.read(staffRepositoryProvider);
         permissions = (await staff.myFacilityPermissions(facility.id)).toSet();
         await staff.recordMyLogin(); // last-login stamp for the Staff list
+        plan = await ref.read(planRepositoryProvider).myPlan(facility.id);
       }
     }
 
@@ -142,6 +159,7 @@ class SessionController extends Notifier<SessionState> {
       facility: facility,
       baseRole: baseRole,
       permissions: permissions,
+      plan: plan,
       isLoading: false,
     );
   }

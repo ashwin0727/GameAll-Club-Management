@@ -2,6 +2,7 @@
 
 import { Check, Eye, Lock, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import {
   ACCESS_GROUPS,
   COACHING_OWN_ONLY,
@@ -10,6 +11,7 @@ import {
   type AccessLevel,
   type AccessPage,
   type EditorLevel,
+  type PageKey,
 } from "@/features/access/access";
 
 /**
@@ -26,6 +28,9 @@ export function PageAccessMatrix({
   onChange: (next: Set<string>) => void;
   canGrant: (key: string) => boolean;
 }) {
+  const planCtx = usePermissionContext();
+  /** A page the club's plan does not include cannot be switched on for anyone — owner included. */
+  const inPlan = (page: AccessPage) => (planCtx ? planCtx.pageInPlan(page.key as PageKey) : true);
   function setLevel(page: AccessPage, level: AccessLevel) {
     const next = new Set(selected);
     for (const k of [...page.viewKeys, ...page.editKeys]) next.delete(k);
@@ -64,6 +69,7 @@ export function PageAccessMatrix({
 
   function optionAllowed(page: AccessPage, level: AccessLevel): boolean {
     if (level === "none") return true;
+    if (!inPlan(page)) return false;
     const keys = level === "edit" ? [...page.viewKeys, ...page.editKeys] : page.viewKeys;
     return keys.every(canGrant);
   }
@@ -104,7 +110,18 @@ export function PageAccessMatrix({
                 <li key={page.key} className="px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{page.key === "HOME" ? "Home (Today in the mobile app)" : page.label}</p>
+                      <p className="text-sm font-medium">
+                        {page.key === "HOME" ? "Home (Today in the mobile app)" : page.label}
+                        {!inPlan(page) && (
+                          <a
+                            href="/plans"
+                            className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-primary"
+                            title="This page is not part of your club's current plan"
+                          >
+                            Not in your plan
+                          </a>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{page.description}</p>
                     </div>
                     <div role="radiogroup" aria-label={`${page.label} access`} className="inline-flex shrink-0 overflow-hidden rounded-lg border border-border text-xs">

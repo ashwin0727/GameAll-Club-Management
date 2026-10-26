@@ -26,6 +26,12 @@ describe("resolveEntryRoute", () => {
       resolveEntryRoute({ signedIn: true, deviceOnboarded: true, onboardingCompleted: false }),
     ).toBe("/onboarding/facility");
   });
+
+  it("sends the platform admin to the back office, never to facility setup", () => {
+    expect(
+      resolveEntryRoute({ signedIn: true, deviceOnboarded: true, onboardingCompleted: false, isPlatformAdmin: true }),
+    ).toBe("/admin");
+  });
 });
 
 describe("safeRedirectPath", () => {

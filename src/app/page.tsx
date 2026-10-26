@@ -15,6 +15,7 @@ export default async function RootPage() {
       signedIn={Boolean(user)}
       onboardingCompleted={user?.onboardingCompleted ?? false}
       mobileVerificationPending={user?.mobileVerificationPending ?? false}
+      isPlatformAdmin={user?.isPlatformAdmin ?? false}
     />
   );
 }

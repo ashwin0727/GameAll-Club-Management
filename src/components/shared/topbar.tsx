@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Building2, CalendarDays, Check, ChevronDown, LogOut, Menu, User } from "lucide-react";
+import { Building2, CalendarDays, Check, ChevronDown, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TopbarSearch } from "@/components/shared/topbar-search";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { useUiStore } from "@/stores/ui-store";
 import { LogoutConfirm } from "@/features/auth/components/logout-confirm";
 import { useFacility } from "@/features/facility/hooks/use-facility";
@@ -134,22 +135,7 @@ export function Topbar({ profile }: { profile: Profile }) {
 
       <TopbarSearch role={profile.role} />
 
-      {/* Notifications — there is no notification feed yet, so no badge is shown. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label="Notifications"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <p className="px-2 py-3 text-center text-xs text-muted-foreground">You&apos;re all caught up.</p>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <NotificationBell />
 
       <div className="hidden h-8 w-px bg-border sm:block" aria-hidden />
 

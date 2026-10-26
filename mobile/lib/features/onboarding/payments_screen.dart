@@ -119,7 +119,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       await ref.read(onboardingRepositoryProvider).completeSetup(facilityId);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.onboardingComplete);
+      context.go(AppRoutes.onboardingPlan);
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);

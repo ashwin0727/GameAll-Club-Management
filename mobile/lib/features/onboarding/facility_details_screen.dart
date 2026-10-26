@@ -1,10 +1,10 @@
 
 import 'package:flutter/material.dart';
+import '../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
@@ -40,7 +40,6 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
   final _description = TextEditingController();
   final _locationUrl = TextEditingController();
 
-  final _picker = ImagePicker();
   Uint8List? _logoBytes;
   String? _logoUrl;
   bool _uploadingLogo = false;
@@ -106,7 +105,8 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   Future<void> _pickLogo() async {
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      final picked = await pickPhoto(context);
+      if (!mounted) return;
       if (picked == null) return;
 
       // Let the owner reframe / zoom / crop before it's saved.

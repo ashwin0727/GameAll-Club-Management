@@ -9,10 +9,15 @@ export function todayIso(now: Date = new Date()): string {
   return `${now.getFullYear()}-${m}-${d}`;
 }
 
-/** Active only while the plan has not been cancelled and its last covered day has not passed. */
+/** Active (paid or in its free trial) only while the plan has not been cancelled and its last covered day has not passed. */
 export function isPlanActive(plan: Pick<FacilityPlan, "status" | "validTill"> | null, today: string = todayIso()): boolean {
   if (!plan) return false;
-  return plan.status === "active" && plan.validTill >= today;
+  return (plan.status === "active" || plan.status === "trialing") && plan.validTill >= today;
+}
+
+/** True during the free trial: the plan is chosen and authorised, the first payment is still ahead. */
+export function isPlanTrial(plan: Pick<FacilityPlan, "status" | "validTill"> | null, today: string = todayIso()): boolean {
+  return !!plan && plan.status === "trialing" && plan.validTill >= today;
 }
 
 /** Whole days until (and including) the valid-till date; negative once it has passed. */
@@ -35,27 +40,3 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   memberships: true,
   reports: false,
 };
-
-/**
- * Placeholder shown until a real plan is set up for the facility. Plans and pricing are still being finalised and
- * will be synced in later; once a `facility_subscriptions` row exists it replaces this automatically.
- */
-export function samplePlan(now: Date = new Date()): FacilityPlan {
-  return {
-    id: "sample-plan",
-    isSample: true,
-    planName: "Pro Plan",
-    priceMinor: 299_900,
-    currency: "INR",
-    interval: "month",
-    status: "active",
-    validTill: `${now.getFullYear()}-12-31`,
-    features: [
-      "Unlimited bookings and guest bookings",
-      "Memberships, sessions and coaching management",
-      "Finance, expenses and Reports & Analytics",
-      "Staff roles and permissions",
-      "Priority support",
-    ],
-  };
-}

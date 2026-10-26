@@ -246,8 +246,12 @@ export function AddStudentWizardPage() {
   /** The enrollment's total obligation: one fee, or every month's fee until the program ends. */
   const totalPayableMinor = cycleFeeMinor * cycles;
   // The program's existing Payment Mode decides which collection methods are offered.
-  const onlineAllowed = program ? program.paymentMode !== "OFFLINE" : false;
-  const offlineAllowed = program ? program.paymentMode !== "ONLINE" : true;
+  // A monthly program is collected through Auto Pay, which is an Advanced-plan feature: on Basic the payment is recorded by hand
+  // (one-time payment links are in every plan).
+  const autoPayOk = perms ? perms.planHasFeature("AUTOPAY") : true;
+  const noAutoPay = isMonthly && !autoPayOk;
+  const onlineAllowed = program ? program.paymentMode !== "OFFLINE" && !noAutoPay : false;
+  const offlineAllowed = program ? program.paymentMode !== "ONLINE" || noAutoPay : true;
   const monthlyNeedsDates = isMonthly && !program?.endDate;
 
   // One set of rules for both the live inline errors and the "Next Step" gate, so they can
@@ -774,6 +778,14 @@ export function AddStudentWizardPage() {
               <p className="text-sm text-success">No payment due.</p>
             ) : (
               <>
+                {noAutoPay && (
+                  <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                    Monthly Auto Pay is part of the Advanced plan. On your current plan you record each month&apos;s payment yourself.{" "}
+                    <Link href="/plans" className="font-medium text-primary hover:underline">
+                      See plans
+                    </Link>
+                  </p>
+                )}
                 <div className={cn("grid gap-2", onlineAllowed && offlineAllowed ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2")}>
                   {onlineAllowed && (
                     <button

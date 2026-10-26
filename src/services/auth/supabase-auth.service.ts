@@ -193,6 +193,11 @@ export class SupabaseAuthService implements AuthService {
       }
     }
 
+    const { data: adminFlag } = await (this.supabase.rpc as unknown as (fn: string) => Promise<{ data: boolean | null }>).call(
+      this.supabase,
+      "is_platform_admin",
+    );
+
     let mobileVerificationPending = false;
     if (user.user_metadata?.require_mobile === true) {
       const { data: verified } = await this.supabase
@@ -212,6 +217,7 @@ export class SupabaseAuthService implements AuthService {
       emailVerified: Boolean(user.email_confirmed_at),
       onboardingCompleted: (profile?.onboarding_completed ?? false) || facilityCompleted,
       mobileVerificationPending,
+      isPlatformAdmin: adminFlag === true,
     };
   }
 

@@ -186,6 +186,7 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                   PageAccessMatrix(
                     selected: _selected,
                     canGrant: canGrant,
+                    pageInPlan: session.pageInPlan,
                     onChanged: (next) => setState(() {
                       _selected
                         ..clear()

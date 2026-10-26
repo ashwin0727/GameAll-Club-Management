@@ -35,6 +35,7 @@ import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
+import '../notifications/notification_providers.dart';
 import '../../shared/widgets/smooth_switcher.dart';
 import '../../core/access/access.dart';
 
@@ -247,15 +248,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         actions: [
-          if (session.canViewPage(accessPageRefunds))
-            IconButton(
+          Consumer(builder: (context, ref, _) {
+            final unread = ref.watch(unreadNotificationsProvider).value ?? 0;
+            return IconButton(
+              tooltip: 'Notifications',
               onPressed: () async {
-                await context.push(AppRoutes.refunds);
-                if (mounted) _load();
+                await context.push(AppRoutes.notifications);
+                ref.invalidate(unreadNotificationsProvider);
               },
-              icon: Icon(Icons.notifications_none_rounded,
-                  color: context.tokens.textSecondary),
-            ),
+              icon: Badge(
+                isLabelVisible: unread > 0,
+                label: Text(unread > 99 ? '99+' : '$unread'),
+                child: Icon(Icons.notifications_none_rounded, color: context.tokens.textSecondary),
+              ),
+            );
+          }),
           Padding(
             padding: const EdgeInsets.only(left: AppSpacing.xs, right: AppSpacing.lg),
             child: InkWell(

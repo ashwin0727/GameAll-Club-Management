@@ -8,7 +8,10 @@ import 'core/routing/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
+import 'features/authentication/session_controller.dart';
 import 'features/authentication/splash_screen.dart' show warmSplashVideo;
+import 'features/notifications/notification_providers.dart';
+import 'features/notifications/push_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,11 +56,27 @@ class _GameAllClubAppState extends ConsumerState<GameAllClubApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
     });
+    // Phone push notifications: tapping one opens the screen it is about; a message arriving refreshes the bell.
+    PushService.instance.init(
+      open: (route) => ref.read(appRouterProvider).push(route),
+      onIncoming: () {
+        ref.invalidate(unreadNotificationsProvider);
+        ref.invalidate(notificationsProvider);
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
+    // Register this phone for push when someone signs in, and release it when they sign out.
+    ref.listen<String?>(sessionControllerProvider.select((s) => s.user?.id), (previous, next) {
+      if (next != null) {
+        PushService.instance.onSignedIn(ref.read(notificationRepositoryProvider));
+      } else if (previous != null) {
+        PushService.instance.onSignedOut();
+      }
+    });
     final themeMode = ref.watch(themeModeControllerProvider);
     return MaterialApp.router(
       title: 'GameAll Club',

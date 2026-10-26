@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
@@ -151,7 +151,8 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
 
   Future<void> _pickPhoto() async {
     setState(() => _avatarError = null);
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    final file = await pickPhoto(context, maxWidth: 1600);
+    if (!mounted) return;
     if (file == null) return;
     final lower = file.name.toLowerCase();
     final type = lower.endsWith('.png') ? 'image/png' : lower.endsWith('.webp') ? 'image/webp' : (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) ? 'image/jpeg' : null;

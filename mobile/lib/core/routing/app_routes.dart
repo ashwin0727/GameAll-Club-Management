@@ -26,6 +26,10 @@ class AppRoutes {
   static const onboardingPayments = '/onboarding/payments';
   static const onboardingComplete = '/onboarding/complete';
 
+  /// Choose Basic or Advanced right after Payout (onboarding), and the same screen from Profile later.
+  static const onboardingPlan = '/onboarding/plan';
+  static const plans = '/plans';
+
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
   static const guestBookings = '/guest-bookings';
@@ -48,6 +52,9 @@ class AppRoutes {
 
   static const membershipSessions = '/membership-sessions';
   static const refunds = '/refunds';
+
+  /// The person's notifications (migration 0161). Reached from the bell on the dashboard and from a tapped push message.
+  static const notifications = '/notifications';
 
   /// Mirrors the web's NAV_ITEMS "Finance" entry at /finance (src/lib/
   /// constants.ts). The transactions list is its own screen on mobile —

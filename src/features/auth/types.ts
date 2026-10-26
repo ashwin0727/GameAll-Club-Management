@@ -29,7 +29,9 @@ export interface AuthUser {
   onboardingCompleted: boolean;
   /** A new owner who still has to verify a mobile number (SMS OTP) before onboarding. */
   mobileVerificationPending?: boolean;
+  /** GameAll's own back-office account (admin@gameall.co): goes to /admin, never to a facility dashboard. */
+  isPlatformAdmin?: boolean;
 }
 
 /** Where the splash screen sends the visitor once session state is known. */
-export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/facility" | "/verify-mobile";
+export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/facility" | "/verify-mobile" | "/admin";

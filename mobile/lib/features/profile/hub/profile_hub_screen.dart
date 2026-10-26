@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/routing/app_routes.dart';
@@ -72,11 +72,13 @@ class ProfileHubScreen extends ConsumerWidget {
           builder: (p) => _Hero(profile: p, facilityPhone: facility?.businessPhone),
         ),
         const SizedBox(height: AppSpacing.lg),
-        HubAsync<FacilityPlan>(
+        HubAsync<FacilityPlan?>(
           value: plan,
           skeletonHeight: 190,
           onRetry: () => ref.invalidate(hubPlanProvider),
-          builder: (p) => _PlanCard(plan: p, facilityName: facility?.name ?? 'Your facility'),
+          builder: (p) => p == null
+              ? const _NoPlanCard()
+              : _PlanCard(plan: p, facilityName: facility?.name ?? 'Your facility'),
         ),
         const SizedBox(height: AppSpacing.lg),
         stats.when(
@@ -155,7 +157,8 @@ class _HeroState extends ConsumerState<_Hero> {
 
   Future<void> _pickPhoto() async {
     setState(() => _photoError = null);
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 85);
+    final file = await pickPhoto(context, maxWidth: 1200);
+    if (!mounted) return;
     if (file == null) return;
     final lower = file.name.toLowerCase();
     final type = lower.endsWith('.png')
@@ -505,6 +508,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final active = plan.isActive();
+    final trial = plan.isTrial();
     final left = plan.daysLeft();
     final accent = active ? t.primary : t.textSecondary;
     final interval = plan.interval;
@@ -532,7 +536,7 @@ class _PlanCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(active ? 'Active Membership Plan' : 'Membership Plan',
+                    Text(trial ? 'Free trial' : active ? 'Active Membership Plan' : 'Membership Plan',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accent)),
                     Text(plan.planName,
                         maxLines: 1,
@@ -542,7 +546,7 @@ class _PlanCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _StatusPill(active: active),
+              _StatusPill(active: active, trial: trial),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -557,27 +561,45 @@ class _PlanCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: _PlanFact(icon: Icons.event_outlined, label: 'Valid Till', value: hubDate(DateTime.tryParse(plan.validTill))),
+                child: _PlanFact(icon: Icons.event_outlined, label: trial ? 'First payment on' : 'Valid Till', value: hubDate(DateTime.tryParse(plan.validTill))),
               ),
             ],
           ),
-          if (active && left <= 14) ...[
+          if (trial) ...[
             const SizedBox(height: AppSpacing.md),
-            Text('Your plan ends ${left == 0 ? 'today' : 'in $left day${left == 1 ? '' : 's'}'}. Contact GameAll to renew it.',
+            Text(
+              '${left <= 0 ? 'Your free trial ends today.' : '$left day${left == 1 ? '' : 's'} left in your free trial.'} Nothing is charged until '
+              '${hubDate(DateTime.tryParse(plan.validTill))}; then ${hubMoney(plan.priceMinor)} is taken automatically each ${plan.interval}.',
+              style: TextStyle(fontSize: 12.5, color: t.textSecondary, height: 1.4),
+            ),
+          ],
+          if (active && !trial && left <= 14) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text('Your plan ends ${left == 0 ? 'today' : 'in $left day${left == 1 ? '' : 's'}'}. It renews automatically if Auto Pay is set up.',
                 style: TextStyle(fontSize: 12.5, color: t.warning)),
           ],
           if (!active) ...[
             const SizedBox(height: AppSpacing.md),
-            Text('This plan has ${plan.status == 'cancelled' ? 'been cancelled' : 'expired'}. Contact GameAll to renew it.',
+            Text('This plan has ${plan.status == 'cancelled' ? 'been cancelled' : 'ended'}. Your club is on Basic features until you choose a plan again.',
                 style: TextStyle(fontSize: 12.5, color: t.destructive)),
           ],
           const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => _showDetails(context),
-              child: const Text('View Plan Details'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _showDetails(context),
+                  child: const Text('View Plan Details'),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => context.push(AppRoutes.plans),
+                  child: Text(active ? 'Change plan' : 'Choose a plan'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -630,10 +652,39 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
+class _NoPlanCard extends StatelessWidget {
+  const _NoPlanCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: t.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: t.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('No plan yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: t.textPrimary)),
+          const SizedBox(height: 4),
+          Text("Choose Basic or Advanced to unlock your club's features. Your first 90 days are free.",
+              style: TextStyle(fontSize: 13, color: t.textSecondary, height: 1.35)),
+          const SizedBox(height: AppSpacing.md),
+          FilledButton(onPressed: () => context.push(AppRoutes.plans), child: const Text('Choose a plan')),
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.active});
+  const _StatusPill({required this.active, this.trial = false});
 
   final bool active;
+  final bool trial;
 
   @override
   Widget build(BuildContext context) {
@@ -642,7 +693,7 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.pill)),
-      child: Text(active ? 'Active' : 'Inactive', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c)),
+      child: Text(trial ? 'Free trial' : active ? 'Active' : 'Inactive', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c)),
     );
   }
 }

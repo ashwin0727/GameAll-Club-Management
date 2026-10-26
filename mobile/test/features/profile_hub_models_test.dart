@@ -27,11 +27,12 @@ void main() {
       expect(plan().daysLeft(DateTime(2026, 12, 31)), 0);
     });
 
-    test('the sample plan is active until the end of the year', () {
-      final sample = FacilityPlan.sample(DateTime(2026, 6, 1));
-      expect(sample.isSample, isTrue);
-      expect(sample.validTill, '2026-12-31');
-      expect(sample.isActive(DateTime(2026, 6, 1)), isTrue);
+    test('a free trial counts as active until its last day, and is recognised', () {
+      final trial = plan(status: 'trialing');
+      expect(trial.isActive(DateTime(2026, 6, 1)), isTrue);
+      expect(trial.isTrial(DateTime(2026, 6, 1)), isTrue);
+      expect(trial.isTrial(DateTime(2027, 1, 1)), isFalse);
+      expect(plan().isTrial(DateTime(2026, 6, 1)), isFalse);
     });
   });
 

@@ -16,7 +16,7 @@ import type { PlanSnapshot } from "@/features/plans/types";
  * instead of each re-authenticating and re-querying the profile — see
  * https://nextjs.org/docs/app/building-your-application/caching#request-memoization
  */
-const getAuthenticatedUser = cache(async () => {
+export const getAuthenticatedUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -67,6 +67,15 @@ async function hasCompletedFacility(supabase: SupabaseClient<Database>, userId: 
   return Boolean(assignment);
 }
 
+/** Whether the signed-in user is GameAll's platform admin (the database decides; see migration 0160). */
+export async function checkPlatformAdmin(supabase: SupabaseClient<Database>): Promise<boolean> {
+  const { data, error } = await (supabase.rpc as unknown as (fn: string) => Promise<{ data: boolean | null; error: unknown }>).call(
+    supabase,
+    "is_platform_admin",
+  );
+  return !error && data === true;
+}
+
 /** Profile joined with the auth facts the UI needs (verification state). */
 export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const { supabase, user } = await getAuthenticatedUser();
@@ -75,6 +84,8 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const profile = await getCurrentProfile();
   const onboardingCompleted =
     (profile?.onboarding_completed ?? false) || (await hasCompletedFacility(supabase, user.id));
+
+  const isPlatformAdmin = await checkPlatformAdmin(supabase);
 
   let mobileVerificationPending = false;
   if (user.user_metadata?.require_mobile === true) {
@@ -89,6 +100,7 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
     emailVerified: Boolean(user.email_confirmed_at),
     onboardingCompleted,
     mobileVerificationPending,
+    isPlatformAdmin,
   };
 });
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Building2, CalendarDays, Check, Crown, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { daysLeft, formatPlanDate, INTERVAL_LABEL, isPlanActive } from "@/features/profile/plan";
+import { daysLeft, formatPlanDate, INTERVAL_LABEL, isPlanActive, isPlanTrial } from "@/features/profile/plan";
 import type { FacilityPlan } from "@/features/profile/types";
 import { formatCurrency } from "@/features/pricing/money";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function PlanCard({
   if (loading) return <Skeleton className="h-44 w-full rounded-xl" />;
 
   const active = isPlanActive(plan ?? null);
+  const trial = isPlanTrial(plan ?? null);
   const left = plan ? daysLeft(plan.validTill) : 0;
 
   return (
@@ -66,11 +68,11 @@ export function PlanCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className={cn("text-xs font-medium", active ? "text-primary" : "text-muted-foreground")}>
-              {active ? "Active Membership Plan" : "Membership Plan"}
+              {trial ? "Free trial" : active ? "Active Membership Plan" : "Membership Plan"}
             </p>
             {plan && (
               <Badge variant={active ? "success" : "destructive"} className={active ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}>
-                {active ? "Active" : "Inactive"}
+                {trial ? "Free trial" : active ? "Active" : "Inactive"}
               </Badge>
             )}
           </div>
@@ -85,8 +87,13 @@ export function PlanCard({
               <p className="text-sm text-muted-foreground">
                 {error
                   ? "We couldn't load your GameAll plan. Please refresh to try again."
-                  : "Your GameAll membership plan will show up here once it is set up for this facility."}
+                  : "Choose Basic or Advanced to unlock your club's features. Your first 90 days are free."}
               </p>
+              {!error && (
+                <Button asChild size="sm" className="mt-3">
+                  <Link href="/plans">Choose a plan</Link>
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -102,29 +109,40 @@ export function PlanCard({
               label="Plan Price"
               value={`${formatCurrency(plan.priceMinor, plan.currency)} / ${INTERVAL_LABEL[plan.interval]}`}
             />
-            <Fact icon={CalendarDays} label="Valid Till" value={formatPlanDate(plan.validTill)} />
+            <Fact icon={CalendarDays} label={trial ? "First payment on" : "Valid Till"} value={formatPlanDate(plan.validTill)} />
             <Button variant="outline" size="sm" className="col-span-2 sm:col-span-1" onClick={() => setOpen(true)}>
               View Plan Details
             </Button>
           </div>
-          {active && left <= 14 && (
+          {trial && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {left <= 0 ? "Your free trial ends today." : `${left} day${left === 1 ? "" : "s"} left in your free trial.`} Nothing is charged until{" "}
+              {formatPlanDate(plan.validTill)}; then {formatCurrency(plan.priceMinor, plan.currency)} is taken automatically each {INTERVAL_LABEL[plan.interval]}.
+            </p>
+          )}
+          {active && !trial && left <= 14 && (
             <p className="mt-3 text-xs text-warning-foreground">
-              Your plan ends {left === 0 ? "today" : `in ${left} day${left === 1 ? "" : "s"}`}. Contact GameAll to renew it.
+              Your plan ends {left === 0 ? "today" : `in ${left} day${left === 1 ? "" : "s"}`}. It renews automatically if Auto Pay is set up.
             </p>
           )}
           {!active && (
             <p className="mt-3 text-xs text-destructive">
-              This plan has {plan.status === "cancelled" ? "been cancelled" : "expired"}. Contact GameAll to renew it.
+              This plan has {plan.status === "cancelled" ? "been cancelled" : "ended"}. Your club is on Basic features until you choose a plan again.
             </p>
           )}
+          <p className="mt-3 text-xs">
+            <Link href="/plans" className="font-medium text-primary hover:underline">
+              {active ? "Change plan" : "Choose a plan"}
+            </Link>
+          </p>
 
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>{plan.planName}</DialogTitle>
                 <DialogDescription>
-                  {formatCurrency(plan.priceMinor, plan.currency)} per {INTERVAL_LABEL[plan.interval]} · valid till{" "}
-                  {formatPlanDate(plan.validTill)}
+                  {formatCurrency(plan.priceMinor, plan.currency)} per {INTERVAL_LABEL[plan.interval]} ·{" "}
+                  {trial ? "first payment on" : "valid till"} {formatPlanDate(plan.validTill)}
                 </DialogDescription>
               </DialogHeader>
               {plan.features.length > 0 ? (

@@ -44,6 +44,7 @@ import { getMembershipService } from "@/services/memberships";
 import { ServiceError } from "@/services/shared/service-error";
 import type { MembershipListRow, MembershipPlan } from "@/features/memberships/types";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { cn } from "@/lib/utils";
 
 const GLASS =
@@ -280,6 +281,7 @@ function Field({
  * uses, so a member created here is identical to one created there.
  */
 export function AddMemberWizardPage() {
+  const planPerms = usePermissionContext();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: facility, isLoading: facilityLoading } = useFacility();
@@ -1010,6 +1012,7 @@ export function AddMemberWizardPage() {
               generatingLink={generatingLink}
               linkError={linkError}
               isRecurringPlan={selectedPlan?.planType === "RECURRING"}
+              autoPayAllowed={planPerms ? planPerms.planHasFeature("AUTOPAY") : true}
             />
             <MemberContextPanel
               draft={draft}

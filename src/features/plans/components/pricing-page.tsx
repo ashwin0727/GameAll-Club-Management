@@ -20,6 +20,7 @@ const PLANS: { key: PlanKey; name: string; tagline: string; popular: boolean }[]
 /** Comparison-table sections, in order. */
 const GROUPS: { title: string; keys: string[] }[] = [
   { title: "Run the club", keys: ["home", "calendar", "guest-booking", "guest-players", "tournaments"] },
+  { title: "Player App", keys: ["player-app"] },
   { title: "Members & coaching", keys: ["memberships", "coaching"] },
   { title: "Operations", keys: ["maintenance", "staff"] },
   { title: "Money & insight", keys: ["finance", "reports", "payouts"] },
@@ -27,12 +28,17 @@ const GROUPS: { title: string; keys: string[] }[] = [
 
 /** Where a plain tick would hide a real difference, the table says it in words. */
 const TABLE_TEXT: Record<string, Record<PlanKey, string>> = {
+  "player-app": { basic: "Guest booking only", advanced: "Guest booking + memberships" },
   memberships: { basic: "Manual payments", advanced: "Automatic payments" },
   coaching: { basic: "Manual · no schedule", advanced: "Automatic · with schedule" },
   payouts: { basic: "Next working day", advanced: "Within 5 minutes" },
 };
 
 const FAQS: { q: string; a: string }[] = [
+  {
+    q: "What can players do in the Player App?",
+    a: "On both plans your club is visible to players, who can book guest slots. On Advanced, players can also enrol in your memberships themselves, right from the app.",
+  },
   {
     q: "How does the free trial work?",
     a: "Pick a plan and use every feature in it free for 90 days. If the trial ends and you have not paid, your club stays on Basic features and nothing is deleted.",

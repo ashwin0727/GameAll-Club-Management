@@ -19,6 +19,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/auth_widgets.dart';
 import '../authentication/session_controller.dart';
+import '../../data/models/plan.dart';
 import 'access_days.dart';
 import 'membership_charges.dart';
 import 'membership_slot.dart';
@@ -830,14 +831,23 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                 ),
                 _text('Payment reference', _paymentRef,
                     helper: 'Transaction / reference number (optional)'),
-                _OptionRow(
-                  selected: _recurring,
-                  isCheckbox: true,
-                  title: 'Recurring UPI AutoPay',
-                  subtitle:
-                      'Generates a Razorpay mandate link; the total is charged each cycle.',
-                  onTap: () => setState(() => _recurring = !_recurring),
-                ),
+                if (ref.watch(sessionControllerProvider).planHasFeature(autoPayFeature))
+                  _OptionRow(
+                    selected: _recurring,
+                    isCheckbox: true,
+                    title: 'Recurring UPI AutoPay',
+                    subtitle:
+                        'Generates a Razorpay mandate link; the total is charged each cycle.',
+                    onTap: () => setState(() => _recurring = !_recurring),
+                  )
+                else
+                  const _OptionRow(
+                    selected: false,
+                    isCheckbox: true,
+                    title: 'Recurring UPI AutoPay',
+                    subtitle: 'Auto Pay is part of the Advanced plan. On your current plan you record each payment yourself.',
+                    onTap: null,
+                  ),
               ],
             ],
           ),
@@ -1181,7 +1191,7 @@ class _Section extends StatelessWidget {
 class _StepBtn extends StatelessWidget {
   const _StepBtn({required this.icon, required this.onTap});
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -1213,7 +1223,7 @@ class _OptionRow extends StatelessWidget {
   final bool selected;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool isCheckbox;
 
   @override
@@ -1285,7 +1295,7 @@ class _PickerField extends StatelessWidget {
   });
 
   final String text;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final IconData? icon;
   final bool placeholder;
   final Widget? trailing;

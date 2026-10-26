@@ -48,7 +48,6 @@ class FacilityPlan {
     required this.status,
     required this.validTill,
     this.features = const [],
-    this.isSample = false,
   });
 
   final String planName;
@@ -58,15 +57,12 @@ class FacilityPlan {
   /// month | quarter | year
   final String interval;
 
-  /// active | cancelled
+  /// active | trialing | cancelled
   final String status;
 
   /// yyyy-MM-dd — the last day the plan covers.
   final String validTill;
   final List<String> features;
-
-  /// True for the placeholder shown until a real plan is synced in.
-  final bool isSample;
 
   factory FacilityPlan.fromJson(Map<String, dynamic> json) => FacilityPlan(
         planName: json['plan_name'] as String,
@@ -78,33 +74,17 @@ class FacilityPlan {
         features: ((json['features'] as List<dynamic>?) ?? const []).map((e) => '$e').toList(),
       );
 
-  /// Plans and pricing are still being finalised; until a row exists the owner sees this.
-  factory FacilityPlan.sample([DateTime? now]) {
-    final n = now ?? DateTime.now();
-    return FacilityPlan(
-      planName: 'Pro Plan',
-      priceMinor: 299900,
-      currency: 'INR',
-      interval: 'month',
-      status: 'active',
-      validTill: '${n.year}-12-31',
-      isSample: true,
-      features: const [
-        'Unlimited bookings and guest bookings',
-        'Memberships, sessions and coaching management',
-        'Finance, expenses and Reports & Analytics',
-        'Staff roles and permissions',
-        'Priority support',
-      ],
-    );
+  String _today(DateTime n) =>
+      '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
+
+  /// Active (paid, or in its free trial) only while not cancelled and the last covered day has not passed.
+  bool isActive([DateTime? now]) {
+    final today = _today(now ?? DateTime.now());
+    return (status == 'active' || status == 'trialing') && validTill.compareTo(today) >= 0;
   }
 
-  /// Active only while not cancelled and the last covered day has not passed.
-  bool isActive([DateTime? now]) {
-    final n = now ?? DateTime.now();
-    final today = '${n.year.toString().padLeft(4, '0')}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-    return status == 'active' && validTill.compareTo(today) >= 0;
-  }
+  /// The free trial: the plan is chosen and authorised, the first payment is still ahead.
+  bool isTrial([DateTime? now]) => status == 'trialing' && validTill.compareTo(_today(now ?? DateTime.now())) >= 0;
 
   int daysLeft([DateTime? now]) {
     final n = now ?? DateTime.now();

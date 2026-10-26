@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { samplePlan } from "@/features/profile/plan";
 import { getProfileService } from "@/services/profile";
 
 const STALE = 60_000;
@@ -18,7 +17,7 @@ export function useFacilityPlan(facilityId: string | undefined) {
   return useQuery({
     queryKey: profileKeys.plan(facilityId ?? ""),
     // Until a real plan is synced in, show the sample one.
-    queryFn: async () => (await getProfileService().getPlan(facilityId!)) ?? samplePlan(),
+    queryFn: async () => await getProfileService().getPlan(facilityId!),
     enabled: !!facilityId,
     staleTime: STALE,
   });

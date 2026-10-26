@@ -19,12 +19,11 @@ final hubProfileProvider = FutureProvider.autoDispose<HubProfile>((ref) {
   return ref.watch(profileHubRepositoryProvider).getProfile();
 });
 
-/// GameAll's plan for the facility; the sample plan stands in until a real one is synced.
-final hubPlanProvider = FutureProvider.autoDispose<FacilityPlan>((ref) async {
+/// GameAll's plan for the facility, or null when none has been chosen yet.
+final hubPlanProvider = FutureProvider.autoDispose<FacilityPlan?>((ref) async {
   final facility = _facilityOf(ref);
-  if (facility == null) return FacilityPlan.sample();
-  final plan = await ref.watch(profileHubRepositoryProvider).getPlan(facility.id);
-  return plan ?? FacilityPlan.sample();
+  if (facility == null) return null;
+  return ref.watch(profileHubRepositoryProvider).getPlan(facility.id);
 });
 
 /// Bookings and revenue are the server's own figures for this month, read through the same repositories the Reports and

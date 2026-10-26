@@ -9,8 +9,8 @@ export interface FacilityPlan {
   priceMinor: number;
   currency: string;
   interval: PlanInterval;
-  /** The stored status: "cancelled" is a plan the facility has ended. */
-  status: "active" | "cancelled";
+  /** The stored status: "trialing" is the free trial before the first charge; "cancelled" is a plan the facility has ended. */
+  status: "active" | "trialing" | "cancelled";
   /** yyyy-mm-dd — the last day the plan covers. */
   validTill: string;
   features: string[];

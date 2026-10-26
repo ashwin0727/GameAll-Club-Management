@@ -99,6 +99,7 @@ export function PaymentStep({
   generatingLink,
   linkError,
   isRecurringPlan = false,
+  autoPayAllowed = true,
 }: {
   draft: WizardDraft;
   set: <K extends keyof WizardDraft>(key: K, value: WizardDraft[K]) => void;
@@ -116,6 +117,8 @@ export function PaymentStep({
    *  Paid" are unavailable: the only path is the real subscription behind "Generate Payment
    *  Link", which is the sole thing that actually creates/verifies the mandate. */
   isRecurringPlan?: boolean;
+  /** False on the Basic plan: Auto Pay (the Razorpay subscription link) is an Advanced feature, so payments are recorded by hand. */
+  autoPayAllowed?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [editingAmount, setEditingAmount] = useState(false);
@@ -128,10 +131,15 @@ export function PaymentStep({
   // separate offline payment on top of a live mandate would double up.
   const locked = Boolean(linkResult);
 
+  // A recurring plan can only be paid through the real subscription — unless the club's plan has no Auto Pay, in which case the
+  // payment is tracked by hand (the Basic plan's "manual payment tracking").
+  const forceLink = isRecurringPlan && autoPayAllowed;
+
   useEffect(() => {
-    if (isRecurringPlan && draft.paymentTab !== "link") set("paymentTab", "link");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only ever forces the tab once, when the plan is recurring; not on every draft change
-  }, [isRecurringPlan]);
+    if (forceLink && draft.paymentTab !== "link") set("paymentTab", "link");
+    if (!autoPayAllowed && draft.paymentTab === "link") set("paymentTab", "offline");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only ever forces the tab once, when the plan changes; not on every draft change
+  }, [forceLink, autoPayAllowed]);
 
   async function copyLink() {
     if (!linkResult?.shortUrl) return;
@@ -146,9 +154,17 @@ export function PaymentStep({
 
   return (
     <div className="space-y-5">
+      {!autoPayAllowed && (
+        <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          Auto Pay and payment links are part of the Advanced plan. On your current plan you record each payment yourself.{" "}
+          <a href="/plans" className="font-medium text-primary hover:underline">
+            See plans
+          </a>
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {PAYMENT_TABS.map((t) => {
-          const tabLocked = (locked && t.tab === "offline") || (isRecurringPlan && t.tab !== "link");
+          const tabLocked = (locked && t.tab === "offline") || (forceLink && t.tab !== "link") || (!autoPayAllowed && t.tab === "link");
           return (
           <button
             key={t.tab}
@@ -156,9 +172,11 @@ export function PaymentStep({
             disabled={tabLocked}
             onClick={() => set("paymentTab", t.tab)}
             title={
-              isRecurringPlan && t.tab !== "link"
-                ? "This is a recurring plan — payment must go through a verified subscription, not an offline record."
-                : tabLocked
+              !autoPayAllowed && t.tab === "link"
+                ? "Auto Pay is part of the Advanced plan."
+                : forceLink && t.tab !== "link"
+                  ? "This is a recurring plan — payment must go through a verified subscription, not an offline record."
+                  : tabLocked
                   ? "A payment link has already been generated — record offline payment is unavailable."
                   : undefined
             }

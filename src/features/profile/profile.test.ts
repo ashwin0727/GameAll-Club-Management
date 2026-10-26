@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysLeft, formatPlanDate, isPlanActive, samplePlan } from "@/features/profile/plan";
+import { daysLeft, formatPlanDate, isPlanActive, isPlanTrial } from "@/features/profile/plan";
 import { maskAccountNumber, maskUpi, payoutSchema } from "@/features/profile/payout-validation";
 import { formatPhone, normalisePhone, profileEditSchema } from "@/features/profile/profile-validation";
 
@@ -26,11 +26,13 @@ describe("plan status", () => {
     expect(formatPlanDate("2026-12-31")).toBe("31 Dec 2026");
   });
 
-  it("offers a sample plan that is active until the end of the year", () => {
-    const sample = samplePlan(new Date(2026, 5, 1));
-    expect(sample.isSample).toBe(true);
-    expect(isPlanActive(sample, "2026-06-01")).toBe(true);
-    expect(sample.validTill).toBe("2026-12-31");
+  it("treats a free trial as active until its last day, and recognises it", () => {
+    const trial = { status: "trialing" as const, validTill: "2027-01-25" };
+    expect(isPlanActive(trial, "2026-10-25")).toBe(true);
+    expect(isPlanTrial(trial, "2026-10-25")).toBe(true);
+    expect(isPlanActive(trial, "2027-01-26")).toBe(false);
+    expect(isPlanTrial(trial, "2027-01-26")).toBe(false);
+    expect(isPlanTrial(plan, "2026-10-25")).toBe(false);
   });
 });
 

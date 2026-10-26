@@ -22,14 +22,21 @@ class PageAccessMatrix extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     required this.canGrant,
+    this.pageInPlan,
   });
 
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
   final bool Function(String key) canGrant;
 
+  /// Whether the club's plan includes a page. A page outside the plan cannot be switched on for anyone.
+  final bool Function(String pageKey)? pageInPlan;
+
+  bool _inPlan(AccessPage page) => pageInPlan?.call(page.key) ?? true;
+
   bool _allowed(AccessPage page, AccessLevel level) {
     if (level == AccessLevel.none) return true;
+    if (!_inPlan(page)) return false;
     final keys = level == AccessLevel.edit
         ? [...page.viewKeys, ...page.editKeys]
         : page.viewKeys;
@@ -115,6 +122,7 @@ class PageAccessMatrix extends StatelessWidget {
                     page: group.pages[i],
                     level: editorLevelFor(group.pages[i], selected),
                     selected: selected,
+                    inPlan: _inPlan(group.pages[i]),
                     allowed: (l) => _allowed(group.pages[i], l),
                     onLevel: (l) => _setLevel(group.pages[i], l),
                     canGrant: canGrant,
@@ -266,6 +274,7 @@ class _PageRow extends StatelessWidget {
     required this.level,
     required this.selected,
     required this.allowed,
+    required this.inPlan,
     required this.onLevel,
     required this.canGrant,
     required this.onToggle,
@@ -275,6 +284,7 @@ class _PageRow extends StatelessWidget {
   final EditorLevel level;
   final Set<String> selected;
   final bool Function(AccessLevel) allowed;
+  final bool inPlan;
   final ValueChanged<AccessLevel> onLevel;
   final bool Function(String) canGrant;
   final ValueChanged<String> onToggle;
@@ -299,6 +309,12 @@ class _PageRow extends StatelessWidget {
           Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
           Text(page.description, style: AppTypography.caption(context)),
+          if (!inPlan)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('Not in your plan — upgrade to Advanced to use this page.',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.primary)),
+            ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
             width: double.infinity,
