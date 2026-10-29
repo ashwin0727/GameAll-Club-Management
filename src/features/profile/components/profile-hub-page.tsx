@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarCheck, ChevronRight, Building2, CreditCard, Grid2x2, Headset, HeartHandshake, IndianRupee, LogOut, Settings, User, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DeleteAccountDialog } from "@/features/account/delete-account";
 import { LogoutConfirm } from "@/features/auth/components/logout-confirm";
 import type { Profile } from "@/features/auth/types";
 import { useFacility } from "@/features/facility/hooks/use-facility";
@@ -118,6 +119,7 @@ export function ProfileHubPage({ profile }: { profile: Profile }) {
   const plan = useFacilityPlan(facility?.id);
   const stats = useProfileStats(facility?.id);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const s = stats.data;
 
@@ -181,7 +183,26 @@ export function ProfileHubPage({ profile }: { profile: Profile }) {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+        <span className="flex gap-4">
+          <Link href="/privacy" className="hover:text-foreground hover:underline">
+            Privacy policy
+          </Link>
+          <Link href="/terms" className="hover:text-foreground hover:underline">
+            Terms of service
+          </Link>
+        </span>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          className="text-destructive/80 underline-offset-4 hover:text-destructive hover:underline"
+        >
+          Delete account
+        </button>
+      </div>
+
       <LogoutConfirm open={confirmLogout} facilityName={facility?.name} onCancel={() => setConfirmLogout(false)} />
+      <DeleteAccountDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} />
     </div>
   );
 }

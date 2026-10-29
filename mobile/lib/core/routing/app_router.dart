@@ -49,7 +49,6 @@ import '../../features/onboarding/setup_summary_screen.dart';
 import '../../features/onboarding/sports_setup_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
-import '../../features/plans/plans_screen.dart';
 import '../../features/refunds/refunds_screen.dart';
 import '../../features/reports/booking_report_screen.dart';
 import '../../features/reports/court_utilization_report_screen.dart';
@@ -306,14 +305,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.membershipSessions,
         pageBuilder: (context, state) =>
             fadeThrough(state, const MembershipSessionsScreen()),
-      ),
-      GoRoute(
-        path: AppRoutes.onboardingPlan,
-        pageBuilder: (context, state) => fadeThrough(state, const PlansScreen(onboarding: true)),
-      ),
-      GoRoute(
-        path: AppRoutes.plans,
-        pageBuilder: (context, state) => slideOver(state, const PlansScreen()),
       ),
       GoRoute(
         path: AppRoutes.notifications,

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/validators.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/utils/legal_links.dart';
 import '../../shared/widgets/app_text_field.dart';
 import 'auth_widgets.dart';
 
@@ -260,9 +262,17 @@ class _TermsCheckbox extends StatelessWidget {
                     style: TextStyle(color: tokens.textSecondary),
                     children: [
                       const TextSpan(text: 'I agree to the '),
-                      TextSpan(text: 'terms of service', style: linkStyle),
+                      TextSpan(
+                        text: 'terms of service',
+                        style: linkStyle,
+                        recognizer: TapGestureRecognizer()..onTap = () => openLegalPage(LegalPage.terms),
+                      ),
                       const TextSpan(text: ' and '),
-                      TextSpan(text: 'privacy policy', style: linkStyle),
+                      TextSpan(
+                        text: 'privacy policy',
+                        style: linkStyle,
+                        recognizer: TapGestureRecognizer()..onTap = () => openLegalPage(LegalPage.privacy),
+                      ),
                       const TextSpan(text: '.'),
                     ],
                   ),

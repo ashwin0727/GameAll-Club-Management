@@ -14,6 +14,8 @@ export interface FacilityPlan {
   /** yyyy-mm-dd — the last day the plan covers. */
   validTill: string;
   features: string[];
+  /** True once Auto Pay has been approved for the plan. A trial started in the mobile app has none yet. */
+  autoPay: boolean;
 }
 
 export type PayoutMethodType = "BANK" | "UPI";

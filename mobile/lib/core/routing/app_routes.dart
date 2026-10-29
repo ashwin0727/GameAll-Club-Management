@@ -26,10 +26,6 @@ class AppRoutes {
   static const onboardingPayments = '/onboarding/payments';
   static const onboardingComplete = '/onboarding/complete';
 
-  /// Choose Basic or Advanced right after Payout (onboarding), and the same screen from Profile later.
-  static const onboardingPlan = '/onboarding/plan';
-  static const plans = '/plans';
-
   static const dashboard = '/dashboard';
   static const bookings = '/bookings';
   static const guestBookings = '/guest-bookings';

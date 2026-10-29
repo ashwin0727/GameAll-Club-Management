@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_provider.dart';
 import 'auth_repository.dart';
+import 'account_repository.dart';
 import 'plan_repository.dart';
 import 'facility_repository.dart';
 import 'payout_repository.dart';
@@ -23,6 +24,10 @@ import 'maintenance_repository.dart';
 import 'staff_repository.dart';
 import 'inventory_repository.dart';
 import 'coaching_repository.dart';
+
+final accountRepositoryProvider = Provider<AccountRepository>((ref) {
+  return AccountRepository(ref.watch(supabaseClientProvider));
+});
 
 final planRepositoryProvider = Provider<PlanRepository>((ref) {
   return PlanRepository(ref.watch(supabaseClientProvider));

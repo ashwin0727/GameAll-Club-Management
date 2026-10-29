@@ -6,6 +6,8 @@
 //                               database triggers.
 //   2. pushes every notification not yet pushed to the person's phones through Firebase Cloud Messaging.
 //
+// It also completes account deletions that were waiting for payments to be settled.
+//
 // Schedule it in the Supabase dashboard: Integrations → Cron → Create job → "Supabase Edge Function" →
 // notification-worker, every 1 minute.
 //
@@ -15,6 +17,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getAccessToken, parseServiceAccount, sendPush } from "../_shared/fcm.ts";
+import { finishPendingDeletions } from "../_shared/account-deletion.ts";
 
 const BATCH = 200;
 // Anything older than this when push is first switched on is not worth buzzing a phone for.
@@ -34,6 +37,13 @@ Deno.serve(async (req) => {
 
   const jobs = await admin.rpc("run_notification_jobs");
   if (jobs.error) console.error("[notification-worker] run_notification_jobs failed", jobs.error.message);
+
+  // Closed accounts whose payments have all been settled since: finish deleting them.
+  try {
+    await finishPendingDeletions(admin, { keyId: Deno.env.get("RAZORPAY_KEY_ID"), keySecret: Deno.env.get("RAZORPAY_KEY_SECRET") });
+  } catch (err) {
+    console.error("[notification-worker] pending account deletions failed", String(err));
+  }
 
   const { data: pending, error } = await admin
     .from("notifications")

@@ -1,45 +1,9 @@
 // GameAll's own plans (Basic / Advanced) — migration 0157. Mirrors src/features/plans on the web.
+//
+// The mobile app only READS the club's plan: it never sells one (Google Play billing rules). Plans are chosen and paid for on
+// the web; a club created in the app is given the free trial directly (start_free_trial, migration 0163).
 
 const autoPayFeature = 'AUTOPAY';
-
-/// One plan on offer (list_plans).
-class PlanOption {
-  const PlanOption({
-    required this.code,
-    required this.name,
-    required this.description,
-    required this.monthlyMinor,
-    required this.yearlyMinor,
-    required this.features,
-    required this.isPopular,
-    required this.trialDays,
-  });
-
-  final String code;
-  final String name;
-  final String? description;
-  final int monthlyMinor;
-  final int yearlyMinor;
-  final List<String> features;
-  final bool isPopular;
-  final int trialDays;
-
-  int priceFor(bool yearly) => yearly ? yearlyMinor : monthlyMinor;
-
-  /// What paying yearly saves compared with twelve months.
-  int get yearlySavingMinor => (monthlyMinor * 12 - yearlyMinor).clamp(0, 1 << 30);
-
-  factory PlanOption.fromJson(Map<String, dynamic> j) => PlanOption(
-        code: j['code'] as String,
-        name: j['name'] as String,
-        description: j['description'] as String?,
-        monthlyMinor: (j['monthly_minor'] as num).toInt(),
-        yearlyMinor: (j['yearly_minor'] as num).toInt(),
-        features: ((j['features'] as List<dynamic>?) ?? const []).map((e) => '$e').toList(),
-        isPopular: j['is_popular'] == true,
-        trialDays: (j['trial_days'] as num?)?.toInt() ?? 0,
-      );
-}
 
 /// What the club's plan grants right now (my_facility_plan). A club with no plan has none — and is unrestricted.
 class PlanSnapshot {
@@ -89,33 +53,5 @@ class PlanSnapshot {
         daysLeft: (j['daysLeft'] as num?)?.toInt() ?? 0,
         features: ((j['features'] as List<dynamic>?) ?? const []).map((e) => '$e').toSet(),
         pageKeys: ((j['pageKeys'] as List<dynamic>?) ?? const []).map((e) => '$e').toSet(),
-      );
-}
-
-/// The server's answer to "start this plan" (create-plan-subscription, action "start").
-class PlanCheckoutInfo {
-  const PlanCheckoutInfo({
-    required this.subscriptionId,
-    required this.keyId,
-    required this.planName,
-    required this.interval,
-    required this.firstChargeOn,
-    required this.trial,
-  });
-
-  final String subscriptionId;
-  final String keyId;
-  final String planName;
-  final String interval;
-  final String? firstChargeOn;
-  final bool trial;
-
-  factory PlanCheckoutInfo.fromJson(Map<String, dynamic> j) => PlanCheckoutInfo(
-        subscriptionId: j['subscriptionId'] as String,
-        keyId: j['keyId'] as String,
-        planName: (j['planName'] as String?) ?? '',
-        interval: (j['interval'] as String?) ?? 'month',
-        firstChargeOn: j['firstChargeOn'] as String?,
-        trial: j['trial'] == true,
       );
 }

@@ -7,9 +7,47 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1086078962051:android:b04ea247476545e5a40eb6",
+        "android_client_info": {
+          "package_name": "com.gameall.gameall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCI6atZ7siefZmQDlSmGT_6Ehop1K55p0U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1086078962051:android:7904b3b3a8b3748da40eb6",
         "android_client_info": {
           "package_name": "com.gameall.gameall_club_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCI6atZ7siefZmQDlSmGT_6Ehop1K55p0U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1086078962051:android:7d17ebb7d15653f5a40eb6",
+        "android_client_info": {
+          "package_name": "gameall.venue"
         }
       },
       "oauth_client": [],

@@ -41,6 +41,7 @@ const toPlan = (r: Row): FacilityPlan => ({
   status: r.status as FacilityPlan["status"],
   validTill: r.valid_till as string,
   features: (r.features as string[] | null) ?? [],
+  autoPay: Boolean(r.razorpay_subscription_id),
 });
 
 const toMethod = (r: Row): PayoutMethod => ({

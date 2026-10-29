@@ -116,8 +116,10 @@ export function PlanCard({
           </div>
           {trial && (
             <p className="mt-3 text-xs text-muted-foreground">
-              {left <= 0 ? "Your free trial ends today." : `${left} day${left === 1 ? "" : "s"} left in your free trial.`} Nothing is charged until{" "}
-              {formatPlanDate(plan.validTill)}; then {formatCurrency(plan.priceMinor, plan.currency)} is taken automatically each {INTERVAL_LABEL[plan.interval]}.
+              {left <= 0 ? "Your free trial ends today." : `${left} day${left === 1 ? "" : "s"} left in your free trial.`}{" "}
+              {plan.autoPay
+                ? `Nothing is charged until ${formatPlanDate(plan.validTill)}; then ${formatCurrency(plan.priceMinor, plan.currency)} is taken automatically each ${INTERVAL_LABEL[plan.interval]}.`
+                : `Choose a plan before ${formatPlanDate(plan.validTill)} to keep all your features.`}
             </p>
           )}
           {active && !trial && left <= 14 && (

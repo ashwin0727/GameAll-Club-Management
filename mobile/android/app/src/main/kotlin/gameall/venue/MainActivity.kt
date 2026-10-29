@@ -1,4 +1,4 @@
-package com.gameall.gameall_club_mobile
+package gameall.venue
 
 import io.flutter.embedding.android.FlutterActivity
 

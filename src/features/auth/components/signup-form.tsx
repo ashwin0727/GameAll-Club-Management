@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import Link from "next/link";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 import { TextField } from "@/features/auth/components/text-field";
 import { PasswordInput } from "@/features/auth/components/password-input";
@@ -99,6 +100,17 @@ export function SignupForm() {
 
       {/* Stays disabled until every field passes, per the signup spec. Each
           field shows its own inline reason, so the block is never unexplained. */}
+      <p className="text-center text-xs text-muted-foreground">
+        By creating an account you agree to the{" "}
+        <Link href="/terms" target="_blank" className="font-medium text-primary hover:underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" target="_blank" className="font-medium text-primary hover:underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
       <SubmitButton pending={pending} disabled={!isValid} pendingLabel="Creating account…">
         Create Account
       </SubmitButton>

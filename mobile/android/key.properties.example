@@ -1,0 +1,5 @@
+# Copy this file to key.properties (never commit it) and fill in the values from the keytool step in docs/play-store-release.md.
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=C:/Users/YOU/keys/gameall-upload-keystore.jks

@@ -27,7 +27,7 @@ export const SESSION_TOLERANT_ROUTES = ["/reset-password", "/"];
  * would break the embedded widget for any visitor who happens to have an
  * account here.
  */
-export const STANDALONE_PUBLIC_ROUTES = ["/book", "/join", "/pricing"];
+export const STANDALONE_PUBLIC_ROUTES = ["/book", "/join", "/pricing", "/privacy", "/terms", "/delete-account"];
 
 export function isPublic(pathname: string): boolean {
   return PUBLIC_ROUTES.some(

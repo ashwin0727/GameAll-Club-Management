@@ -21,6 +21,10 @@ class AppConfig {
   /// route bounces to Home; the module's code is untouched, so turning it back on is changing this to true.
   static const bool inventoryEnabled = false;
 
+  /// Shows a "Send test crash" button in Profile, to prove Crashlytics reports reach the Firebase console. Off unless the build is
+  /// made with --dart-define=CRASH_TEST=true, so the button can never appear in the Play Store build.
+  static const bool crashTestEnabled = bool.fromEnvironment('CRASH_TEST');
+
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 }

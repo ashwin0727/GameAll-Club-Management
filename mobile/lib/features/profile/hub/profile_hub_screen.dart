@@ -1,9 +1,11 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
@@ -15,6 +17,8 @@ import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../authentication/auth_widgets.dart';
 import '../../authentication/session_controller.dart';
+import '../../../shared/utils/legal_links.dart';
+import '../delete_account_dialog.dart';
 import 'hub_providers.dart';
 import 'hub_widgets.dart';
 
@@ -76,9 +80,8 @@ class ProfileHubScreen extends ConsumerWidget {
           value: plan,
           skeletonHeight: 190,
           onRetry: () => ref.invalidate(hubPlanProvider),
-          builder: (p) => p == null
-              ? const _NoPlanCard()
-              : _PlanCard(plan: p, facilityName: facility?.name ?? 'Your facility'),
+          // No plan row (an older club) shows nothing; the app never advertises or sells plans.
+          builder: (p) => p == null ? const SizedBox.shrink() : _PlanCard(plan: p, facilityName: facility?.name ?? 'Your facility'),
         ),
         const SizedBox(height: AppSpacing.lg),
         stats.when(
@@ -128,6 +131,33 @@ class ProfileHubScreen extends ConsumerWidget {
             minimumSize: const Size.fromHeight(AppSpacing.minTouchTarget),
             side: BorderSide(color: t.destructive.withValues(alpha: 0.4)),
           ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            TextButton(
+              onPressed: () => openLegalPage(LegalPage.privacy),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: t.textSecondary),
+              child: const Text('Privacy policy', style: TextStyle(fontSize: 12)),
+            ),
+            TextButton(
+              onPressed: () => openLegalPage(LegalPage.terms),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: t.textSecondary),
+              child: const Text('Terms', style: TextStyle(fontSize: 12)),
+            ),
+            if (AppConfig.crashTestEnabled)
+              TextButton(
+                onPressed: () => FirebaseCrashlytics.instance.crash(),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: t.textSecondary),
+                child: const Text('Send test crash', style: TextStyle(fontSize: 12)),
+              ),
+            const Spacer(),
+            TextButton(
+              onPressed: () => showDeleteAccountDialog(context, ref),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: t.destructive),
+              child: const Text('Delete account', style: TextStyle(fontSize: 12)),
+            ),
+          ],
         ),
       ],
     );
@@ -542,7 +572,7 @@ class _PlanCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: t.textPrimary)),
-                    Text('GameAll Club Management', style: TextStyle(fontSize: 12.5, color: t.textSecondary)),
+                    Text('GameAll Venue', style: TextStyle(fontSize: 12.5, color: t.textSecondary)),
                   ],
                 ),
               ),
@@ -561,50 +591,42 @@ class _PlanCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: _PlanFact(icon: Icons.event_outlined, label: trial ? 'First payment on' : 'Valid Till', value: hubDate(DateTime.tryParse(plan.validTill))),
+                child: _PlanFact(icon: Icons.event_outlined, label: trial ? 'Trial ends on' : 'Valid Till', value: hubDate(DateTime.tryParse(plan.validTill))),
               ),
             ],
           ),
           if (trial) ...[
             const SizedBox(height: AppSpacing.md),
             Text(
-              '${left <= 0 ? 'Your free trial ends today.' : '$left day${left == 1 ? '' : 's'} left in your free trial.'} Nothing is charged until '
-              '${hubDate(DateTime.tryParse(plan.validTill))}; then ${hubMoney(plan.priceMinor)} is taken automatically each ${plan.interval}.',
+              left <= 0 ? 'Your free trial ends today.' : '$left day${left == 1 ? '' : 's'} left in your free trial.',
               style: TextStyle(fontSize: 12.5, color: t.textSecondary, height: 1.4),
             ),
           ],
           if (active && !trial && left <= 14) ...[
             const SizedBox(height: AppSpacing.md),
-            Text('Your plan ends ${left == 0 ? 'today' : 'in $left day${left == 1 ? '' : 's'}'}. It renews automatically if Auto Pay is set up.',
+            Text('Your plan ends ${left == 0 ? 'today' : 'in $left day${left == 1 ? '' : 's'}'}.',
                 style: TextStyle(fontSize: 12.5, color: t.warning)),
           ],
           if (!active) ...[
             const SizedBox(height: AppSpacing.md),
-            Text('This plan has ${plan.status == 'cancelled' ? 'been cancelled' : 'ended'}. Your club is on Basic features until you choose a plan again.',
+            Text('This plan has ${plan.status == 'cancelled' ? 'been cancelled' : 'ended'}.',
                 style: TextStyle(fontSize: 12.5, color: t.destructive)),
           ],
           const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _showDetails(context),
-                  child: const Text('View Plan Details'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => context.push(AppRoutes.plans),
-                  child: Text(active ? 'Change plan' : 'Choose a plan'),
-                ),
-              ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showDetails(context),
+              child: const Text('View Plan Details'),
+            ),
           ),
         ],
       ),
     );
   }
+
+  String trialLine(FacilityPlan plan) =>
+      plan.isTrial() ? 'Free trial · ends on ${hubDate(DateTime.tryParse(plan.validTill))}' : 'Valid till ${hubDate(DateTime.tryParse(plan.validTill))}';
 
   void _showDetails(BuildContext context) {
     final t = context.tokens;
@@ -623,7 +645,7 @@ class _PlanCard extends StatelessWidget {
             children: [
               Text(plan.planName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: t.textPrimary)),
               const SizedBox(height: 2),
-              Text('${hubMoney(plan.priceMinor)} per ${plan.interval} · valid till ${hubDate(DateTime.tryParse(plan.validTill))}',
+              Text(trialLine(plan),
                   style: TextStyle(fontSize: 13, color: t.textSecondary)),
               const SizedBox(height: AppSpacing.lg),
               if (plan.features.isEmpty)
@@ -647,34 +669,6 @@ class _PlanCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _NoPlanCard extends StatelessWidget {
-  const _NoPlanCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: t.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: t.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('No plan yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: t.textPrimary)),
-          const SizedBox(height: 4),
-          Text("Choose Basic or Advanced to unlock your club's features. Your first 90 days are free.",
-              style: TextStyle(fontSize: 13, color: t.textSecondary, height: 1.35)),
-          const SizedBox(height: AppSpacing.md),
-          FilledButton(onPressed: () => context.push(AppRoutes.plans), child: const Text('Choose a plan')),
-        ],
       ),
     );
   }

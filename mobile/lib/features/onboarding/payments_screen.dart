@@ -117,9 +117,11 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     });
     try {
       await ref.read(onboardingRepositoryProvider).completeSetup(facilityId);
+      // Plans are bought on the web, not in the app: a club created here simply starts its free trial.
+      await ref.read(planRepositoryProvider).startFreeTrial(facilityId);
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.onboardingPlan);
+      context.go(AppRoutes.onboardingComplete);
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
