@@ -1,0 +1,12 @@
+{
+  "name": "gameall-sql-scenarios",
+  "private": true,
+  "type": "module",
+  "description": "Runs every migration in an in-memory Postgres (no Docker needed) and then exercises the newer database code.",
+  "scripts": {
+    "test": "node scenarios.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}

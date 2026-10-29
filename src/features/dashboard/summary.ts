@@ -137,6 +137,8 @@ export function computeUtilization(input: {
   sports: { id: string; name: string }[];
   facilityOperatingDays: OperatingDay[];
   bookings: UtilizationBooking[];
+  /** Booked minutes per court already added up by the database; when given, `bookings` is ignored. */
+  bookedMinutesByArea?: Map<string, number>;
   period: DateRange;
 }): UtilizationSummary {
   const availableMinutesPerCourt = datesInRange(input.period).reduce((sum, date) => {
@@ -145,11 +147,13 @@ export function computeUtilization(input: {
     return sum + (day ? operatingMinutesForDay(day) : 0);
   }, 0);
 
-  const bookedMinutesByArea = new Map<string, number>();
-  for (const booking of input.bookings) {
-    if (booking.status === "cancelled") continue;
-    const minutes = bookingDurationMinutes(booking.startTime, booking.endTime);
-    bookedMinutesByArea.set(booking.playingAreaId, (bookedMinutesByArea.get(booking.playingAreaId) ?? 0) + minutes);
+  const bookedMinutesByArea = new Map<string, number>(input.bookedMinutesByArea ?? []);
+  if (!input.bookedMinutesByArea) {
+    for (const booking of input.bookings) {
+      if (booking.status === "cancelled") continue;
+      const minutes = bookingDurationMinutes(booking.startTime, booking.endTime);
+      bookedMinutesByArea.set(booking.playingAreaId, (bookedMinutesByArea.get(booking.playingAreaId) ?? 0) + minutes);
+    }
   }
 
   const totalAvailable = availableMinutesPerCourt * input.playingAreas.length;
@@ -608,6 +612,46 @@ export function buildRevenueOverview(
       { key: "memberships", label: "Memberships", amountInr: membershipInr, count: membershipCount, unavailable: false },
       { key: "coaching", label: "Coaching", amountInr: coachingInr, count: coachingCount || null, unavailable: coachingInr === 0 },
       { key: "other", label: "Other", amountInr: otherInr, count: otherCount || null, unavailable: otherInr === 0 },
+    ],
+  };
+}
+
+/** What the database returns for the revenue chart (see dashboard_revenue_overview, migration 0166). */
+export interface RevenueTotals {
+  totalInr: number;
+  previousTotalInr: number;
+  /** yyyy-mm-dd (viewer's calendar day) -> rupees received that day. */
+  byDay: Record<string, number>;
+  breakdown: Record<"bookings" | "memberships" | "coaching" | "other", { count: number; inr: number }>;
+}
+
+/** The revenue panel built from database totals instead of every payment row. Same result as [buildRevenueOverview]. */
+export function buildRevenueOverviewFromTotals(
+  totals: RevenueTotals,
+  now: Date,
+  monthOffset: number,
+): import("@/features/dashboard/types").RevenueOverview {
+  const monthStartD = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+  const monthEndD = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+  const totalInr = totals.totalInr;
+  const prevTotal = totals.previousTotalInr;
+  const changePercent = prevTotal === 0 ? null : ((totalInr - prevTotal) / prevTotal) * 100;
+  const points = datesInRange({ from: monthStartD.toISOString(), to: monthEndD.toISOString() }).map((d) => ({
+    date: dayKey(d),
+    amountInr: totals.byDay[dayKey(d)] ?? 0,
+  }));
+  const b = totals.breakdown;
+  return {
+    monthLabel: `${MONTH_NAMES[monthStartD.getMonth()]} ${monthStartD.getFullYear()}`,
+    monthStart: dayKey(monthStartD),
+    totalInr,
+    changePercent,
+    points,
+    breakdown: [
+      { key: "bookings", label: "Bookings", amountInr: b.bookings.inr, count: b.bookings.count, unavailable: false },
+      { key: "memberships", label: "Memberships", amountInr: b.memberships.inr, count: b.memberships.count, unavailable: false },
+      { key: "coaching", label: "Coaching", amountInr: b.coaching.inr, count: b.coaching.count || null, unavailable: b.coaching.inr === 0 },
+      { key: "other", label: "Other", amountInr: b.other.inr, count: b.other.count || null, unavailable: b.other.inr === 0 },
     ],
   };
 }

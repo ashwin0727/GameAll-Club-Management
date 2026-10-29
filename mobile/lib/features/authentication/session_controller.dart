@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthChangeEvent;
 import '../../data/models/app_user.dart';
 import '../../data/models/facility.dart';
 import '../../data/models/plan.dart';
@@ -116,6 +117,12 @@ class SessionController extends Notifier<SessionState> {
   @override
   SessionState build() {
     ref.listen(authStateProvider, (previous, next) {
+      // Reloading the whole session costs a request. Skip the events that cannot have changed it: a routine token renewal, and
+      // "signed in" for the person who is already loaded (the app coming back to the front re-announces it).
+      final event = next.value?.event;
+      final userId = next.value?.session?.user.id;
+      if (event == AuthChangeEvent.tokenRefreshed) return;
+      if (event == AuthChangeEvent.signedIn && userId != null && userId == state.user?.id && !state.isLoading) return;
       refresh();
     });
     Future.microtask(refresh);
@@ -124,18 +131,53 @@ class SessionController extends Notifier<SessionState> {
 
   bool _resolvedOnce = false;
 
-  Future<void> refresh() async {
+  /// Reloads that arrive while one is already running are folded into ONE more run afterwards, instead of each starting its own
+  /// set of requests (at start-up the initial load and the auth event used to do the work twice).
+  Future<void>? _inFlight;
+  bool _refreshAgain = false;
+  String? _loginRecordedFor;
+
+  Future<void> refresh() {
+    final running = _inFlight;
+    if (running != null) {
+      _refreshAgain = true;
+      return running;
+    }
+    return _inFlight = _runRefreshes().whenComplete(() => _inFlight = null);
+  }
+
+  Future<void> _runRefreshes() async {
+    do {
+      _refreshAgain = false;
+      await _refreshOnce();
+    } while (_refreshAgain);
+  }
+
+  Future<void> _refreshOnce() async {
     if (!_resolvedOnce) state = state.copyWith(isLoading: true);
 
     final authRepo = ref.read(authRepositoryProvider);
-    final user = await authRepo.getCurrentUser();
+    // One request for profile, facility, role, permissions and plan (null when unavailable: the fallback below does it the long way).
+    final signedIn = ref.read(supabaseClientProvider).auth.currentUser != null;
+    final bundle = signedIn ? await ref.read(sessionRepositoryProvider).fetch() : null;
+    final user = await authRepo.getCurrentUser(profileRow: bundle?.profile);
 
     Facility? facility;
     String? baseRole;
     var permissions = const <String>{};
     PlanSnapshot? plan;
 
-    if (user != null) {
+    if (user != null && bundle != null) {
+      facility = bundle.facility;
+      baseRole = bundle.baseRole;
+      permissions = bundle.permissions;
+      plan = bundle.plan;
+      // The "last signed in" stamp only needs writing once per person per app start, not on every reload.
+      if (facility != null && _loginRecordedFor != user.id) {
+        _loginRecordedFor = user.id;
+        ref.read(staffRepositoryProvider).recordMyLogin();
+      }
+    } else if (user != null) {
       facility = await ref.read(facilityRepositoryProvider).getFacility();
       if (facility != null) {
         final client = ref.read(supabaseClientProvider);

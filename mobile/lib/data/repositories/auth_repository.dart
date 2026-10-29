@@ -97,15 +97,18 @@ class AuthRepository {
   /// Re-fetches the current session's user + profile from the server —
   /// call after a resend/refresh to check verification status, not a
   /// locally-cached guess.
-  Future<AppUser?> getCurrentUser() async {
+  ///
+  /// [profileRow] is the person's profile when the caller already has it (from the session bundle), which saves a request.
+  Future<AppUser?> getCurrentUser({Map<String, dynamic>? profileRow}) async {
     final authUser = _client.auth.currentUser;
     if (authUser == null) return null;
 
-    final profile = await _client
-        .from('profiles')
-        .select('id, full_name, email, role, onboarding_completed, must_reset_password')
-        .eq('id', authUser.id)
-        .maybeSingle();
+    final profile = profileRow ??
+        await _client
+            .from('profiles')
+            .select('id, full_name, email, role, onboarding_completed, must_reset_password')
+            .eq('id', authUser.id)
+            .maybeSingle();
 
     // New owners (signup-otp sets require_mobile) must verify a mobile number before onboarding.
     var pending = false;

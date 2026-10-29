@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/app_notification.dart';
@@ -17,7 +18,8 @@ final notificationsProvider = FutureProvider.autoDispose<List<AppNotification>>(
   return ref.watch(notificationRepositoryProvider).list();
 });
 
-/// The number on the bell. Refreshes every 45 seconds, and whenever a push arrives (see main.dart).
+/// The number on the bell. Refreshes every minute while the app is open in front (not while it is in the background), and whenever a
+/// push arrives (see main.dart).
 final unreadNotificationsProvider = StreamProvider.autoDispose<int>((ref) async* {
   final repo = ref.watch(notificationRepositoryProvider);
   final signedIn = ref.watch(sessionControllerProvider.select((s) => s.user != null));
@@ -26,11 +28,14 @@ final unreadNotificationsProvider = StreamProvider.autoDispose<int>((ref) async*
     return;
   }
   while (true) {
-    try {
-      yield await repo.unreadCount();
-    } catch (_) {
-      yield 0;
+    final life = WidgetsBinding.instance.lifecycleState;
+    if (life == null || life == AppLifecycleState.resumed) {
+      try {
+        yield await repo.unreadCount();
+      } catch (_) {
+        yield 0;
+      }
     }
-    await Future<void>.delayed(const Duration(seconds: 45));
+    await Future<void>.delayed(const Duration(seconds: 60));
   }
 });

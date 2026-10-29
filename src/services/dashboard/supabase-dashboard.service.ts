@@ -7,7 +7,9 @@ import { getPlayingAreasService } from "@/services/playing-areas";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import {
   buildAttentionItems,
+  bookingDurationMinutes,
   buildRevenueOverview,
+  buildRevenueOverviewFromTotals,
   buildScheduleTimeline,
   computeKpiValue,
   computeUtilization,
@@ -17,10 +19,10 @@ import {
   sumPaidRevenueInr,
   summarizeMemberships,
   summarizePayments,
-  toUtilizationBookings,
+  type RevenueTotals,
   type TimelineBooking,
 } from "@/features/dashboard/summary";
-import type { DashboardSummary } from "@/features/dashboard/types";
+import type { DashboardSummary, MembershipSummary, PaymentSummary, RevenueOverview } from "@/features/dashboard/types";
 import type { Facility } from "@/features/onboarding/types";
 import type { DashboardService, DashboardSummaryParams } from "@/services/dashboard/dashboard.service";
 import { mapSupabaseError } from "@/services/shared/service-error";
@@ -50,6 +52,27 @@ type PaymentRow = {
   paid_at?: string | null;
   booking_id: string | null;
   membership_id: string | null;
+};
+
+type TotalsArgs = {
+  facilityId: string;
+  current: { from: string; to: string };
+  previous: { from: string; to: string } | null;
+  earliestFrom: string;
+  courtIds: string[];
+  sportIds: string[] | null;
+  soon: Date;
+  monthStart: Date;
+  now: Date;
+};
+
+type DashboardTotals = {
+  payments: PaymentSummary;
+  previousCollectedInr: number;
+  guestBookings: number;
+  previousGuestBookings: number;
+  activeMembershipsInScope: number;
+  memberships: MembershipSummary;
 };
 
 export class SupabaseDashboardService implements DashboardService {
@@ -107,32 +130,246 @@ export class SupabaseDashboardService implements DashboardService {
     });
   }
 
+  /** The memberships enrolled in a batch of the given sports (this club's batches only). */
+  private async membershipIdsInSports(facilityId: string, sports: ReadonlySet<string>): Promise<Set<string>> {
+    const { data: batches, error } = await this.supabase.from("membership_batches").select("id, facility_sport_id").eq("facility_id", facilityId);
+    if (error) throw mapSupabaseError(error);
+    const batchIds = (batches ?? []).filter((b) => sports.has(b.facility_sport_id ?? "")).map((b) => b.id);
+    const ids = new Set<string>();
+    for (let i = 0; i < batchIds.length; i += 150) {
+      const { data, error: err } = await this.supabase
+        .from("membership_batch_members")
+        .select("membership_id")
+        .in("batch_id", batchIds.slice(i, i + 150));
+      if (err) throw mapSupabaseError(err);
+      for (const m of data ?? []) if (m.membership_id != null) ids.add(m.membership_id);
+    }
+    return ids;
+  }
+
+  /** Totals for the KPI cards and panels: from the database, or (migration 0165 not applied yet) added up here from the rows. */
+  private async fetchTotals(a: TotalsArgs): Promise<DashboardTotals> {
+    const sb = this.supabase as unknown as SupabaseClient;
+    const { data, error } = await sb.rpc("dashboard_totals", {
+      p_facility_id: a.facilityId,
+      p_cur_from: a.current.from,
+      p_cur_to: a.current.to,
+      p_prev_from: a.previous?.from ?? null,
+      p_prev_to: a.previous?.to ?? null,
+      p_court_ids: a.courtIds,
+      p_facility_sport_ids: a.sportIds,
+      p_soon: a.soon.toISOString(),
+      p_month_start: a.monthStart.toISOString(),
+    });
+    if (!error && data) {
+      const d = data as {
+        collectedInr: number; pendingInr: number; refundsInr: number; previousCollectedInr: number;
+        guestBookings: number; previousGuestBookings: number; activeMembershipsInScope: number;
+        memberships: MembershipSummary;
+      };
+      return {
+        payments: { collectedInr: Number(d.collectedInr), pendingInr: Number(d.pendingInr), refundsInr: Number(d.refundsInr) },
+        previousCollectedInr: Number(d.previousCollectedInr),
+        guestBookings: Number(d.guestBookings),
+        previousGuestBookings: Number(d.previousGuestBookings),
+        activeMembershipsInScope: Number(d.activeMembershipsInScope),
+        memberships: {
+          active: Number(d.memberships.active),
+          expiringSoon: Number(d.memberships.expiringSoon),
+          expired: Number(d.memberships.expired),
+          newThisMonth: Number(d.memberships.newThisMonth),
+        },
+      };
+    }
+    if (error && error.code !== "PGRST202" && error.code !== "42883") throw mapSupabaseError(error);
+    return this.legacyTotals(a);
+  }
+
+  private async legacyTotals(a: TotalsArgs): Promise<DashboardTotals> {
+    const [bookingsRes, membershipsRes, paymentsRes] = await Promise.all([
+      this.supabase
+        .from("bookings")
+        .select("id, court_id, start_time, end_time, status, customer_type, guest_name, member_id, payment_status")
+        .eq("facility_id", a.facilityId)
+        .gte("start_time", a.earliestFrom)
+        .lt("start_time", a.current.to),
+      this.supabase.from("memberships").select("id, status, end_date, created_at").eq("facility_id", a.facilityId),
+      this.supabase
+        .from("payments")
+        .select("status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id")
+        .eq("facility_id", a.facilityId)
+        .gte("created_at", a.earliestFrom)
+        .lt("created_at", a.current.to),
+    ]);
+    if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
+    if (membershipsRes.error) throw mapSupabaseError(membershipsRes.error);
+    if (paymentsRes.error) throw mapSupabaseError(paymentsRes.error);
+    const courts = new Set(a.courtIds);
+    const bookingRows = ((bookingsRes.data ?? []) as BookingRow[]).filter((b) => courts.has(b.court_id));
+    const membershipRows = (membershipsRes.data ?? []) as MembershipRow[];
+    const sportSet = a.sportIds ? new Set(a.sportIds) : null;
+    const sportMembershipIds = sportSet ? await this.membershipIdsInSports(a.facilityId, sportSet) : null;
+    const sportScope = sportSet ? { bookingIds: new Set(bookingRows.map((b) => b.id)), membershipIds: sportMembershipIds ?? new Set<string>() } : null;
+    const all = (paymentsRes.data ?? []) as PaymentRow[];
+    const inRange = (t: string, w: { from: string; to: string }) => t >= w.from && t < w.to;
+    const scoped = (list: PaymentRow[]) =>
+      sportScope
+        ? list.filter(
+            (p) =>
+              (p.booking_id != null && sportScope.bookingIds.has(p.booking_id)) ||
+              (p.membership_id != null && sportScope.membershipIds.has(p.membership_id)),
+          )
+        : list;
+    const cur = scoped(all.filter((p) => inRange(p.created_at, a.current)));
+    const prev = a.previous ? scoped(all.filter((p) => inRange(p.created_at, a.previous!))) : [];
+    const guests = (w: { from: string; to: string }) =>
+      countPaidGuestBookings(
+        bookingRows
+          .filter((b) => inRange(b.start_time, w))
+          .map((b) => ({ customerType: b.customer_type, paymentStatus: b.payment_status, status: b.status })),
+      );
+    return {
+      payments: summarizePayments(cur),
+      previousCollectedInr: sumPaidRevenueInr(prev, null),
+      guestBookings: guests(a.current),
+      previousGuestBookings: a.previous ? guests(a.previous) : 0,
+      activeMembershipsInScope: countActiveMemberships(membershipRows, sportMembershipIds),
+      memberships: summarizeMemberships(membershipRows, a.now),
+    };
+  }
+
+  /** Booked court time per court (minutes) for the current and previous period: from the database, or added up here from the rows. */
+  private async fetchBookedMinutes(a: {
+    facilityId: string;
+    current: { from: string; to: string };
+    previous: { from: string; to: string } | null;
+    courtIds: string[];
+  }): Promise<{ current: Map<string, number>; previous: Map<string, number> }> {
+    const sb = this.supabase as unknown as SupabaseClient;
+    const dateOf = (iso: string) => localDateKey(new Date(iso));
+    const { data, error } = await sb.rpc("dashboard_booked_minutes", {
+      p_facility_id: a.facilityId,
+      p_cur_from: a.current.from,
+      p_cur_to: a.current.to,
+      p_prev_from: a.previous?.from ?? null,
+      p_prev_to: a.previous?.to ?? null,
+      p_cur_from_date: dateOf(a.current.from),
+      p_cur_to_date: dateOf(a.current.to),
+      p_prev_from_date: a.previous ? dateOf(a.previous.from) : null,
+      p_prev_to_date: a.previous ? dateOf(a.previous.to) : null,
+      p_court_ids: a.courtIds,
+    });
+    if (!error) {
+      const current = new Map<string, number>();
+      const previous = new Map<string, number>();
+      for (const r of (data ?? []) as { court_id: string; cur_minutes: number; prev_minutes: number }[]) {
+        current.set(r.court_id, Number(r.cur_minutes));
+        previous.set(r.court_id, Number(r.prev_minutes));
+      }
+      return { current, previous };
+    }
+    if (error.code !== "PGRST202" && error.code !== "42883") throw mapSupabaseError(error);
+
+    // Migration 0166 not applied yet: download the period's bookings and add them up here.
+    const earliest = a.previous ? a.previous.from : a.current.from;
+    const [bookingsRes, sessionsRes] = await Promise.all([
+      this.supabase
+        .from("bookings")
+        .select("court_id, start_time, end_time, status")
+        .eq("facility_id", a.facilityId)
+        .gte("start_time", earliest)
+        .lt("start_time", a.current.to),
+      this.supabase.rpc("get_membership_utilization_sessions", {
+        p_facility_id: a.facilityId,
+        p_from: dateOf(earliest),
+        p_to: dateOf(a.current.to),
+      }),
+    ]);
+    if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
+    if (sessionsRes.error) throw mapSupabaseError(sessionsRes.error);
+    const courts = new Set(a.courtIds);
+    const add = (m: Map<string, number>, court: string, mins: number) => m.set(court, (m.get(court) ?? 0) + mins);
+    const inRange = (t: string, w: { from: string; to: string }) => t >= w.from && t < w.to;
+    const current = new Map<string, number>();
+    const previous = new Map<string, number>();
+    for (const b of bookingsRes.data ?? []) {
+      if (b.status === "cancelled" || !courts.has(b.court_id)) continue;
+      const mins = bookingDurationMinutes(b.start_time, b.end_time);
+      if (inRange(b.start_time, a.current)) add(current, b.court_id, mins);
+      else if (a.previous && inRange(b.start_time, a.previous)) add(previous, b.court_id, mins);
+    }
+    for (const s of sessionsRes.data ?? []) {
+      if (!courts.has(s.court_id)) continue;
+      const mins = bookingDurationMinutes(`${s.session_date}T${s.start_time}`, `${s.session_date}T${s.end_time}`);
+      if (s.session_date >= dateOf(a.current.from) && s.session_date < dateOf(a.current.to)) add(current, s.court_id, mins);
+      else if (a.previous && s.session_date >= dateOf(a.previous.from) && s.session_date < dateOf(a.previous.to)) add(previous, s.court_id, mins);
+    }
+    return { current, previous };
+  }
+
+  /** The Revenue Overview panel (its own month filter, independent of the period): from the database, or built here from the rows. */
+  private async fetchRevenueOverview(a: {
+    facilityId: string;
+    now: Date;
+    monthOffset: number;
+    sportIds: string[] | null;
+    playingAreasAll: { id: string; facilitySportId: string }[];
+  }): Promise<RevenueOverview> {
+    const sb = this.supabase as unknown as SupabaseClient;
+    const { now, monthOffset } = a;
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - monthOffset - 1, 1);
+    let timeZone = "UTC";
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      // keep UTC
+    }
+    const { data, error } = await sb.rpc("dashboard_revenue_overview", {
+      p_facility_id: a.facilityId,
+      p_month_start: monthStart.toISOString(),
+      p_month_end: monthEnd.toISOString(),
+      p_prev_start: prevStart.toISOString(),
+      p_tz: timeZone,
+      p_facility_sport_ids: a.sportIds,
+    });
+    if (!error && data) return buildRevenueOverviewFromTotals(data as RevenueTotals, now, monthOffset);
+    if (error && error.code !== "PGRST202" && error.code !== "42883") throw mapSupabaseError(error);
+
+    // Migration 0166 not applied yet: download two months of payments and add them up here.
+    const from = prevStart.toISOString();
+    const to = monthEnd.toISOString();
+    const res = await this.supabase
+      .from("payments")
+      .select("status, amount_inr, created_at, paid_at, booking_id, membership_id, coaching_enrollment_id")
+      .eq("facility_id", a.facilityId)
+      // Dated the way Finance dates it: when the money was received (paid_at), else when the row was made.
+      .or(`and(paid_at.gte.${from},paid_at.lt.${to}),and(paid_at.is.null,created_at.gte.${from},created_at.lt.${to})`);
+    if (res.error) throw mapSupabaseError(res.error);
+    const all = ((res.data ?? []) as PaymentRow[]).map((p) => ({ ...p, created_at: p.paid_at ?? p.created_at }));
+    const sportSet = a.sportIds ? new Set(a.sportIds) : null;
+    const payments = sportSet
+      ? await this.paymentsInSports(all, sportSet, a.playingAreasAll, await this.membershipIdsInSports(a.facilityId, sportSet))
+      : all;
+    return buildRevenueOverview(payments, now, monthOffset);
+  }
+
   async getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary> {
     const facilityId = facility.id;
     const now = new Date();
     const { current, previous } = resolveDateRange(params.preset, now, params.custom);
 
     const earliestFrom = previous ? previous.from : current.from;
-
-    // Revenue Overview panel has its own month filter, independent of `preset`.
     const revenueMonthOffset = params.revenueMonthOffset ?? 0;
-    const revWindowFrom = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset - 1, 1).toISOString();
-    const revWindowTo = new Date(now.getFullYear(), now.getMonth() - revenueMonthOffset + 1, 1).toISOString();
+
+    // Only today's rows are downloaded (for the Today's Schedule panel); every period total is added up by the database.
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
     // None of these depend on one another's results, so they all fire together
     // instead of as two sequential round trips.
-    const [
-      facilitySportsAll,
-      sports,
-      playingAreasAll,
-      schedule,
-      bookingsRes,
-      membershipsRes,
-      paymentsRes,
-      membershipSessionsRes,
-      revenuePaymentsRes,
-      pendingDuesRes,
-    ] = await Promise.all([
+    const [facilitySportsAll, sports, playingAreasAll, schedule, todayBookingsRes, todaySessionsRes, pendingDuesRes] = await Promise.all([
       getSportsService().getFacilitySports(facilityId),
       getSportsService().getActiveSports(),
       getPlayingAreasService().getPlayingAreas(facilityId),
@@ -141,28 +378,13 @@ export class SupabaseDashboardService implements DashboardService {
         .from("bookings")
         .select("id, court_id, start_time, end_time, status, customer_type, guest_name, member_id, payment_status")
         .eq("facility_id", facilityId)
-        .gte("start_time", earliestFrom)
-        .lt("start_time", current.to),
-      this.supabase.from("memberships").select("id, status, end_date, created_at").eq("facility_id", facilityId),
-      this.supabase
-        .from("payments")
-        .select("status, amount_inr, created_at, booking_id, membership_id, coaching_enrollment_id")
-        .eq("facility_id", facilityId)
-        .gte("created_at", earliestFrom)
-        .lt("created_at", current.to),
+        .gte("start_time", dayStart.toISOString())
+        .lt("start_time", dayEnd.toISOString()),
       this.supabase.rpc("get_membership_utilization_sessions", {
         p_facility_id: facilityId,
-        p_from: earliestFrom.slice(0, 10),
-        p_to: current.to.slice(0, 10),
+        p_from: localDateKey(dayStart),
+        p_to: localDateKey(dayEnd),
       }),
-      this.supabase
-        .from("payments")
-        .select("status, amount_inr, created_at, paid_at, booking_id, membership_id, coaching_enrollment_id")
-        .eq("facility_id", facilityId)
-        // Dated the way Finance dates it: when the money was received (paid_at), else when the row was made.
-        .or(
-          `and(paid_at.gte.${revWindowFrom},paid_at.lt.${revWindowTo}),and(paid_at.is.null,created_at.gte.${revWindowFrom},created_at.lt.${revWindowTo})`,
-        ),
       // Attention Required: everything still owed, oldest due date first (so what is overdue leads). Today -> what is
       // overdue or due by today; any other period -> everything owed. Follows the top bar's sports.
       this.supabase.rpc("list_pending_payments", {
@@ -187,41 +409,27 @@ export class SupabaseDashboardService implements DashboardService {
       : playingAreasAll;
     const playingAreaIds = new Set(playingAreas.map((a) => a.id));
 
-    if (bookingsRes.error) throw mapSupabaseError(bookingsRes.error);
-    if (membershipsRes.error) throw mapSupabaseError(membershipsRes.error);
-    if (paymentsRes.error) throw mapSupabaseError(paymentsRes.error);
-    if (membershipSessionsRes.error) throw mapSupabaseError(membershipSessionsRes.error);
-    if (revenuePaymentsRes.error) throw mapSupabaseError(revenuePaymentsRes.error);
+    // Totals, booked court time and the revenue chart are added up by the database (migrations 0165 and 0166). Started now so
+    // they run together alongside the lookups below; the old browser-side sums are the fallback until those are applied.
+    const soon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sportIds = activeSportSet ? [...activeSportSet] : null;
+    const totalsPromise = this.fetchTotals({
+      facilityId,
+      current,
+      previous,
+      earliestFrom,
+      courtIds: [...playingAreaIds],
+      sportIds,
+      soon,
+      monthStart,
+      now,
+    });
+    const minutesPromise = this.fetchBookedMinutes({ facilityId, current, previous, courtIds: [...playingAreaIds] });
+    const revenuePromise = this.fetchRevenueOverview({ facilityId, now, monthOffset: revenueMonthOffset, sportIds, playingAreasAll });
 
-    // Actual usage of a membership-protected slot (member or guest) occupies
-    // court-time exactly like a regular booking, even though it's tracked in
-    // a different table — merged in here so utilization/today's-schedule
-    // never treat a fully-attended membership court as 0% used.
-    const membershipUtilizationBookings = toUtilizationBookings(
-      (membershipSessionsRes.data ?? [])
-        .filter((s) => playingAreaIds.has(s.court_id))
-        .map((s) => ({ courtId: s.court_id, sessionDate: s.session_date, startTime: s.start_time, endTime: s.end_time })),
-    );
-
-    const allBookings = [
-      ...((bookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id)),
-      ...membershipUtilizationBookings.map((b) => ({ court_id: b.playingAreaId, start_time: b.startTime, end_time: b.endTime, status: b.status })),
-    ];
-    const currentBookings = allBookings.filter((b) => b.start_time >= current.from && b.start_time < current.to);
-    const previousBookings = previous
-      ? allBookings.filter((b) => b.start_time >= previous.from && b.start_time < previous.to)
-      : [];
-
-    const allPayments = (paymentsRes.data ?? []) as PaymentRow[];
-    const currentPayments = allPayments.filter((p) => p.created_at >= current.from && p.created_at < current.to);
-    const previousPayments = previous
-      ? allPayments.filter((p) => p.created_at >= previous.from && p.created_at < previous.to)
-      : [];
-
-    const currentPaymentSummary = summarizePayments(currentPayments);
-
-    const activeCurrentBookings = currentBookings.filter((b) => b.status !== "cancelled");
-    const activePreviousBookings = previousBookings.filter((b) => b.status !== "cancelled");
+    if (todayBookingsRes.error) throw mapSupabaseError(todayBookingsRes.error);
+    if (todaySessionsRes.error) throw mapSupabaseError(todaySessionsRes.error);
 
     const utilizationInput = {
       playingAreas: playingAreas.map((a) => ({ id: a.id, name: a.name, facilitySportId: a.facilitySportId })),
@@ -230,36 +438,25 @@ export class SupabaseDashboardService implements DashboardService {
       facilityOperatingDays: schedule?.days ?? [],
     };
 
+    // A membership session that has at least one confirmed slot occupies its court exactly like a booking, so the database
+    // counts it in booked time too (a fully-attended membership court is never shown as 0% used).
+    const minutes = await minutesPromise;
     const currentUtilization = computeUtilization({
       ...utilizationInput,
-      bookings: activeCurrentBookings.map((b) => ({
-        playingAreaId: b.court_id,
-        startTime: b.start_time,
-        endTime: b.end_time,
-        status: b.status,
-      })),
+      bookings: [],
+      bookedMinutesByArea: minutes.current,
       period: current,
     });
     const previousUtilization = previous
-      ? computeUtilization({
-          ...utilizationInput,
-          bookings: activePreviousBookings.map((b) => ({
-            playingAreaId: b.court_id,
-            startTime: b.start_time,
-            endTime: b.end_time,
-            status: b.status,
-          })),
-          period: previous,
-        })
+      ? computeUtilization({ ...utilizationInput, bookings: [], bookedMinutesByArea: minutes.previous, period: previous })
       : null;
 
-    const membershipRows = (membershipsRes.data ?? []) as MembershipRow[];
-    const memberships = summarizeMemberships(membershipRows, now);
+    const totals = await totalsPromise;
+    const memberships = totals.memberships;
 
-    // "Today's Schedule" timeline — positioned blocks for real bookings and
-    // confirmed membership sessions on today's courts. Member names need a
-    // profiles lookup (bookings only carry member_id); guests carry their own.
-    const bookingRows = ((bookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id));
+    // "Today's Schedule" timeline — positioned blocks for today's real bookings and confirmed membership sessions on the
+    // courts in view. Member names need a profiles lookup (bookings only carry member_id); guests carry their own.
+    const bookingRows = ((todayBookingsRes.data ?? []) as BookingRow[]).filter((b) => playingAreaIds.has(b.court_id));
     const memberIds = [...new Set(bookingRows.filter((b) => b.member_id).map((b) => b.member_id as string))];
     const memberNames = new Map<string, string>();
     if (memberIds.length > 0) {
@@ -282,7 +479,7 @@ export class SupabaseDashboardService implements DashboardService {
             ? b.guest_name ?? "Guest booking"
             : (b.member_id && memberNames.get(b.member_id)) || "Member booking",
       })),
-      ...(membershipSessionsRes.data ?? [])
+      ...(todaySessionsRes.data ?? [])
         .filter((s) => playingAreaIds.has(s.court_id))
         .map((s, i) => ({
           id: `session-${i}`,
@@ -304,55 +501,7 @@ export class SupabaseDashboardService implements DashboardService {
       now,
     });
 
-    // KPI scoping: with a specific sport selected, Revenue is narrowed to
-    // payments for that sport's courts (via booking) or memberships enrolled
-    // in that sport's batches; Active Membership to those same memberships.
-    let sportScope: { bookingIds: Set<string>; membershipIds: Set<string> } | null = null;
-    let sportMembershipIds: Set<string> | null = null;
-    if (activeSportSet) {
-      const [batchesRes, batchMembersRes] = await Promise.all([
-        this.supabase.from("membership_batches").select("id, facility_sport_id").eq("facility_id", facilityId),
-        this.supabase.from("membership_batch_members").select("membership_id, batch_id"),
-      ]);
-      if (batchesRes.error) throw mapSupabaseError(batchesRes.error);
-      if (batchMembersRes.error) throw mapSupabaseError(batchMembersRes.error);
-      const batchSport = new Map((batchesRes.data ?? []).map((b) => [b.id, b.facility_sport_id] as const));
-      sportMembershipIds = new Set(
-        (batchMembersRes.data ?? [])
-          .filter((m) => m.membership_id != null && activeSportSet.has(batchSport.get(m.batch_id) ?? ""))
-          .map((m) => m.membership_id as string),
-      );
-      sportScope = { bookingIds: new Set(bookingRows.map((b) => b.id)), membershipIds: sportMembershipIds };
-    }
-
-    const scopedCurrentPayments =
-      sportScope != null
-        ? currentPayments.filter(
-            (p) =>
-              (p.booking_id != null && sportScope!.bookingIds.has(p.booking_id)) ||
-              (p.membership_id != null && sportScope!.membershipIds.has(p.membership_id)),
-          )
-        : currentPayments;
-    const scopedCurrentPaymentSummary = sportScope != null ? summarizePayments(scopedCurrentPayments) : currentPaymentSummary;
-
-    const inWindow = (t: string, w: { from: string; to: string }) => t >= w.from && t < w.to;
-    const guestFilter = (b: BookingRow, w: { from: string; to: string }) =>
-      b.customer_type === "GUEST" && b.payment_status === "PAID" && b.status !== "cancelled" && inWindow(b.start_time, w);
-    const toGuestShape = (b: BookingRow) => ({ customerType: b.customer_type, paymentStatus: b.payment_status, status: b.status });
-    const currentGuestBookings = bookingRows.filter((b) => guestFilter(b, current)).map(toGuestShape);
-    const previousGuestBookings = previous ? bookingRows.filter((b) => guestFilter(b, previous)).map(toGuestShape) : [];
-
-    // Revenue is money actually received — every payment that is "paid", whether it settled a booking in full or only
-    // part of it (an advance, an instalment), whether Razorpay confirmed it or staff recorded it — counted on the day
-    // it was received, exactly as Finance counts it.
-    const revenueAll = ((revenuePaymentsRes.data ?? []) as PaymentRow[]).map((p) => ({ ...p, created_at: p.paid_at ?? p.created_at }));
-    // All Sports counts every payment (coaching and uncategorised ones included). With a subset ticked, a payment
-    // counts when what it paid for belongs to one of those sports: a booking on one of their courts, a membership in
-    // one of their batches, a coaching enrollment in one of their programs.
-    const revenuePayments = activeSportSet
-      ? await this.paymentsInSports(revenueAll, activeSportSet, playingAreasAll, sportMembershipIds ?? new Set())
-      : revenueAll;
-    const revenueOverview = buildRevenueOverview(revenuePayments, now, revenueMonthOffset);
+    const revenueOverview = await revenuePromise;
 
     return {
       facility: { id: facility.id, name: facility.name, city: facility.address.city },
@@ -363,15 +512,9 @@ export class SupabaseDashboardService implements DashboardService {
       selectedFacilitySportIds: activeSportSet ? [...activeSportSet] : null,
       period: current,
       kpis: {
-        revenueInr: computeKpiValue(
-          sumPaidRevenueInr(currentPayments, sportScope),
-          previous ? sumPaidRevenueInr(previousPayments, sportScope) : null,
-        ),
-        activeMemberships: computeKpiValue(countActiveMemberships(membershipRows, sportMembershipIds), null),
-        guestBookings: computeKpiValue(
-          countPaidGuestBookings(currentGuestBookings),
-          previous ? countPaidGuestBookings(previousGuestBookings) : null,
-        ),
+        revenueInr: computeKpiValue(totals.payments.collectedInr, previous ? totals.previousCollectedInr : null),
+        activeMemberships: computeKpiValue(totals.activeMembershipsInScope, null),
+        guestBookings: computeKpiValue(totals.guestBookings, previous ? totals.previousGuestBookings : null),
         utilizationPercent: computeKpiValue(
           currentUtilization.overallPercent,
           previousUtilization?.overallPercent ?? null,
@@ -384,9 +527,9 @@ export class SupabaseDashboardService implements DashboardService {
       liveActivity: { available: false },
       memberships,
       guests: { available: false },
-      payments: scopedCurrentPaymentSummary,
+      payments: totals.payments,
       expenses: { available: false },
-      businessPosition: { revenueInr: scopedCurrentPaymentSummary.collectedInr, expensesAvailable: false },
+      businessPosition: { revenueInr: totals.payments.collectedInr, expensesAvailable: false },
       attentionItems: buildAttentionItems({
         membershipsExpiringSoon: memberships.expiringSoon,
         obligations: (pendingDuesRes.data ?? []).map((r) => ({

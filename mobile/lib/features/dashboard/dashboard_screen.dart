@@ -76,7 +76,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   /// While the Today view is on screen the timeline, "On Court Now" and the figures refresh by themselves, so a booking
   /// that starts (or is made) while the owner is looking at the page shows up without a manual pull-to-refresh.
-  static const _autoRefreshEvery = Duration(seconds: 10);
+  static const _autoRefreshEvery = Duration(seconds: 30);
   Timer? _autoRefresh;
   bool _refreshing = false;
   int _ticks = 0;
@@ -115,8 +115,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
       if (!mounted || _preset != DateRangePreset.today) return;
       setState(() => _summary = summary);
-      // Money lists change less often; every third tick (30s) is plenty.
-      if (_ticks % 3 == 0) await _loadExtras();
+      // Money lists change less often; every other tick (a minute) is plenty.
+      if (_ticks % 2 == 0) await _loadExtras();
     } catch (_) {
       // Keep showing the last good data; the next tick tries again.
     } finally {
@@ -143,6 +143,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _isLoading = true;
       _loadError = null;
     });
+    // The recent-activity and "Needs you" lists do not depend on the summary, so they load at the same time instead of after it.
+    final extras = _loadExtras();
     try {
       final summary = await ref.read(dashboardRepositoryProvider).getDashboardSummary(
         _facility!,
@@ -154,7 +156,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _summary = summary;
         _isLoading = false;
       });
-      await _loadExtras();
+      await extras;
     } on AppException catch (e) {
       setState(() {
         _isLoading = false;

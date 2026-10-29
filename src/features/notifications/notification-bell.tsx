@@ -32,7 +32,7 @@ type Query = {
 
 async function loadNotifications(): Promise<AppNotification[]> {
   const supabase = createClient() as unknown as Query;
-  const { data, error } = await supabase.from("notifications").select("id, kind, title, body, data, created_at, read_at").order("created_at", { ascending: false }).limit(30);
+  const { data, error } = await supabase.from("notifications").select("id, kind, title, body, data, created_at, read_at").order("created_at", { ascending: false }).limit(20);
   if (error) throw new Error("Unable to load notifications.");
   return (data ?? []).map((r) => ({
     id: r.id as string,
@@ -72,11 +72,11 @@ function ago(iso: string): string {
   return days < 7 ? `${days} d ago` : new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-/** The topbar bell: unread count, the latest messages, tap to open the page one is about. Refreshes every 30 seconds. */
+/** The topbar bell: unread count, the latest messages, tap to open the page one is about. Refreshes every minute, and only while the tab is open in front. */
 export function NotificationBell() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data = [] } = useQuery({ queryKey: KEYS.list, queryFn: loadNotifications, refetchInterval: 30_000, retry: false });
+  const { data = [] } = useQuery({ queryKey: KEYS.list, queryFn: loadNotifications, refetchInterval: 60_000, retry: false });
   const unread = data.filter((n) => !n.read).length;
   const read = useMutation({ mutationFn: markRead, onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.list }) });
 

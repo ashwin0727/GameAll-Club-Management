@@ -24,9 +24,38 @@ export const getAuthenticatedUser = cache(async () => {
   return { supabase, user };
 });
 
+/**
+ * Everything the app needs about the signed-in person in ONE database call (get_session_bundle, migration 0164): profile, facility,
+ * role, permissions, plan and whether they are the platform admin. getCurrentProfile, getFacilityContext and the admin check all read
+ * from it, so a page load makes one request instead of three or four. Null when the function is not there yet (the migration has
+ * not been applied), in which case each of them falls back to its own queries.
+ */
+interface SessionBundle {
+  profile: Profile | null;
+  facility: { id: string; name: string; owner_id: string } | null;
+  baseRole: "owner" | "manager" | "staff" | null;
+  permissions: string[];
+  plan: Record<string, unknown> | null;
+  isPlatformAdmin: boolean;
+}
+
+const getSessionBundle = cache(async (): Promise<SessionBundle | null> => {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return null;
+  const { data, error } = await (supabase.rpc as unknown as (fn: string) => Promise<{ data: SessionBundle | null; error: unknown }>).call(
+    supabase,
+    "get_session_bundle",
+  );
+  if (error || !data || typeof data !== "object" || !("isPlatformAdmin" in data)) return null;
+  return data;
+});
+
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return null;
+
+  const bundle = await getSessionBundle();
+  if (bundle) return bundle.profile;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -76,6 +105,14 @@ export async function checkPlatformAdmin(supabase: SupabaseClient<Database>): Pr
   return !error && data === true;
 }
 
+/** Whether the signed-in person is the platform admin — read from the session bundle, so it costs no extra request. */
+export const getIsPlatformAdmin = cache(async (): Promise<boolean> => {
+  const { supabase, user } = await getAuthenticatedUser();
+  if (!user) return false;
+  const bundle = await getSessionBundle();
+  return bundle ? bundle.isPlatformAdmin : checkPlatformAdmin(supabase);
+});
+
 /** Profile joined with the auth facts the UI needs (verification state). */
 export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const { supabase, user } = await getAuthenticatedUser();
@@ -85,7 +122,7 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const onboardingCompleted =
     (profile?.onboarding_completed ?? false) || (await hasCompletedFacility(supabase, user.id));
 
-  const isPlatformAdmin = await checkPlatformAdmin(supabase);
+  const isPlatformAdmin = await getIsPlatformAdmin();
 
   let mobileVerificationPending = false;
   if (user.user_metadata?.require_mobile === true) {
@@ -126,6 +163,18 @@ export interface FacilityContext {
 export const getFacilityContext = cache(async (): Promise<FacilityContext | null> => {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return null;
+
+  const bundle = await getSessionBundle();
+  if (bundle) {
+    if (!bundle.facility) return null;
+    return {
+      facilityId: bundle.facility.id,
+      facilityName: bundle.facility.name,
+      baseRole: bundle.baseRole ?? (bundle.facility.owner_id === user.id ? "owner" : "staff"),
+      permissions: bundle.permissions ?? [],
+      plan: toPlanSnapshot(bundle.plan),
+    };
+  }
 
   // RLS on facilities scopes this to the user's own facilities (ACTIVE only).
   const { data: facilities } = await supabase

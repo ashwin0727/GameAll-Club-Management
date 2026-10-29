@@ -24,7 +24,7 @@ const sections: LegalSection[] = [
       <ul className="list-disc space-y-1.5 pl-5">
         <li><strong>Your account:</strong> name, email address, mobile number and a password (stored only in scrambled form). We verify your email with a one-time code and your mobile number with an automated call.</li>
         <li><strong>Your facility:</strong> its name, address and contact details, sports, courts, opening hours, prices, logo and photos you choose to upload.</li>
-        <li><strong>Your customers&apos; details, entered by the facility:</strong> members, guests and coaching students (name, phone, email, notes), bookings, memberships, enrolments, attendance and payment records.</li>
+        <li><strong>Your customers&apos; details, entered by the facility:</strong> members, guests and coaching students (name, phone, email, address, date of birth, gender and notes, where the facility chooses to enter them), bookings, memberships, enrolments, attendance and payment records.</li>
         <li><strong>Payments:</strong> amounts, status, method and Razorpay reference numbers. Card, UPI and bank details are entered on Razorpay and are not stored by us.</li>
         <li><strong>Payout details:</strong> the bank account or UPI ID a facility gives us to receive its money. GameAll staff see these to verify them.</li>
         <li><strong>Photos:</strong> pictures you take or choose from your phone for a profile, logo, coach or program. The app asks for camera access only when you choose &quot;Take a photo&quot;.</li>

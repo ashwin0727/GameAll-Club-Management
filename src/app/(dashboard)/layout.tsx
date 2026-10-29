@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { checkPlatformAdmin, getCurrentProfile, getFacilityContext } from "@/features/auth/api/auth.api";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile, getFacilityContext, getIsPlatformAdmin } from "@/features/auth/api/auth.api";
 import { AppShell } from "@/components/shared/app-shell";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 
@@ -20,7 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   // GameAll's own back-office account has no facility: it lives in /admin.
-  if (await checkPlatformAdmin(await createClient())) {
+  if (!facilityContext && (await getIsPlatformAdmin())) {
     redirect("/admin");
   }
 

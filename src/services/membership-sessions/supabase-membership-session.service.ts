@@ -23,6 +23,9 @@ import type { MembershipSessionService } from "@/services/membership-sessions/me
 import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
 
+/** One row of list_membership_sessions_for_date / _for_range. */
+type SessionRow = Database["public"]["Functions"]["list_membership_sessions_for_date"]["Returns"][number];
+
 type BatchRow = Database["public"]["Tables"]["membership_batches"]["Row"];
 type BatchMemberRow = Database["public"]["Tables"]["membership_batch_members"]["Row"];
 type SessionBookingRow = Database["public"]["Tables"]["membership_session_bookings"]["Row"];
@@ -175,13 +178,8 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
     if (error) throw mapCapacityError(error);
   }
 
-  async listSessionsForDate(facilityId: string, date: string): Promise<MembershipSessionSlot[]> {
-    const { data, error } = await this.supabase.rpc("list_membership_sessions_for_date", {
-      p_facility_id: facilityId,
-      p_date: date,
-    });
-    if (error) throw mapSupabaseError(error);
-    return (data ?? []).map((row) => ({
+  private toSlot(row: SessionRow): MembershipSessionSlot {
+    return {
       batchId: row.batch_id,
       sessionId: row.session_id,
       batchName: displayBatchName(row.batch_name, row.start_time, row.end_time),
@@ -196,7 +194,40 @@ export class SupabaseMembershipSessionService implements MembershipSessionServic
       releasedCapacity: row.released_capacity,
       memberBookedCount: row.member_booked_count,
       guestBookedCount: row.guest_booked_count,
-    }));
+    };
+  }
+
+  async listSessionsForDate(facilityId: string, date: string): Promise<MembershipSessionSlot[]> {
+    const { data, error } = await this.supabase.rpc("list_membership_sessions_for_date", {
+      p_facility_id: facilityId,
+      p_date: date,
+    });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((row) => this.toSlot(row));
+  }
+
+  async listSessionsForRange(facilityId: string, fromDate: string, toDate: string): Promise<MembershipSessionSlot[]> {
+    // list_membership_sessions_for_range (migration 0164) is newer than the generated types.
+    const rpc = this.supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: SessionRow[] | null; error: { code?: string; message: string } | null }>;
+    const { data, error } = await rpc.call(this.supabase, "list_membership_sessions_for_range", {
+      p_facility_id: facilityId,
+      p_from: fromDate,
+      p_to: toDate,
+    });
+    if (!error) return (data ?? []).map((row) => this.toSlot(row));
+
+    // The function is not there yet (migration not applied): fall back to one request per day, in parallel.
+    if (error.code === "PGRST202" || error.code === "42883") {
+      const days: string[] = [];
+      for (let d = new Date(`${fromDate}T00:00:00`); `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` <= toDate; d.setDate(d.getDate() + 1)) {
+        days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      }
+      return (await Promise.all(days.map((day) => this.listSessionsForDate(facilityId, day)))).flat();
+    }
+    throw mapSupabaseError(error as never);
   }
 
   async getOrCreateSession(batchId: string, sessionDate: string): Promise<string> {

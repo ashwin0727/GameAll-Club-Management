@@ -27,6 +27,8 @@ export interface MembershipSessionService {
   removeBatchMember(batchId: string, memberId: string): Promise<void>;
   /** The Owner Availability View's single read — every batch scheduled on this date, materialized or not. */
   listSessionsForDate(facilityId: string, date: string): Promise<MembershipSessionSlot[]>;
+  /** Every session from [fromDate, toDate] (inclusive, yyyy-mm-dd, at most about two months) in a single request. */
+  listSessionsForRange(facilityId: string, fromDate: string, toDate: string): Promise<MembershipSessionSlot[]>;
   /** Materializes the session occurrence row if it doesn't exist yet — needed before release/restore on a date nobody has booked against. */
   getOrCreateSession(batchId: string, sessionDate: string): Promise<string>;
   getSessionCapacity(sessionId: string): Promise<MembershipSessionCapacity>;

@@ -6,7 +6,7 @@ import { getBookingService } from "@/services/bookings";
 import { getCoachingService } from "@/services/coaching";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { getOperatingHoursService } from "@/services/operating-hours";
-import { countActiveMemberships } from "@/features/dashboard/summary";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import {
   dataRange,
   addDays as addDaysTo,
@@ -52,18 +52,21 @@ export function bookingToEvent(b: Booking, memberNames: Map<string, string>): Ca
  * list. Each secondary source is best-effort — a person without Coaching access
  * still gets their bookings.
  */
-export async function fetchCalendarEvents(fid: string, from: Date, to: Date): Promise<CalEvent[]> {
+export async function fetchCalendarEvents(fid: string, from: Date, to: Date, includeCoaching = true): Promise<CalEvent[]> {
     const supabase = createClient();
-    // Membership windows are generated per date, so every date on screen needs its own lookup.
-    const sessionDates: string[] = [];
-    for (let d = from; d < to; d = addDaysTo(d, 1)) sessionDates.push(localDateStr(d));
+    // Membership windows are generated per date; one request covers every date on screen.
+    const lastDay = localDateStr(addDaysTo(to, -1));
+    const firstDay = localDateStr(from);
 
-    const [bookings, coaching, blocks, sessionGroups] = await Promise.all([
+    const [bookings, coaching, blocks, sessionSlots] = await Promise.all([
       getBookingService().getBookingsForFacility(fid, from, to),
-      getCoachingService()
-        .listSessions({ facilityId: fid, filters: { from: from.toISOString(), to: to.toISOString() }, limit: 500 })
-        .then((r) => r.sessions)
-        .catch(() => []),
+      // A role without Coaching access would only get a refusal back, so don't ask.
+      includeCoaching
+        ? getCoachingService()
+            .listSessions({ facilityId: fid, filters: { from: from.toISOString(), to: to.toISOString() }, limit: 500 })
+            .then((r) => r.sessions)
+            .catch(() => [])
+        : Promise.resolve([]),
       supabase
         .from("maintenance_blocks")
         .select("id, court_id, ticket_id, start_time, end_time")
@@ -72,13 +75,9 @@ export async function fetchCalendarEvents(fid: string, from: Date, to: Date): Pr
         .lt("start_time", to.toISOString())
         .gt("end_time", from.toISOString())
         .then((r) => r.data ?? [], () => []),
-      Promise.all(
-        sessionDates.map((d) =>
-          getMembershipSessionService()
-            .listSessionsForDate(fid, d)
-            .catch(() => []),
-        ),
-      ),
+      getMembershipSessionService()
+        .listSessionsForRange(fid, firstDay, lastDay)
+        .catch(() => []),
     ]);
 
     const liveBookings = bookings.filter((b) => b.status !== "cancelled");
@@ -88,7 +87,7 @@ export async function fetchCalendarEvents(fid: string, from: Date, to: Date): Pr
 
     const events: CalEvent[] = liveBookings.map((b) => bookingToEvent(b, memberNames));
 
-    for (const slot of sessionGroups.flat()) {
+    for (const slot of sessionSlots) {
       events.push({
         id: `session-${slot.batchId}-${slot.sessionDate}-${slot.courtId}`,
         courtId: slot.courtId,
@@ -139,33 +138,41 @@ export async function fetchCalendarEvents(fid: string, from: Date, to: Date): Pr
     return events;
 }
 
+/** Whether this person can open any Coaching schedule page. If not, the calendar does not ask for coaching sessions at all. */
+function useCanSeeCoaching(): boolean {
+  const perms = usePermissionContext();
+  return perms ? perms.canViewPage("COACHING_SESSIONS") || perms.canViewPage("COACHING_SCHEDULE") : true;
+}
+
 /**
  * The calendar's events for its visible period. The previous period stays on
  * screen while the next one loads, so paging never blanks the grid.
  */
 export function useBookingCalendarData(facilityId: string | null, view: CalView, anchor: Date, enabled: boolean) {
   const { from, to } = dataRange(view, anchor);
+  const includeCoaching = useCanSeeCoaching();
   return useQuery({
-    queryKey: ["booking-calendar", facilityId, view, from.getTime(), to.getTime()],
+    queryKey: ["booking-calendar", facilityId, view, from.getTime(), to.getTime(), includeCoaching],
     enabled: enabled && Boolean(facilityId),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
     // Coming back from creating a coaching session (or anything else elsewhere)
     // must show it, so a remount always refetches instead of trusting the cache.
     refetchOnMount: "always",
-    queryFn: () => fetchCalendarEvents(facilityId!, from, to),
+    queryFn: () => fetchCalendarEvents(facilityId!, from, to, includeCoaching),
   });
 }
 
 /** The same events for any [from, to) — the bookings list uses it to work out utilization for its own date range. */
 export function useCalendarEventsForRange(facilityId: string | null, from: Date, to: Date, enabled = true) {
+  const includeCoaching = useCanSeeCoaching();
   return useQuery({
-    queryKey: ["booking-calendar-range", facilityId, from.getTime(), to.getTime()],
+    queryKey: ["booking-calendar-range", facilityId, from.getTime(), to.getTime(), includeCoaching],
     enabled: enabled && Boolean(facilityId),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
     refetchOnMount: "always",
-    queryFn: () => fetchCalendarEvents(facilityId!, from, to),
+    queryFn: () => fetchCalendarEvents(facilityId!, from, to, includeCoaching),
   });
 }
 
@@ -202,8 +209,9 @@ export function useBookingFacilityStats(facilityId: string | null) {
     enabled: Boolean(facilityId),
     staleTime: 30_000,
     queryFn: async () => {
-      const memberships = await createClient().from("memberships").select("id, status").eq("facility_id", facilityId!);
-      return { activeMembers: countActiveMemberships(memberships.data ?? [], null) };
+      // A count, not the rows: a club with thousands of memberships should not download them all to read one number.
+      const { count } = await createClient().from("memberships").select("id", { count: "exact", head: true }).eq("facility_id", facilityId!).eq("status", "active");
+      return { activeMembers: count ?? 0 };
     },
   });
 }
@@ -216,13 +224,18 @@ export function usePeriodRevenue(facilityId: string | null, from: Date, to: Date
     placeholderData: keepPreviousData,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data } = await createClient()
+      // Summed in the database (migration 0164); falls back to summing the rows if that function is not there yet.
+      const supabase = createClient();
+      const rpc = supabase.rpc as unknown as (fn: string, args: object) => Promise<{ data: number | string | null; error: unknown }>;
+      const sum = await rpc.call(supabase, "period_revenue_inr", { p_facility_id: facilityId!, p_from: from.toISOString(), p_to: to.toISOString() });
+      if (!sum.error && sum.data !== null) return Number(sum.data);
+      const { data } = await supabase
         .from("payments")
         .select("status, amount_inr")
         .eq("facility_id", facilityId!)
         .gte("created_at", from.toISOString())
         .lt("created_at", to.toISOString());
-      return (data ?? []).reduce((sum, p) => (p.status === "paid" ? sum + p.amount_inr : sum), 0);
+      return (data ?? []).reduce((sum2, p) => (p.status === "paid" ? sum2 + p.amount_inr : sum2), 0);
     },
   });
 }

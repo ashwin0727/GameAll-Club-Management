@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
+import { resilientFetch } from "@/lib/supabase/resilient-fetch";
 import {
   SESSION_TOLERANT_ROUTES,
   isPublic,
@@ -14,6 +15,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: resilientFetch },
       cookies: {
         getAll() {
           return request.cookies.getAll();

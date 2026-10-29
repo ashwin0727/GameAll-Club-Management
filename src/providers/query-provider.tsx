@@ -3,6 +3,7 @@
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QUERY_STALE_TIME_MS } from "@/lib/constants";
+import { queryRetryDelay, shouldRetryQuery } from "@/providers/query-retry";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -12,7 +13,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: QUERY_STALE_TIME_MS,
             refetchOnWindowFocus: false,
-            retry: 1,
+            retry: shouldRetryQuery,
+            retryDelay: queryRetryDelay,
           },
         },
       }),

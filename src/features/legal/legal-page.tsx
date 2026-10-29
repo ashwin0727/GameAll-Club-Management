@@ -18,7 +18,7 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
   return (
     <div className="min-h-[100dvh] bg-background">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8 lg:px-12">
           <Link href="/" aria-label={APP_NAME}>
             <BrandMark />
           </Link>
@@ -32,7 +32,7 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
+      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 lg:px-12">
         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Last updated {LEGAL_UPDATED}</p>
         <div className="mt-6 space-y-3 text-[15px] leading-relaxed text-foreground/90">{intro}</div>

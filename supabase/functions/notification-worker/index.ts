@@ -18,8 +18,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getAccessToken, parseServiceAccount, sendPush } from "../_shared/fcm.ts";
 import { finishPendingDeletions } from "../_shared/account-deletion.ts";
+import { mapLimit } from "../_shared/concurrency.ts";
 
-const BATCH = 200;
+const BATCH = 100;
+// How many pushes are in flight at once: fast, but gentle on Google's servers.
+const PUSH_CONCURRENCY = 15;
 // Anything older than this when push is first switched on is not worth buzzing a phone for.
 const PUSH_MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -45,44 +48,64 @@ Deno.serve(async (req) => {
     console.error("[notification-worker] pending account deletions failed", String(err));
   }
 
-  const { data: pending, error } = await admin
-    .from("notifications")
-    .select("id, user_id, kind, title, body, data, created_at")
-    .is("pushed_at", null)
-    .order("created_at", { ascending: true })
-    .limit(BATCH);
-  if (error) return json({ error: error.message }, 500);
-  if (!pending?.length) return json({ pushed: 0, jobs: jobs.error ? "failed" : "ok" });
-
   const sa = parseServiceAccount(Deno.env.get("FIREBASE_SERVICE_ACCOUNT"));
   if (!sa) {
+    // Nothing is claimed, so the in-app list and any later push are unaffected.
     console.warn("[notification-worker] FIREBASE_SERVICE_ACCOUNT is not set — in-app notifications only");
-    return json({ pushed: 0, pending: pending.length, push: "not configured" });
+    return json({ pushed: 0, push: "not configured" });
   }
 
-  const accessToken = await getAccessToken(sa);
+  // Get the access token BEFORE claiming, so a failure here cannot lose a batch.
+  let accessToken: string;
+  try {
+    accessToken = await getAccessToken(sa);
+  } catch (err) {
+    console.error("[notification-worker] could not get a Google access token", String(err));
+    return json({ pushed: 0, push: "token error" }, 502);
+  }
+
+  // Claim a batch: the rows are marked pushed in the same statement that returns them, so two overlapping runs can never send the
+  // same notification twice. Falls back to a plain read where the claim function does not exist yet (migration 0164 not applied).
+  type Pending = { id: string; user_id: string; kind: string; title: string; body: string; data: unknown; created_at: string };
+  let pending: Pending[] = [];
+  const claim = await admin.rpc("claim_unpushed_notifications", { p_limit: BATCH });
+  if (!claim.error) {
+    pending = (claim.data ?? []) as Pending[];
+  } else {
+    const legacy = await admin.from("notifications").select("id, user_id, kind, title, body, data, created_at").is("pushed_at", null).order("created_at", { ascending: true }).limit(BATCH);
+    if (legacy.error) return json({ error: legacy.error.message }, 500);
+    pending = (legacy.data ?? []) as Pending[];
+    if (pending.length) await admin.from("notifications").update({ pushed_at: new Date().toISOString() }).in("id", pending.map((n) => n.id));
+  }
+  if (!pending.length) return json({ pushed: 0, jobs: jobs.error ? "failed" : "ok" });
+
   const userIds = [...new Set(pending.map((n) => n.user_id))];
   const { data: tokens } = await admin.from("device_tokens").select("token, user_id").in("user_id", userIds);
   const byUser = new Map<string, string[]>();
   for (const t of tokens ?? []) byUser.set(t.user_id, [...(byUser.get(t.user_id) ?? []), t.token]);
 
-  let sent = 0;
-  const done: string[] = [];
-  const dead: string[] = [];
+  // One job per (notification, device), run a few at a time; one failure never stops the others.
+  const jobList: { token: string; n: Pending }[] = [];
   for (const n of pending) {
-    const fresh = Date.now() - new Date(n.created_at).getTime() < PUSH_MAX_AGE_MS;
-    if (fresh) {
-      const data: Record<string, string> = { id: n.id, kind: n.kind, route: String((n.data as { route?: string } | null)?.route ?? "") };
-      for (const token of byUser.get(n.user_id) ?? []) {
-        const result = await sendPush(sa, accessToken, token, { title: n.title, body: n.body, data });
-        if (result === "sent") sent++;
-        else if (result === "invalid-token") dead.push(token);
-      }
-    }
-    done.push(n.id);
+    if (Date.now() - new Date(n.created_at).getTime() >= PUSH_MAX_AGE_MS) continue;
+    for (const token of byUser.get(n.user_id) ?? []) jobList.push({ token, n });
   }
+  const outcomes = await mapLimit(jobList, PUSH_CONCURRENCY, ({ token, n }) =>
+    sendPush(sa, accessToken, token, {
+      title: n.title,
+      body: n.body,
+      data: { id: n.id, kind: n.kind, route: String((n.data as { route?: string } | null)?.route ?? "") },
+    }),
+  );
+  let sent = 0;
+  const dead: string[] = [];
+  outcomes.forEach((o, i) => {
+    if (!o.ok) return;
+    if (o.value === "sent") sent++;
+    else if (o.value === "invalid-token") dead.push(jobList[i]!.token);
+  });
+  const done = pending;
 
-  if (done.length) await admin.from("notifications").update({ pushed_at: new Date().toISOString() }).in("id", done);
   if (dead.length) await admin.from("device_tokens").delete().in("token", dead);
   return json({ pushed: sent, processed: done.length, removedTokens: dead.length });
 });

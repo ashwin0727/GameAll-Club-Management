@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/app_config.dart';
+import 'data/services/resilient_http_client.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
@@ -38,6 +39,8 @@ Future<void> main() async {
     url: AppConfig.supabaseUrl,
     // Same anon/publishable key the web app uses — public, RLS-protected.
     publishableKey: AppConfig.supabaseAnonKey,
+    // Retries safe reads on a dropped connection or a busy server, and gives every request a timeout (never repeats a write).
+    httpClient: ResilientHttpClient(),
   );
 
   await _startCrashReporting();

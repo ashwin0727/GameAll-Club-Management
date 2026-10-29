@@ -133,6 +133,9 @@ class DashboardCalculator {
     required List<OperatingDay> facilityOperatingDays,
     required List<({String playingAreaId, DateTime startTime, DateTime endTime, String status})> bookings,
     required DateRange period,
+
+    /// Booked minutes per court already added up by the database; when given, [bookings] is ignored.
+    Map<String, double>? bookedMinutesByArea,
   }) {
     final availableMinutesPerCourt = _datesInRange(period).fold<double>(0, (sum, date) {
       final dow = date.weekday % 7; // Dart: Mon=1..Sun=7 -> convert to Sun=0..Sat=6
@@ -146,16 +149,17 @@ class DashboardCalculator {
       return sum + (day != null ? operatingMinutesForDay(day) : 0);
     });
 
-    final bookedMinutesByArea = <String, double>{};
-    for (final booking in bookings) {
-      if (booking.status == 'cancelled') continue;
-      final minutes = bookingDurationMinutes(booking.startTime, booking.endTime);
-      bookedMinutesByArea[booking.playingAreaId] =
-          (bookedMinutesByArea[booking.playingAreaId] ?? 0) + minutes;
+    final minutesByArea = <String, double>{...?bookedMinutesByArea};
+    if (bookedMinutesByArea == null) {
+      for (final booking in bookings) {
+        if (booking.status == 'cancelled') continue;
+        final minutes = bookingDurationMinutes(booking.startTime, booking.endTime);
+        minutesByArea[booking.playingAreaId] = (minutesByArea[booking.playingAreaId] ?? 0) + minutes;
+      }
     }
 
     final totalAvailable = availableMinutesPerCourt * playingAreas.length;
-    final totalBooked = bookedMinutesByArea.values.fold<double>(0, (a, b) => a + b);
+    final totalBooked = minutesByArea.values.fold<double>(0, (a, b) => a + b);
     final overallPercent = computeUtilizationPercent(totalBooked, totalAvailable);
 
     final bySport = facilitySports.map((fs) {
@@ -167,7 +171,7 @@ class DashboardCalculator {
               playingAreaId: area.id,
               playingAreaName: area.name,
               utilizationPercent: computeUtilizationPercent(
-                bookedMinutesByArea[area.id] ?? 0,
+                minutesByArea[area.id] ?? 0,
                 availableMinutesPerCourt,
               ),
             ),
@@ -176,7 +180,7 @@ class DashboardCalculator {
       final sportAvailable = availableMinutesPerCourt * areasForSport.length;
       final sportBooked = areasForSport.fold<double>(
         0,
-        (sum, a) => sum + (bookedMinutesByArea[a.id] ?? 0),
+        (sum, a) => sum + (minutesByArea[a.id] ?? 0),
       );
       return SportUtilization(
         facilitySportId: fs.id,
@@ -512,6 +516,42 @@ class DashboardCalculator {
           count: otherCount == 0 ? null : otherCount,
           unavailable: otherInr == 0,
         ),
+      ],
+    );
+  }
+
+  /// The revenue panel built from the database's totals (dashboard_revenue_overview) instead of every payment row. Gives the
+  /// same result as [buildRevenueOverview]. [byDay] maps "YYYY-MM-DD" to rupees received that day; [breakdown] is keyed
+  /// bookings / memberships / coaching / other.
+  static RevenueOverview buildRevenueOverviewFromTotals({
+    required int totalInr,
+    required int previousTotalInr,
+    required Map<String, int> byDay,
+    required Map<String, ({int count, int inr})> breakdown,
+    required DateTime now,
+    required int monthOffset,
+  }) {
+    final monthStart = DateTime(now.year, now.month - monthOffset, 1);
+    final monthEnd = DateTime(now.year, now.month - monthOffset + 1, 1);
+    final changePercent = previousTotalInr == 0 ? null : ((totalInr - previousTotalInr) / previousTotalInr) * 100;
+    final points = _datesInRange(DateRange(from: monthStart, to: monthEnd))
+        .map((d) => RevenueTrendPoint(date: _dayKey(d), amountInr: byDay[_dayKey(d)] ?? 0))
+        .toList();
+    ({int count, int inr}) of(String key) => breakdown[key] ?? (count: 0, inr: 0);
+    final bookings = of('bookings');
+    final memberships = of('memberships');
+    final coaching = of('coaching');
+    final other = of('other');
+    return RevenueOverview(
+      monthLabel: '${_monthNames[monthStart.month - 1]} ${monthStart.year}',
+      totalInr: totalInr,
+      changePercent: changePercent?.toDouble(),
+      points: points,
+      breakdown: [
+        RevenueBreakdownSegment(key: RevenueBreakdownKey.bookings, label: 'Bookings', amountInr: bookings.inr, count: bookings.count, unavailable: false),
+        RevenueBreakdownSegment(key: RevenueBreakdownKey.memberships, label: 'Memberships', amountInr: memberships.inr, count: memberships.count, unavailable: false),
+        RevenueBreakdownSegment(key: RevenueBreakdownKey.coaching, label: 'Coaching', amountInr: coaching.inr, count: coaching.count == 0 ? null : coaching.count, unavailable: coaching.inr == 0),
+        RevenueBreakdownSegment(key: RevenueBreakdownKey.other, label: 'Other', amountInr: other.inr, count: other.count == 0 ? null : other.count, unavailable: other.inr == 0),
       ],
     );
   }

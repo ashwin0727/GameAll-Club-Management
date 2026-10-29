@@ -3,6 +3,7 @@ import '../services/supabase_provider.dart';
 import 'auth_repository.dart';
 import 'account_repository.dart';
 import 'plan_repository.dart';
+import 'session_repository.dart';
 import 'facility_repository.dart';
 import 'payout_repository.dart';
 import 'profile_hub_repository.dart';
@@ -27,6 +28,10 @@ import 'coaching_repository.dart';
 
 final accountRepositoryProvider = Provider<AccountRepository>((ref) {
   return AccountRepository(ref.watch(supabaseClientProvider));
+});
+
+final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
+  return SessionRepository(ref.watch(supabaseClientProvider));
 });
 
 final planRepositoryProvider = Provider<PlanRepository>((ref) {
