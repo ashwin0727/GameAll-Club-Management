@@ -40,12 +40,23 @@ Future<void> main() async {
     // Same anon/publishable key the web app uses — public, RLS-protected.
     publishableKey: AppConfig.supabaseAnonKey,
     // Retries safe reads on a dropped connection or a busy server, and gives every request a timeout (never repeats a write).
-    httpClient: ResilientHttpClient(),
+    // Also renews the sign-in and tries again when the server says it has expired (a phone with a wrong clock never renews it itself).
+    httpClient: ResilientHttpClient(refreshAccessToken: _renewAccessToken),
   );
 
   await _startCrashReporting();
 
   runApp(const ProviderScope(child: GameAllClubApp()));
+}
+
+/// A fresh access token from the stored refresh token, or null if the person has to sign in again.
+Future<String?> _renewAccessToken() async {
+  try {
+    final response = await Supabase.instance.client.auth.refreshSession();
+    return response.session?.accessToken;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Sends crashes to Firebase Crashlytics in release builds (not while developing). Best effort: a phone without Google

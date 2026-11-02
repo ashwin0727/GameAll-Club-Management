@@ -17,9 +17,6 @@ dependencies:
   # memberships and bookings through Supabase with row-level security.
   supabase_flutter: ^2.17.2
   flutter_riverpod: ^3.4.2
-  # The one typeface of the GameAll design system (Manrope), fetched and cached at runtime
-  # with a graceful fallback to the platform font when offline on first launch.
-  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -31,12 +28,27 @@ dev_dependencies:
 #   dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: "ic_launcher"
-  image_path: "assets/images/logo-icon.png"
+  image_path: "assets/images/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#050C19"
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+
+  # Manrope is one variable font (the weight is an axis of the file); every weight points at it.
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 800

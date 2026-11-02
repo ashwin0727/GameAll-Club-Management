@@ -5,6 +5,9 @@
 # The Flutter app isn't part of this Next.js deployment at all.
 mobile/
 
+# The Player app is a separate Flutter project, deployed on its own to play.gameall.co (see player_app/README.md).
+player_app/
+
 # Local Supabase CLI state, not needed by the deployed app.
 supabase/.branches
 supabase/.temp

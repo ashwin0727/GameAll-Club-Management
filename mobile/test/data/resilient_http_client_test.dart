@@ -109,6 +109,107 @@ void main() {
       expect(calls, 1);
     });
 
+    group('expired sign-in', () {
+      http.Response expired() => http.Response('{"code":"PGRST303","message":"JWT expired"}', 401);
+
+      ResilientHttpClient withRefresh(MockClient inner, Future<String?> Function() refresh) => ResilientHttpClient(
+            inner: inner,
+            timeout: const Duration(seconds: 5),
+            baseDelay: const Duration(milliseconds: 1),
+            refreshAccessToken: refresh,
+          );
+
+      test('renews the token and repeats the request with it', () async {
+        final seen = <String?>[];
+        final client = withRefresh(
+          MockClient((req) async {
+            seen.add(req.headers['Authorization']);
+            return req.headers['Authorization'] == 'Bearer new' ? http.Response('[]', 200) : expired();
+          }),
+          () async => 'new',
+        );
+        final r = _req('GET', '$base/rest/v1/courts')..headers['Authorization'] = 'Bearer old';
+        expect((await client.send(r)).statusCode, 200);
+        expect(seen, ['Bearer old', 'Bearer new']);
+      });
+
+      test('a write is sent again with the new token (the server refused it before doing anything)', () async {
+        var calls = 0;
+        final bodies = <String>[];
+        final client = withRefresh(
+          MockClient((req) async {
+            calls++;
+            bodies.add(req.body);
+            return req.headers['Authorization'] == 'Bearer new' ? http.Response('{}', 201) : expired();
+          }),
+          () async => 'new',
+        );
+        final r = _req('POST', '$base/rest/v1/rpc/create_booking', body: '{"a":1}')..headers['Authorization'] = 'Bearer old';
+        expect((await client.send(r)).statusCode, 201);
+        expect(calls, 2);
+        expect(bodies, ['{"a":1}', '{"a":1}']);
+      });
+
+      test('renews only once per request, even if the new token is refused too', () async {
+        var refreshes = 0;
+        var calls = 0;
+        final client = withRefresh(
+          MockClient((_) async {
+            calls++;
+            return expired();
+          }),
+          () async {
+            refreshes++;
+            return 'new';
+          },
+        );
+        expect((await client.send(_req('GET', '$base/rest/v1/courts'))).statusCode, 401);
+        expect(refreshes, 1);
+        expect(calls, 2);
+      });
+
+      test('returns the original answer when the token cannot be renewed', () async {
+        final client = withRefresh(MockClient((_) async => expired()), () async => null);
+        final res = await client.send(_req('GET', '$base/rest/v1/courts'));
+        expect(res.statusCode, 401);
+        expect(await res.stream.bytesToString(), contains('JWT expired'));
+      });
+
+      test('never renews for sign-in calls', () async {
+        var refreshes = 0;
+        final client = withRefresh(MockClient((_) async => http.Response('', 401)), () async {
+          refreshes++;
+          return 'x';
+        });
+        expect((await client.send(_req('POST', '$base/auth/v1/token?grant_type=password', body: '{}'))).statusCode, 401);
+        expect(refreshes, 0);
+      });
+
+      test('requests that fail together share one renewal', () async {
+        var refreshes = 0;
+        final client = withRefresh(
+          MockClient((req) async => req.headers['Authorization'] == 'Bearer new' ? http.Response('[]', 200) : expired()),
+          () async {
+            refreshes++;
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            return 'new';
+          },
+        );
+        final results = await Future.wait([
+          client.send(_req('GET', '$base/rest/v1/courts')),
+          client.send(_req('GET', '$base/rest/v1/sports')),
+          client.send(_req('GET', '$base/rest/v1/members')),
+        ]);
+        expect(results.map((r) => r.statusCode), [200, 200, 200]);
+        expect(refreshes, 1);
+      });
+
+      test('without a renew callback a 401 is simply returned', () async {
+        final client = _client(MockClient((_) async => expired()));
+        expect((await client.send(_req('GET', '$base/rest/v1/courts'))).statusCode, 401);
+      });
+    });
+
     test('gives up on a request that hangs', () async {
       final client = _client(MockClient((_) => Completer<http.Response>().future), timeout: const Duration(milliseconds: 50));
       await expectLater(client.send(_req('POST', '$base/rest/v1/rpc/create_booking', body: '{}')), throwsA(isA<TimeoutException>()));

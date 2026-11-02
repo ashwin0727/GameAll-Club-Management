@@ -13,8 +13,14 @@ import 'package:http/http.dart' as http;
 /// duplicate. Every request, retried or not, gives up after [timeout] instead of hanging forever.
 ///
 /// Retries wait 0.3 s, 0.6 s, 1.2 s plus a random pause (so many phones do not retry in step), and honour a Retry-After header.
+///
+/// Expired sign-in: when the server answers 401 to an ordinary request, [refreshAccessToken] is asked for a fresh access token and
+/// the request is sent once more with it. This matters when the phone's clock is wrong: the app then believes the token is still
+/// valid, never renews it, and the server rejects it ("JWT expired"). A 401 means the server refused the request before doing
+/// anything, so sending it again can never repeat a write. Sign-in calls (/auth/v1/) are never retried this way.
 class ResilientHttpClient extends http.BaseClient {
   ResilientHttpClient({
+    this.refreshAccessToken,
     http.Client? inner,
     this.timeout = const Duration(seconds: 30),
     this.maxAttempts = 3,
@@ -28,6 +34,17 @@ class ResilientHttpClient extends http.BaseClient {
   final int maxAttempts;
   final Duration baseDelay;
   final Random _random;
+
+  /// Returns a new access token (renewing the session), or null if that is not possible.
+  final Future<String?> Function()? refreshAccessToken;
+  Future<String?>? _refreshing;
+
+  /// One renewal at a time: many requests failing together share a single refresh.
+  Future<String?> _freshToken() {
+    final callback = refreshAccessToken;
+    if (callback == null) return Future<String?>.value(null);
+    return _refreshing ??= callback().catchError((Object _) => null).whenComplete(() => _refreshing = null);
+  }
 
   static const _retryableStatus = {408, 425, 429, 500, 502, 503, 504};
   static final _readRpc = RegExp(r'^(list_|get_|my_|count_|search_|period_|is_|admin_list_|admin_get_|plan_has_|plan_includes_|public_facility_accepts_|effective_)');
@@ -65,6 +82,30 @@ class ResilientHttpClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final response = await _sendWithRetries(request);
+    if (response.statusCode != 401 || refreshAccessToken == null || request.url.path.contains('/auth/v1/')) return response;
+
+    // Keep the body so the original answer can still be returned if renewing fails.
+    final body = await response.stream.toBytes();
+    final token = await _freshToken();
+    final copy = token == null ? null : _copy(request);
+    if (copy == null) {
+      return http.StreamedResponse(
+        Stream<List<int>>.value(body),
+        response.statusCode,
+        contentLength: body.length,
+        request: response.request,
+        headers: response.headers,
+        isRedirect: response.isRedirect,
+        persistentConnection: response.persistentConnection,
+        reasonPhrase: response.reasonPhrase,
+      );
+    }
+    copy.headers['Authorization'] = 'Bearer $token';
+    return _sendWithRetries(copy);
+  }
+
+  Future<http.StreamedResponse> _sendWithRetries(http.BaseRequest request) async {
     final retryable = isSafeToRetry(request);
     final attempts = retryable ? maxAttempts : 1;
     http.BaseRequest current = request;

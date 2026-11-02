@@ -1,286 +1,170 @@
 import 'package:flutter/material.dart';
 
-/// GameAll Design System 2026 — brand palette.
-///
-/// [AppColors] stays a plain static class (not context-aware) for backward
-/// compatibility: every screen written before this redesign references
-/// `AppColors.xxx` directly rather than `Theme.of(context)`, and rewriting
-/// every one of those call sites is out of scope for this pass (see
-/// [AppColorTokens] below for the properly theme-aware path new/redesigned
-/// screens should use instead). These statics are fixed to the DARK theme's
-/// values, since dark is this design system's primary direction (spec:
-/// "Dark theme is the primary visual direction") — every screen not yet
-/// migrated to [AppColorTokens] renders correctly against `AppTheme.dark()`
-/// and only needs a follow-up pass to become properly light/dark-aware.
+/// The GameAll Player colour tokens. One palette, defined once; widgets read the theme-aware [AppPalette] (`context.palette`) and
+/// never hard-code a colour, so Dark and Light share one set of widgets.
 class AppColors {
   const AppColors._();
 
-  // ── Brand ──────────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFF00F08A); // GameAll Green (dark ground)
-  static const Color primaryDark = Color(0xFF00C77A);
-  static const Color onPrimary = Color(0xFF06110B); // near-black green — dark text/icons on green fills
-  static const Color electricBlue = Color(0xFF7E93FF);
-  static const Color violet = Color(0xFFA98CFF);
+  // Dark surfaces
+  static const Color darkBackground = Color(0xFF050C19);
+  static const Color darkSecondary = Color(0xFF09162A);
+  static const Color darkSurface = Color(0xFF10213B);
+  static const Color darkElevated = Color(0xFF162B49);
 
-  // ── Status ─────────────────────────────────────────────────────────────
+  // Brand
+  static const Color cyan = Color(0xFF08BDF5);
+  static const Color blue = Color(0xFF2878FF);
+  static const Color violet = Color(0xFF7954F6);
+  static const Color purple = Color(0xFFB65AF6);
+
+  // Dark text and borders
+  static const Color darkPrimaryText = Color(0xFFF5F8FF);
+  static const Color darkSecondaryText = Color(0xFFAAB8D0);
+  static const Color darkMutedText = Color(0xFF71839F);
+  static const Color darkBorder = Color(0xFF263B59);
+
+  // Light
+  static const Color lightBackground = Color(0xFFF7F9FD);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSecondary = Color(0xFFEEF3FB);
+  static const Color lightPrimaryText = Color(0xFF101B32);
+  static const Color lightSecondaryText = Color(0xFF62718A);
+  static const Color lightMutedText = Color(0xFF8A97AD);
+  static const Color lightBorder = Color(0xFFE1E8F2);
+
+  // Status
   static const Color success = Color(0xFF2ED993);
   static const Color warning = Color(0xFFFFC061);
-  static const Color destructive = Color(0xFFFF6B82);
-  static const Color info = Color(0xFF7E93FF);
+  static const Color danger = Color(0xFFFF6B82);
 
-  // ── Surfaces (dark — the default) ─────────────────────────────────────
-  // Neutral graphite near-black ground — no colour cast (tried a green
-  // tint to match the hero photography; it read as weird/off, reverted).
-  static const Color background = Color(0xFF0E0E10); // Surface 0 — near-black graphite
-  static const Color card = Color(0xFF17171A); // Surface 1 — cards
-  static const Color cardElevated = Color(0xFF1F1F23); // Surface 2 — nav, chips, quiet tiles
-  static const Color surfaceModal = Color(0xFF27272C); // Surface 3 — bottom sheets/dialogs
-  static const Color surfaceFloating = Color(0xFF313136); // Surface 4 — floating controls
+  /// The brand gradient: used only for the main calls to action, the selected sport and the centre navigation button.
+  static const LinearGradient brandGradient = LinearGradient(colors: [cyan, blue, violet]);
 
-  /// Legacy alias — most existing screens reach for `AppColors.mutedBackground`
-  /// for a subtly-tinted input/chip fill; keep it pointed at the same
-  /// surface a freshly-written screen would use.
-  static const Color mutedBackground = cardElevated;
-
-  // ── Text ───────────────────────────────────────────────────────────────
-  static const Color foreground = Color(0xFFF4F7FA); // Text Primary Dark
-  static const Color muted = Color(0xFF93A1B3); // Text Secondary Dark
-
-  // ── Borders ────────────────────────────────────────────────────────────
-  static const Color border = Color(0xFF2E2E33); // Border Dark — neutral graphite hairline
+  /// Blue to violet, for the selected sport chip and the quick-action button.
+  static const LinearGradient accentGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [blue, violet]);
 }
 
-/// The theme-aware token set — everything [AppColors] can't express because
-/// it differs between light and dark. New/redesigned screens should prefer
-/// `context.tokens.xxx` over the static `AppColors.xxx` so they render
-/// correctly in BOTH themes rather than only the dark default.
+/// Everything that differs between the dark and the light theme.
 @immutable
-class AppColorTokens extends ThemeExtension<AppColorTokens> {
-  const AppColorTokens({
+class AppPalette extends ThemeExtension<AppPalette> {
+  const AppPalette({
     required this.brightness,
-    required this.surface0,
-    required this.surface1,
-    required this.surface2,
-    required this.surface3,
-    required this.surface4,
-    required this.textPrimary,
-    required this.textSecondary,
-    required this.borderColor,
+    required this.background,
+    required this.secondaryBackground,
+    required this.surface,
+    required this.elevated,
+    required this.primaryText,
+    required this.secondaryText,
+    required this.mutedText,
+    required this.border,
     required this.primary,
-    required this.onPrimary,
-    required this.success,
-    required this.warning,
-    required this.destructive,
-    required this.info,
-    required this.electricBlue,
-    required this.violet,
+    required this.accent,
+    required this.highlight,
   });
 
   final Brightness brightness;
-  final Color surface0;
-  final Color surface1;
-  final Color surface2;
-  final Color surface3;
-  final Color surface4;
-  final Color textPrimary;
-  final Color textSecondary;
-  final Color borderColor;
+  final Color background;
+  final Color secondaryBackground;
+  final Color surface;
+  final Color elevated;
+  final Color primaryText;
+  final Color secondaryText;
+  final Color mutedText;
+  final Color border;
+
+  /// Electric blue.
   final Color primary;
-  final Color onPrimary;
-  final Color success;
-  final Color warning;
-  final Color destructive;
-  final Color info;
-  final Color electricBlue;
-  final Color violet;
 
-  bool get isLight => brightness == Brightness.light;
+  /// Violet.
+  final Color accent;
 
-  /// A SOLID (fully opaque) accent-tinted card fill. Replaces the washed
-  /// translucent gradients that read as "barely coloured" on a light
-  /// ground — the tint is alpha-blended onto [surface1] so the card is a
-  /// definite colour in both themes, like a filled button is.
-  Color accentFill(Color accent) => Color.alphaBlend(
-        accent.withValues(alpha: isLight ? 0.12 : 0.14), surface1);
+  /// Cyan (in light mode a slightly deeper cyan, so it stays readable on white).
+  final Color highlight;
 
-  /// A slightly stronger solid tint — for the top of a card or a header
-  /// band where a touch more presence is wanted.
-  Color accentFillStrong(Color accent) => Color.alphaBlend(
-        accent.withValues(alpha: isLight ? 0.20 : 0.22), surface1);
+  bool get isDark => brightness == Brightness.dark;
 
-  /// A solid, opaque border that matches [accentFill].
-  Color accentEdge(Color accent) => Color.alphaBlend(
-        accent.withValues(alpha: isLight ? 0.55 : 0.45), surface1);
-
-  /// Solid fill for a small pill / icon chip sitting on an accent card.
-  Color accentChip(Color accent) => Color.alphaBlend(
-        accent.withValues(alpha: isLight ? 0.18 : 0.22), surface1);
-
-  /// A solid accent fill — the accent colour, deepened just enough that
-  /// WHITE text and icons always read on it (WCAG-AA). Already-deep
-  /// accents pass through unchanged. The point of the deepening is
-  /// consistency: every solid accent card in the app then uses ONE
-  /// content colour (white) instead of some tiles white and some black.
-  Color accentSolid(Color accent) {
-    // The "attention / money owed" accent gets a dedicated marigold fill in
-    // BOTH themes. The `warning` token itself is tuned to be legible as
-    // TEXT (a deep mustard on white, a pale amber on black) and neither
-    // value works as a card fill — the light one reads as muddy brown, the
-    // dark one is too pale to take a label. Marigold is the fill; it is the
-    // one accent that carries dark ink rather than white (see [onAccent]),
-    // because white on gold is ~1.7:1 and simply unreadable.
-    if (accent == warning) return const Color(0xFFF7BD4E);
-
-    if (isLight) {
-      // Light-mode accent tokens are deep for text legibility; used as a
-      // full card fill they read as a dark slab. Ease ~18% toward white —
-      // the card stays clearly coloured but lighter, and white labels and
-      // icons still pass AA (they are bold).
-      return Color.lerp(accent, const Color(0xFFFFFFFF), 0.18)!;
-    }
-    // Dark mode: deepen a too-bright accent until white text reads on it.
-    if (accent.computeLuminance() <= 0.32) return accent;
-    final hsl = HSLColor.fromColor(accent);
-    var l = hsl.lightness;
-    var deep = accent;
-    while (l > 0.14) {
-      l -= 0.03;
-      deep = hsl.withLightness(l).toColor();
-      if (deep.computeLuminance() <= 0.30) break;
-    }
-    return deep;
-  }
-
-  /// Content colour (text / icons) for anything sitting on [accentSolid].
-  ///
-  /// Derived from the FILL, not the token, so it is right by construction:
-  /// [accentSolid] makes every accent dark enough for white except the
-  /// marigold "attention" fill, which gets a warm near-black instead
-  /// (7.9:1). One rule, no per-call-site guessing.
-  Color onAccent(Color accent) => accentSolid(accent).computeLuminance() > 0.42
-      ? const Color(0xFF3D2C06)
-      : const Color(0xFFFFFFFF);
-
-  /// Dark — the primary visual direction. Neutral graphite near-black
-  /// ground with clean surface steps — no colour cast — the brand green
-  /// stays canonical.
-  static const dark = AppColorTokens(
+  static const AppPalette dark = AppPalette(
     brightness: Brightness.dark,
-    surface0: Color(0xFF0E0E10),
-    surface1: Color(0xFF17171A),
-    surface2: Color(0xFF1F1F23),
-    surface3: Color(0xFF27272C),
-    surface4: Color(0xFF313136),
-    textPrimary: Color(0xFFF4F7FA),
-    textSecondary: Color(0xFF93A1B3),
-    borderColor: Color(0xFF2E2E33),
-    primary: Color(0xFF00F08A),
-    onPrimary: Color(0xFF06110B),
-    success: Color(0xFF2ED993),
-    warning: Color(0xFFFFC061),
-    destructive: Color(0xFFFF6B82),
-    info: Color(0xFF7E93FF),
-    electricBlue: Color(0xFF7E93FF),
-    violet: Color(0xFFA98CFF),
+    background: AppColors.darkBackground,
+    secondaryBackground: AppColors.darkSecondary,
+    surface: AppColors.darkSurface,
+    elevated: AppColors.darkElevated,
+    primaryText: AppColors.darkPrimaryText,
+    secondaryText: AppColors.darkSecondaryText,
+    mutedText: AppColors.darkMutedText,
+    border: AppColors.darkBorder,
+    primary: AppColors.blue,
+    accent: AppColors.violet,
+    highlight: AppColors.cyan,
   );
 
-  /// Light — a properly designed companion, not an inversion. Cool-paper
-  /// ground so true-white cards lift off it; a recessed surface-2 for
-  /// chips/nav; every accent deepened to clear WCAG-AA on white. The brand
-  /// green becomes a deep emerald here — same identity, legible as text and
-  /// as a fill; `onPrimary` stays the dark green-black in both themes so a
-  /// green button reads identically light or dark.
-  static const light = AppColorTokens(
+  static const AppPalette light = AppPalette(
     brightness: Brightness.light,
-    surface0: Color(0xFFF1F4F8),
-    surface1: Color(0xFFFFFFFF),
-    surface2: Color(0xFFE9EDF3),
-    surface3: Color(0xFFFFFFFF),
-    surface4: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF111A28),
-    textSecondary: Color(0xFF5A6A7E),
-    borderColor: Color(0xFFDDE3EB),
-    primary: Color(0xFF00A15C),
-    onPrimary: Color(0xFF06110B),
-    success: Color(0xFF0A8F55),
-    warning: Color(0xFF9A5B00),
-    destructive: Color(0xFFD01A3D),
-    info: Color(0xFF3B4ED6),
-    electricBlue: Color(0xFF3B4ED6),
-    violet: Color(0xFF6C3FD0),
+    background: AppColors.lightBackground,
+    secondaryBackground: AppColors.lightSecondary,
+    surface: AppColors.lightSurface,
+    elevated: AppColors.lightSecondary,
+    primaryText: AppColors.lightPrimaryText,
+    secondaryText: AppColors.lightSecondaryText,
+    mutedText: AppColors.lightMutedText,
+    border: AppColors.lightBorder,
+    primary: AppColors.blue,
+    accent: AppColors.violet,
+    highlight: Color(0xFF0597C8),
   );
 
   @override
-  AppColorTokens copyWith({
+  AppPalette copyWith({
     Brightness? brightness,
-    Color? surface0,
-    Color? surface1,
-    Color? surface2,
-    Color? surface3,
-    Color? surface4,
-    Color? textPrimary,
-    Color? textSecondary,
-    Color? borderColor,
+    Color? background,
+    Color? secondaryBackground,
+    Color? surface,
+    Color? elevated,
+    Color? primaryText,
+    Color? secondaryText,
+    Color? mutedText,
+    Color? border,
     Color? primary,
-    Color? onPrimary,
-    Color? success,
-    Color? warning,
-    Color? destructive,
-    Color? info,
-    Color? electricBlue,
-    Color? violet,
+    Color? accent,
+    Color? highlight,
   }) {
-    return AppColorTokens(
+    return AppPalette(
       brightness: brightness ?? this.brightness,
-      surface0: surface0 ?? this.surface0,
-      surface1: surface1 ?? this.surface1,
-      surface2: surface2 ?? this.surface2,
-      surface3: surface3 ?? this.surface3,
-      surface4: surface4 ?? this.surface4,
-      textPrimary: textPrimary ?? this.textPrimary,
-      textSecondary: textSecondary ?? this.textSecondary,
-      borderColor: borderColor ?? this.borderColor,
+      background: background ?? this.background,
+      secondaryBackground: secondaryBackground ?? this.secondaryBackground,
+      surface: surface ?? this.surface,
+      elevated: elevated ?? this.elevated,
+      primaryText: primaryText ?? this.primaryText,
+      secondaryText: secondaryText ?? this.secondaryText,
+      mutedText: mutedText ?? this.mutedText,
+      border: border ?? this.border,
       primary: primary ?? this.primary,
-      onPrimary: onPrimary ?? this.onPrimary,
-      success: success ?? this.success,
-      warning: warning ?? this.warning,
-      destructive: destructive ?? this.destructive,
-      info: info ?? this.info,
-      electricBlue: electricBlue ?? this.electricBlue,
-      violet: violet ?? this.violet,
+      accent: accent ?? this.accent,
+      highlight: highlight ?? this.highlight,
     );
   }
 
   @override
-  AppColorTokens lerp(ThemeExtension<AppColorTokens>? other, double t) {
-    if (other is! AppColorTokens) return this;
-    return AppColorTokens(
+  AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
+    if (other is! AppPalette) return this;
+    return AppPalette(
       brightness: t < 0.5 ? brightness : other.brightness,
-      surface0: Color.lerp(surface0, other.surface0, t)!,
-      surface1: Color.lerp(surface1, other.surface1, t)!,
-      surface2: Color.lerp(surface2, other.surface2, t)!,
-      surface3: Color.lerp(surface3, other.surface3, t)!,
-      surface4: Color.lerp(surface4, other.surface4, t)!,
-      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
-      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
-      borderColor: Color.lerp(borderColor, other.borderColor, t)!,
+      background: Color.lerp(background, other.background, t)!,
+      secondaryBackground: Color.lerp(secondaryBackground, other.secondaryBackground, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      elevated: Color.lerp(elevated, other.elevated, t)!,
+      primaryText: Color.lerp(primaryText, other.primaryText, t)!,
+      secondaryText: Color.lerp(secondaryText, other.secondaryText, t)!,
+      mutedText: Color.lerp(mutedText, other.mutedText, t)!,
+      border: Color.lerp(border, other.border, t)!,
       primary: Color.lerp(primary, other.primary, t)!,
-      onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
-      success: Color.lerp(success, other.success, t)!,
-      warning: Color.lerp(warning, other.warning, t)!,
-      destructive: Color.lerp(destructive, other.destructive, t)!,
-      info: Color.lerp(info, other.info, t)!,
-      electricBlue: Color.lerp(electricBlue, other.electricBlue, t)!,
-      violet: Color.lerp(violet, other.violet, t)!,
+      accent: Color.lerp(accent, other.accent, t)!,
+      highlight: Color.lerp(highlight, other.highlight, t)!,
     );
   }
 }
 
-/// Ergonomic, theme-aware access: `context.tokens.surface2`,
-/// `context.tokens.textSecondary`, etc. Falls back to [AppColorTokens.dark]
-/// only if a screen somehow renders outside of [AppTheme] entirely (should
-/// never happen in practice — both `AppTheme.light()`/`.dark()` always
-/// register this extension).
-extension AppColorTokensX on BuildContext {
-  AppColorTokens get tokens => Theme.of(this).extension<AppColorTokens>() ?? AppColorTokens.dark;
+extension AppPaletteContext on BuildContext {
+  /// The current theme's palette.
+  AppPalette get palette => Theme.of(this).extension<AppPalette>() ?? AppPalette.dark;
 }

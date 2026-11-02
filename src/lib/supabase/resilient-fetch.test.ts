@@ -114,3 +114,65 @@ describe("createResilientFetch", () => {
     expect(base).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("expired sign-in", () => {
+  const expired = () => new Response('{"code":"PGRST303","message":"JWT expired"}', { status: 401 });
+  const auth = (init?: RequestInit) => new Headers(init?.headers).get("authorization");
+  const withOld = (extra: RequestInit = {}): RequestInit => ({ ...extra, headers: { Authorization: "Bearer old" } });
+
+  it("renews the token and repeats the request with it", async () => {
+    const base = vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) => (auth(init) === "Bearer new" ? new Response("[]", { status: 200 }) : expired()));
+    const refresh = vi.fn(async () => "new");
+    const f = createResilientFetch(base as unknown as typeof fetch, 5000, refresh);
+    const res = await f(url("/rest/v1/courts"), withOld());
+    expect(res.status).toBe(200);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(base.mock.calls.map((c) => auth(c[1]))).toEqual(["Bearer old", "Bearer new"]);
+  });
+
+  it("sends a write again with the new token (the server refused it before doing anything)", async () => {
+    const base = vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) => (auth(init) === "Bearer new" ? new Response("{}", { status: 201 }) : expired()));
+    const f = createResilientFetch(base as unknown as typeof fetch, 5000, async () => "new");
+    const res = await f(url("/rest/v1/rpc/create_booking"), withOld({ method: "POST", body: '{"a":1}' }));
+    expect(res.status).toBe(201);
+    expect(base).toHaveBeenCalledTimes(2);
+    expect(base.mock.calls.map((c) => c[1]?.body)).toEqual(['{"a":1}', '{"a":1}']);
+  });
+
+  it("renews only once per request, even if the new token is refused too", async () => {
+    const base = vi.fn(async () => expired());
+    const refresh = vi.fn(async () => "new");
+    const f = createResilientFetch(base as unknown as typeof fetch, 5000, refresh);
+    expect((await f(url("/rest/v1/courts"), withOld())).status).toBe(401);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(base).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the original answer when the token cannot be renewed", async () => {
+    const f = createResilientFetch((async () => expired()) as unknown as typeof fetch, 5000, async () => null);
+    const res = await f(url("/rest/v1/courts"), withOld());
+    expect(res.status).toBe(401);
+    expect(await res.text()).toContain("JWT expired");
+  });
+
+  it("never renews for sign-in calls", async () => {
+    const refresh = vi.fn(async () => "x");
+    const f = createResilientFetch((async () => new Response("", { status: 401 })) as unknown as typeof fetch, 5000, refresh);
+    expect((await f(url("/auth/v1/token?grant_type=refresh_token"), { method: "POST", body: "{}" })).status).toBe(401);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("requests that fail together share one renewal", async () => {
+    const base = vi.fn(async (_i: RequestInfo | URL, init?: RequestInit) => (auth(init) === "Bearer new" ? new Response("[]", { status: 200 }) : expired()));
+    const refresh = vi.fn(() => new Promise<string>((resolve) => setTimeout(() => resolve("new"), 20)));
+    const f = createResilientFetch(base as unknown as typeof fetch, 5000, refresh);
+    const results = await Promise.all(["courts", "sports", "members"].map((t) => f(url(`/rest/v1/${t}`), withOld())));
+    expect(results.map((r) => r.status)).toEqual([200, 200, 200]);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("without a renew callback a 401 is simply returned", async () => {
+    const f = createResilientFetch((async () => expired()) as unknown as typeof fetch, 5000);
+    expect((await f(url("/rest/v1/courts"), withOld())).status).toBe(401);
+  });
+});

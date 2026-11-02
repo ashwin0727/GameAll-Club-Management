@@ -9,6 +9,11 @@
  * duplicate. Writes still get the timeout, so they cannot hang forever.
  *
  * Retries wait 0.3 s, 0.6 s, 1.2 s plus a random pause (so many clients do not retry in step), and honour a Retry-After header.
+ *
+ * Expired sign-in: when the server answers 401 to an ordinary request and a `refreshAccessToken` is given, a fresh access token is
+ * fetched and the request is sent once more with it. This matters when the visitor's clock is wrong: the browser then believes the
+ * token is still valid, never renews it, and the server rejects it ("JWT expired"). A 401 means the server refused the request
+ * before doing anything, so sending it again can never repeat a write. Sign-in calls (/auth/v1/) are never retried this way.
  */
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -67,8 +72,36 @@ async function attemptOnce(base: typeof fetch, input: RequestInfo | URL, init: R
   }
 }
 
-export function createResilientFetch(base: typeof fetch = (...args) => fetch(...args), timeoutMs = REQUEST_TIMEOUT_MS): typeof fetch {
-  return async (input, init) => {
+/** The request with its Authorization header replaced, or null when it cannot be rebuilt (a Request object with a consumed body). */
+function withToken(input: RequestInfo | URL, init: RequestInit | undefined, token: string): [RequestInfo | URL, RequestInit | undefined] | null {
+  if (typeof input === "object" && "headers" in input && !(input instanceof URL)) {
+    const rebuilt = new Request(input, init);
+    rebuilt.headers.set("Authorization", `Bearer ${token}`);
+    return [rebuilt, undefined];
+  }
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  return [input, { ...init, headers }];
+}
+
+export function createResilientFetch(
+  base: typeof fetch = (...args) => fetch(...args),
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  refreshAccessToken?: () => Promise<string | null>,
+): typeof fetch {
+  // Many requests failing together share one renewal.
+  let refreshing: Promise<string | null> | null = null;
+  const freshToken = () => {
+    if (!refreshAccessToken) return Promise.resolve(null);
+    refreshing ??= refreshAccessToken()
+      .catch(() => null)
+      .finally(() => {
+        refreshing = null;
+      });
+    return refreshing;
+  };
+
+  const withRetries: typeof fetch = async (input, init) => {
     const retryable = isSafeToRetry(input, init);
     const attempts = retryable ? MAX_ATTEMPTS : 1;
     for (let attempt = 0; ; attempt++) {
@@ -82,6 +115,16 @@ export function createResilientFetch(base: typeof fetch = (...args) => fetch(...
         await sleep(retryDelay(attempt));
       }
     }
+  };
+
+  if (!refreshAccessToken) return withRetries;
+  return async (input, init) => {
+    const response = await withRetries(input, init);
+    if (response.status !== 401 || requestUrl(input).includes("/auth/v1/")) return response;
+    const token = await freshToken();
+    if (!token) return response;
+    const rebuilt = withToken(input, init, token);
+    return rebuilt ? withRetries(rebuilt[0], rebuilt[1]) : response;
   };
 }
 

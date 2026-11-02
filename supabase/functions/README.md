@@ -43,12 +43,7 @@ this function.
 
 ### Verifying it's live
 
-The function refuses to run at all unless `RAZORPAY_KEY_ID` starts with
-`rzp_test_` — this phase is test-mode only by design, not by convention.
-If you see `"Payments are not configured yet."`, the secrets above haven't
-been set on this Supabase project yet. If you see `"Payments are only
-available in test mode right now."`, a live (`rzp_live_...`) key was set by
-mistake.
+The function accepts a test key (`rzp_test_...`) or a live key (`rzp_live_...`) and refuses anything else. If you see `"Payments are not configured yet."`, the secrets above have not been set on this Supabase project yet. Use test keys on a test project and live keys in production; webhooks are separate for each mode.
 
 ### Local development
 
@@ -286,3 +281,20 @@ supabase functions deploy mobile-otp
 supabase functions deploy signup-otp          # now flags new owners as requiring mobile verification
 supabase functions deploy public-guest-booking # now requires the mobile proof — deploy together with the web app
 ```
+
+## send-sms-otp
+
+Supabase Auth **Send SMS hook** for the Player app's phone login (migration 0169). Supabase creates the six-digit code and calls this
+function; it delivers the code through **2Factor.in** using the same `TWOFACTOR_API_KEY` as `mobile-otp`. By default the code is read
+out in a **phone call** (2Factor voice OTP, no DLT registration needed); once text messages are approved set `SMS_OTP_CHANNEL=sms`
+(and optionally `TWOFACTOR_TEMPLATE_NAME`). Requests must carry Supabase's webhook signature, so the URL cannot be used to ring other
+numbers. Indian mobiles only.
+
+```bash
+# TWOFACTOR_API_KEY is already set (mobile-otp uses it)
+supabase secrets set SEND_SMS_HOOK_SECRET="v1,whsec_..."   # shown when you create the hook in the dashboard
+supabase functions deploy send-sms-otp --no-verify-jwt
+```
+
+Then Dashboard → Authentication → **Hooks → Send SMS** → HTTPS → `https://<project-ref>.supabase.co/functions/v1/send-sms-otp`
+(generate the secret there and use it above), and turn the **Phone** provider on under Authentication → Providers.

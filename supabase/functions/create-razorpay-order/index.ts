@@ -84,14 +84,12 @@ Deno.serve(async (req) => {
   }
   if (!razorpayKeyId || !razorpayKeySecret) {
     console.error("[create-razorpay-order] missing RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET function secrets");
-    return jsonResponse({ error: "Payments are not configured yet. Ask the developer to set up Razorpay test keys." }, 500);
+    return jsonResponse({ error: "Payments are not configured yet. Ask the developer to set up the Razorpay keys." }, 500);
   }
-  if (!razorpayKeyId.startsWith("rzp_test_")) {
-    // Phase 1/2 is TEST MODE ONLY — refuse to run against a live key even
-    // if one is accidentally configured, rather than silently taking a
-    // real payment during a foundation phase that never confirms success.
-    console.error("[create-razorpay-order] refusing to run: RAZORPAY_KEY_ID is not a rzp_test_ key");
-    return jsonResponse({ error: "Payments are only available in test mode right now." }, 500);
+  if (!razorpayKeyId.startsWith("rzp_test_") && !razorpayKeyId.startsWith("rzp_live_")) {
+    // Test (rzp_test_) and live (rzp_live_) keys are both fine; anything else is a configuration mistake.
+    console.error("[create-razorpay-order] refusing to run: RAZORPAY_KEY_ID is not a rzp_test_ or rzp_live_ key");
+    return jsonResponse({ error: "Payments are not configured correctly. Ask the developer to check the Razorpay keys." }, 500);
   }
 
   let body: CreateOrderRequest;

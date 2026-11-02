@@ -450,6 +450,238 @@ await asUser(null);
   check("totals: another club's numbers are not mixed in", (await q(`select dashboard_totals($1, '2026-10-01+00', '2026-11-01+00', null, null, '{}'::uuid[], null, now(), now()) t`, [fac]))[0].t.collectedInr === direct);
 }
 
+// ═══ get_my_player_home (0167) — the Player app's Home page, for the caller only ═══════════════════════════════
+{
+  const ow = await mkUser("ph-owner@test.local", "Club Owner");
+  const pf = await mkFacility(ow, "PlayZone Sports Arena");
+  const alex = await mkUser("alex@test.local", "Alex Kumar");
+  const sam = await mkUser("sam@test.local", "Sam Other");
+  const newbie = await mkUser("newbie@test.local", "New Player");
+  const alexMember = await mkMember(pf, "Alex Kumar");
+  const samMember = await mkMember(pf, "Sam Other");
+  await q("update members set user_id=$1 where id=$2", [alex, alexMember]);
+  await q("update members set user_id=$1 where id=$2", [sam, samMember]);
+
+  const sport = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, pf, sport]);
+  const court = uuid();
+  await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,'Court 2',300)", [court, pf, sport, fsid]);
+
+  // which table does bookings.member_id point at? (the players are people records in some versions, profiles in others)
+  const fk = (await q(`select confrelid::regclass::text t from pg_constraint where conrelid='bookings'::regclass and contype='f' and pg_get_constraintdef(oid) like '%(member_id)%' limit 1`))[0]?.t;
+  const bookerFor = (profileId, memberId) => (fk === "members" ? memberId : profileId);
+  const book = async (who, startExpr, status) => {
+    const id = uuid();
+    await q(`insert into bookings (id, facility_id, court_id, member_id, customer_type, start_time, end_time, status, amount_minor)
+             values ($1,$2,$3,$4,'MEMBER', ${startExpr}, ${startExpr} + interval '1 hour', $5, 30000)`, [id, pf, court, who, status]);
+    return id;
+  };
+
+  const home = async (uid) => { await asUser(uid); const r = (await q("select get_my_player_home() h"))[0].h; await asUser(owner); return r; };
+
+  // a brand-new player: nothing at all
+  let h = await home(newbie);
+  check("player home: a new player has nothing enrolled or booked", h.fullName === "New Player" && h.hasActiveMembership === false && h.hasActiveCoaching === false && h.hasBookingHistory === false && h.upcomingBookings.length === 0, JSON.stringify(h));
+
+  // Alex: an upcoming confirmed booking, a cancelled one, a finished one
+  const aBook = (s, st) => book(bookerFor(alex, alexMember), s, st);
+  const nextId = await aBook("now() + interval '1 day'", "confirmed");
+  await aBook("now() + interval '2 days'", "cancelled");
+  await aBook("now() - interval '3 days'", "confirmed");
+  // Sam also has a booking: it must never show up for Alex
+  await book(bookerFor(sam, samMember), "now() + interval '3 hours'", "confirmed");
+  await q("insert into notifications (user_id, kind, title, body) values ($1,'x','a','b'), ($1,'x','c','d')", [alex]);
+  await q("insert into notifications (user_id, kind, title, body, read_at) values ($1,'x','e','f', now())", [alex]);
+
+  h = await home(alex);
+  check("player home: name, unread count and booking history", h.fullName === "Alex Kumar" && h.unreadNotifications === 2 && h.hasBookingHistory === true, JSON.stringify(h));
+  check("player home: only the caller's confirmed, unfinished booking (not cancelled, not past, not someone else's)", h.upcomingBookings.length === 1 && h.upcomingBookings[0].id === nextId && h.upcomingBookings[0].venueName === "PlayZone Sports Arena" && h.upcomingBookings[0].courtName === "Court 2" && h.upcomingBookings[0].sportName === "Badminton", JSON.stringify(h.upcomingBookings));
+  check("player home: no membership or coaching yet", h.hasActiveMembership === false && h.hasActiveCoaching === false);
+
+  // a membership, then an expired one for Sam
+  await mkMembership(pf, alexMember, "Gold");
+  h = await home(alex);
+  check("player home: an active membership shows", h.hasActiveMembership === true, JSON.stringify(h));
+  await q("update memberships set start_date = current_date - 40, end_date = current_date - 1 where member_id=$1", [alexMember]);
+  check("player home: an expired membership does not count", (await home(alex)).hasActiveMembership === false);
+
+  // coaching: invisible to a player through ordinary row-level security, but the function can answer
+  const prog = uuid();
+  await q("insert into coaching_programs (id, facility_id, name) values ($1,$2,'Junior Badminton')", [prog, pf]);
+  await q("insert into coaching_enrollments (facility_id, member_id, program_id) values ($1,$2,$3)", [pf, alexMember, prog]);
+  check("player home: active coaching shows", (await home(alex)).hasActiveCoaching === true);
+  check("player home: someone else's coaching does not", (await home(sam)).hasActiveCoaching === false);
+  await q("update coaching_enrollments set status='COMPLETED' where member_id=$1", [alexMember]);
+  check("player home: finished coaching does not count", (await home(alex)).hasActiveCoaching === false);
+
+  // not signed in: nothing, and no error
+  await asUser(null);
+  const anon = (await q("select get_my_player_home() h"))[0].h;
+  check("player home: signed out gives an empty answer", anon.fullName === null && anon.upcomingBookings.length === 0 && anon.hasActiveMembership === false, JSON.stringify(anon));
+  await asUser(owner);
+}
+
+// ═══ list_public_venues (0168) — what a player sees for the city they picked ═══════════════════════════════
+{
+  const vo = await mkUser("venue-owner@test.local", "Venue Owner");
+  const mk = async (name, city, state, { courts = 1, status = "ACTIVE", step = "COMPLETED", archived = false, bookingEnabled = true } = {}) => {
+    const id = await mkFacility(vo, name);
+    await q("update facilities set city=$2, state=$3, status=$4, onboarding_step=$5 where id=$1", [id, city, state, status, step]);
+    const sp = (await q("select id from sports where key='badminton'"))[0].id;
+    const fsid = uuid();
+    await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, id, sp]);
+    for (let i = 0; i < courts; i++) await q("insert into courts (facility_id, sport_id, facility_sport_id, name, hourly_rate_inr, archived, booking_enabled) values ($1,$2,$3,$4,300,$5,$6)", [id, sp, fsid, `Court ${i + 1}`, archived, bookingEnabled]);
+    return id;
+  };
+  const blr = await mk("Smash Arena", "Bengaluru", "Karnataka", { courts: 2 });
+  await mk("Ace Courts", "bangalore ", "Karnataka");
+  await mk("Chennai Smash", "Chennai", "Tamil Nadu");
+  await mk("No Courts Club", "Pune", "Maharashtra", { courts: 0 });
+  await mk("Archived Only", "Kochi", "Kerala", { archived: true });
+  await mk("Booking Off", "Kolkata", "West Bengal", { bookingEnabled: false });
+  await mk("Closed Club", "Mumbai", "Maharashtra", { status: "INACTIVE" });
+  await mk("Still Setting Up", "Hyderabad", "Telangana", { step: "FACILITY_DETAILS" });
+  await asUser(null); // a visitor who is not signed in
+  const venues = async (city, state) => (await q("select list_public_venues($1, $2) v", [city, state ?? null]))[0].v;
+
+  let v = await venues("Bangalore", "Karnataka");
+  check("venues: Bangalore and Bengaluru are one city, listed by name", v.length === 2 && v[0].name === "Ace Courts" && v[1].name === "Smash Arena", JSON.stringify(v.map((x) => x.name)));
+  check("venues: what a visitor needs (courts and sports), nothing about the owner", v[1].courtCount === 2 && v[1].sports[0] === "Badminton" && !("ownerId" in v[1]) && !("owner_id" in v[1]) && v[1].id === blr, JSON.stringify(v[1]));
+  check("venues: the city match ignores case and spaces", (await venues("  CHENNAI ", "tamil nadu")).length === 1);
+  check("venues: a city with none gives an empty list", (await venues("Ahmedabad", "Gujarat")).length === 0 && (await venues("", null)).length === 0 && (await venues(null, null)).length === 0);
+  check("venues: a wrong state does not match", (await venues("Chennai", "Kerala")).length === 0);
+  check("venues: no courts, archived courts, booking switched off, closed or unfinished venues are never listed",
+    (await venues("Pune")).length === 0 && (await venues("Kochi")).length === 0 && (await venues("Kolkata")).length === 0 && (await venues("Mumbai")).length === 0 && (await venues("Hyderabad")).length === 0);
+  await asUser(owner);
+}
+
+// ═══ players (0169) — phone login, and the Home page built from the clubs' own records by phone number ═══════
+{
+  const co = await mkUser("pl-owner@test.local", "Club Owner");
+  const f1 = await mkFacility(co, "PlayZone Arena");
+  const f2 = await mkFacility(co, "Ace Academy");
+  const sport = (await q("select id from sports where key='badminton'"))[0].id;
+  const mkCourt = async (f, name) => {
+    const fsid = uuid();
+    await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, f, sport]);
+    const id = uuid();
+    await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,$5,300)", [id, f, sport, fsid, name]);
+    return { id, fsid };
+  };
+  const c1 = await mkCourt(f1, "Court 1");
+  const c2 = await mkCourt(f2, "Court 2");
+
+  // a phone login: an auth user with a verified phone and no profile yet
+  const mkPhoneUser = async (phone) => {
+    const id = uuid();
+    await q("insert into auth.users (id, phone) values ($1,$2)", [id, phone]);
+    return id;
+  };
+  const dash = async (uid) => { await asUser(uid); const r = (await q("select get_player_dashboard() d"))[0].d; await asUser(owner); return r; };
+
+  const np = (await q("select normalize_phone('+91 98765-43210') a, normalize_phone('09876543210') b, normalize_phone('98765 43210') c, normalize_phone('') d, normalize_phone(null) e"))[0];
+  check("phones: the same number typed four ways is one number", np.a === "9876543210" && np.b === "9876543210" && np.c === "9876543210" && np.d === null && np.e === null, JSON.stringify(np));
+
+  const uma = await mkPhoneUser("919876543210");
+  await asUser(uma);
+  check("player: no profile before registering", (await q("select get_my_player() p"))[0].p === null);
+  await throws("player: a name is required", () => q("select register_player('  ', 'a@b.co')"), "name");
+  await throws("player: a bad email is refused", () => q("select register_player('Uma', 'not-an-email')"), "email");
+  const reg = (await q("select register_player('Uma Shankar', 'uma@example.com') p"))[0].p;
+  check("player: registered with the verified phone, not one the caller chose", reg.fullName === "Uma Shankar" && reg.phone === "9876543210" && reg.email === "uma@example.com", JSON.stringify(reg));
+  const reg2 = (await q("select register_player('Uma S', null) p"))[0].p;
+  check("player: registering again edits the same profile", reg2.fullName === "Uma S" && reg2.email === null && (await q("select count(*)::int c from players"))[0].c === 1);
+  await asUser(null);
+  await throws("player: signed out cannot register", () => q("select register_player('X', null)"), "sign in");
+  const noPhone = await mkUser("no-phone@test.local", "No Phone");
+  await asUser(noPhone);
+  await throws("player: an email-only account cannot register", () => q("select register_player('X', null)"), "phone");
+  const twin = await mkPhoneUser("+91 98765 43210");
+  await asUser(twin);
+  await throws("player: one player per phone number", () => q("select register_player('Twin', null)"), "already");
+  await asUser(owner);
+
+  // the clubs' records for that number, typed differently at each club
+  const m1 = uuid(), m2 = uuid(), other = uuid();
+  await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Uma Shankar','98765 43210')", [m1, f1]);
+  await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Uma S','+91-9876543210')", [m2, f2]);
+  await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Someone Else','9000000001')", [other, f1]);
+
+  let d = await dash(uma);
+  check("dashboard: nothing yet, but the name and phone", d.fullName === "Uma S" && d.phone === "9876543210" && d.memberships.length === 0 && d.coaching.length === 0 && d.guestBookings.count === 0 && d.schedule.length === 0 && d.hasActiveMembership === false, JSON.stringify(d));
+
+  await mkMembership(f1, m1, "Evening Play");
+  await mkMembership(f2, m2, "Weekend Pro");
+  const expired = await mkMembership(f2, m2, "Old Plan");
+  await q("update memberships set start_date=current_date-60, end_date=current_date-1 where id=$1", [expired]);
+  await mkMembership(f1, other, "Not Mine");
+  d = await dash(uma);
+  check("dashboard: active memberships from every club, matched by phone; expired and other people's left out",
+    d.hasActiveMembership === true && d.memberships.length === 2 && d.memberships.map((m) => m.planName).sort().join() === "Evening Play,Weekend Pro" && d.memberships.every((m) => m.venueName), JSON.stringify(d.memberships));
+
+  const mbid = uuid();
+  await q("insert into membership_batches (id, facility_id, plan_id, facility_sport_id, court_id, name, days_of_week, start_time, end_time, capacity) values ($1,$2,null,$3,$4,'Evening Batch','{1,2,3,4,5}','18:00','19:00',10)", [mbid, f1, c1.fsid, c1.id]);
+  await q("insert into membership_batch_members (batch_id, member_id) values ($1,$2)", [mbid, m1]);
+  d = await dash(uma);
+  const withBatch = d.memberships.find((m) => m.planName === "Evening Play");
+  check("dashboard: the membership shows its batch, days and time", withBatch.batchName === "Evening Batch" && withBatch.startTime === "18:00" && withBatch.endTime === "19:00" && withBatch.daysOfWeek.length === 5 && withBatch.courtName === "Court 1", JSON.stringify(withBatch));
+  await q("insert into membership_sessions (batch_id, facility_id, court_id, facility_sport_id, session_date, start_time, end_time, capacity) values ($1,$2,$3,$4,current_date+1,'18:00','19:00',10)", [mbid, f1, c1.id, c1.fsid]);
+  d = await dash(uma);
+  check("dashboard: tomorrow's membership session is in the schedule", d.schedule.some((i) => i.kind === "membership" && i.title === "Evening Batch" && i.courtName === "Court 1"), JSON.stringify(d.schedule));
+
+  const prog = uuid();
+  await q("insert into coaching_programs (id, facility_id, name) values ($1,$2,'Intermediate Batch')", [prog, f2]);
+  const enr = uuid();
+  await q("insert into coaching_enrollments (id, facility_id, member_id, program_id) values ($1,$2,$3,$4)", [enr, f2, m2, prog]);
+  const otherProg = (await q("insert into coaching_programs (facility_id, name) values ($1,'Not Mine Prog') returning id", [f1]))[0].id;
+  await q("insert into coaching_enrollments (facility_id, member_id, program_id) values ($1,$2,$3)", [f1, other, otherProg]);
+  d = await dash(uma);
+  check("dashboard: active coaching shows (not other people's)", d.hasActiveCoaching === true && d.coaching.length === 1 && d.coaching[0].programName === "Intermediate Batch" && d.coaching[0].venueName === "Ace Academy", JSON.stringify(d.coaching));
+  await q("update coaching_enrollments set status='COMPLETED' where id=$1", [enr]);
+  check("dashboard: finished coaching drops off", (await dash(uma)).coaching.length === 0);
+  await q("update coaching_enrollments set status='ACTIVE' where id=$1", [enr]);
+
+  // bookings: a guest booking by the phone typed on it, one by guest record, a member booking, someone else's, a cancelled one
+  const gp = uuid();
+  await q("insert into guest_players (id, facility_id, name, phone) values ($1,$2,'Uma Guest','9876543210')", [gp, f1]);
+  const insBooking = async (f, court, startExpr, status, x) => {
+    const id = uuid();
+    await q(`insert into bookings (id, facility_id, court_id, customer_type, member_id, guest_name, guest_phone, guest_player_id, start_time, end_time, status, amount_minor)
+             values ($1,$2,$3,$4,$5,$6,$7,$8, ${startExpr}, ${startExpr} + interval '1 hour', $9, 30000)`,
+      [id, f, court, x.type, x.member ?? null, x.type === "GUEST" ? "Guest" : null, x.phone ?? null, x.gp ?? null, status]);
+    return id;
+  };
+  await insBooking(f1, c1.id, "now() + interval '30 hours'", "confirmed", { type: "GUEST", phone: "+91 98765 43210" });
+  await insBooking(f2, c2.id, "now() + interval '50 hours'", "confirmed", { type: "GUEST", gp });
+  await insBooking(f1, c1.id, "now() + interval '70 hours'", "cancelled", { type: "GUEST", phone: "9876543210" });
+  await insBooking(f2, c2.id, "now() + interval '90 hours'", "confirmed", { type: "GUEST", phone: "9111111111" });
+  await insBooking(f1, c1.id, "now() + interval '110 hours'", "confirmed", { type: "MEMBER", member: m1 });
+  d = await dash(uma);
+  check("dashboard: guest bookings are found by the phone typed on the booking or by the guest record; cancelled and other people's are not",
+    d.guestBookings.count === 2 && d.guestBookings.next.venueName === "PlayZone Arena" && d.hasBookingHistory === true, JSON.stringify(d.guestBookings));
+  check("dashboard: upcoming bookings include member bookings too, soonest first", d.upcomingBookings.length === 3 && d.upcomingBookings[0].venueName === "PlayZone Arena", JSON.stringify(d.upcomingBookings.map((b) => b.venueName)));
+  check("dashboard: the schedule covers the next 7 days only and is in time order",
+    d.schedule.length >= 2 && d.schedule.every((i, k, a) => k === 0 || new Date(a[k - 1].startTime) <= new Date(i.startTime)) && d.schedule.every((i) => new Date(i.startTime) < new Date(Date.now() + 8 * 864e5)), JSON.stringify(d.schedule.map((i) => i.kind)));
+
+  // today's courts
+  await insBooking(f1, c1.id, "now() - interval '10 minutes'", "confirmed", { type: "GUEST", phone: "9876543210" });
+  d = await dash(uma);
+  check("dashboard: a booking later today shows under today's courts", d.courtsToday.length >= 1 && d.courtsToday.some((i) => i.courtName === "Court 1"), JSON.stringify(d.courtsToday));
+
+  // privacy
+  const bob = await mkPhoneUser("919000000001");
+  await asUser(bob);
+  await q("select register_player('Bob', null)");
+  await asUser(owner);
+  d = await dash(bob);
+  check("dashboard: another player only sees their own number's records", d.fullName === "Bob" && d.memberships.length === 1 && d.memberships[0].planName === "Not Mine" && d.guestBookings.count === 0, JSON.stringify(d));
+  await asUser(null);
+  const anon = (await q("select get_player_dashboard() d"))[0].d;
+  check("dashboard: signed out gives an empty answer", anon.fullName === null && anon.memberships.length === 0 && anon.schedule.length === 0, JSON.stringify(anon));
+  await asUser(owner);
+}
+
 process.on('uncaughtException', (e) => { console.log('FATAL:', String(e.message).split('\n')[0]); process.exit(2); });
 console.log(`passed: ${passed}, failed: ${failed.length}`);
 for (const f of failed) console.log("FAIL:", f);

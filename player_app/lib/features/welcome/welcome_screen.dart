@@ -13,18 +13,19 @@ class WelcomeScreen extends StatelessWidget {
   /// Called when the player taps "Get Started".
   final VoidCallback? onGetStarted;
 
-  // The design's greens: the bright brand green for emphasis, a soft mint at the start of the button.
-  static const Color _green = AppColors.primary;
-  static const Color _mint = Color(0xFF3DF0A6);
+  // The brand colours: cyan for emphasis, and cyan-to-blue on the button.
+  static const Color _green = AppColors.cyan;
   static const Color _subtitle = Color(0xFFC3CCD3);
   static const Color _tagline = Color(0xFFD4DBE0);
 
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF040B14),
+        backgroundColor: AppColors.darkBackground,
         body: LayoutBuilder(
           builder: (context, box) {
             final w = box.maxWidth;
@@ -32,7 +33,11 @@ class WelcomeScreen extends StatelessWidget {
             return Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset('assets/images/players.png', fit: BoxFit.cover, alignment: Alignment.bottomCenter),
+                Image.asset(
+                  'assets/images/players.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.bottomCenter,
+                ),
                 // Keeps the white type readable: a little weight at the very top, a lot at the bottom.
                 const DecoratedBox(
                   decoration: BoxDecoration(
@@ -40,7 +45,13 @@ class WelcomeScreen extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       stops: [0.0, 0.22, 0.5, 0.72, 1.0],
-                      colors: [Color(0x66000000), Color(0x00000000), Color(0x00000000), Color(0x8C020A12), Color(0xE6020A12)],
+                      colors: [
+                        Color(0x66000000),
+                        Color(0x00000000),
+                        Color(0x00000000),
+                        Color(0x8C050C19),
+                        Color(0xE6050C19),
+                      ],
                     ),
                   ),
                 ),
@@ -53,7 +64,12 @@ class WelcomeScreen extends StatelessWidget {
                       child: ConstrainedBox(
                         constraints: BoxConstraints(minHeight: inner.maxHeight),
                         child: Padding(
-                          padding: EdgeInsets.fromLTRB(pad, w * 0.12, pad, w * 0.06),
+                          padding: EdgeInsets.fromLTRB(
+                            pad,
+                            w * 0.12,
+                            pad,
+                            w * 0.06,
+                          ),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -63,7 +79,10 @@ class WelcomeScreen extends StatelessWidget {
                                 children: [
                                   _Headline(width: w),
                                   SizedBox(height: w * 0.085),
-                                  _GetStartedButton(width: w, onPressed: onGetStarted),
+                                  _GetStartedButton(
+                                    width: w,
+                                    onPressed: onGetStarted,
+                                  ),
                                 ],
                               ),
                             ],
@@ -89,21 +108,16 @@ class _Brand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = width * 0.115;
     return Column(
       children: [
-        Image.asset('assets/images/logo-icon.png', width: width * 0.2, height: width * 0.2, fit: BoxFit.contain),
-        SizedBox(height: width * 0.02),
         Semantics(
           label: 'GameAll',
           child: ExcludeSemantics(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: 'Game', style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.w600, height: 1.1, letterSpacing: 0)),
-                  TextSpan(text: 'All', style: TextStyle(color: WelcomeScreen._green, fontSize: fontSize, fontWeight: FontWeight.w600, height: 1.1, letterSpacing: 0)),
-                ],
-              ),
+            child: Image.asset(
+              'assets/images/gameall_logo_large.webp',
+              width: width * 0.62,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
             ),
           ),
         ),
@@ -111,7 +125,12 @@ class _Brand extends StatelessWidget {
         Text(
           'PLAY  ·  BOOK  ·  COMPETE',
           textAlign: TextAlign.center,
-          style: TextStyle(color: WelcomeScreen._tagline, fontSize: width * 0.033, fontWeight: FontWeight.w500, letterSpacing: width * 0.0075),
+          style: TextStyle(
+            color: WelcomeScreen._tagline,
+            fontSize: width * 0.033,
+            fontWeight: FontWeight.w500,
+            letterSpacing: width * 0.0075,
+          ),
         ),
       ],
     );
@@ -126,13 +145,23 @@ class _Headline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = width * 0.092;
-    TextStyle line(Color color) => TextStyle(color: color, fontSize: size, fontWeight: FontWeight.w800, height: 1.12, letterSpacing: -0.4);
+    TextStyle line(Color color) => TextStyle(
+      color: color,
+      fontSize: size,
+      fontWeight: FontWeight.w800,
+      height: 1.12,
+      letterSpacing: -0.4,
+    );
     return Align(
       alignment: Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(width: width * 0.09, height: 2, color: WelcomeScreen._green),
+          Container(
+            width: width * 0.09,
+            height: 2,
+            color: WelcomeScreen._green,
+          ),
           SizedBox(height: width * 0.05),
           Text('Your', style: line(Colors.white)),
           Text('Badminton', style: line(WelcomeScreen._green)),
@@ -142,7 +171,12 @@ class _Headline extends StatelessWidget {
             constraints: BoxConstraints(maxWidth: width * 0.76),
             child: Text(
               'Book courts, manage memberships, join tournaments and more.',
-              style: TextStyle(color: WelcomeScreen._subtitle, fontSize: width * 0.036, fontWeight: FontWeight.w400, height: 1.45),
+              style: TextStyle(
+                color: WelcomeScreen._subtitle,
+                fontSize: width * 0.036,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
             ),
           ),
         ],
@@ -166,8 +200,14 @@ class _GetStartedButton extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(height / 2),
-          gradient: const LinearGradient(colors: [WelcomeScreen._mint, WelcomeScreen._green]),
-          boxShadow: [BoxShadow(color: WelcomeScreen._green.withValues(alpha: 0.35), blurRadius: 22, offset: const Offset(0, 8))],
+          gradient: AppColors.brandGradient,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blue.withValues(alpha: 0.35),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -180,9 +220,20 @@ class _GetStartedButton extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Get Started', style: TextStyle(color: AppColors.onPrimary, fontSize: width * 0.04, fontWeight: FontWeight.w800)),
+                  Text(
+                    'Get Started',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: width * 0.04,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   SizedBox(width: width * 0.03),
-                  Icon(Icons.arrow_forward_rounded, color: AppColors.onPrimary, size: width * 0.056),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: width * 0.056,
+                  ),
                 ],
               ),
             ),
