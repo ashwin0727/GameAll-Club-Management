@@ -682,6 +682,44 @@ await asUser(null);
   await asUser(owner);
 }
 
+// ═══ player_login_lookup / attempts (0170) — telling a returning number from a new one, without a code ═══════════
+{
+  const lo = await mkUser("pl2-owner@test.local", "Club Owner");
+  const lf = await mkFacility(lo, "Lookup Arena");
+  const lookup = async (phone) => (await q("select player_login_lookup($1) r", [phone]))[0].r;
+
+  let r = await lookup("9811111111");
+  check("lookup: a brand-new number has no account, no profile and no club records", r.userId === null && r.hasPlayer === false && r.knownName === null && Number(r.clubRecords) === 0, JSON.stringify(r));
+
+  // a club knows the number (typed differently) as a member and as a guest
+  await q("insert into members (facility_id, full_name, phone) values ($1,'Ravi Kumar','+91 98111-11111')", [lf]);
+  await q("insert into guest_players (facility_id, name, phone) values ($1,'Ravi K','09811111111')", [lf]);
+  r = await lookup("9811111111");
+  check("lookup: the clubs' records for the number are counted and a name is offered", Number(r.clubRecords) === 2 && typeof r.knownName === "string" && r.knownName.startsWith("Ravi"), JSON.stringify(r));
+  check("lookup: still no account until they log in", r.userId === null && r.hasPlayer === false);
+
+  // an account created by the login function (phone stored without '+'), then a profile
+  const uid = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919811111111')", [uid]);
+  r = await lookup("+91 98111 11111");
+  check("lookup: finds the account whatever way the number is typed", r.userId === uid && r.hasPlayer === false, JSON.stringify(r));
+  await asUser(uid);
+  await q("select register_player('Ravi Kumar', 'ravi@example.com')");
+  await asUser(owner);
+  r = await lookup("9811111111");
+  check("lookup: once registered, hasPlayer is true", r.hasPlayer === true && r.userId === uid, JSON.stringify(r));
+
+  // the synthetic placeholder names some clubs store are never offered as a name
+  await q("insert into members (facility_id, full_name, phone) values ($1,'unknown-ab12cd34','9822222222')", [lf]);
+  r = await lookup("9822222222");
+  check("lookup: a placeholder name is not offered", r.knownName === null && Number(r.clubRecords) === 1, JSON.stringify(r));
+
+  // attempts are counted per address
+  let last = 0;
+  for (let i = 0; i < 5; i++) last = (await q("select player_login_record_attempt('iphash-a', '9811111111') c"))[0].c;
+  check("attempts: counted per address", last === 5 && (await q("select player_login_record_attempt('iphash-b', null) c"))[0].c === 1, String(last));
+}
+
 process.on('uncaughtException', (e) => { console.log('FATAL:', String(e.message).split('\n')[0]); process.exit(2); });
 console.log(`passed: ${passed}, failed: ${failed.length}`);
 for (const f of failed) console.log("FAIL:", f);

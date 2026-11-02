@@ -24,6 +24,12 @@ class FakeAuth implements PlayerAuthRepository {
   String? registeredName;
   String? registeredEmail;
   bool failSend = false;
+
+  /// The code step is switched off: giving a number signs in at once.
+  bool openLogin = false;
+  String? knownName;
+  int clubRecords = 0;
+  final begun = <String>[];
   final _changes = StreamController<void>.broadcast();
 
   @override
@@ -32,6 +38,18 @@ class FakeAuth implements PlayerAuthRepository {
   bool get isSignedIn => signedIn;
   @override
   Stream<void> get changes => _changes.stream;
+
+  @override
+  Future<LoginStart> beginLogin(String phone) async {
+    begun.add(phone);
+    if (!openLogin) {
+      await sendCode(phone);
+      return const LoginStart(LoginNext.enterCode);
+    }
+    signedIn = true;
+    _changes.add(null);
+    return LoginStart(LoginNext.signedIn, knownName: knownName, clubRecords: clubRecords, hasPlayer: profile != null);
+  }
 
   @override
   Future<void> sendCode(String phone) async {
@@ -298,6 +316,46 @@ void main() {
       expect(find.text('Tell us about you'), findsNothing);
       expect(find.byKey(const ValueKey('login-dialog')), findsNothing);
       expect(find.byKey(const ValueKey('account-menu')), findsOneWidget);
+    });
+
+    testWidgets('with codes switched off: a number the clubs know signs in at once, the name is pre-filled, no code step', (tester) async {
+      final auth = FakeAuth()
+        ..openLogin = true
+        ..knownName = 'Ravi Kumar'
+        ..clubRecords = 2;
+      await pump(tester, auth: auth);
+      await openLogin(tester);
+      await tester.enterText(find.byKey(const ValueKey('login-phone')), '9876543210');
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(auth.sent, isEmpty, reason: 'no code is sent');
+      expect(find.text('Enter the code'), findsNothing);
+      expect(find.text('Tell us about you'), findsOneWidget);
+      expect(find.textContaining('We found your records at your clubs'), findsOneWidget);
+      expect(tester.widget<TextField>(find.byKey(const ValueKey('login-name'))).controller!.text, 'Ravi Kumar');
+      await tester.enterText(find.byKey(const ValueKey('login-email')), 'ravi@example.com');
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(auth.registeredName, 'Ravi Kumar');
+      expect(find.byKey(const ValueKey('login-dialog')), findsNothing);
+      expect(find.byKey(const ValueKey('account-menu')), findsOneWidget);
+    });
+
+    testWidgets('with codes switched off: a returning player goes straight to their Home', (tester) async {
+      final auth = FakeAuth(profile: const PlayerProfile(id: 'p1', fullName: 'Uma Shankar', phone: '9876543210', email: 'u@x.co'))..openLogin = true;
+      await pump(tester, auth: auth, home: signedInData());
+      await openLogin(tester);
+      await tester.enterText(find.byKey(const ValueKey('login-phone')), '9876543210');
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tell us about you'), findsNothing);
+      expect(find.byKey(const ValueKey('login-dialog')), findsNothing);
+      expect(auth.begun, ['+919876543210']);
+      expect(find.text('Welcome back,'), findsOneWidget);
+      expect(find.text('Mon - Fri  ·  6:00 PM - 7:00 PM'), findsOneWidget);
     });
 
     testWidgets('a failed text message is explained, and the number can be changed', (tester) async {

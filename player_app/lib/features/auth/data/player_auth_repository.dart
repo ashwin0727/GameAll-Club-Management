@@ -10,6 +10,30 @@ import '../domain/player_profile.dart';
 /// A player signs in with a phone number and a one-time code sent by SMS. The first time, they also give a name and an email address,
 /// which creates their player profile (database function `register_player`, migration 0169). The profile's phone number is the one that
 /// was verified by the code: it is never typed into the profile form.
+/// What happened when the player gave their number.
+enum LoginNext {
+  /// A code was sent: ask for it.
+  enterCode,
+
+  /// Signed in straight away (the code step is switched off).
+  signedIn,
+}
+
+class LoginStart {
+  const LoginStart(this.next, {this.knownName, this.clubRecords = 0, this.hasPlayer = false});
+
+  final LoginNext next;
+
+  /// A name the clubs already hold for this number (to pre-fill the first-time form).
+  final String? knownName;
+
+  /// How many member / guest records at clubs carry this number.
+  final int clubRecords;
+
+  /// True when this number already has a player profile.
+  final bool hasPlayer;
+}
+
 abstract class PlayerAuthRepository {
   /// False in a build made without env.json: there is no backend to sign in to.
   bool get isConfigured;
@@ -18,6 +42,10 @@ abstract class PlayerAuthRepository {
 
   /// Emits whenever the signed-in state changes (signed in, signed out, session restored).
   Stream<void> get changes;
+
+  /// Starts signing in with [phone] (international format, "+919876543210"). While codes are switched off this signs the player in
+  /// at once; otherwise it sends a code.
+  Future<LoginStart> beginLogin(String phone);
 
   /// Sends a six-digit code to [phone] (international format, "+919876543210").
   Future<void> sendCode(String phone);
@@ -67,6 +95,41 @@ class SupabasePlayerAuthRepository implements PlayerAuthRepository {
 
   @override
   Stream<void> get changes => _client?.auth.onAuthStateChange.map((_) {}) ?? const Stream.empty();
+
+  @override
+  Future<LoginStart> beginLogin(String phone) async {
+    final client = _need;
+    Map<String, dynamic>? reply;
+    try {
+      final res = await client.functions.invoke('player-login', body: {'phone': phone});
+      if (res.data is Map) reply = (res.data as Map).cast<String, dynamic>();
+    } on FunctionException catch (e) {
+      // 404 = not deployed yet: fall back to the code. Anything else is a real answer the player should hear.
+      if (e.status != 404) {
+        final details = e.details;
+        final message = details is Map ? details['message'] as String? : null;
+        throw AuthFailure(message ?? "We couldn't sign you in right now. Please try again.");
+      }
+    } catch (_) {
+      throw const AuthFailure("We couldn't reach GameAll. Check your connection and try again.");
+    }
+
+    if (reply == null || reply['mode'] != 'open') {
+      await sendCode(phone);
+      return const LoginStart(LoginNext.enterCode);
+    }
+    try {
+      await client.auth.setSession(reply['refreshToken'] as String);
+    } on AuthException {
+      throw const AuthFailure("We couldn't sign you in right now. Please try again.");
+    }
+    return LoginStart(
+      LoginNext.signedIn,
+      knownName: reply['knownName'] as String?,
+      clubRecords: (reply['clubRecords'] as num?)?.toInt() ?? 0,
+      hasPlayer: reply['hasPlayer'] == true,
+    );
+  }
 
   @override
   Future<void> sendCode(String phone) async {

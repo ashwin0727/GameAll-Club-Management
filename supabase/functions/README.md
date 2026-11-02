@@ -298,3 +298,18 @@ supabase functions deploy send-sms-otp --no-verify-jwt
 
 Then Dashboard → Authentication → **Hooks → Send SMS** → HTTPS → `https://<project-ref>.supabase.co/functions/v1/send-sms-otp`
 (generate the secret there and use it above), and turn the **Phone** provider on under Authentication → Providers.
+
+## player-login
+
+Signs a Player-app user in from their phone number **without a one-time code** (so the voice/SMS limit is not spent). Migration 0170.
+Finds or creates the auth user for the number, signs in on the server with a password only this function can compute, and returns the
+session; also reports whether the number already has a player profile and what name / how many club records it carries.
+
+```bash
+supabase secrets set PLAYER_LOGIN_SECRET="<any long random string>"
+supabase functions deploy player-login --no-verify-jwt
+```
+
+**Security:** with no code, anyone who types a number sees that number's memberships, coaching and bookings. Limited to Indian mobiles and
+30 attempts / hour / address. To turn the code step back on, `supabase secrets set PLAYER_OTP_REQUIRED=true` (keep `send-sms-otp` deployed
+and the hook configured) — the app needs no change.

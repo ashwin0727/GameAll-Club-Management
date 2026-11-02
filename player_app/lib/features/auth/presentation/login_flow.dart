@@ -68,6 +68,9 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
   int _resendIn = 0;
   Timer? _timer;
 
+  /// What the clubs already know about this number (open login only): a name for the form, and a line saying we found records.
+  int _clubRecords = 0;
+
   String get _digits => _phone.text.replaceAll(RegExp(r'\D'), '');
   String get _e164 => '+91$_digits';
 
@@ -115,9 +118,16 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
     }
   }
 
+  /// Continue on the phone step. With codes switched off this signs in at once; otherwise a code is sent.
   Future<void> _sendCode() => _run(() async {
-        await ref.read(playerAuthRepositoryProvider).sendCode(_e164);
+        final start = await ref.read(playerAuthRepositoryProvider).beginLogin(_e164);
         if (!mounted) return;
+        if (start.next == LoginNext.signedIn) {
+          _clubRecords = start.clubRecords;
+          if (_name.text.trim().isEmpty && start.knownName != null) _name.text = start.knownName!;
+          await _finishSignIn();
+          return;
+        }
         setState(() {
           _step = _Step.code;
           _code.clear();
@@ -125,17 +135,27 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
         _startCountdown();
       });
 
+  /// Resend from the code step (a code is always what is wanted there).
+  Future<void> _resend() => _run(() async {
+        await ref.read(playerAuthRepositoryProvider).sendCode(_e164);
+        if (mounted) _startCountdown();
+      });
+
+  /// Signed in: a returning player goes straight in; a new one gives their name and email next.
+  Future<void> _finishSignIn() async {
+    await ref.read(authControllerProvider.notifier).refresh();
+    if (!mounted) return;
+    final status = ref.read(authControllerProvider).value;
+    if (status is SignedIn) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() => _step = _Step.profile);
+    }
+  }
+
   Future<void> _verify() => _run(() async {
         await ref.read(playerAuthRepositoryProvider).verifyCode(_e164, _code.text.trim());
-        // A returning player has a profile already; a new one gives their name and email next.
-        await ref.read(authControllerProvider.notifier).refresh();
-        if (!mounted) return;
-        final status = ref.read(authControllerProvider).value;
-        if (status is SignedIn) {
-          Navigator.of(context).pop(true);
-        } else {
-          setState(() => _step = _Step.profile);
-        }
+        await _finishSignIn();
       });
 
   Future<void> _register() => _run(() async {
@@ -309,7 +329,7 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
             else
               Pressable(
                 key: const ValueKey('login-resend'),
-                onTap: _busy ? null : _sendCode,
+                onTap: _busy ? null : _resend,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Text('Resend code', style: AppTextStyles.button(AppColors.blue))),
               ),
@@ -328,7 +348,11 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Your clubs already know your number. Add your name and email to finish.', style: AppTextStyles.body(p.secondaryText)),
+        Text(
+          _clubRecords > 0 ? 'We found your records at your clubs. Confirm your name and add your email to finish.' : 'Add your name and email to finish.',
+          key: const ValueKey('login-profile-intro'),
+          style: AppTextStyles.body(p.secondaryText),
+        ),
         const SizedBox(height: 18),
         _field(
           p,
