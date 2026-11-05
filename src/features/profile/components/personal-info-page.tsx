@@ -1,5 +1,6 @@
 "use client";
 
+import { FacilityVenueProfile } from "@/features/facility-profile/components/facility-venue-profile";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -99,11 +100,7 @@ export function PersonalInfoPage({ profile }: { profile: Profile }) {
                     .join(", ")}
                 />
               </div>
-              {facility.description && (
-                <div className="sm:col-span-2">
-                  <InfoRow label="About" value={facility.description} />
-                </div>
-              )}
+              <FacilityVenueProfile facility={facility} />
               <InfoRow label="Facility added" value={formatDate(facility.createdAt)} />
             </dl>
           </div>

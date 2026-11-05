@@ -178,6 +178,11 @@ void main() {
           notVisitor();
         }
         home.gate.complete(signedInData());
+        // while the page arrives there is only ever one brand bar (a cross-fade would have shown two, offset)
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+          if (size.width > 1000) expect(find.byKey(const ValueKey('brand-home')), findsOneWidget);
+        }
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('skeleton')), findsNothing);
         expect(find.text('Your Schedule'), findsOneWidget);

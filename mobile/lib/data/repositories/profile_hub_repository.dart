@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../models/facility.dart';
 import '../models/profile_hub.dart';
 
 /// The Profile hub's reads and writes — mirrors the web `SupabaseProfileService`
@@ -81,7 +82,7 @@ class ProfileHubRepository {
         await _client.from('profiles').update({'notification_prefs': prefs.toJson()}).eq('id', _uid);
       });
 
-  /// Only the address and description can be changed by the owner; the name, type and contact number stay as set up.
+  /// The owner can change the address, map link, venue type and amenities; the name, type and contact number stay as set up.
   Future<void> updateFacilityAddress(
     String facilityId, {
     required String line1,
@@ -89,7 +90,9 @@ class ProfileHubRepository {
     required String city,
     required String state,
     required String pinCode,
-    String? description,
+    String? locationUrl,
+    VenueType? venueType,
+    FacilityAmenities amenities = const FacilityAmenities(),
   }) =>
       _guard(() async {
         await _client.from('facilities').update({
@@ -98,7 +101,9 @@ class ProfileHubRepository {
           'city': city.trim(),
           'state': state.trim(),
           'postal_code': pinCode.trim(),
-          'description': (description?.trim().isEmpty ?? true) ? null : description!.trim(),
+          if (locationUrl != null) 'location_url': locationUrl.trim().isEmpty ? null : locationUrl.trim(),
+          if (venueType != null) 'venue_type': venueType.toDb(),
+          ...amenities.toDb(),
         }).eq('id', facilityId);
       });
 

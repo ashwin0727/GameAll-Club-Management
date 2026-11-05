@@ -99,6 +99,15 @@ export interface Database {
           onboarding_completed_at: string | null;
           updated_at: string;
           membership_access_days: number[];
+          location_url: string | null;
+          venue_type: "INDOOR" | "OUTDOOR" | null;
+          has_parking: boolean;
+          has_changing_rooms: boolean;
+          has_toilets: boolean;
+          has_cafeteria: boolean;
+          has_equipment_rental: boolean;
+          location_verification_status: "PENDING" | "VERIFIED" | "REJECTED";
+          location_verification_note: string | null;
         };
         Insert: {
           id?: string;
@@ -129,6 +138,13 @@ export interface Database {
           onboarding_completed_at?: string | null;
           updated_at?: string;
           membership_access_days?: number[];
+          location_url?: string | null;
+          venue_type?: "INDOOR" | "OUTDOOR" | null;
+          has_parking?: boolean;
+          has_changing_rooms?: boolean;
+          has_toilets?: boolean;
+          has_cafeteria?: boolean;
+          has_equipment_rental?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["facilities"]["Insert"]>;
         Relationships: [

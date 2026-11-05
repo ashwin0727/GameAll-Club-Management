@@ -10,7 +10,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/login_flow.dart';
 import 'features/player_home/application/player_home_controller.dart';
-import 'features/shell/coming_soon_page.dart';
+import 'features/shell/player_pages.dart';
 import 'features/shell/player_shell.dart';
 import 'features/welcome/welcome_screen.dart';
 
@@ -74,7 +74,7 @@ class GameAllPlayerApp extends ConsumerWidget {
         if (name == AppRoutes.home) {
           return MaterialPageRoute<void>(settings: settings, builder: (_) => const PlayerShell());
         }
-        return MaterialPageRoute<void>(settings: settings, builder: (_) => ComingSoonPage.forRoute(name ?? ''));
+        return MaterialPageRoute<void>(settings: settings, builder: (_) => playerPageForRoute(name ?? ''));
       },
     );
   }

@@ -1,47 +1,23 @@
 "use client";
 
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/shared/file-upload";
-
-const DESCRIPTION_MAX = 500;
+import { FacilityPhotosField } from "@/features/facility-profile/components/facility-photos-field";
 
 export interface FacilityBrandingSectionProps {
-  description: string;
-  onDescriptionChange: (value: string) => void;
   logo: File | string | null;
   onLogoChange: (file: File | null) => void;
+  /** New photos picked on this screen (at least one is required to continue). */
+  photos: File[];
+  onPhotosChange: (files: File[]) => void;
+  photosError?: string;
 }
 
-export function FacilityBrandingSection({
-  description,
-  onDescriptionChange,
-  logo,
-  onLogoChange,
-}: FacilityBrandingSectionProps) {
+/** Logo (optional) and facility photos (at least one, checked by GameAll before players see them). */
+export function FacilityBrandingSection({ logo, onLogoChange, photos, onPhotosChange, photosError }: FacilityBrandingSectionProps) {
   return (
-    <div className="space-y-5">
-      <FileUpload
-        label="Facility Logo"
-        hint="Optional. You can add your logo later."
-        value={logo}
-        onChange={onLogoChange}
-      />
-
-      <div className="space-y-2">
-        <Label htmlFor="facility-description">About Your Facility</Label>
-        <Textarea
-          id="facility-description"
-          placeholder="Tell customers a little about your facility..."
-          maxLength={DESCRIPTION_MAX}
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          className="min-h-[6rem]"
-        />
-        <p className="text-right text-xs text-muted-foreground">
-          {description.length} / {DESCRIPTION_MAX}
-        </p>
-      </div>
+    <div className="space-y-6">
+      <FileUpload label="Facility Logo" hint="Optional. You can add your logo later." value={logo} onChange={onLogoChange} />
+      <FacilityPhotosField files={photos} onFilesChange={onPhotosChange} error={photosError} />
     </div>
   );
 }

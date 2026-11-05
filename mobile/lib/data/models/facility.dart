@@ -1,3 +1,5 @@
+import 'facility_image.dart';
+
 /// Mirrors the `facilities` table exactly (0001_init.sql + 0002/0006
 /// migrations) — same enum values as the web app's `FacilityType` union.
 enum FacilityType {
@@ -120,6 +122,66 @@ enum OnboardingStep {
   }
 }
 
+/// Indoor or outdoor: the two kinds of venue (`facilities.venue_type`).
+enum VenueType {
+  indoor,
+  outdoor;
+
+  static VenueType? fromDb(String? value) => switch (value) {
+        'INDOOR' => VenueType.indoor,
+        'OUTDOOR' => VenueType.outdoor,
+        _ => null,
+      };
+
+  String toDb() => this == VenueType.indoor ? 'INDOOR' : 'OUTDOOR';
+  String get label => this == VenueType.indoor ? 'Indoor' : 'Outdoor';
+  String get hint => this == VenueType.indoor ? 'Under a roof: halls, indoor courts' : 'In the open: turfs, open courts';
+}
+
+/// The five things a venue says it offers; each is simply on or off.
+class FacilityAmenities {
+  const FacilityAmenities({this.parking = false, this.changingRooms = false, this.toilets = false, this.cafeteria = false, this.equipmentRental = false});
+
+  final bool parking;
+  final bool changingRooms;
+  final bool toilets;
+  final bool cafeteria;
+  final bool equipmentRental;
+
+  factory FacilityAmenities.fromJson(Map<String, dynamic> json) => FacilityAmenities(
+        parking: json['has_parking'] == true,
+        changingRooms: json['has_changing_rooms'] == true,
+        toilets: json['has_toilets'] == true,
+        cafeteria: json['has_cafeteria'] == true,
+        equipmentRental: json['has_equipment_rental'] == true,
+      );
+
+  Map<String, dynamic> toDb() => {
+        'has_parking': parking,
+        'has_changing_rooms': changingRooms,
+        'has_toilets': toilets,
+        'has_cafeteria': cafeteria,
+        'has_equipment_rental': equipmentRental,
+      };
+
+  FacilityAmenities copyWith({bool? parking, bool? changingRooms, bool? toilets, bool? cafeteria, bool? equipmentRental}) => FacilityAmenities(
+        parking: parking ?? this.parking,
+        changingRooms: changingRooms ?? this.changingRooms,
+        toilets: toilets ?? this.toilets,
+        cafeteria: cafeteria ?? this.cafeteria,
+        equipmentRental: equipmentRental ?? this.equipmentRental,
+      );
+
+  /// The labels of the ones that are on, in a fixed order.
+  List<String> get labels => [
+        if (parking) 'Free Parking',
+        if (changingRooms) 'Changing Rooms',
+        if (toilets) 'Toilets / Rest Room',
+        if (cafeteria) 'Cafeteria',
+        if (equipmentRental) 'Equipment Rental',
+      ];
+}
+
 class FacilityAddress {
   const FacilityAddress({
     required this.line1,
@@ -151,6 +213,10 @@ class Facility {
     required this.address,
     this.logoUrl,
     this.locationUrl,
+    this.locationVerification = VerificationStatus.pending,
+    this.locationVerificationNote,
+    this.venueType,
+    this.amenities = const FacilityAmenities(),
     this.description,
     required this.status,
     required this.onboardingStep,
@@ -178,6 +244,14 @@ class Facility {
   /// A Google Maps location link the owner pastes on the Facility Details
   /// step — `facilities.location_url`. Free-form; not parsed into lat/lng.
   final String? locationUrl;
+
+  /// What GameAll's admin decided about the link (it starts as pending, and goes back to pending when the link changes).
+  final VerificationStatus locationVerification;
+  final String? locationVerificationNote;
+
+  /// Indoor or outdoor; null for a facility set up before the owner was asked.
+  final VenueType? venueType;
+  final FacilityAmenities amenities;
   final String? description;
   final String status;
   final OnboardingStep onboardingStep;
@@ -208,6 +282,10 @@ class Facility {
       ),
       logoUrl: json['logo_url'] as String?,
       locationUrl: json['location_url'] as String?,
+      locationVerification: VerificationStatus.fromDb(json['location_verification_status'] as String?),
+      locationVerificationNote: json['location_verification_note'] as String?,
+      venueType: VenueType.fromDb(json['venue_type'] as String?),
+      amenities: FacilityAmenities.fromJson(json),
       description: json['description'] as String?,
       status: json['status'] as String? ?? 'ACTIVE',
       onboardingStep: OnboardingStep.fromDb(json['onboarding_step'] as String? ?? 'FACILITY_DETAILS'),

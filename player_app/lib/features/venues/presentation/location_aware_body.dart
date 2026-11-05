@@ -11,18 +11,21 @@ import 'no_venues_state.dart';
 /// The body of any page whose content depends on the picked city. While the venues load it shows a spinner; if there are none
 /// it shows [NoVenuesState]; otherwise it builds the page's own content with the venues of that city.
 class LocationAwareBody extends ConsumerWidget {
-  const LocationAwareBody({super.key, required this.builder});
+  const LocationAwareBody({super.key, required this.builder, this.kind = VenueKind.venues});
+
+  /// Which list this page needs (all venues, those with membership plans, those with coaching).
+  final VenueKind kind;
 
   final Widget Function(BuildContext context, List<Venue> venues) builder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final venues = ref.watch(venuesForSelectedCityProvider);
+    final venues = ref.watch(venuesForSelectedCityProvider(kind));
     final p = context.palette;
     return venues.when(
       skipLoadingOnReload: false,
       data: (list) =>
-          list.isEmpty ? const NoVenuesState() : builder(context, list),
+          list.isEmpty ? NoVenuesState(kind: kind) : builder(context, list),
       loading: () => Center(
         child: SizedBox(
           key: const ValueKey('venues-loading'),
@@ -48,7 +51,7 @@ class LocationAwareBody extends ConsumerWidget {
               const SizedBox(height: 16),
               GameAllButton.secondary(
                 label: 'Try again',
-                onPressed: () => ref.invalidate(venuesForSelectedCityProvider),
+                onPressed: () => ref.invalidate(venuesForSelectedCityProvider(kind)),
               ),
             ],
           ),

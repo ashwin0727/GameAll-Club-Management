@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/facility.dart';
+import '../models/facility_image.dart';
 
 /// Mirrors src/services/facility/supabase-facility.service.ts — same RPC
 /// (`create_facility_with_owner`) and table, so a facility created on
@@ -21,7 +22,8 @@ class FacilityRepository {
     required FacilityAddress address,
     String? logoUrl,
     String? locationUrl,
-    String? description,
+    VenueType? venueType,
+    FacilityAmenities amenities = const FacilityAmenities(),
   }) async {
     try {
       final row = await _client.rpc(
@@ -43,21 +45,25 @@ class FacilityRepository {
           'p_longitude': null,
           'p_timezone': 'Asia/Kolkata',
           'p_logo_url': logoUrl,
-          'p_description': description,
+          'p_description': null,
         },
       );
       final facility = Facility.fromJson(row as Map<String, dynamic>);
 
-      // `create_facility_with_owner` predates the pasted-location-link field,
-      // so set it in a follow-up update rather than widening the RPC.
+      // `create_facility_with_owner` predates the map link, venue type and amenities, so they are set in a follow-up update
+      // rather than widening the RPC.
       final link = locationUrl?.trim();
-      if (link != null && link.isNotEmpty) {
-        await _client
-            .from('facilities')
-            .update({'location_url': link})
-            .eq('id', facility.id);
-      }
-      return facility;
+      final updated = await _client
+          .from('facilities')
+          .update({
+            if (link != null && link.isNotEmpty) 'location_url': link,
+            if (venueType != null) 'venue_type': venueType.toDb(),
+            ...amenities.toDb(),
+          })
+          .eq('id', facility.id)
+          .select()
+          .single();
+      return Facility.fromJson(updated);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }
@@ -100,7 +106,8 @@ class FacilityRepository {
     required FacilityAddress address,
     String? logoUrl,
     String? locationUrl,
-    String? description,
+    VenueType? venueType,
+    FacilityAmenities amenities = const FacilityAmenities(),
   }) async {
     try {
       final row = await _client
@@ -117,12 +124,67 @@ class FacilityRepository {
             'postal_code': address.pinCode,
             'logo_url': logoUrl,
             'location_url': locationUrl,
-            'description': description,
+            if (venueType != null) 'venue_type': venueType.toDb(),
+            ...amenities.toDb(),
           })
           .eq('id', id)
           .select()
           .single();
       return Facility.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// Uploads one facility photo to the public `facility-photos` bucket, in the owner's own folder, and returns its public URL.
+  Future<String> uploadFacilityPhoto(Uint8List bytes, String filename) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw AppException(AppErrorCode.unauthenticated);
+    final dot = filename.lastIndexOf('.');
+    var ext = dot >= 0 ? filename.substring(dot + 1).toLowerCase() : 'jpg';
+    if (!const ['jpg', 'jpeg', 'png', 'webp'].contains(ext)) ext = 'jpg';
+    final path = '$userId/${DateTime.now().millisecondsSinceEpoch}-${bytes.length}.$ext';
+    try {
+      await _client.storage.from('facility-photos').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: false, contentType: ext == 'png' ? 'image/png' : (ext == 'webp' ? 'image/webp' : 'image/jpeg')),
+          );
+      return _client.storage.from('facility-photos').getPublicUrl(path);
+    } on StorageException catch (e) {
+      throw AppException(AppErrorCode.databaseError, e.message);
+    }
+  }
+
+  /// Attaches uploaded photos to the facility. They start waiting for GameAll's check; the first one is the cover.
+  Future<void> addFacilityImages(String facilityId, List<String> urls, {int firstSortOrder = 0}) async {
+    if (urls.isEmpty) return;
+    try {
+      await _client.from('facility_images').insert([
+        for (var i = 0; i < urls.length; i++) {'facility_id': facilityId, 'url': urls[i], 'sort_order': firstSortOrder + i},
+      ]);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<List<FacilityImage>> listFacilityImages(String facilityId) async {
+    try {
+      final rows = await _client
+          .from('facility_images')
+          .select()
+          .eq('facility_id', facilityId)
+          .order('sort_order', ascending: true)
+          .order('created_at', ascending: true) as List<dynamic>;
+      return rows.map((r) => FacilityImage.fromJson((r as Map).cast<String, dynamic>())).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  Future<void> removeFacilityImage(String imageId) async {
+    try {
+      await _client.from('facility_images').delete().eq('id', imageId);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

@@ -17,6 +17,25 @@ class AppRoutes {
   static const tournaments = '/tournaments';
   static const howItWorks = '/how-it-works';
   static const login = '/login';
+
+  /// A venue's own page: `/venue/<id>`.
+  static const venue = '/venue';
+  static String venuePath(String id) => '$venue/$id';
+
+  /// The venue id in a `/venue/<id>` route, or null when [route] is not one.
+  /// A venue's Enroll Membership page: `/enroll/<id>`.
+  static const enroll = '/enroll';
+  static String enrollPath(String id) => '$enroll/$id';
+  static String? enrollVenueIdOf(String route) => route.startsWith('$enroll/') && route.length > enroll.length + 1 ? route.substring(enroll.length + 1) : null;
+
+  /// A venue's Book a Court page: `/book/<id>`.
+  static const book = '/book';
+  static String bookPath(String id) => '$book/$id';
+
+  /// The venue id in a `/book/<id>` route, or null when [route] is not one.
+  static String? bookVenueIdOf(String route) => route.startsWith('$book/') && route.length > book.length + 1 ? route.substring(book.length + 1) : null;
+
+  static String? venueIdOf(String route) => route.startsWith('$venue/') && route.length > venue.length + 1 ? route.substring(venue.length + 1) : null;
 }
 
 /// Opens a route. The Home widgets take one of these so a test can record the taps.

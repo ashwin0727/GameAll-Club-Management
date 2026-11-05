@@ -61,13 +61,7 @@ class PlayerHomePage extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final waitingForPlayer = hasSession && (auth.isLoading || (home.isLoading && !(home.hasValue && data.signedIn)));
     if (waitingForPlayer) {
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 280),
-        child: KeyedSubtree(
-          key: const ValueKey('home-waiting'),
-          child: _SignedInPlaceholder(wide: wide, header: desktopHeader),
-        ),
-      );
+      return _SignedInPlaceholder(wide: wide, header: desktopHeader);
     }
 
     final body = wide && data.signedIn
@@ -95,14 +89,12 @@ class PlayerHomePage extends ConsumerWidget {
             now: now,
           );
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
-      child: RefreshIndicator(
-        key: const ValueKey('home-ready'),
-        onRefresh: () => ref.read(playerHomeProvider.notifier).refresh(),
-        color: AppColors.cyan,
-        child: body,
-      ),
+    // No cross-fade between the placeholder and the page: both carry the brand bar, and fading one over the other would show two bars
+    // at once. The page's own pieces fade in one after another instead (Reveal), which is what makes it arrive smoothly.
+    return RefreshIndicator(
+      onRefresh: () => ref.read(playerHomeProvider.notifier).refresh(),
+      color: AppColors.cyan,
+      child: body,
     );
   }
 }

@@ -10,6 +10,8 @@ export const adminKeys = {
   facility: (id: string) => [...adminKeys.all, "facility", id] as const,
   payoutFacilities: () => [...adminKeys.all, "payout-facilities"] as const,
   payoutMethods: (id: string) => [...adminKeys.all, "payout-methods", id] as const,
+  venueVerifications: () => [...adminKeys.all, "venue-verifications"] as const,
+  venueVerification: (id: string) => [...adminKeys.all, "venue-verification", id] as const,
   txFacilities: () => [...adminKeys.all, "tx-facilities"] as const,
   transactions: (id: string, view: TransactionView, offset: number) => [...adminKeys.all, "transactions", id, view, offset] as const,
 };
@@ -36,6 +38,27 @@ export function useReviewPayout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { methodId: string; status: PayoutVerification; note: string | null }) => adminApi.reviewPayout(v.methodId, v.status, v.note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export const useVenueVerifications = () => useQuery({ queryKey: adminKeys.venueVerifications(), queryFn: adminApi.venueVerifications });
+
+export const useVenueVerification = (facilityId: string) =>
+  useQuery({ queryKey: adminKeys.venueVerification(facilityId), queryFn: () => adminApi.venueVerification(facilityId) });
+
+export function useReviewLocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { facilityId: string; status: PayoutVerification; note: string | null }) => adminApi.reviewLocation(v.facilityId, v.status, v.note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export function useReviewImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { imageId: string; status: PayoutVerification; note: string | null }) => adminApi.reviewImage(v.imageId, v.status, v.note),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }

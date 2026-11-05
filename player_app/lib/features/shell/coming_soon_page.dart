@@ -73,7 +73,7 @@ class ComingSoonPage extends StatelessWidget {
       AppRoutes.tournaments => (
         'Tournaments',
         Icons.emoji_events_outlined,
-        'Events and tournaments near you.',
+        'No tournaments have been created yet. Tournaments created on GameAll will appear here.',
       ),
       AppRoutes.login => (
         'Login',
@@ -91,13 +91,8 @@ class ComingSoonPage extends StatelessWidget {
         'This part of the app is coming soon.',
       ),
     };
-    const byCity = {
-      AppRoutes.guestBooking,
-      AppRoutes.memberships,
-      AppRoutes.coaching,
-      AppRoutes.tournaments,
-      AppRoutes.search,
-    };
+    // Memberships and Coaching have their own pages (see player_pages.dart); Tournaments are created in a separate app and none exist yet.
+    const byCity = {AppRoutes.guestBooking, AppRoutes.search};
     return ComingSoonPage(
       title: title,
       icon: icon,

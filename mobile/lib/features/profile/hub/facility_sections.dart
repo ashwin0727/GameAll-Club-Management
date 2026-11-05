@@ -7,13 +7,17 @@ import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/validators.dart';
 import '../../../data/models/facility.dart';
+import '../../../data/models/facility_image.dart';
 import '../../../data/models/pricing.dart';
 import '../../../data/models/sport.dart';
 import '../../../data/repositories/repository_providers.dart';
+import '../../../shared/utils/photo_picker.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../authentication/auth_widgets.dart';
 import '../../authentication/session_controller.dart';
+import '../../onboarding/facility_details_screen.dart' show AmenitiesCard, NewPhoto, PhotosPicker, VenueTypePicker;
 import '../../onboarding/operating_hours_summary.dart';
 import '../../onboarding/pricing_summary.dart';
 import 'hub_providers.dart';
@@ -37,7 +41,7 @@ Future<void> openSetupEditor(BuildContext context, WidgetRef ref, String route) 
 
 // ── Facility details ───────────────────────────────────────────────────────
 
-/// The facility's own details. The address and description can be edited; the name, type and contact details are fixed.
+/// The facility's own details. The address, map link, venue type, amenities and photos can be edited; the name, type and contact details are fixed.
 class FacilityInfoCard extends ConsumerWidget {
   const FacilityInfoCard({super.key, required this.facility});
 
@@ -100,14 +104,90 @@ class FacilityInfoCard extends ConsumerWidget {
           HubInfoRow('Business phone', facility.businessPhone),
           HubInfoRow('City', a.city),
           HubInfoRow('Address', address),
-          if (facility.description != null && facility.description!.trim().isNotEmpty) HubInfoRow('About', facility.description),
+          HubInfoRow('Venue type', facility.venueType?.label ?? '—'),
+          HubInfoRow('Amenities', facility.amenities.labels.isEmpty ? 'None' : facility.amenities.labels.join(', ')),
+          HubInfoRow('Google Maps location', (facility.locationUrl ?? '').isEmpty ? '—' : facility.locationUrl),
+          if ((facility.locationUrl ?? '').isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: _StatusLine(facility.locationVerification, note: facility.locationVerificationNote),
+            ),
+          _FacilityPhotosStrip(facilityId: facility.id),
         ],
       ),
     );
   }
 }
 
-/// Edit the address fields and "About" in a sheet. The other details are shown locked, as on the web.
+class _StatusLine extends StatelessWidget {
+  const _StatusLine(this.status, {this.note});
+
+  final VerificationStatus status;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final color = switch (status) {
+      VerificationStatus.verified => t.success,
+      VerificationStatus.rejected => t.destructive,
+      VerificationStatus.pending => t.textSecondary,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(status.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+        if (status == VerificationStatus.rejected && (note ?? '').isNotEmpty) Text(note!, style: TextStyle(fontSize: 12, color: t.destructive)),
+      ],
+    );
+  }
+}
+
+/// The facility's photos with GameAll's verdict on each.
+class _FacilityPhotosStrip extends ConsumerWidget {
+  const _FacilityPhotosStrip({required this.facilityId});
+
+  final String facilityId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.tokens;
+    return FutureBuilder<List<FacilityImage>>(
+      future: ref.read(facilityRepositoryProvider).listFacilityImages(facilityId),
+      builder: (context, snap) {
+        final images = snap.data ?? const <FacilityImage>[];
+        if (images.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Photos', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.textSecondary)),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
+              children: [
+                for (final img in images)
+                  SizedBox(
+                    width: 96,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(borderRadius: BorderRadius.circular(AppRadius.md), child: Image.network(img.url, width: 96, height: 72, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(width: 96, height: 72, color: t.surface2, child: Icon(Icons.broken_image_outlined, color: t.textSecondary)))),
+                        const SizedBox(height: 4),
+                        _StatusLine(img.status, note: img.note),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Edit the address, map link, venue type, amenities and photos in a sheet. The other details are shown locked, as on the web.
 Future<void> showEditFacilityAddressSheet(BuildContext context, WidgetRef ref, Facility facility) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
@@ -135,13 +215,32 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
   late final _city = TextEditingController(text: widget.facility.address.city);
   late final _state = TextEditingController(text: widget.facility.address.state);
   late final _pin = TextEditingController(text: widget.facility.address.pinCode);
-  late final _about = TextEditingController(text: widget.facility.description ?? '');
+  late final _link = TextEditingController(text: widget.facility.locationUrl ?? '');
+  late VenueType? _venueType = widget.facility.venueType;
+  late FacilityAmenities _amenities = widget.facility.amenities;
+  List<FacilityImage> _saved = [];
+  final List<NewPhoto> _newPhotos = [];
+  bool _addingPhoto = false;
+  bool _removingPhoto = false;
+  String? _venueTypeError;
+  String? _photosError;
   bool _saving = false;
   String? _error;
 
+  /// A facility set up before the map link, venue type and photos existed may keep them empty; once given they stay required.
+  late final bool _older = widget.facility.locationUrl == null && widget.facility.venueType == null;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(facilityRepositoryProvider).listFacilityImages(widget.facility.id).then((rows) {
+      if (mounted) setState(() => _saved = rows);
+    }, onError: (_) {});
+  }
+
   @override
   void dispose() {
-    for (final c in [_line1, _area, _city, _state, _pin, _about]) {
+    for (final c in [_line1, _area, _city, _state, _pin, _link]) {
       c.dispose();
     }
     super.dispose();
@@ -149,8 +248,59 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
 
   String? _required(String? v, String what) => (v == null || v.trim().isEmpty) ? '$what is required.' : null;
 
+  String? _linkError(String? v) {
+    if (_older && (v ?? '').trim().isEmpty) return null;
+    return Validators.googleMapsLink(v);
+  }
+
+  Future<void> _addPhoto() async {
+    if (_saved.length + _newPhotos.length >= maxFacilityPhotos) {
+      setState(() => _photosError = 'You can add up to $maxFacilityPhotos photos.');
+      return;
+    }
+    setState(() => _addingPhoto = true);
+    try {
+      final picked = await pickPhoto(context, maxWidth: 1600);
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _newPhotos.add(NewPhoto(bytes, picked.name));
+        _photosError = null;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _photosError = 'We couldn’t use that photo. Please try another.');
+    } finally {
+      if (mounted) setState(() => _addingPhoto = false);
+    }
+  }
+
+  Future<void> _removeSaved(FacilityImage image) async {
+    if (!_older && _saved.length + _newPhotos.length <= 1) {
+      setState(() => _photosError = 'Keep at least one photo of your facility.');
+      return;
+    }
+    setState(() {
+      _removingPhoto = true;
+      _photosError = null;
+    });
+    try {
+      await ref.read(facilityRepositoryProvider).removeFacilityImage(image.id);
+      if (mounted) setState(() => _saved = _saved.where((p) => p.id != image.id).toList());
+    } catch (_) {
+      if (mounted) setState(() => _photosError = 'We couldn’t remove that photo. Please try again.');
+    } finally {
+      if (mounted) setState(() => _removingPhoto = false);
+    }
+  }
+
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final formOk = _formKey.currentState?.validate() ?? false;
+    setState(() {
+      _venueTypeError = (!_older && _venueType == null) ? 'Choose indoor or outdoor.' : null;
+      _photosError = (!_older && _saved.isEmpty && _newPhotos.isEmpty) ? 'Add at least one photo of your facility.' : _photosError;
+    });
+    if (!formOk || _venueTypeError != null || (!_older && _saved.isEmpty && _newPhotos.isEmpty)) return;
     setState(() {
       _saving = true;
       _error = null;
@@ -163,8 +313,17 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
             city: _city.text,
             state: _state.text,
             pinCode: _pin.text,
-            description: _about.text,
+            locationUrl: _link.text,
+            venueType: _venueType,
+            amenities: _amenities,
           );
+      final repo = ref.read(facilityRepositoryProvider);
+      final urls = <String>[];
+      for (final photo in List.of(_newPhotos)) {
+        urls.add(await repo.uploadFacilityPhoto(photo.bytes, photo.name));
+        _newPhotos.remove(photo);
+      }
+      await repo.addFacilityImages(widget.facility.id, urls, firstSortOrder: _saved.length);
       if (mounted) Navigator.of(context).pop(true);
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -193,7 +352,7 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
               children: [
                 Text('Edit facility details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: t.textPrimary)),
                 const SizedBox(height: 2),
-                Text('You can update your address and description. The other details are fixed — contact GameAll support if they need to change.',
+                Text('You can update your address, map link, venue type, amenities and photos. The other details are fixed — contact GameAll support if they need to change.',
                     style: TextStyle(fontSize: 12.5, color: t.textSecondary, height: 1.4)),
                 const SizedBox(height: AppSpacing.lg),
                 _Locked('Facility name', f.name),
@@ -221,7 +380,35 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
                   validator: (v) => RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'PIN code must be exactly 6 digits.',
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                AppTextField(label: 'About your facility', controller: _about, maxLines: 3),
+                AppTextField(
+                  label: _older ? 'Google Map Location Link (optional for now)' : 'Google Map Location Link',
+                  controller: _link,
+                  keyboardType: TextInputType.url,
+                  textInputAction: TextInputAction.next,
+                  validator: _linkError,
+                ),
+                if ((widget.facility.locationUrl ?? '').isNotEmpty && _link.text.trim() != widget.facility.locationUrl)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text('GameAll will check the new link again before it is marked verified.', style: TextStyle(fontSize: 12, color: t.textSecondary)),
+                  ),
+                const SizedBox(height: AppSpacing.lg),
+                VenueTypePicker(value: _venueType, error: _venueTypeError, onChanged: (v) => setState(() {
+                  _venueType = v;
+                  _venueTypeError = null;
+                })),
+                const SizedBox(height: AppSpacing.lg),
+                AmenitiesCard(value: _amenities, onChanged: (a) => setState(() => _amenities = a)),
+                const SizedBox(height: AppSpacing.lg),
+                PhotosPicker(
+                  saved: _saved,
+                  added: _newPhotos,
+                  busy: _addingPhoto || _removingPhoto,
+                  error: _photosError,
+                  onAdd: _addPhoto,
+                  onRemoveNew: (p) => setState(() => _newPhotos.remove(p)),
+                  onRemoveSaved: _removeSaved,
+                ),
                 if (_error != null) ...[
                   const SizedBox(height: AppSpacing.md),
                   Text(_error!, style: TextStyle(color: t.destructive, fontSize: 13)),

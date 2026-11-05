@@ -28,6 +28,16 @@ function toFacility(row: FacilityRow): Facility {
     },
     logoUrl: row.logo_url ?? undefined,
     description: row.description ?? undefined,
+    locationUrl: row.location_url ?? undefined,
+    locationVerification: { status: row.location_verification_status ?? "PENDING", note: row.location_verification_note ?? undefined },
+    venueType: row.venue_type ?? undefined,
+    amenities: {
+      parking: row.has_parking ?? false,
+      changingRooms: row.has_changing_rooms ?? false,
+      toilets: row.has_toilets ?? false,
+      cafeteria: row.has_cafeteria ?? false,
+      equipmentRental: row.has_equipment_rental ?? false,
+    },
     status: row.status,
     onboardingStep: row.onboarding_step,
     onboardingCompletedAt: row.onboarding_completed_at ?? undefined,
@@ -122,6 +132,15 @@ export class SupabaseFacilityService implements FacilityService {
     }
     if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl ?? null;
     if (patch.description !== undefined) update.description = patch.description ?? null;
+    if (patch.locationUrl !== undefined) update.location_url = patch.locationUrl.trim() || null;
+    if (patch.venueType !== undefined) update.venue_type = patch.venueType;
+    if (patch.amenities !== undefined) {
+      update.has_parking = patch.amenities.parking;
+      update.has_changing_rooms = patch.amenities.changingRooms;
+      update.has_toilets = patch.amenities.toilets;
+      update.has_cafeteria = patch.amenities.cafeteria;
+      update.has_equipment_rental = patch.amenities.equipmentRental;
+    }
     if (patch.status !== undefined) update.status = patch.status;
 
     const { data, error } = await this.supabase

@@ -141,6 +141,52 @@ export interface AdminTransaction {
 
 export type TransactionView = "recent" | "settled";
 
+/** One facility in the verification queue: its map link, photos and payout details, with how many of each still need a check. */
+export interface AdminVenueVerificationRow {
+  id: string;
+  name: string;
+  city: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  locationUrl: string | null;
+  /** null when the owner has not given a link yet. */
+  locationStatus: PayoutVerification | null;
+  imagesTotal: number;
+  imagesPending: number;
+  imagesVerified: number;
+  imagesRejected: number;
+  payoutsPending: number;
+  venueType: "INDOOR" | "OUTDOOR" | null;
+  onboardingStep: string;
+}
+
+export interface AdminVenueImage {
+  id: string;
+  url: string;
+  status: PayoutVerification;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AdminVenueVerification {
+  facility: {
+    id: string;
+    name: string;
+    city: string | null;
+    state: string | null;
+    area: string | null;
+    address: string;
+    ownerName: string | null;
+    ownerEmail: string | null;
+    ownerPhone: string | null;
+    venueType: "INDOOR" | "OUTDOOR" | null;
+    amenities: { parking: boolean; changingRooms: boolean; toilets: boolean; cafeteria: boolean; equipmentRental: boolean };
+    location: { url: string | null; status: PayoutVerification; note: string | null; verifiedAt: string | null };
+  } | null;
+  images: AdminVenueImage[];
+  payoutMethods: { id: string; type: "BANK" | "UPI"; verification: PayoutVerification; primary: boolean }[];
+}
+
 export const adminApi = {
   overview: () => call<AdminOverview>("admin_overview"),
   facilities: (search: string, limit: number, offset: number) =>
@@ -150,6 +196,12 @@ export const adminApi = {
   payoutMethods: (facilityId: string) => call<AdminPayoutDetail>("admin_list_payout_methods", { p_facility_id: facilityId }),
   reviewPayout: (methodId: string, status: PayoutVerification, note: string | null) =>
     call<void>("admin_review_payout_method", { p_method_id: methodId, p_status: status, p_note: note }),
+  venueVerifications: () => call<AdminVenueVerificationRow[]>("admin_list_venue_verifications"),
+  venueVerification: (facilityId: string) => call<AdminVenueVerification>("admin_get_venue_verification", { p_facility_id: facilityId }),
+  reviewLocation: (facilityId: string, status: PayoutVerification, note: string | null) =>
+    call<void>("admin_review_location", { p_facility_id: facilityId, p_status: status, p_note: note }),
+  reviewImage: (imageId: string, status: PayoutVerification, note: string | null) =>
+    call<void>("admin_review_facility_image", { p_image_id: imageId, p_status: status, p_note: note }),
   transactionFacilities: () => call<AdminTransactionFacility[]>("admin_list_transaction_facilities"),
   transactions: (facilityId: string, view: TransactionView, limit: number, offset: number) =>
     call<{ total: number; totalInr: number; rows: AdminTransaction[] }>("admin_list_transactions", {

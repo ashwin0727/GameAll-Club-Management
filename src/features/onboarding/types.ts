@@ -1,3 +1,5 @@
+import type { Amenities, VenueType, VerificationStatus } from "@/features/facility-profile/types";
+
 export type FacilityType =
   | "BADMINTON"
   | "PICKLEBALL"
@@ -36,6 +38,11 @@ export interface Facility {
   address: FacilityAddress;
   logoUrl?: string;
   description?: string;
+  /** The Google Maps link the owner pasted; GameAll's admin checks it. */
+  locationUrl?: string;
+  locationVerification?: { status: VerificationStatus; note?: string };
+  venueType?: VenueType;
+  amenities?: Amenities;
   status: "ACTIVE" | "INACTIVE";
   onboardingStep:
     | "FACILITY_DETAILS"

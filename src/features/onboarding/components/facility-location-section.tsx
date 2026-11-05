@@ -11,6 +11,8 @@ const STATE_OPTIONS = INDIAN_STATES.map((state) => ({ value: state, label: state
 export interface FacilityLocationSectionProps {
   register: UseFormRegister<FacilityDetailsInput>;
   errors: FieldErrors<FacilityDetailsInput>;
+  /** False lets an older facility (set up before the map link existed) keep it empty. */
+  linkRequired?: boolean;
   state: string;
   onStateChange: (value: string) => void;
 }
@@ -20,6 +22,7 @@ export function FacilityLocationSection({
   errors,
   state,
   onStateChange,
+  linkRequired = true,
 }: FacilityLocationSectionProps) {
   return (
     <div className="space-y-5">
@@ -70,6 +73,16 @@ export function FacilityLocationSection({
           {...register("pinCode")}
         />
       </div>
+
+      <TextField
+        id="location-url"
+        label={linkRequired ? "Google Map Location Link" : "Google Map Location Link (optional for now)"}
+        placeholder="https://maps.app.goo.gl/..."
+        inputMode="url"
+        hint="Open your facility in Google Maps, tap Share, copy the link and paste it here. GameAll checks it points at the right place."
+        error={errors.locationUrl?.message}
+        {...register("locationUrl")}
+      />
     </div>
   );
 }

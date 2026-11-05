@@ -387,17 +387,18 @@ void main() {
 
     testWidgets('the web brand bar shows only the agreed links, with the logo leading Home', (tester) async {
       final h = await pumpHome(tester, size: const Size(1280, 800));
-      for (final label in ['Venues', 'Memberships', 'Coaching', 'Tournaments', 'Login', 'Location']) {
+      for (final label in ['Venues', 'Coaching', 'Tournaments', 'Login', 'Location']) {
         expect(find.text(label), findsWidgets, reason: label);
       }
-      // no Home link, no notification bell, no profile icon
+      // no Memberships link (it was removed from the bar), no Home link, no notification bell, no profile icon
+      expect(find.widgetWithText(Pressable, 'Memberships'), findsNothing);
       expect(find.widgetWithText(Pressable, 'Home'), findsNothing);
       expect(find.bySemanticsLabel(RegExp('Notifications')), findsNothing);
       expect(find.byIcon(Icons.person_rounded), findsNothing);
 
       await tester.tap(find.text('Login'));
-      await tester.tap(find.text('Memberships').first);
-      expect(h.routes, [AppRoutes.login, AppRoutes.memberships]);
+      await tester.tap(find.text('Coaching').first);
+      expect(h.routes, [AppRoutes.login, AppRoutes.coaching]);
 
       // the logo goes to Home from any tab
       await tester.tap(find.text('Venues'));

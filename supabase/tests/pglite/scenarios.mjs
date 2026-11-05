@@ -166,7 +166,7 @@ await asUser(owner);
   const planRow = uuid();
   await q(`insert into membership_plans (id, facility_id, name, price_inr, duration_days) values ($1,$2,'Gold',1000,30)`, [planRow, fac]);
   await asUser(null);
-  await throws("public signup refused on Basic", () => q("select public_start_membership_signup($1,'Pat Player','9000000001',null,$2,null)", [fac, planRow]), "not taking online memberships");
+  await throws("public signup refused on Basic", () => q("select public_start_membership_signup($1,'Pat Player','9111100001',null,$2,null)", [fac, planRow]), "not taking online memberships");
   // Webhook branch
   check("webhook: unknown subscription is not ours", (await q("select apply_plan_subscription_webhook('nope','subscription.charged',current_date) a"))[0].a === false);
   check("webhook: ours", (await q("select apply_plan_subscription_webhook('sub_b','subscription.charged',(current_date + 30)) a"))[0].a === true);
@@ -606,7 +606,7 @@ await asUser(null);
   const m1 = uuid(), m2 = uuid(), other = uuid();
   await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Uma Shankar','98765 43210')", [m1, f1]);
   await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Uma S','+91-9876543210')", [m2, f2]);
-  await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Someone Else','9000000001')", [other, f1]);
+  await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Someone Else','9111100001')", [other, f1]);
 
   let d = await dash(uma);
   check("dashboard: nothing yet, but the name and phone", d.fullName === "Uma S" && d.phone === "9876543210" && d.memberships.length === 0 && d.coaching.length === 0 && d.guestBookings.count === 0 && d.schedule.length === 0 && d.hasActiveMembership === false, JSON.stringify(d));
@@ -670,7 +670,7 @@ await asUser(null);
   check("dashboard: a booking later today shows under today's courts", d.courtsToday.length >= 1 && d.courtsToday.some((i) => i.courtName === "Court 1"), JSON.stringify(d.courtsToday));
 
   // privacy
-  const bob = await mkPhoneUser("919000000001");
+  const bob = await mkPhoneUser("919111100001");
   await asUser(bob);
   await q("select register_player('Bob', null)");
   await asUser(owner);
@@ -718,6 +718,314 @@ await asUser(null);
   let last = 0;
   for (let i = 0; i < 5; i++) last = (await q("select player_login_record_attempt('iphash-a', '9811111111') c"))[0].c;
   check("attempts: counted per address", last === 5 && (await q("select player_login_record_attempt('iphash-b', null) c"))[0].c === 1, String(last));
+}
+
+// ═══ list_public_venue_cards (0171) — Venues, Memberships and Coaching pages ═══════════════════════════════
+{
+  const vo = await mkUser("cards-owner@test.local", "Cards Owner");
+  const sport = (await q("select id from sports where key='badminton'"))[0].id;
+  const mk = async (name, city, { hero = null, rates = [300] } = {}) => {
+    const id = await mkFacility(vo, name);
+    await q("update facilities set city=$2, state='Tamil Nadu', status='ACTIVE', onboarding_step='COMPLETED', area='Adyar', hero_image_url=$3 where id=$1", [id, city, hero]);
+    const fsid = uuid();
+    await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, id, sport]);
+    let i = 0;
+    for (const r of rates) await q("insert into courts (facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,$5)", [id, sport, fsid, `Court ${++i}`, r]);
+    return id;
+  };
+  const a_id = await mk("Alpha Arena", "Chennai", { hero: "https://img.test/alpha.jpg", rates: [400, 250] });
+  const b = await mk("Beta Club", "Chennai");
+  const c = await mk("Gamma Courts", "Chennai");
+  await q("insert into membership_plans (facility_id, name, price_inr, duration_days) values ($1,'Gold',2500,30), ($1,'Silver',1500,30)", [a_id]);
+  await q("insert into membership_plans (facility_id, name, price_inr, duration_days, is_active) values ($1,'Old',999,30,false)", [b]);
+  await q("insert into coaching_programs (facility_id, name, default_price_minor) values ($1,'Juniors',300000), ($1,'Adults',150000)", [b]);
+  await q("insert into coaching_programs (facility_id, name, status) values ($1,'Retired','INACTIVE')", [c]);
+  await asUser(null);
+  const mine = (rows) => rows.filter((x) => ["Alpha Arena", "Beta Club", "Gamma Courts"].includes(x.name));
+  const cards = async (kind) => mine((await q("select list_public_venue_cards('Chennai','Tamil Nadu',$1) v", [kind]))[0].v);
+
+  let v = await cards("venues");
+  check("cards: venues lists every bookable venue by name, with a picture and the cheapest court", v.length === 3 && v[0].name === "Alpha Arena" && v[0].heroImageUrl === "https://img.test/alpha.jpg" && v[0].minCourtPriceInr === 250 && v[0].courtCount === 2 && v[0].area === "Adyar", JSON.stringify(v[0]));
+  check("cards: a venue with no picture gives null, not an error", v[1].heroImageUrl === null);
+  // surfaces (0172): lower-cased, distinct, only from bookable courts
+  await q("update courts set surface='Turf' where facility_id=$1", [a_id]);
+  await q("update courts set surface=' turf ' where id = (select id from courts where facility_id=$1 limit 1)", [a_id]);
+  await q("update courts set surface='Wooden' where id = (select id from courts where facility_id=$1 order by name desc limit 1)", [a_id]);
+  v = await cards("venues");
+  check("cards: surfaces are distinct and lower-cased; none gives an empty list", v[0].surfaces.slice().sort().join() === "turf,wooden" && v[1].surfaces.length === 0, JSON.stringify([v[0].surfaces, v[1].surfaces]));
+  v = await cards("memberships");
+  check("cards: memberships lists only venues with an active plan, with the plan names and the lowest price", v.length === 1 && v[0].name === "Alpha Arena" && v[0].memberships.count === 2 && v[0].memberships.names.join() === "Gold,Silver" && v[0].memberships.minPriceInr === 1500, JSON.stringify(v));
+  v = await cards("coaching");
+  check("cards: coaching lists only venues with an ACTIVE programme; price is in rupees", v.length === 1 && v[0].name === "Beta Club" && v[0].coaching.count === 2 && v[0].coaching.minPriceInr === 1500 && v[0].coaching.names.join() === "Adults,Juniors", JSON.stringify(v));
+  check("cards: an unknown kind behaves like venues; another city is empty", (await cards("nonsense")).length === 3 && mine((await q("select list_public_venue_cards('Chennai','Tamil Nadu',null) v"))[0].v).length === 3 && (await q("select list_public_venue_cards('Ahmedabad','Gujarat','venues') v"))[0].v.length === 0);
+  await asUser(owner);
+}
+
+// ═══ venue profile verification (0173) — map link, photos, venue type, amenities ═══════════════════════════════
+{
+  const adminRow = (await q("select id from auth.users where lower(email)='admin@gameall.co'"))[0];
+  const adminId = adminRow ? adminRow.id : await mkUser("admin@gameall.co", "Platform Admin");
+  const vo = await mkUser("venue-profile-owner@test.local", "Venue Owner");
+  const f = await mkFacility(vo, "Profile Arena");
+  await q("update facilities set onboarding_step='SPORTS', city='Chennai', state='Tamil Nadu', status='ACTIVE' where id=$1", [f]);
+  const row = async () => (await q("select * from facilities where id=$1", [f]))[0];
+
+  // an owner cannot grant themselves the verdict; changing the link puts it back to PENDING
+  await asUser(vo);
+  await q("update facilities set location_url='https://maps.app.goo.gl/abc' where id=$1", [f]);
+  check("location: a new link starts PENDING", (await row()).location_verification_status === "PENDING");
+  await throws("location: an owner cannot verify their own link", () => q("update facilities set location_verification_status='VERIFIED' where id=$1", [f]), "managed by GameAll");
+  await asUser(adminId);
+  await q("select admin_review_location($1,'VERIFIED',null)", [f]);
+  let r = await row();
+  check("location: the admin can verify it", r.location_verification_status === "VERIFIED" && r.location_verified_at !== null && r.location_verified_by === adminId);
+  await asUser(vo);
+  await q("update facilities set location_url='https://maps.app.goo.gl/new' where id=$1", [f]);
+  r = await row();
+  check("location: changing the link resets the verdict", r.location_verification_status === "PENDING" && r.location_verified_at === null);
+  await q("update facilities set name='Profile Arena 2' where id=$1", [f]);
+  check("location: unrelated edits keep the verdict", (await row()).location_verification_status === "PENDING");
+  await asUser(adminId);
+  await throws("location: a rejection needs a reason", () => q("select admin_review_location($1,'REJECTED',null)", [f]), "why");
+  await q("select admin_review_location($1,'REJECTED','Pin is in the wrong street')", [f]);
+  check("location: rejected with a note the owner can read", (await row()).location_verification_note === "Pin is in the wrong street");
+  await asUser(vo);
+  await throws("location: only the admin may review", () => q("select admin_review_location($1,'VERIFIED',null)", [f]), "Platform administrators");
+
+  // photos
+  await asUser(vo);
+  const img = (await q("insert into facility_images (facility_id, url, verification_status) values ($1,'https://img.test/a.jpg','VERIFIED') returning id", [f]))[0].id;
+  let im = (await q("select * from facility_images where id=$1", [img]))[0];
+  check("photos: a new photo is always PENDING, even if it claims otherwise", im.verification_status === "PENDING" && im.verified_at === null);
+  await throws("photos: an owner cannot verify a photo", () => q("update facility_images set verification_status='VERIFIED' where id=$1", [img]), "managed by GameAll");
+  await asUser(adminId);
+  await q("select admin_review_facility_image($1,'VERIFIED',null)", [img]);
+  im = (await q("select * from facility_images where id=$1", [img]))[0];
+  check("photos: the admin verifies a photo", im.verification_status === "VERIFIED" && im.verified_by === adminId);
+  await asUser(vo);
+  await q("update facility_images set url='https://img.test/a2.jpg' where id=$1", [img]);
+  im = (await q("select * from facility_images where id=$1", [img]))[0];
+  check("photos: replacing the picture sends it for checking again", im.verification_status === "PENDING");
+  await asUser(adminId);
+  await q("select admin_review_facility_image($1,'VERIFIED',null)", [img]);
+
+  // setup now needs the link, the venue type and a photo (new facilities only)
+  const g = await mkFacility(vo, "Setup Arena");
+  await q("update facilities set onboarding_step='SPORTS' where id=$1", [g]);
+  await asUser(vo);
+  await throws("setup: needs the Google Maps link", () => q("select complete_facility_setup($1)", [g]), "Google Maps");
+  await q("update facilities set location_url='https://maps.app.goo.gl/g' where id=$1", [g]);
+  await throws("setup: needs indoor or outdoor", () => q("select complete_facility_setup($1)", [g]), "indoor or outdoor");
+  await q("update facilities set venue_type='INDOOR' where id=$1", [g]);
+  await throws("setup: needs a photo", () => q("select complete_facility_setup($1)", [g]), "photo");
+  await q("insert into facility_images (facility_id, url) values ($1,'https://img.test/g.jpg')", [g]);
+  await throws("setup: then carries on to the older checks", () => q("select complete_facility_setup($1)", [g]), "sport");
+  await throws("venue type: only INDOOR or OUTDOOR", () => q("update facilities set venue_type='COVERED' where id=$1", [g]));
+  // a facility that is already COMPLETED is not held to the new rules
+  const done = await mkFacility(vo, "Old Arena");
+  await q("update facilities set onboarding_step='COMPLETED' where id=$1", [done]);
+  check("setup: an already-completed facility is unaffected", (await q("select complete_facility_setup($1) r", [done]))[0].r !== null);
+
+  // the admin's queue
+  await asUser(adminId);
+  const queue = (await q("select admin_list_venue_verifications() v"))[0].v;
+  const mine = queue.find((x) => x.id === f);
+  check("queue: the facility shows with its link status and photo counts", mine && mine.locationStatus === "REJECTED" && mine.imagesTotal === 1 && mine.imagesVerified === 1, JSON.stringify(mine));
+  const detail = (await q("select admin_get_venue_verification($1) v", [f]))[0].v;
+  check("queue: the detail has the link, address, photos and amenities", detail.facility.location.url.includes("maps.app") && detail.images.length === 1 && detail.facility.amenities.parking === false && typeof detail.facility.address === "string", JSON.stringify(detail.facility));
+  await asUser(vo);
+  await throws("queue: not for owners", () => q("select admin_list_venue_verifications()"), "Platform administrators");
+
+  // the Player app's cards use only approved photos, and carry indoor/outdoor and the amenities
+  await asUser(owner);
+  await q("update facilities set venue_type='OUTDOOR', has_parking=true, has_cafeteria=true, onboarding_step='COMPLETED', area='Adyar' where id=$1", [f]);
+  const sp = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, f, sp]);
+  await q("insert into courts (facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,'Court 1',300)", [f, sp, fsid]);
+  await asUser(vo);
+  await q("insert into facility_images (facility_id, url, sort_order) values ($1,'https://img.test/pending.jpg', -1)", [f]); // pending: must not be used
+  await asUser(null);
+  const card = (await q("select list_public_venue_cards('Chennai','Tamil Nadu','venues') v"))[0].v.find((x) => x.id === f);
+  check("cards: the cover is the first APPROVED photo, never a pending one", card.heroImageUrl === "https://img.test/a2.jpg" && card.photos.length === 1, JSON.stringify([card.heroImageUrl, card.photos]));
+  check("cards: venue type and amenities are there", card.venueType === "OUTDOOR" && card.amenities.parking === true && card.amenities.cafeteria === true && card.amenities.toilets === false, JSON.stringify([card.venueType, card.amenities]));
+  await asUser(owner);
+}
+
+// ═══ get_public_venue (0174) — the venue page ═══════════════════════════════
+{
+  const vo = await mkUser("venue-detail-owner@test.local", "Detail Owner");
+  const f = await mkFacility(vo, "Champz Turf");
+  await q("update facilities set city='Chennai', state='Tamil Nadu', area='Iyyapanthangal', address_line_1='12 Main Road', business_phone='9876500000', description='Premium courts.', status='ACTIVE', onboarding_step='COMPLETED', venue_type='INDOOR', has_parking=true, has_cafeteria=true, location_url='https://maps.app.goo.gl/x' where id=$1", [f]);
+  const sp = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, f, sp]);
+  await q("insert into courts (facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,'Court 2',500), ($1,$2,$3,'Court 1',350)", [f, sp, fsid]);
+  await q("insert into courts (facility_id, sport_id, facility_sport_id, name, hourly_rate_inr, archived) values ($1,$2,$3,'Old Court',100,true)", [f, sp, fsid]);
+  await q("insert into membership_plans (facility_id, name, price_inr, duration_days) values ($1,'Gold',2999,30), ($1,'Silver',1999,30)", [f]);
+  await q("insert into coaching_programs (facility_id, name, default_price_minor) values ($1,'Juniors',150000)", [f]);
+  await q("insert into coaching_programs (facility_id, name, status) values ($1,'Closed','INACTIVE')", [f]);
+  // opening hours: 06:00-23:00 on two days, closed on a third
+  const sched = (await q("insert into operating_schedules (facility_id, scope_type) values ($1,'FACILITY') returning id", [f]))[0].id;
+  for (const dow of [1, 2]) {
+    const d = (await q("insert into operating_days (schedule_id, facility_id, day_of_week) values ($1,$2,$3) returning id", [sched, f, dow]))[0].id;
+    await q("insert into operating_time_slots (operating_day_id, facility_id, start_time, end_time) values ($1,$2,'06:00','23:00')", [d, f]);
+  }
+  await q("insert into operating_days (schedule_id, facility_id, day_of_week, is_closed) values ($1,$2,0,true)", [sched, f]);
+  const img = (await q("insert into facility_images (facility_id, url) values ($1,'https://img.test/ok.jpg') returning id", [f]))[0].id;
+  await q("insert into facility_images (facility_id, url) values ($1,'https://img.test/pending.jpg')", [f]);
+  await asUser(null); // the service role: only the admin or the service may set a verdict
+  await q("update facility_images set verification_status='VERIFIED' where id=$1", [img]);
+  const venue = async (id) => (await q("select get_public_venue($1) v", [id]))[0].v;
+  let v = await venue(f);
+  check("venue: name, place, address, phone and description", v.name === "Champz Turf" && v.area === "Iyyapanthangal" && v.address === "12 Main Road, Iyyapanthangal, Chennai" && v.phone === "9876500000" && v.description === "Premium courts.", JSON.stringify(v));
+  check("venue: only approved photos", v.photos.length === 1 && v.photos[0] === "https://img.test/ok.jpg", JSON.stringify(v.photos));
+  check("venue: indoor/outdoor and amenities", v.venueType === "INDOOR" && v.amenities.parking === true && v.amenities.cafeteria === true && v.amenities.toilets === false);
+  check("venue: bookable courts only, sorted, with the cheapest price", v.courtCount === 2 && v.courts.map((c) => c.name).join() === "Court 1,Court 2" && v.minCourtPriceInr === 350 && v.sports[0].name === "Badminton", JSON.stringify([v.courts, v.minCourtPriceInr]));
+  check("venue: opening hours across the open days", v.hours.opens === "06:00" && v.hours.closes === "23:00" && v.hours.open24h === false, JSON.stringify(v.hours));
+  check("venue: the plans and the active programmes with rupee prices", v.memberships.plans.map((p) => p.name).join() === "Silver,Gold" && v.memberships.plans[1].priceInr === 2999 && v.memberships.plans[1].durationDays === 30 && v.coaching.programs.length === 1 && v.coaching.programs[0].priceInr === 1500, JSON.stringify([v.memberships, v.coaching]));
+  check("venue: the map link is withheld until verified", v.locationVerified === false && v.locationUrl === null, JSON.stringify([v.locationVerified, v.locationUrl]));
+  await q("update facilities set location_verification_status='VERIFIED' where id=$1", [f]);
+  v = await venue(f);
+  check("venue: once verified the link is returned", v.locationVerified === true && v.locationUrl === "https://maps.app.goo.gl/x");
+  check("venue: nothing about the owner or the money", !("ownerId" in v) && !("owner_id" in v) && !("email" in v) && !("businessEmail" in v), Object.keys(v).join());
+  check("venue: an unknown id gives null", (await venue(uuid())) === null);
+  await asUser(owner);
+  await q("update facilities set status='INACTIVE' where id=$1", [f]);
+  await asUser(null);
+  check("venue: a closed venue gives null", (await venue(f)) === null);
+  await asUser(owner);
+}
+
+// ═══ the test-venue seed and its cleanup (supabase/seed) ═══════════════════════════════
+{
+  const seedDir = process.env.SEED_DIR ?? fileURLToPath(new URL("../../seed/", import.meta.url));
+  const seedSql = fs.readFileSync(seedDir + "test_venues_seed.sql", "utf8");
+  const cleanSql = fs.readFileSync(seedDir + "test_venues_cleanup.sql", "utf8");
+  const counts = async () => {
+    const t = ["facilities", "courts", "facility_images", "members", "memberships", "bookings", "coaching_programs", "coaching_enrollments", "membership_plans", "pricing_rules", "operating_days", "facility_sports"];
+    const out = {};
+    for (const n of t) out[n] = (await q(`select count(*)::int c from ${n}`))[0].c;
+    out.users = (await q("select count(*)::int c from auth.users"))[0].c;
+    out.profiles = (await q("select count(*)::int c from profiles"))[0].c;
+    return JSON.stringify(out);
+  };
+  await asUser(null);
+  const before = await counts();
+  await db.exec(seedSql);
+
+  const seeded = await q("select id, name, city, venue_type, location_verification_status s from facilities where slug like 'seed-%' order by name");
+  check("seed: six venues in three cities", seeded.length === 6 && new Set(seeded.map((r) => r.city)).size === 3, JSON.stringify(seeded));
+  await throws("seed: running it twice is refused, not doubled", () => db.exec(seedSql), "already loaded");
+
+  const cards = async (city, state, kind = "venues") => (await q("select list_public_venue_cards($1,$2,$3) v", [city, state, kind]))[0].v.filter((x) => String(x.id).length > 0);
+  const seedIds = new Set(seeded.map((r) => r.id));
+  const mine = (rows) => rows.filter((r) => seedIds.has(r.id));
+  const chennai = mine(await cards("Chennai", "Tamil Nadu"));
+  check("seed: Chennai lists its three venues, A to Z", chennai.map((r) => r.name).join() === "Champz Turf,Kickoff Sports,Smash Arena", chennai.map((r) => r.name).join());
+  const champz = chennai.find((r) => r.name === "Champz Turf");
+  check("seed: an approved cover photo, indoor, amenities, price from the cheapest court", champz.heroImageUrl.includes("Badminton_court_view") && champz.photos.length === 3 && champz.venueType === "INDOOR" && champz.amenities.parking === true && champz.minCourtPriceInr === 400 && champz.courtCount === 4, JSON.stringify(champz));
+  const kickoff = chennai.find((r) => r.name === "Kickoff Sports");
+  check("seed: a venue whose photos are still waiting shows no photo yet", kickoff.photos.length === 0 && kickoff.venueType === "OUTDOOR", JSON.stringify([kickoff.photos, kickoff.heroImageUrl]));
+  { const b = mine(await cards("Bangalore", null)).map((r) => r.name); const h = mine(await cards("Hyderabad", "Telangana")).map((r) => r.name); check("seed: Bengaluru has two, Hyderabad one", b.length === 2 && h.length === 1, JSON.stringify([b, h])); }
+  check("seed: memberships and coaching lists carry the venues that have them", mine(await cards("Chennai", "Tamil Nadu", "memberships")).map((r) => r.name).join() === "Champz Turf,Smash Arena" && mine(await cards("Chennai", "Tamil Nadu", "coaching")).length === 2 && mine(await cards("Hyderabad", "Telangana", "memberships")).length === 0);
+
+  const detail = (await q("select get_public_venue((select id from facilities where slug='seed-champz-turf')) v"))[0].v;
+  check("seed: the venue page has courts, hours, plans, programs and a verified map link", detail.courtCount === 4 && detail.hours.opens === "06:00" && detail.hours.closes === "23:00" && detail.memberships.plans.length === 3 && detail.coaching.programs.length === 2 && detail.locationVerified === true && detail.locationUrl.includes("google.com/maps"), JSON.stringify([detail.hours, detail.locationUrl]));
+  const k = (await q("select get_public_venue((select id from facilities where slug='seed-kickoff-sports')) v"))[0].v;
+  check("seed: the unverified venue withholds its map link", k.locationVerified === false && k.locationUrl === null);
+  const padel = (await q("select get_public_venue((select id from facilities where slug='seed-ace-pickle-club')) v"))[0].v;
+  check("seed: a venue with padel (a custom sport) lists it by name", padel.sports.map((s) => s.name).sort().join() === "Padel,Pickleball", padel.sports.map((s) => s.name).join());
+
+  // the slots a visitor would see: tomorrow, Champz badminton
+  const sportId = (await q("select fs.id from facility_sports fs join facilities f on f.id=fs.facility_id join sports s on s.id=fs.sport_id where f.slug='seed-champz-turf' and s.key='badminton'"))[0].id;
+  const slots = (await q("select get_public_court_availability((select id from facilities where slug='seed-champz-turf'), $1, current_date + 5) a", [sportId]))[0].a;
+  check("seed: live availability works for a seeded venue (three courts, hourly slots)", slots.length === 3 && slots[0].slots.length > 10, JSON.stringify([slots.length, slots[0]?.slots?.length]));
+
+  // the test players: signed in by phone, they see what the clubs recorded
+  const mkPlayer = async (phone, name) => {
+    const id = uuid();
+    await q("insert into auth.users (id, phone) values ($1,$2)", [id, "91" + phone]);
+    await q("insert into players (id, full_name, phone) values ($1,$2,$3)", [id, name, phone]);
+    return id;
+  };
+  const arun = await mkPlayer("9000000001", "Arun Test");
+  const meena = await mkPlayer("9000000002", "Meena Test");
+  const ravi = await mkPlayer("9000000003", "Ravi Test");
+  const dashFor = async (uid) => { await asUser(uid); const r = (await q("select get_player_dashboard() d"))[0].d; await asUser(null); return r; };
+  let d = await dashFor(arun);
+  check("seed: Arun has a membership, coaching and two upcoming bookings", d.memberships.length === 1 && d.memberships[0].planName === "Monthly Unlimited" && d.coaching.length === 1 && d.coaching[0].programName === "Beginner Badminton" && d.upcomingBookings.length === 2 && d.guestBookings.count === 2, JSON.stringify([d.memberships.length, d.coaching.length, d.upcomingBookings.length]));
+  d = await dashFor(meena);
+  check("seed: Meena has a membership and nothing else", d.memberships.length === 1 && d.memberships[0].venueName === "Ace Pickle Club" && d.coaching.length === 0 && d.guestBookings.count === 0);
+  d = await dashFor(ravi);
+  check("seed: Ravi has one guest booking", d.guestBookings.count === 1 && d.memberships.length === 0 && d.schedule.length === 1);
+
+  // the cleanup puts everything back exactly as it was
+  await db.exec(cleanSql);
+  check("cleanup: every table is back to what it was before the seed", (await counts()) === before, (await counts()) + " vs " + before);
+  check("cleanup: no seed venue, owner, test player or test login is left", (await q("select count(*)::int c from facilities where slug like 'seed-%'"))[0].c === 0 && (await q("select count(*)::int c from auth.users where phone like '919000000%' or lower(email)='seed.owner@gameall.test'"))[0].c === 0 && (await q("select count(*)::int c from players where phone like '90000000%'"))[0].c === 0);
+  await db.exec(cleanSql);
+  check("cleanup: running it again is harmless", (await counts()) === before);
+  await db.exec(seedSql);
+  check("seed: it can be loaded again after a cleanup", (await q("select count(*)::int c from facilities where slug like 'seed-%'"))[0].c === 6);
+  await db.exec(cleanSql);
+  await asUser(owner);
+}
+
+
+// ═══ Enroll Membership (0175) — time slot → plan → pending membership ═══════════════════════════════
+{
+  const eo = await mkUser("enroll-owner@test.local", "Enroll Owner");
+  const f = await mkFacility(eo, "Enroll Arena");
+  await q("update facilities set city='Chennai', state='Tamil Nadu', status='ACTIVE', onboarding_step='COMPLETED' where id=$1", [f]);
+  const sp = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, f, sp]);
+  const court = uuid();
+  await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,'Court 1',350)", [court, f, sp, fsid]);
+  const monthly = uuid(), quarterly = uuid();
+  await q("insert into membership_plans (id, facility_id, name, price_inr, duration_days, joining_fee_inr, features, badge_text) values ($1,$2,'Monthly',2999,30,500,'{Dedicated court time}','Popular')", [monthly, f]);
+  await q("insert into membership_plans (id, facility_id, name, price_inr, duration_days) values ($1,$2,'Quarterly',7999,90)", [quarterly, f]);
+  const bm = uuid(), bq = uuid();
+  await q("insert into membership_batches (id, facility_id, plan_id, facility_sport_id, court_id, name, days_of_week, start_time, end_time, capacity) values ($1,$2,$3,$4,$5,'Eve M','{1,2,3}','18:00','19:00',2), ($6,$2,$7,$4,$5,'Eve Q','{1,2,3}','18:00','19:00',5)", [bm, f, monthly, fsid, court, bq, quarterly]);
+
+  await asUser(null);
+  const info = async () => (await q("select get_public_membership_enroll($1) i", [f]))[0].i;
+  let i = await info();
+  check("enroll: the venue's sports, one grouped time slot and both plans come back", i.facilityName === "Enroll Arena" && i.sports.length === 1 && i.slots.length === 1 && i.plans.length === 2 && i.slots[0].batches.length === 2, JSON.stringify(i.slots));
+  check("enroll: a slot has no members yet and its seats add up", i.slots[0].membersNow === 0 && i.slots[0].spare === 7 && i.slots[0].startTime === "18:00:00", JSON.stringify(i.slots[0]));
+  const m = i.plans.find((x) => x.name === "Monthly");
+  check("enroll: plan carries its price, length, benefits, badge and joining fee", m.priceInr === 2999 && m.durationDays === 30 && m.features[0] === "Dedicated court time" && m.badgeText === "Popular" && m.joiningFeeInr === 500, JSON.stringify(m));
+  check("enroll: an unknown venue gives null", (await q("select get_public_membership_enroll($1) i", [uuid()]))[0].i === null);
+
+  const pid = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919444400001')", [pid]);
+  await q("insert into players (id, full_name, phone) values ($1,'Enroll Player','9444400001')", [pid]);
+  await asUser(null);
+  await throws("enroll: signing in is needed to join", () => q("select player_start_membership_enroll($1,$2,$3)", [f, monthly, bm]), "Sign in");
+  await asUser(pid);
+  check("enroll: before joining the player has no memberships here", (await q("select get_my_memberships_at($1) r", [f]))[0].r.length === 0);
+  const r1 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, monthly, bm]))[0].r;
+  check("enroll: joining makes a membership and charges the plan price plus the joining fee once", r1.amountInr === 3499 && r1.joiningFeeInr === 500 && r1.resumed === false, JSON.stringify(r1));
+  const pays = await q("select amount_inr, status from payments where membership_id=$1", [r1.membershipId]);
+  check("enroll: exactly one pending payment of the total", pays.length === 1 && pays[0].amount_inr === 3499 && pays[0].status === "created", JSON.stringify(pays));
+  check("enroll: the membership records the joining fee", (await q("select registration_fee_inr r from memberships where id=$1", [r1.membershipId]))[0].r === 500);
+  const r2 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, monthly, bm]))[0].r;
+  check("enroll: coming back resumes the same pending membership, no second one", r2.resumed === true && r2.membershipId === r1.membershipId && (await q("select count(*)::int c from memberships where facility_id=$1", [f]))[0].c === 1, JSON.stringify(r2));
+  await asUser(null);
+  i = await info();
+  check("enroll: the slot now shows one member playing", i.slots[0].membersNow === 1, JSON.stringify(i.slots[0]));
+  // a signed-in player (not staff) can read the same page: the staff-only batch list is not used
+  await asUser(pid);
+  check("enroll: a signed-in player can load the enroll page", (await info()).slots.length === 1);
+  await asUser(null);
+  await asUser(pid);
+  const mine = (await q("select get_my_memberships_at($1) r", [f]))[0].r;
+  check("enroll: the player's memberships here are listed with plan and time slot", mine.length === 1 && mine[0].planName === "Monthly" && mine[0].slots.length === 1 && mine[0].slots[0].startTime === "18:00:00", JSON.stringify(mine));
+  const r3 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, quarterly, bq]))[0].r;
+  check("enroll: a second, different membership can still be joined", r3.membershipId !== r1.membershipId && r3.amountInr === 7999 && r3.joiningFeeInr === 0, JSON.stringify(r3));
+  await throws("enroll: a plan from another club is refused", () => q("select player_start_membership_enroll($1,$2,null)", [f, uuid()]), "not available");
+  await asUser(owner);
 }
 
 process.on('uncaughtException', (e) => { console.log('FATAL:', String(e.message).split('\n')[0]); process.exit(2); });

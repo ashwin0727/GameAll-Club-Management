@@ -1,3 +1,5 @@
+import 'google_maps_link.dart';
+
 /// Pure form-validation functions — independently unit-testable, and kept
 /// out of widgets so the same rule can't drift between screens.
 class Validators {
@@ -67,6 +69,14 @@ class Validators {
     if (!_tenDigitPhone.hasMatch(trimmed.replaceAll(RegExp(r'^\+91'), ''))) {
       return 'Enter a valid 10-digit phone number.';
     }
+    return null;
+  }
+
+  /// The facility's Google Maps location link: required, and it must be a Google Maps link.
+  static String? googleMapsLink(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return 'Google Maps location link is required.';
+    if (!isGoogleMapsLink(trimmed)) return 'Paste a Google Maps link, e.g. https://maps.app.goo.gl/...';
     return null;
   }
 

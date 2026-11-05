@@ -11,7 +11,9 @@ const VALID = {
   city: "Chennai",
   state: "Tamil Nadu",
   pinCode: "600053",
-  description: "",
+  locationUrl: "https://maps.app.goo.gl/AbCdEf123",
+  venueType: "INDOOR" as const,
+  amenities: { parking: false, changingRooms: false, toilets: false, cafeteria: false, equipmentRental: false },
 };
 
 describe("facilityDetailsSchema", () => {
@@ -72,12 +74,26 @@ describe("facilityDetailsSchema", () => {
     expect(facilityDetailsSchema.safeParse({ ...VALID, pinCode: "60005" }).success).toBe(false);
   });
 
-  it("rejects a description over 500 characters", () => {
-    const result = facilityDetailsSchema.safeParse({
-      ...VALID,
-      description: "a".repeat(501),
-    });
-    expect(result.success).toBe(false);
+  it("requires the Google Maps location link, and only a Google Maps one", () => {
+    expect(facilityDetailsSchema.safeParse({ ...VALID, locationUrl: "" }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, locationUrl: "   " }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, locationUrl: "https://example.com/map" }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, locationUrl: "https://www.google.com/maps/place/Arena" }).success).toBe(true);
+  });
+
+  it("requires indoor or outdoor, and nothing else", () => {
+    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: undefined }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: "COVERED" }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: "OUTDOOR" }).success).toBe(true);
+  });
+
+  it("amenities default to all off, and each is a plain on/off", () => {
+    const without: Partial<typeof VALID> = { ...VALID };
+    delete without.amenities;
+    const parsed = facilityDetailsSchema.safeParse(without);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.amenities).toEqual({ parking: false, changingRooms: false, toilets: false, cafeteria: false, equipmentRental: false });
+    expect(facilityDetailsSchema.safeParse({ ...VALID, amenities: { ...VALID.amenities, parking: "yes" } }).success).toBe(false);
   });
 
   it("requires address line, area, city, and state", () => {
@@ -89,7 +105,7 @@ describe("facilityDetailsSchema", () => {
 });
 
 describe("businessPhone", () => {
-  const base = { facilityName: "Arena", facilityType: "BADMINTON", addressLine: "1 Main St", area: "Adyar", city: "Chennai", state: "Tamil Nadu", pinCode: "600020" };
+  const base = { facilityName: "Arena", facilityType: "BADMINTON", addressLine: "1 Main St", area: "Adyar", city: "Chennai", state: "Tamil Nadu", pinCode: "600020", locationUrl: "https://maps.app.goo.gl/AbCdEf123", venueType: "OUTDOOR" };
   const msg = (phone: string) => facilityDetailsSchema.safeParse({ ...base, businessPhone: phone }).error?.issues[0]?.message;
 
   it("is required", () => expect(msg("")).toBe("Phone number is required"));

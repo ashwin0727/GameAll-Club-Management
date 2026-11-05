@@ -13,7 +13,8 @@ vi.mock("@/features/facility/hooks/use-sport-filter", () => ({
 // The report has two sequential async boundaries (facility load, then the
 // four RPC calls); under full-suite CPU contention that outruns the 1s
 // default. Give the findBy queries room.
-const SLOW = { timeout: 4000 } as const;
+// Generous on purpose: the whole suite runs in parallel, and a busy machine can take seconds to render what takes milliseconds alone.
+const SLOW = { timeout: 15000 } as const;
 
 function setup() {
   installFakeReportsFilterDeps();

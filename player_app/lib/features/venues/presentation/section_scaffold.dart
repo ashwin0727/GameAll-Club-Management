@@ -11,12 +11,16 @@ class SectionScaffold extends StatelessWidget {
   const SectionScaffold({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
+    this.trailing,
     required this.child,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
+
+  /// Shown at the right of the title row (the sort tabs); a thin line then separates the header from the content.
+  final Widget? trailing;
   final Widget child;
 
   @override
@@ -37,9 +41,18 @@ class SectionScaffold extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.greeting(p.primaryText)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: AppTextStyles.body(p.secondaryText)),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(child: Text(title, style: AppTextStyles.greeting(p.primaryText))),
+                      ?trailing,
+                    ],
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle!, style: AppTextStyles.body(p.secondaryText)),
+                  ],
+                  if (trailing != null) Container(height: 1, margin: const EdgeInsets.only(top: 0), color: p.border),
                 ],
               ),
             ),

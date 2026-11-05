@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/hover_scope.dart';
 import '../../../../core/widgets/pressable.dart';
+import '../../../../core/widgets/sport_icon.dart';
 import '../../application/player_home_controller.dart';
 
 /// A horizontally scrolling row of sports; the selected one has the blue-to-violet gradient.
@@ -88,15 +89,25 @@ class _SportItem extends StatelessWidget {
                     color: selected ? null : p.surface,
                     border: selected ? null : Border.all(color: p.border),
                   ),
-                  child: Icon(
-                    sport.icon,
-                    size: 22,
-                    color: selected
-                        ? Colors.white
-                        : (p.isDark
-                              ? const Color(0xFFD7E2F3)
-                              : p.secondaryText),
-                  ),
+                  child: sport.sportName == null
+                      ? Icon(
+                          sport.icon,
+                          size: 22,
+                          color: selected
+                              ? Colors.white
+                              : (p.isDark
+                                    ? const Color(0xFFD7E2F3)
+                                    : p.secondaryText),
+                        )
+                      : SportIcon(
+                          sport.sportName,
+                          size: 26,
+                          color: selected
+                              ? Colors.white
+                              : (p.isDark
+                                    ? const Color(0xFFD7E2F3)
+                                    : p.secondaryText),
+                        ),
                 ),
                 const SizedBox(height: 6),
                 HoverText(

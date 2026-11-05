@@ -6,6 +6,22 @@ import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store
 import { installFakeAuthService, installFakeFacilityService, renderWithProviders } from "@/test/harness";
 import { routerMock } from "@/test/router-mock";
 
+// The photo uploads talk to Supabase storage; the form only needs to know they were asked for.
+const photoMock = vi.hoisted(() => ({ addAll: vi.fn(async () => undefined), upload: vi.fn(async () => "https://img.test/logo.png") }));
+vi.mock("@/features/facility-profile/photos", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/features/facility-profile/photos")>();
+  return {
+    ...real,
+    FacilityPhotos: class {
+      addAll = photoMock.addAll;
+      upload = photoMock.upload;
+    },
+  };
+});
+
+const MAPS_LINK = "https://maps.app.goo.gl/AbCdEf123";
+const photoFile = () => new File(["x"], "court.jpg", { type: "image/jpeg" });
+
 const VALID = {
   facilityName: "GameAll Sports Arena",
   businessPhone: "9876543210",
@@ -51,12 +67,27 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: /state/i }));
   await user.click(await screen.findByRole("option", { name: "Tamil Nadu" }));
   await fill("PIN Code", VALID.pinCode);
+  await fill("Google Map Location Link", MAPS_LINK);
+  await user.click(screen.getByRole("radio", { name: /Indoor/ }));
+}
+
+/** The required photo. */
+async function addPhoto(user: ReturnType<typeof userEvent.setup>) {
+  await user.upload(screen.getByLabelText("Facility Photos"), photoFile());
+}
+
+/** The facility the fake service holds after submit. */
+async function fakeFacilityOf() {
+  const { getFacilityService } = await import("@/services/facility");
+  return getFacilityService().getFacility();
 }
 
 describe("FacilityDetailsForm", () => {
   beforeEach(() => {
     window.localStorage.clear();
     useOnboardingStore.getState().reset();
+    photoMock.addAll.mockClear();
+    photoMock.upload.mockClear();
   });
 
   it("keeps Continue disabled until every required field is valid", async () => {
@@ -95,12 +126,61 @@ describe("FacilityDetailsForm", () => {
     renderWithProviders(<FacilityDetailsForm />);
 
     await fillValidForm(user);
+    await addPhoto(user);
+    await user.click(screen.getByRole("switch", { name: "Free Parking" }));
     const submit = await screen.findByRole("button", { name: /Continue/ });
     await waitFor(() => expect(submit).toBeEnabled());
     await user.click(submit);
 
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/sports"));
     expect(useOnboardingStore.getState().facilityDetailsCompleted).toBe(true);
+    // the photo went up for the admin to check
+    expect(photoMock.addAll).toHaveBeenCalledTimes(1);
+    const saved = await fakeFacilityOf();
+    expect(saved?.locationUrl).toBe(MAPS_LINK);
+    expect(saved?.venueType).toBe("INDOOR");
+    expect(saved?.amenities).toMatchObject({ parking: true, cafeteria: false });
+  });
+
+  it("will not continue without a photo, even when everything else is filled in", async () => {
+    const user = userEvent.setup({ delay: null });
+    installAuth();
+    renderWithProviders(<FacilityDetailsForm />);
+
+    await fillValidForm(user);
+    const submit = await screen.findByRole("button", { name: /Continue/ });
+    await waitFor(() => expect(submit).toBeDisabled());
+    await addPhoto(user);
+    await waitFor(() => expect(submit).toBeEnabled());
+  });
+
+  it("asks for a real Google Maps link, and for indoor or outdoor", async () => {
+    const user = userEvent.setup({ delay: null });
+    installAuth();
+    renderWithProviders(<FacilityDetailsForm />);
+
+    const link = await screen.findByLabelText("Google Map Location Link");
+    await user.click(link);
+    await user.paste("https://example.com/not-a-map");
+    await user.tab();
+    expect(await screen.findByText(/Paste a Google Maps link/)).toBeInTheDocument();
+    await user.clear(link);
+    await user.tab();
+    expect(await screen.findByText("Google Maps location link is required")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Indoor/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Outdoor/ })).toBeInTheDocument();
+  });
+
+  it("offers the five amenities as toggles, and no longer asks for a description", async () => {
+    installAuth();
+    renderWithProviders(<FacilityDetailsForm />);
+
+    for (const name of ["Free Parking", "Changing Rooms", "Toilets / Rest Room", "Cafeteria", "Equipment Rental"]) {
+      const toggle = await screen.findByRole("switch", { name });
+      expect(toggle).toHaveAttribute("aria-checked", "false");
+    }
+    expect(screen.queryByLabelText("About Your Facility")).not.toBeInTheDocument();
+    expect(screen.queryByText(/About Your Facility/i)).not.toBeInTheDocument();
   });
 
   it("restores a previously entered draft after remounting", async () => {

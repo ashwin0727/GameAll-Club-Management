@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { isGoogleMapsLink } from "@/features/facility-profile/maps-link";
+import { NO_AMENITIES } from "@/features/facility-profile/types";
 import { FACILITY_TYPE_OPTIONS } from "@/features/onboarding/constants";
 
 const facilityTypeValues = FACILITY_TYPE_OPTIONS.map((option) => option.value) as [
@@ -40,7 +42,16 @@ export const facilityDetailsSchema = z
     city: z.string().trim().min(1, "City is required"),
     state: z.string().trim().min(1, "State is required"),
     pinCode: z.string().trim().regex(/^\d{6}$/, "PIN code must be exactly 6 digits"),
-    description: z.string().max(500, "Keep this under 500 characters").optional().default(""),
+    // The Google Maps link of the facility (required; GameAll's admin opens it to confirm the place is right).
+    locationUrl: z
+      .string()
+      .trim()
+      .min(1, "Google Maps location link is required")
+      .refine(isGoogleMapsLink, "Paste a Google Maps link, e.g. https://maps.app.goo.gl/..."),
+    venueType: z.enum(["INDOOR", "OUTDOOR"], { message: "Choose indoor or outdoor" }),
+    amenities: z
+      .object({ parking: z.boolean(), changingRooms: z.boolean(), toilets: z.boolean(), cafeteria: z.boolean(), equipmentRental: z.boolean() })
+      .default(NO_AMENITIES),
   })
   .refine(
     (values) => values.facilityType !== "OTHER" || values.customFacilityType.trim().length > 0,

@@ -1,6 +1,7 @@
-
 import 'package:flutter/material.dart';
+
 import '../../shared/utils/photo_picker.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/facility.dart';
+import '../../data/models/facility_image.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/app_text_field.dart';
@@ -24,7 +26,8 @@ class FacilityDetailsScreen extends ConsumerStatefulWidget {
   const FacilityDetailsScreen({super.key});
 
   @override
-  ConsumerState<FacilityDetailsScreen> createState() => _FacilityDetailsScreenState();
+  ConsumerState<FacilityDetailsScreen> createState() =>
+      _FacilityDetailsScreenState();
 }
 
 class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
@@ -37,15 +40,22 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
   final _city = TextEditingController();
   final _state = TextEditingController();
   final _pinCode = TextEditingController();
-  final _description = TextEditingController();
   final _locationUrl = TextEditingController();
 
   Uint8List? _logoBytes;
   String? _logoUrl;
   bool _uploadingLogo = false;
 
-  bool _pinExpanded = false;
   bool _showMore = false;
+
+  // The venue profile GameAll's admin checks: indoor/outdoor, amenities and photos (at least one).
+  VenueType? _venueType;
+  FacilityAmenities _amenities = const FacilityAmenities();
+  List<FacilityImage> _savedPhotos = [];
+  final List<NewPhoto> _newPhotos = [];
+  bool _addingPhoto = false;
+  String? _venueTypeError;
+  String? _photosError;
 
   FacilityType _type = FacilityType.multiSport;
   bool _isSubmitting = false;
@@ -76,13 +86,19 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
         _city.text = facility.address.city;
         _state.text = facility.address.state;
         _pinCode.text = facility.address.pinCode;
-        _description.text = facility.description ?? '';
         _locationUrl.text = facility.locationUrl ?? '';
         _logoUrl = facility.logoUrl;
-        _showMore = (facility.description ?? '').isNotEmpty ||
+        _venueType = facility.venueType;
+        _amenities = facility.amenities;
+        _showMore =
             facility.address.area.isNotEmpty ||
             facility.address.state.isNotEmpty;
       });
+      // Photos already saved on an earlier visit to this step.
+      final photos = await ref
+          .read(facilityRepositoryProvider)
+          .listFacilityImages(facility.id);
+      if (mounted) setState(() => _savedPhotos = photos);
     } catch (e, stack) {
       debugPrint('Facility prefill failed: $e\n$stack');
     }
@@ -98,7 +114,6 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
     _city.dispose();
     _state.dispose();
     _pinCode.dispose();
-    _description.dispose();
     _locationUrl.dispose();
     super.dispose();
   }
@@ -155,8 +170,46 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
     }
   }
 
+  Future<void> _addPhoto() async {
+    if (_savedPhotos.length + _newPhotos.length >= maxFacilityPhotos) {
+      setState(
+        () => _photosError = 'You can add up to $maxFacilityPhotos photos.',
+      );
+      return;
+    }
+    setState(() => _addingPhoto = true);
+    try {
+      final picked = await pickPhoto(context, maxWidth: 1600);
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _newPhotos.add(NewPhoto(bytes, picked.name));
+        _photosError = null;
+      });
+    } catch (e, stack) {
+      debugPrint('Photo pick failed: $e\n$stack');
+      if (mounted) {
+        setState(
+          () =>
+              _photosError = 'We couldn’t use that photo. Please try another.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _addingPhoto = false);
+    }
+  }
+
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final formOk = _formKey.currentState?.validate() ?? false;
+    // Indoor/outdoor and at least one photo are required too; show both messages together with the field errors.
+    setState(() {
+      _venueTypeError = _venueType == null ? 'Choose indoor or outdoor.' : null;
+      _photosError = (_savedPhotos.isEmpty && _newPhotos.isEmpty)
+          ? 'Add at least one photo of your facility.'
+          : null;
+    });
+    if (!formOk || _venueTypeError != null || _photosError != null) return;
     if (_uploadingLogo) return;
     setState(() {
       _isSubmitting = true;
@@ -182,8 +235,6 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
         country: 'India',
         pinCode: _pinCode.text.trim(),
       );
-      final description =
-          _description.text.trim().isEmpty ? null : _description.text.trim();
       final existingId = _existingFacilityId;
 
       final Facility facility;
@@ -192,31 +243,54 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
           id: existingId,
           name: _name.text.trim(),
           type: _type,
-          customType: _type == FacilityType.other ? _customType.text.trim() : null,
+          customType: _type == FacilityType.other
+              ? _customType.text.trim()
+              : null,
           businessPhone: _phone.text.trim(),
           address: address,
           logoUrl: _logoUrl,
           locationUrl: _locationUrl.text.trim(),
-          description: description,
+          venueType: _venueType,
+          amenities: _amenities,
         );
       } else {
         facility = await repo.createFacility(
           name: _name.text.trim(),
           type: _type,
-          customType: _type == FacilityType.other ? _customType.text.trim() : null,
+          customType: _type == FacilityType.other
+              ? _customType.text.trim()
+              : null,
           businessEmail: user.email,
           businessPhone: _phone.text.trim(),
           address: address,
           logoUrl: _logoUrl,
           locationUrl: _locationUrl.text.trim(),
-          description: description,
+          venueType: _venueType,
+          amenities: _amenities,
         );
       }
+
+      // The photos go up now that the facility exists; they start waiting for GameAll's check. Anything already uploaded on an
+      // earlier try stays, so a retry never duplicates.
+      final urls = <String>[];
+      for (final photo in List.of(_newPhotos)) {
+        urls.add(await repo.uploadFacilityPhoto(photo.bytes, photo.name));
+        _newPhotos.remove(photo);
+      }
+      await repo.addFacilityImages(
+        facility.id,
+        urls,
+        firstSortOrder: _savedPhotos.length,
+      );
+      _existingFacilityId = facility.id;
 
       // Only advance the step forward, never drag it back.
       final step = ref.read(sessionControllerProvider).facility?.onboardingStep;
       if (step == null || step == OnboardingStep.facilityDetails) {
-        await repo.updateOnboardingStep(facility.id, OnboardingStep.sportsCourts);
+        await repo.updateOnboardingStep(
+          facility.id,
+          OnboardingStep.sportsCourts,
+        );
       }
       await ref.read(sessionControllerProvider.notifier).refresh();
       if (!mounted) return;
@@ -235,7 +309,6 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locationLink = _locationUrl.text.trim();
     return Form(
       key: _formKey,
       child: OnboardingScaffold(
@@ -246,7 +319,9 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
         onSkip: () => ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            const SnackBar(content: Text('Add your facility details to continue.')),
+            const SnackBar(
+              content: Text('Add your facility details to continue.'),
+            ),
           ),
         footer: AuthGradientButton(
           label: 'Next · sports & courts  ›',
@@ -317,7 +392,10 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
             textInputAction: TextInputAction.next,
             validator: Validators.mobile,
             // Digits only, capped at 10 — a pasted "+91 98765-43210" or a stray letter never lands in the field.
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: InputDecoration(
               // Behaves like every other field: the name sits inside as a
@@ -325,7 +403,10 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
               // is a fixed prefix that's always on screen.
               labelText: 'Number Guests Can Call',
               prefixIcon: Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.lg, right: AppSpacing.sm),
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.lg,
+                  right: AppSpacing.sm,
+                ),
                 child: Text(
                   '+91',
                   style: TextStyle(
@@ -335,16 +416,51 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                   ),
                 ),
               ),
-              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          _MapPinCard(
+          _Field(
+            label: 'Google Map Location Link',
             controller: _locationUrl,
-            expanded: _pinExpanded,
-            savedLink: locationLink,
-            onToggle: () => setState(() => _pinExpanded = !_pinExpanded),
-            onChanged: () => setState(() {}),
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+            validator: Validators.googleMapsLink,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Open your facility in Google Maps, tap Share, copy the link and paste it here. GameAll checks it points at the right place.',
+            style: TextStyle(
+              fontSize: 12,
+              color: context.tokens.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg2),
+          VenueTypePicker(
+            value: _venueType,
+            error: _venueTypeError,
+            onChanged: (v) => setState(() {
+              _venueType = v;
+              _venueTypeError = null;
+            }),
+          ),
+          const SizedBox(height: AppSpacing.lg2),
+          PhotosPicker(
+            saved: _savedPhotos,
+            added: _newPhotos,
+            busy: _addingPhoto,
+            error: _photosError,
+            onAdd: _addPhoto,
+            onRemoveNew: (p) => setState(() => _newPhotos.remove(p)),
+          ),
+          const SizedBox(height: AppSpacing.lg2),
+          AmenitiesCard(
+            value: _amenities,
+            onChanged: (a) => setState(() => _amenities = a),
           ),
           const SizedBox(height: AppSpacing.lg2),
           _MoreDetails(
@@ -356,7 +472,9 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                   initialValue: _type,
                   decoration: const InputDecoration(labelText: 'Facility Type'),
                   items: FacilityType.values
-                      .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                      .map(
+                        (t) => DropdownMenuItem(value: t, child: Text(t.label)),
+                      )
                       .toList(),
                   onChanged: (value) => setState(() => _type = value ?? _type),
                 ),
@@ -365,19 +483,14 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                   _Field(
                     label: 'Specify Facility Type',
                     controller: _customType,
-                    validator: (v) => Validators.required(v, field: 'Facility type'),
+                    validator: (v) =>
+                        Validators.required(v, field: 'Facility type'),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 _Field(label: 'Area / Locality', controller: _area),
                 const SizedBox(height: AppSpacing.md),
                 _Field(label: 'State', controller: _state),
-                const SizedBox(height: AppSpacing.md),
-                _Field(
-                  label: 'Short Description',
-                  controller: _description,
-                  maxLines: 3,
-                ),
               ],
             ),
           ),
@@ -399,7 +512,6 @@ class _Field extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.validator,
-    this.maxLines = 1,
   });
 
   final String label;
@@ -407,7 +519,6 @@ class _Field extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
-  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -417,7 +528,6 @@ class _Field extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       validator: validator,
-      maxLines: maxLines,
     );
   }
 }
@@ -458,106 +568,459 @@ class _LogoTile extends StatelessWidget {
                 ),
               )
             : bytes != null
-                ? Image.memory(bytes!, fit: BoxFit.cover)
-                : (imageUrl != null && imageUrl!.isNotEmpty)
-                ? Image.network(imageUrl!, fit: BoxFit.cover)
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo_outlined,
-                          size: 20, color: tokens.textSecondary),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Logo',
-                        style: TextStyle(fontSize: 11, color: tokens.textSecondary),
-                      ),
-                    ],
+            ? Image.memory(bytes!, fit: BoxFit.cover)
+            : (imageUrl != null && imageUrl!.isNotEmpty)
+            ? Image.network(imageUrl!, fit: BoxFit.cover)
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_a_photo_outlined,
+                    size: 20,
+                    color: tokens.textSecondary,
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Logo',
+                    style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+                  ),
+                ],
+              ),
       ),
     );
   }
 }
 
-class _MapPinCard extends StatelessWidget {
-  const _MapPinCard({
-    required this.controller,
-    required this.expanded,
-    required this.savedLink,
-    required this.onToggle,
+/// Indoor or Outdoor: exactly two choices.
+class VenueTypePicker extends StatelessWidget {
+  const VenueTypePicker({
+    super.key,
+    required this.value,
     required this.onChanged,
+    this.error,
   });
 
-  final TextEditingController controller;
-  final bool expanded;
-  final String savedLink;
-  final VoidCallback onToggle;
-  final VoidCallback onChanged;
+  final VenueType? value;
+  final String? error;
+  final ValueChanged<VenueType> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final hasLink = savedLink.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Venue Type',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: tokens.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            for (final type in VenueType.values) ...[
+              if (type != VenueType.values.first)
+                const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: value == type,
+                  label: type.label,
+                  child: GestureDetector(
+                    key: ValueKey('venue-type-${type.name}'),
+                    onTap: () => onChanged(type),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: value == type
+                            ? tokens.primary.withValues(alpha: 0.10)
+                            : tokens.surface1,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: value == type
+                              ? tokens.primary
+                              : tokens.borderColor,
+                          width: value == type ? 1.6 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                value == type
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_off,
+                                size: 18,
+                                color: value == type
+                                    ? tokens.primary
+                                    : tokens.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                type.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: tokens.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            type.hint,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: tokens.textSecondary,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (error != null) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            error!,
+            key: const ValueKey('venue-type-error'),
+            style: TextStyle(fontSize: 12, color: tokens.destructive),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A photo picked but not uploaded yet.
+class NewPhoto {
+  NewPhoto(this.bytes, this.name);
+  final Uint8List bytes;
+  final String name;
+}
+
+/// Facility photos: at least one is required. Saved ones show GameAll's verdict; new ones are uploaded when the step is saved.
+class PhotosPicker extends StatelessWidget {
+  const PhotosPicker({
+    super.key,
+    required this.saved,
+    required this.added,
+    required this.busy,
+    required this.onAdd,
+    required this.onRemoveNew,
+    this.onRemoveSaved,
+    this.error,
+  });
+
+  final List<FacilityImage> saved;
+  final List<NewPhoto> added;
+  final bool busy;
+  final String? error;
+  final VoidCallback onAdd;
+  final ValueChanged<NewPhoto> onRemoveNew;
+
+  /// Given, saved photos get a remove button too (the profile editor); the first-time setup has none.
+  final ValueChanged<FacilityImage>? onRemoveSaved;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final total = saved.length + added.length;
+    Widget tile(
+      Widget image, {
+      String? caption,
+      String? note,
+      Color? captionColor,
+      VoidCallback? onRemove,
+      bool cover = false,
+    }) => SizedBox(
+      width: 104,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                child: SizedBox(width: 104, height: 78, child: image),
+              ),
+              if (onRemove != null)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: GestureDetector(
+                    onTap: onRemove,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              if (cover)
+                Positioned(
+                  left: 4,
+                  bottom: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'Cover',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (caption != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              caption,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: captionColor ?? tokens.textSecondary,
+              ),
+            ),
+            if (note != null && note.isNotEmpty)
+              Text(note, style: TextStyle(fontSize: 10.5, color: tokens.destructive)),
+          ],
+        ],
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Facility Photos',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: tokens.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Add at least one clear photo of your facility (up to $maxFacilityPhotos). GameAll checks each photo before players see it; the first one is the cover.',
+          style: TextStyle(
+            fontSize: 12,
+            color: tokens.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            for (var i = 0; i < saved.length; i++)
+              tile(
+                Image.network(
+                  saved[i].url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: tokens.surface2,
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                ),
+                caption: saved[i].status.label,
+                note: saved[i].status == VerificationStatus.rejected ? saved[i].note : null,
+                onRemove: onRemoveSaved == null
+                    ? null
+                    : () => onRemoveSaved!(saved[i]),
+                captionColor: switch (saved[i].status) {
+                  VerificationStatus.verified => tokens.success,
+                  VerificationStatus.rejected => tokens.destructive,
+                  VerificationStatus.pending => tokens.textSecondary,
+                },
+                cover: i == 0,
+              ),
+            for (var i = 0; i < added.length; i++)
+              tile(
+                Image.memory(added[i].bytes, fit: BoxFit.cover),
+                caption: 'Not uploaded yet',
+                onRemove: () => onRemoveNew(added[i]),
+                cover: saved.isEmpty && i == 0,
+              ),
+            if (total < maxFacilityPhotos)
+              GestureDetector(
+                key: const ValueKey('add-photo'),
+                onTap: busy ? null : onAdd,
+                child: Container(
+                  width: 104,
+                  height: 78,
+                  decoration: BoxDecoration(
+                    color: tokens.surface1,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: tokens.borderColor),
+                  ),
+                  child: busy
+                      ? const Center(
+                          child: SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              color: tokens.textSecondary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Add photo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: tokens.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+          ],
+        ),
+        if (error != null) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            error!,
+            key: const ValueKey('photos-error'),
+            style: TextStyle(fontSize: 12, color: tokens.destructive),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The five amenities, each a plain on/off switch.
+class AmenitiesCard extends StatelessWidget {
+  const AmenitiesCard({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final FacilityAmenities value;
+  final ValueChanged<FacilityAmenities> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    Widget row(
+      String label,
+      bool on,
+      FacilityAmenities Function(bool) change, {
+      Key? key,
+    }) => SwitchListTile(
+      key: key,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: tokens.textPrimary,
+        ),
+      ),
+      value: on,
+      onChanged: (v) => onChanged(change(v)),
+    );
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: tokens.surface1,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: tokens.borderColor),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, size: 20, color: tokens.textSecondary),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasLink ? 'Map location added' : 'Drop a map pin',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: tokens.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      hasLink
-                          ? savedLink
-                          : 'Paste a Google Maps link — helps guests find the entrance.',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: tokens.textSecondary),
-                    ),
-                  ],
+      // The switches' tap highlight paints on the nearest Material, which must sit inside this decorated box.
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: Text(
+                'Amenities',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: tokens.textPrimary,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: Text(
-                  expanded ? 'Done' : (hasLink ? 'Change' : 'Add'),
-                  style: TextStyle(
-                    color: tokens.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (expanded) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Google Maps Link',
-              controller: controller,
-              keyboardType: TextInputType.url,
-              onChanged: (_) => onChanged(),
+            ),
+            Text(
+              'Switch on what your facility offers. Players can filter venues by these.',
+              style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            row(
+              'Free Parking',
+              value.parking,
+              (v) => value.copyWith(parking: v),
+              key: const ValueKey('amenity-parking'),
+            ),
+            row(
+              'Changing Rooms',
+              value.changingRooms,
+              (v) => value.copyWith(changingRooms: v),
+              key: const ValueKey('amenity-changing'),
+            ),
+            row(
+              'Toilets / Rest Room',
+              value.toilets,
+              (v) => value.copyWith(toilets: v),
+              key: const ValueKey('amenity-toilets'),
+            ),
+            row(
+              'Cafeteria',
+              value.cafeteria,
+              (v) => value.copyWith(cafeteria: v),
+              key: const ValueKey('amenity-cafeteria'),
+            ),
+            row(
+              'Equipment Rental',
+              value.equipmentRental,
+              (v) => value.copyWith(equipmentRental: v),
+              key: const ValueKey('amenity-rental'),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -601,10 +1064,7 @@ class _MoreDetails extends StatelessWidget {
             ],
           ),
         ),
-        if (open) ...[
-          const SizedBox(height: AppSpacing.md),
-          child,
-        ],
+        if (open) ...[const SizedBox(height: AppSpacing.md), child],
       ],
     );
   }

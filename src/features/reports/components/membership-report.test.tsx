@@ -15,7 +15,8 @@ vi.mock("@/features/facility/hooks/use-sport-filter", () => ({
   useSportIds: () => ({ sportIds: null, ready: true, key: "all" }),
 }));
 
-const SLOW = { timeout: 4000 } as const;
+// Generous on purpose: the whole suite runs in parallel, and a busy machine can take seconds to render what takes milliseconds alone.
+const SLOW = { timeout: 15000 } as const;
 
 function setup() {
   installFakeReportsFilterDeps();
@@ -58,7 +59,9 @@ describe("MembershipReport", () => {
     expect(await screen.findByText("59", {}, SLOW)).toBeInTheDocument();
 
     // types are a plain list, one row each — not a Type / Plan / Count / Revenue table
-    const list = screen.getByRole("list", { name: /memberships by type/i });
+    // (the types arrive in their own render after the cards, so wait for them rather than reading them at once; under load the
+    // role lookup alone can be slow enough to lose that race)
+    const list = await screen.findByRole("list", { name: /memberships by type/i }, SLOW);
     expect(list.textContent).toContain("Individual · Monthly");
     expect(list.textContent).toContain("Family");
     expect(screen.queryByRole("table", { name: /memberships by type/i })).not.toBeInTheDocument();
@@ -70,8 +73,8 @@ describe("MembershipReport", () => {
     expect(screen.queryByText("Expiring Soon")).not.toBeInTheDocument();
 
     // From / To dates only
-    expect(screen.getByLabelText("From date")).toBeInTheDocument();
-    expect(screen.getByLabelText("To date")).toBeInTheDocument();
+    expect(await screen.findByLabelText("From date", {}, SLOW)).toBeInTheDocument();
+    expect(await screen.findByLabelText("To date", {}, SLOW)).toBeInTheDocument();
     expect(screen.queryByText("All Sports")).not.toBeInTheDocument();
     expect(screen.queryByText("This Month")).not.toBeInTheDocument();
   });
@@ -94,7 +97,7 @@ describe("MembershipReport", () => {
     // left: by sport, right: by court — the same two-panel layout as Guest Bookings
     const bySport = await screen.findByRole("table", { name: /memberships by sport/i }, SLOW);
     expect(bySport.textContent).toContain("Badminton");
-    const byCourt = screen.getByRole("table", { name: /memberships by court/i });
+    const byCourt = await screen.findByRole("table", { name: /memberships by court/i }, SLOW);
     expect(byCourt.textContent).toContain("Court 1");
     expect(byCourt.textContent).toContain("Court 2");
 
@@ -102,16 +105,16 @@ describe("MembershipReport", () => {
     expect(screen.queryByText("Court 9")).not.toBeInTheDocument();
 
     // below them: every booked timing
-    const timings = screen.getByRole("table", { name: /memberships by timing/i });
+    const timings = await screen.findByRole("table", { name: /memberships by timing/i }, SLOW);
     expect(timings.textContent).toContain("5:00 AM – 6:00 AM");
     expect(timings.textContent).toContain("Mon–Sat");
     expect(timings.textContent).toContain("6:00 PM – 7:00 PM");
     expect(screen.getByText(/1 member is not assigned to any session timing/i)).toBeInTheDocument();
 
     // a court filter for the timing table only
-    await userEvent.click(screen.getByRole("combobox", { name: /filter timings by court/i }));
+    await userEvent.click(await screen.findByRole("combobox", { name: /filter timings by court/i }, SLOW));
     await userEvent.click(await screen.findByRole("option", { name: "Court 2" }));
-    const filtered = screen.getByRole("table", { name: /memberships by timing/i });
+    const filtered = await screen.findByRole("table", { name: /memberships by timing/i }, SLOW);
     expect(filtered.textContent).toContain("6:00 PM – 7:00 PM");
     expect(filtered.textContent).not.toContain("5:00 AM – 6:00 AM");
     // ...and the by-sport / by-court tables are untouched by it

@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { SubmitButton } from "@/features/auth/components/submit-button";
 import { FormMessage } from "@/features/auth/components/form-message";
 import { useCurrentUser } from "@/features/auth/hooks/use-auth";
+import { AmenitiesSection } from "@/features/facility-profile/components/amenities-section";
+import { VenueTypeField } from "@/features/facility-profile/components/venue-type-field";
+import { FacilityPhotos } from "@/features/facility-profile/photos";
+import { NO_AMENITIES } from "@/features/facility-profile/types";
 import { FacilityInformationSection } from "@/features/onboarding/components/facility-information-section";
 import { FacilityLocationSection } from "@/features/onboarding/components/facility-location-section";
 import { FacilityBrandingSection } from "@/features/onboarding/components/facility-branding-section";
@@ -14,8 +18,27 @@ import { SaveStatus } from "@/features/onboarding/components/save-status";
 import { DEFAULT_FACILITY_TYPE } from "@/features/onboarding/constants";
 import { getFacilityService } from "@/services/facility";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
-import type { FacilityType } from "@/features/onboarding/types";
+import type { Facility, FacilityType } from "@/features/onboarding/types";
 import { facilityDetailsSchema, type FacilityDetailsInput } from "@/features/onboarding/validation";
+
+type Draft = Partial<FacilityDetailsInput>;
+
+function formDefaults(d: Draft): Partial<FacilityDetailsInput> {
+  return {
+    facilityName: d.facilityName ?? "",
+    facilityType: d.facilityType ?? DEFAULT_FACILITY_TYPE,
+    customFacilityType: d.customFacilityType ?? "",
+    businessPhone: d.businessPhone ?? "",
+    addressLine: d.addressLine ?? "",
+    area: d.area ?? "",
+    city: d.city ?? "",
+    state: d.state ?? "",
+    pinCode: d.pinCode ?? "",
+    locationUrl: d.locationUrl ?? "",
+    venueType: d.venueType,
+    amenities: d.amenities ?? NO_AMENITIES,
+  };
+}
 
 export function FacilityDetailsForm() {
   const router = useRouter();
@@ -24,7 +47,10 @@ export function FacilityDetailsForm() {
   const setDraft = useOnboardingStore((s) => s.setDraft);
   const completeFacilityDetails = useOnboardingStore((s) => s.completeFacilityDetails);
   const [logo, setLogo] = useState<File | string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // If a later step (the photos) fails after the facility was created, retrying must not create a second facility.
+  const createdFacility = useRef<Facility | null>(null);
 
   const {
     register,
@@ -36,24 +62,14 @@ export function FacilityDetailsForm() {
   } = useForm<FacilityDetailsInput>({
     resolver: zodResolver(facilityDetailsSchema),
     mode: "onTouched",
-    defaultValues: {
-      facilityName: draft.facilityName ?? "",
-      facilityType: draft.facilityType ?? DEFAULT_FACILITY_TYPE,
-      customFacilityType: draft.customFacilityType ?? "",
-      businessPhone: draft.businessPhone ?? "",
-      addressLine: draft.addressLine ?? "",
-      area: draft.area ?? "",
-      city: draft.city ?? "",
-      state: draft.state ?? "",
-      pinCode: draft.pinCode ?? "",
-      description: draft.description ?? "",
-    },
+    defaultValues: formDefaults(draft),
   });
 
   const values = watch();
   const facilityType = watch("facilityType");
   const state = watch("state");
-  const description = watch("description") ?? "";
+  const venueType = watch("venueType");
+  const amenities = watch("amenities") ?? NO_AMENITIES;
 
   // Mirrors every field change into the store as it happens. A plain
   // `onChange={() => setDraft(values)}` on the <form> element is racy: the
@@ -72,7 +88,7 @@ export function FacilityDetailsForm() {
     const subscription = watch((value) => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        setDraft(value as Partial<FacilityDetailsInput>);
+        setDraft(value as Draft);
       }, 400);
     });
     return () => {
@@ -89,18 +105,7 @@ export function FacilityDetailsForm() {
   // before the store had a chance to rehydrate).
   useEffect(() => {
     const unsub = useOnboardingStore.persist.onFinishHydration((state) => {
-      reset({
-        facilityName: state.draft.facilityName ?? "",
-        facilityType: state.draft.facilityType ?? DEFAULT_FACILITY_TYPE,
-        customFacilityType: state.draft.customFacilityType ?? "",
-        businessPhone: state.draft.businessPhone ?? "",
-        addressLine: state.draft.addressLine ?? "",
-        area: state.draft.area ?? "",
-        city: state.draft.city ?? "",
-        state: state.draft.state ?? "",
-        pinCode: state.draft.pinCode ?? "",
-        description: state.draft.description ?? "",
-      });
+      reset(formDefaults(state.draft));
     });
     useOnboardingStore.persist.rehydrate();
     return unsub;
@@ -112,34 +117,54 @@ export function FacilityDetailsForm() {
       setSaveError("We couldn't save your facility details. Please try again.");
       return;
     }
+    if (photos.length === 0) {
+      setSaveError("Add at least one photo of your facility to continue.");
+      return;
+    }
     setSaveError(null);
 
     try {
-      const facility = await getFacilityService().createFacility({
-        ownerId: user.id,
-        name: input.facilityName.trim(),
-        // Safe: zod validated facilityType against the same literal values as FacilityType.
-        type: input.facilityType as FacilityType,
-        customType: input.facilityType === "OTHER" ? input.customFacilityType : undefined,
-        businessEmail: user.email,
-        businessPhone: input.businessPhone.trim(),
-        address: {
-          line1: input.addressLine.trim(),
-          area: input.area.trim(),
-          city: input.city.trim(),
-          state: input.state,
-          country: "India",
-          pinCode: input.pinCode,
-        },
-        logoUrl: typeof logo === "string" ? logo : undefined,
-        description: input.description?.trim() || undefined,
-      });
+      const service = getFacilityService();
+      let facility = createdFacility.current;
+      if (!facility) {
+        facility = await service.createFacility({
+          ownerId: user.id,
+          name: input.facilityName.trim(),
+          // Safe: zod validated facilityType against the same literal values as FacilityType.
+          type: input.facilityType as FacilityType,
+          customType: input.facilityType === "OTHER" ? input.customFacilityType : undefined,
+          businessEmail: user.email,
+          businessPhone: input.businessPhone.trim(),
+          address: {
+            line1: input.addressLine.trim(),
+            area: input.area.trim(),
+            city: input.city.trim(),
+            state: input.state,
+            country: "India",
+            pinCode: input.pinCode,
+          },
+        });
+        createdFacility.current = facility;
+      }
 
-      await getFacilityService().updateOnboardingStep(facility.id, "SPORTS");
+      // The map link, venue type and amenities, then the photos (they go to GameAll's admin for checking).
+      const photoService = new FacilityPhotos();
+      const logoUrl = logo instanceof File ? await photoService.upload(user.id, logo) : typeof logo === "string" ? logo : undefined;
+      await service.updateFacility(facility.id, {
+        locationUrl: input.locationUrl.trim(),
+        venueType: input.venueType,
+        amenities: input.amenities,
+        ...(logoUrl ? { logoUrl } : {}),
+      });
+      await photoService.addAll(facility.id, user.id, photos);
+      // Done: if the owner comes back to this screen they start from the facility that now exists.
+      setPhotos([]);
+
+      await service.updateOnboardingStep(facility.id, "SPORTS");
       completeFacilityDetails(facility);
       router.push("/onboarding/sports");
-    } catch {
-      setSaveError("We couldn't save your facility details. Please try again.");
+    } catch (e) {
+      setSaveError(e instanceof Error && e.message ? e.message : "We couldn't save your facility details. Please try again.");
     }
   };
 
@@ -160,6 +185,11 @@ export function FacilityDetailsForm() {
           }}
           businessEmail={user?.email ?? ""}
         />
+        <VenueTypeField
+          value={venueType}
+          onChange={(v) => setValue("venueType", v, { shouldValidate: true, shouldDirty: true, shouldTouch: true })}
+          error={errors.venueType?.message}
+        />
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
@@ -176,22 +206,20 @@ export function FacilityDetailsForm() {
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
         <h2 className="text-sm font-semibold">Facility Branding</h2>
-        <p className="text-xs text-muted-foreground">Optional — you can add these later.</p>
-        <FacilityBrandingSection
-          description={description}
-          onDescriptionChange={(value) => {
-            setValue("description", value);
-          }}
-          logo={logo}
-          onLogoChange={setLogo}
-        />
+        <FacilityBrandingSection logo={logo} onLogoChange={setLogo} photos={photos} onPhotosChange={setPhotos} />
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
+        <h2 className="text-sm font-semibold">Amenities</h2>
+        <p className="text-xs text-muted-foreground">Switch on what your facility offers. Players can filter venues by these.</p>
+        <AmenitiesSection value={amenities} onChange={(next) => setValue("amenities", next, { shouldDirty: true })} />
       </section>
 
       <div className="flex items-center justify-between gap-4">
         <SaveStatus dirtyToken={JSON.stringify(values)} />
         <SubmitButton
           pending={isSubmitting}
-          disabled={!isValid}
+          disabled={!isValid || photos.length === 0}
           pendingLabel="Saving…"
           className="w-auto sm:min-w-[10rem]"
         >

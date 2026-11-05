@@ -12,7 +12,9 @@ import '../domain/venue.dart';
 /// What every location-based page shows when no venue has been added for the city the player picked: an icon, one clear sentence
 /// that names the city, and a button to pick another city. One widget, so every page says the same thing in the same way.
 class NoVenuesState extends ConsumerWidget {
-  const NoVenuesState({super.key});
+  const NoVenuesState({super.key, this.kind = VenueKind.venues});
+
+  final VenueKind kind;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -57,7 +59,11 @@ class NoVenuesState extends ConsumerWidget {
               Reveal(
                 delay: const Duration(milliseconds: 48),
                 child: Text(
-                  'No venues in $city yet',
+                  switch (kind) {
+                    VenueKind.venues => 'No venues in $city yet',
+                    VenueKind.memberships => 'No memberships in $city yet',
+                    VenueKind.coaching => 'No coaching in $city yet',
+                  },
                   textAlign: TextAlign.center,
                   style: AppTextStyles.sectionHeading(p.primaryText),
                 ),
@@ -66,7 +72,11 @@ class NoVenuesState extends ConsumerWidget {
               Reveal(
                 delay: const Duration(milliseconds: 88),
                 child: Text(
-                  'Currently no venues have been added for the location you selected. Please choose another location to see venues, memberships and coaching.',
+                  switch (kind) {
+                    VenueKind.venues => 'Currently no venues have been added for the location you selected. Please choose another location to see venues, memberships and coaching.',
+                    VenueKind.memberships => 'Currently no venue has created a membership plan for the location you selected. Please choose another location to see memberships.',
+                    VenueKind.coaching => 'Currently no venue has created a coaching programme for the location you selected. Please choose another location to see coaching.',
+                  },
                   textAlign: TextAlign.center,
                   style: AppTextStyles.body(p.secondaryText)
                       .copyWith(height: 1.5),

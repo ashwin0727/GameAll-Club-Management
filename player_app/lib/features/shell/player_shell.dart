@@ -17,8 +17,12 @@ import '../player_home/presentation/widgets/desktop_backdrop.dart';
 import '../player_home/presentation/widgets/player_bottom_nav.dart';
 import '../player_home/presentation/widgets/player_header.dart';
 import '../player_home/presentation/widgets/player_search_bar.dart';
-import '../venues/presentation/venues_page.dart';
+import '../venues/presentation/discover_venues_page.dart';
+import '../venues/presentation/enroll_membership_page.dart';
+import '../venues/presentation/guest_booking_page.dart';
+import '../venues/presentation/venue_detail_page.dart';
 import 'coming_soon_page.dart';
+import 'player_pages.dart';
 
 /// The signed-in frame of the Player app: the five tabs, with the bottom navigation on a phone and a top navigation bar on a
 /// wide window. Each tab keeps its own state (scroll position, selections) while another tab is open.
@@ -44,6 +48,15 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
   /// A brand-bar page (Guest Booking, Memberships, Coaching, Tournaments) shown inside the shell on a wide window, like Venues.
   String? _page;
 
+  /// The venue whose page is open inside the shell on a wide window (a phone pushes the page instead).
+  String? _venueId;
+
+  /// The venue whose Book a Court page is open inside the shell on a wide window.
+  String? _bookingId;
+
+  /// The venue whose Enroll Membership page is open inside the shell on a wide window.
+  String? _enrollId;
+
   static const _inShell = {
     AppRoutes.guestBooking,
     AppRoutes.memberships,
@@ -54,6 +67,9 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
   void _select(PlayerTab t) => setState(() {
     _tab = t;
     _page = null;
+    _venueId = null;
+    _bookingId = null;
+    _enrollId = null;
   });
 
   void _go(String route) {
@@ -66,7 +82,54 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
     }
     if (_inShell.contains(route) &&
         MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
-      return setState(() => _page = route);
+      return setState(() {
+        _page = route;
+        _venueId = null;
+        _bookingId = null;
+    _enrollId = null;
+      });
+    }
+    // "/venue/<id>": a venue's own page
+    final venueId = AppRoutes.venueIdOf(route);
+    if (venueId != null) {
+      if (MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
+        return setState(() {
+          _venueId = venueId;
+          _page = null;
+          _bookingId = null;
+    _enrollId = null;
+        });
+      }
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VenueDetailPage(venueId: venueId, onNavigate: _go)));
+      return;
+    }
+    // "/book/<id>": a venue's Book a Court page
+    final bookingId = AppRoutes.bookVenueIdOf(route);
+    if (bookingId != null) {
+      if (MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
+        return setState(() {
+          _bookingId = bookingId;
+          _enrollId = null;
+          _venueId = null;
+          _page = null;
+        });
+      }
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => GuestBookingPage(venueId: bookingId, onNavigate: _go)));
+      return;
+    }
+    // "/enroll/<id>": a venue's Enroll Membership page
+    final enrollId = AppRoutes.enrollVenueIdOf(route);
+    if (enrollId != null) {
+      if (MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
+        return setState(() {
+          _enrollId = enrollId;
+          _bookingId = null;
+          _venueId = null;
+          _page = null;
+        });
+      }
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EnrollMembershipPage(venueId: enrollId, onNavigate: _go)));
+      return;
     }
     switch (route) {
       case AppRoutes.home:
@@ -160,7 +223,7 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
           ),
         ),
         const SizedBox.shrink(),
-        withBar(VenuesPage(onNavigate: _go)),
+        withBar(DiscoverVenuesPage(onNavigate: _go)),
         withBar(const _ProfileTab()),
       ],
     );
@@ -173,10 +236,16 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
             // The page background: navy-to-blue gradient, soft light and glowing arcs (no panels, no lines).
             const Positioned.fill(child: DesktopBackdrop()),
             Positioned.fill(
-              child: _page == null
+              child: _enrollId != null
+                  ? withBar(EnrollMembershipPage(venueId: _enrollId!, onNavigate: _go, embedded: true), key: ValueKey('enroll-$_enrollId'))
+                  : _bookingId != null
+                  ? withBar(GuestBookingPage(venueId: _bookingId!, onNavigate: _go, embedded: true), key: ValueKey('book-$_bookingId'))
+                  : _venueId != null
+                  ? withBar(VenueDetailPage(venueId: _venueId!, onNavigate: _go, embedded: true), key: ValueKey('venue-$_venueId'))
+                  : _page == null
                   ? pages
                   : withBar(
-                      ComingSoonPage.forRoute(_page!, embedded: true),
+                      playerPageForRoute(_page!, embedded: true, onNavigate: _go),
                       key: ValueKey(_page),
                     ),
             ),
@@ -265,19 +334,18 @@ class _TopBar extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  child: GameAllLogo(height: 48),
+                  child: GameAllLogo(height: 34),
                 ),
               ),
             )),
             const Spacer(),
             land(50, link('Venues', tab: PlayerTab.explore)),
-            land(80, link('Memberships', route: AppRoutes.memberships)),
-            land(105, link('Coaching', route: AppRoutes.coaching)),
-            land(130, link('Tournaments', route: AppRoutes.tournaments)),
-            land(160, _AccountLink(link: link('Login', route: AppRoutes.login))),
+            land(80, link('Coaching', route: AppRoutes.coaching)),
+            land(105, link('Tournaments', route: AppRoutes.tournaments)),
+            land(130, _AccountLink(link: link('Login', route: AppRoutes.login))),
             const SizedBox(width: 12),
             // A plain Location button, in the style of the reference's "Download" button.
-            land(190, Semantics(
+            land(160, Semantics(
               button: true,
               label: 'Location',
               child: Pressable(
