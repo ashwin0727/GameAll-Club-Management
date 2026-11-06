@@ -21,7 +21,13 @@ import '../domain/venue_detail.dart';
 /// Summary beside them (underneath on a phone). The slots are the venue's live availability; booking and payment finish on GameAll's
 /// booking page, which Book Now opens for the venue.
 class GuestBookingPage extends ConsumerStatefulWidget {
-  const GuestBookingPage({super.key, required this.venueId, required this.onNavigate, this.embedded = false, this.now});
+  const GuestBookingPage({
+    super.key,
+    required this.venueId,
+    required this.onNavigate,
+    this.embedded = false,
+    this.now,
+  });
 
   final String venueId;
   final void Function(String route) onNavigate;
@@ -48,10 +54,12 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
   late DateTime _day = _today;
   String? _sportId;
   String? _courtId;
+
   /// The hours chosen so far (one court, one day). Tap an hour to add it, tap again to take it off.
   final Set<CourtSlot> _picked = {};
 
-  void _toggle(CourtSlot s) => setState(() => _picked.contains(s) ? _picked.remove(s) : _picked.add(s));
+  void _toggle(CourtSlot s) =>
+      setState(() => _picked.contains(s) ? _picked.remove(s) : _picked.add(s));
 
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -61,7 +69,12 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
   }
 
   Future<void> _pickFromCalendar() async {
-    final picked = await showDatePicker(context: context, initialDate: _day, firstDate: _today, lastDate: _today.add(const Duration(days: 60)));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _day,
+      firstDate: _today,
+      lastDate: _today.add(const Duration(days: 60)),
+    );
     if (picked == null || !mounted) return;
     setState(() {
       _day = _dayOf(picked);
@@ -73,9 +86,15 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
   }
 
   Future<void> _book(VenueDetail venue) async {
-    final opened = await ref.read(linkOpenerProvider)(Uri.parse('${AppConfig.clubSiteUrl}/book/${venue.id}'));
+    final opened = await ref.read(linkOpenerProvider)(
+      Uri.parse('${AppConfig.clubSiteUrl}/book/${venue.id}'),
+    );
     if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("We couldn't open the booking page. Please try again.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("We couldn't open the booking page. Please try again."),
+        ),
+      );
     }
   }
 
@@ -85,7 +104,14 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final async = ref.watch(venueDetailProvider(widget.venueId));
     Widget body;
     if (async.isLoading && !async.hasValue) {
-      body = const Center(child: SizedBox(key: ValueKey('booking-loading'), width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 3)));
+      body = const Center(
+        child: SizedBox(
+          key: ValueKey('booking-loading'),
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+      );
     } else if (async.value == null) {
       body = Center(
         key: const ValueKey('booking-missing'),
@@ -96,9 +122,15 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
             children: [
               Icon(Icons.storefront_outlined, size: 44, color: p.highlight),
               const SizedBox(height: 14),
-              Text("This venue isn't available", style: AppTextStyles.sectionHeading(p.primaryText)),
+              Text(
+                "This venue isn't available",
+                style: AppTextStyles.sectionHeading(p.primaryText),
+              ),
               const SizedBox(height: 16),
-              GameAllButton.secondary(label: 'See venues', onPressed: () => widget.onNavigate(AppRoutes.explore)),
+              GameAllButton.secondary(
+                label: 'See venues',
+                onPressed: () => widget.onNavigate(AppRoutes.explore),
+              ),
             ],
           ),
         ),
@@ -122,8 +154,18 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
       appBar: AppBar(
         backgroundColor: p.background,
         elevation: 0,
-        leading: IconButton(key: const ValueKey('booking-back'), tooltip: 'Back', onPressed: () => _reviewing ? setState(() => _reviewing = false) : Navigator.of(context).maybePop(), icon: Icon(Icons.arrow_back_rounded, color: p.primaryText)),
-        title: Text(_reviewing ? 'Booking Summary' : 'Book a Court', style: AppTextStyles.cardHeading(p.primaryText)),
+        leading: IconButton(
+          key: const ValueKey('booking-back'),
+          tooltip: 'Back',
+          onPressed: () => _reviewing
+              ? setState(() => _reviewing = false)
+              : Navigator.of(context).maybePop(),
+          icon: Icon(Icons.arrow_back_rounded, color: p.primaryText),
+        ),
+        title: Text(
+          _reviewing ? 'Booking Summary' : 'Book a Court',
+          style: AppTextStyles.cardHeading(p.primaryText),
+        ),
       ),
       body: SafeArea(child: body),
     );
@@ -135,30 +177,60 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final p = context.palette;
     _sportId ??= venue.sports.isEmpty ? null : venue.sports.first.id;
     final sport = venue.sports.where((s) => s.id == _sportId).firstOrNull;
-    final slotsAsync = _sportId == null ? null : ref.watch(courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)));
+    final slotsAsync = _sportId == null
+        ? null
+        : ref.watch(
+            courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)),
+          );
     final courts = slotsAsync?.value ?? const <CourtSlots>[];
-    final court = courts.where((c) => c.courtId == _courtId).firstOrNull ?? (courts.isEmpty ? null : courts.first);
-    final picked = (court?.slots.where(_picked.contains).toList() ?? <CourtSlot>[])..sort((a, b) => a.start.compareTo(b.start));
+    final court =
+        courts.where((c) => c.courtId == _courtId).firstOrNull ??
+        (courts.isEmpty ? null : courts.first);
+    final picked =
+        (court?.slots.where(_picked.contains).toList() ?? <CourtSlot>[])
+          ..sort((a, b) => a.start.compareTo(b.start));
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
     final multi = venue.sports.length > 1;
     var n = 0;
 
     if (_reviewing && picked.isNotEmpty) {
-      return _PhoneSummary(venue: venue, sport: sport?.name, court: court?.courtName, day: _day, slots: picked, onBook: () => _book(venue));
+      return _PhoneSummary(
+        venue: venue,
+        sport: sport?.name,
+        court: court?.courtName,
+        day: _day,
+        slots: picked,
+        onBook: () => _book(venue),
+      );
     }
 
-    Widget equalRow(List<Widget> kids) => Row(children: [for (var i = 0; i < kids.length; i++) ...[if (i > 0) const SizedBox(width: 10), Expanded(child: kids[i])]]);
+    Widget equalRow(List<Widget> kids) => Row(
+      children: [
+        for (var i = 0; i < kids.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: kids[i]),
+        ],
+      ],
+    );
 
     final dates = Row(
       children: [
         for (var i = 0; i < 4; i++) ...[
           () {
             final d = _anchor.add(Duration(days: i));
-            return Expanded(child: _DateChip(key: ValueKey('book-date-${d.year}-${d.month}-${d.day}'), day: d, selected: d == _day, compact: true, onTap: () => setState(() {
+            return Expanded(
+              child: _DateChip(
+                key: ValueKey('book-date-${d.year}-${d.month}-${d.day}'),
+                day: d,
+                selected: d == _day,
+                compact: true,
+                onTap: () => setState(() {
                   _day = d;
                   _courtId = null;
                   _picked.clear();
-                })));
+                }),
+              ),
+            );
           }(),
           const SizedBox(width: 8),
         ],
@@ -169,7 +241,20 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
             key: const ValueKey('book-calendar'),
             onTap: _pickFromCalendar,
             borderRadius: BorderRadius.circular(16),
-            child: Container(width: 44, height: 58, decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: p.border), color: p.isDark ? const Color(0xFF0E1630) : p.elevated), child: Icon(Icons.calendar_month_outlined, size: 20, color: p.primaryText)),
+            child: Container(
+              width: 44,
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: p.border),
+                color: p.isDark ? const Color(0xFF0E1630) : p.elevated,
+              ),
+              child: Icon(
+                Icons.calendar_month_outlined,
+                size: 20,
+                color: p.primaryText,
+              ),
+            ),
           ),
         ),
       ],
@@ -178,50 +263,117 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     Widget courtsBody;
     final async = slotsAsync;
     if (venue.sports.isEmpty) {
-      courtsBody = Text('This venue has no courts open for booking yet.', key: const ValueKey('book-none'), style: AppTextStyles.body(p.secondaryText));
+      courtsBody = Text(
+        'This venue has no courts open for booking yet.',
+        key: const ValueKey('book-none'),
+        style: AppTextStyles.body(p.secondaryText),
+      );
     } else if (async == null || (async.isLoading && !async.hasValue)) {
-      courtsBody = const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: SizedBox(key: ValueKey('book-loading'), width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 3)));
+      courtsBody = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: SizedBox(
+          key: ValueKey('book-loading'),
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+      );
     } else if (async.hasError && !async.hasValue) {
-      courtsBody = SlotsError(error: async.error, onRetry: () => ref.invalidate(courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day))));
+      courtsBody = SlotsError(
+        error: async.error,
+        onRetry: () => ref.invalidate(
+          courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)),
+        ),
+      );
     } else if (courts.isEmpty) {
-      courtsBody = Text('No slots on this day. Try another day.', key: const ValueKey('book-no-slots'), style: AppTextStyles.body(p.secondaryText));
+      courtsBody = Text(
+        'No slots on this day. Try another day.',
+        key: const ValueKey('book-no-slots'),
+        style: AppTextStyles.body(p.secondaryText),
+      );
     } else {
       Widget courtPill(CourtSlots c) => BookingPill(
-            key: ValueKey('book-court-${c.courtName}'),
-            compact: true,
-            selected: c.courtId == court?.courtId,
-            onTap: () => setState(() {
-              _courtId = c.courtId;
-              _picked.clear();
-            }),
-            leading: Icon(Icons.grid_view_rounded, size: 16, color: c.courtId == court?.courtId ? Colors.white : p.primaryText),
-            label: c.courtName,
-          );
+        key: ValueKey('book-court-${c.courtName}'),
+        compact: true,
+        selected: c.courtId == court?.courtId,
+        onTap: () => setState(() {
+          _courtId = c.courtId;
+          _picked.clear();
+        }),
+        leading: Icon(
+          Icons.grid_view_rounded,
+          size: 16,
+          color: c.courtId == court?.courtId ? Colors.white : p.primaryText,
+        ),
+        label: c.courtName,
+      );
       courtsBody = courts.length <= 3
           ? equalRow([for (final c in courts) courtPill(c)])
-          : Wrap(spacing: 10, runSpacing: 10, children: [for (final c in courts) SizedBox(width: 108, child: courtPill(c))]);
+          : Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in courts)
+                  SizedBox(width: 108, child: courtPill(c)),
+              ],
+            );
     }
 
     final slots = court?.slots ?? const <CourtSlot>[];
     final timeBody = courts.isEmpty
-        ? Text(venue.sports.isEmpty ? '—' : 'Pick a court once slots are available.', style: AppTextStyles.body(p.mutedText))
+        ? Text(
+            venue.sports.isEmpty
+                ? '—'
+                : 'Pick a court once slots are available.',
+            style: AppTextStyles.body(p.mutedText),
+          )
         : slots.isEmpty
-            ? Text('No slots on this court today.', key: const ValueKey('book-full'), style: AppTextStyles.body(p.secondaryText))
-            : LayoutBuilder(
-                builder: (context, box) {
-                  const gap = 10.0;
-                  final w = (box.maxWidth - gap * 2) / 3;
-                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Wrap(
+        ? Text(
+            'No slots on this court today.',
+            key: const ValueKey('book-full'),
+            style: AppTextStyles.body(p.secondaryText),
+          )
+        : LayoutBuilder(
+            builder: (context, box) {
+              const gap = 10.0;
+              final w = (box.maxWidth - gap * 2) / 3;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
                     spacing: gap,
                     runSpacing: gap,
-                    children: [for (final s in slots) _SlotChip(key: ValueKey('book-slot-${time12(s.start)}'), slot: s, selected: picked.contains(s), width: w, height: 46, onTap: s.available ? () => _toggle(s) : null)],
-                  ), const SizedBox(height: 10), Text('Tap more than one hour to book them together.', key: const ValueKey('slots-hint'), style: AppTextStyles.support(p.secondaryText))]);
-                },
+                    children: [
+                      for (final s in slots)
+                        _SlotChip(
+                          key: ValueKey('book-slot-${time12(s.start)}'),
+                          slot: s,
+                          selected: picked.contains(s),
+                          width: w,
+                          height: 46,
+                          onTap: s.available ? () => _toggle(s) : null,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Tap more than one hour to book them together.',
+                    key: const ValueKey('slots-hint'),
+                    style: AppTextStyles.support(p.secondaryText),
+                  ),
+                ],
               );
+            },
+          );
 
     return SingleChildScrollView(
       key: const ValueKey('booking-scroll'),
-      padding: const EdgeInsets.fromLTRB(AppDimensions.screenPadding, 6, AppDimensions.screenPadding, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.screenPadding,
+        6,
+        AppDimensions.screenPadding,
+        32,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -233,11 +385,22 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
               title: 'Sport',
               child: equalRow([
                 for (final sp in venue.sports)
-                  BookingPill(key: ValueKey('book-sport-${sp.name}'), compact: true, selected: sp.id == _sportId, onTap: () => setState(() {
-                        _sportId = sp.id;
-                        _courtId = null;
-                        _picked.clear();
-                      }), leading: SportIcon(sp.name, size: 18, color: sp.id == _sportId ? Colors.white : p.primaryText), label: sp.name),
+                  BookingPill(
+                    key: ValueKey('book-sport-${sp.name}'),
+                    compact: true,
+                    selected: sp.id == _sportId,
+                    onTap: () => setState(() {
+                      _sportId = sp.id;
+                      _courtId = null;
+                      _picked.clear();
+                    }),
+                    leading: SportIcon(
+                      sp.name,
+                      size: 18,
+                      color: sp.id == _sportId ? Colors.white : p.primaryText,
+                    ),
+                    label: sp.name,
+                  ),
               ]),
             ),
             const SizedBox(height: 12),
@@ -249,7 +412,15 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
           _PhoneSection(
             number: ++n,
             title: 'Time Slot',
-            trailing: Wrap(spacing: 12, runSpacing: 4, alignment: WrapAlignment.end, children: [_Legend(color: AppColors.success, label: 'Available'), _Legend(color: p.mutedText, label: 'Booked')]),
+            trailing: Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              alignment: WrapAlignment.end,
+              children: [
+                _Legend(color: AppColors.success, label: 'Available'),
+                _Legend(color: p.mutedText, label: 'Booked'),
+              ],
+            ),
             child: timeBody,
           ),
           const SizedBox(height: 18),
@@ -260,7 +431,9 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
             child: ExcludeSemantics(
               child: Pressable(
                 key: const ValueKey('book-continue'),
-                onTap: picked.isEmpty ? null : () => setState(() => _reviewing = true),
+                onTap: picked.isEmpty
+                    ? null
+                    : () => setState(() => _reviewing = true),
                 borderRadius: BorderRadius.circular(30),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
@@ -268,11 +441,38 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(30),
-                    gradient: picked.isEmpty ? null : const LinearGradient(colors: [AppColors.violet, AppColors.purple]),
+                    gradient: picked.isEmpty
+                        ? null
+                        : const LinearGradient(
+                            colors: [AppColors.violet, AppColors.purple],
+                          ),
                     color: picked.isEmpty ? p.elevated : null,
-                    boxShadow: picked.isEmpty ? null : [BoxShadow(color: AppColors.violet.withValues(alpha: 0.45), blurRadius: 16, offset: const Offset(0, 5))],
+                    boxShadow: picked.isEmpty
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppColors.violet.withValues(alpha: 0.45),
+                              blurRadius: 16,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [Text('Continue', style: AppTextStyles.button(picked.isEmpty ? p.mutedText : Colors.white).copyWith(fontSize: 17)), const SizedBox(width: 8), Icon(Icons.arrow_forward_rounded, color: picked.isEmpty ? p.mutedText : Colors.white)]),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Continue',
+                        style: AppTextStyles.button(
+                          picked.isEmpty ? p.mutedText : Colors.white,
+                        ).copyWith(fontSize: 17),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: picked.isEmpty ? p.mutedText : Colors.white,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -286,16 +486,26 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final p = context.palette;
     final width = MediaQuery.sizeOf(context).width;
     final wide = width >= AppDimensions.desktopBreakpoint;
-    final side = wide ? AppDimensions.desktopSidePadding(width) : AppDimensions.screenPadding;
+    final side = wide
+        ? AppDimensions.desktopSidePadding(width)
+        : AppDimensions.screenPadding;
     _chipCount = wide ? 5 : 4;
     if (!wide) return _phone(context, venue);
 
     _sportId ??= venue.sports.isEmpty ? null : venue.sports.first.id;
     final sport = venue.sports.where((s) => s.id == _sportId).firstOrNull;
-    final slotsAsync = _sportId == null ? null : ref.watch(courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)));
+    final slotsAsync = _sportId == null
+        ? null
+        : ref.watch(
+            courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)),
+          );
     final courts = slotsAsync?.value ?? const <CourtSlots>[];
-    final court = courts.where((c) => c.courtId == _courtId).firstOrNull ?? (courts.isEmpty ? null : courts.first);
-    final picked = (court?.slots.where(_picked.contains).toList() ?? <CourtSlot>[])..sort((a, b) => a.start.compareTo(b.start));
+    final court =
+        courts.where((c) => c.courtId == _courtId).firstOrNull ??
+        (courts.isEmpty ? null : courts.first);
+    final picked =
+        (court?.slots.where(_picked.contains).toList() ?? <CourtSlot>[])
+          ..sort((a, b) => a.start.compareTo(b.start));
 
     final steps = _Steps(
       venue: venue,
@@ -306,7 +516,9 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
       court: court,
       courts: courts,
       slotsAsync: slotsAsync,
-      onRetry: () => ref.invalidate(courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day))),
+      onRetry: () => ref.invalidate(
+        courtSlotsProvider(AvailabilityQuery(venue.id, _sportId!, _day)),
+      ),
       picked: picked,
       wide: wide,
       dayCount: 5,
@@ -326,7 +538,14 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
       }),
       onSlot: _toggle,
     );
-    final summary = _Summary(venue: venue, sport: sport?.name, court: court?.courtName, day: _day, slots: picked, onBook: () => _book(venue));
+    final summary = _Summary(
+      venue: venue,
+      sport: sport?.name,
+      court: court?.courtName,
+      day: _day,
+      slots: picked,
+      onBook: () => _book(venue),
+    );
 
     return SingleChildScrollView(
       key: const ValueKey('booking-scroll'),
@@ -341,11 +560,35 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
                 children: [
                   Icon(Icons.home_outlined, size: 18, color: p.secondaryText),
                   const SizedBox(width: 8),
-                  BookingCrumb(key: const ValueKey('crumb-venues'), label: 'Venues', onTap: () => widget.onNavigate(AppRoutes.explore)),
-                  Icon(Icons.chevron_right_rounded, size: 18, color: p.secondaryText),
-                  BookingCrumb(key: const ValueKey('crumb-venue'), label: venue.name, onTap: () => widget.onNavigate(AppRoutes.venuePath(venue.id))),
-                  Icon(Icons.chevron_right_rounded, size: 18, color: p.secondaryText),
-                  Flexible(child: Text('Book a Court', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(p.secondaryText))),
+                  BookingCrumb(
+                    key: const ValueKey('crumb-venues'),
+                    label: 'Venues',
+                    onTap: () => widget.onNavigate(AppRoutes.explore),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: p.secondaryText,
+                  ),
+                  BookingCrumb(
+                    key: const ValueKey('crumb-venue'),
+                    label: venue.name,
+                    onTap: () =>
+                        widget.onNavigate(AppRoutes.venuePath(venue.id)),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: p.secondaryText,
+                  ),
+                  Flexible(
+                    child: Text(
+                      'Book a Court',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body(p.secondaryText),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -360,7 +603,10 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
                       SizedBox(width: 380, child: summary),
                     ],
                   )
-                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [steps, const SizedBox(height: 16), summary]),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [steps, const SizedBox(height: 16), summary],
+                  ),
           ),
         ],
       ),
@@ -375,10 +621,16 @@ class BookingCrumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Pressable(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2), child: Text(label, style: AppTextStyles.body(context.palette.primaryText))),
-      );
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(6),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      child: Text(
+        label,
+        style: AppTextStyles.body(context.palette.primaryText),
+      ),
+    ),
+  );
 }
 
 // ── the four steps ─────────────────────────────────────────────────────────
@@ -429,22 +681,33 @@ class _Steps extends StatelessWidget {
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
 
     Widget step(int n, String title, Widget content) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: wide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 230, child: BookingStepTitle(n, title)),
-                    Expanded(child: content),
-                  ],
-                )
-              : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [BookingStepTitle(n, title), const SizedBox(height: 14), content]),
-        );
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: wide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 230, child: BookingStepTitle(n, title)),
+                Expanded(child: content),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BookingStepTitle(n, title),
+                const SizedBox(height: 14),
+                content,
+              ],
+            ),
+    );
     Widget rule() => Container(height: 1, color: p.border);
 
     final header = Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: p.border), color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: p.border),
+        color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1),
+      ),
       child: Row(
         children: [
           ClipRRect(
@@ -454,7 +717,11 @@ class _Steps extends StatelessWidget {
               height: wide ? 88 : 60,
               child: photo == null
                   ? VenueScene(sport: mainSport)
-                  : Image.network(photo, fit: BoxFit.cover, errorBuilder: (_, _, _) => VenueScene(sport: mainSport)),
+                  : Image.network(
+                      photo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => VenueScene(sport: mainSport),
+                    ),
             ),
           ),
           const SizedBox(width: 16),
@@ -464,27 +731,83 @@ class _Steps extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(venue.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: wide ? 24 : 18))),
-                    if (venue.locationVerified) ...[const SizedBox(width: 8), Icon(Icons.verified_rounded, size: wide ? 22 : 18, color: AppColors.violet)],
+                    Flexible(
+                      child: Text(
+                        venue.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.sectionHeading(p.primaryText)
+                            .copyWith(fontSize: wide ? 24 : 18),
+                      ),
+                    ),
+                    if (venue.locationVerified) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.verified_rounded,
+                        size: wide ? 22 : 18,
+                        color: AppColors.violet,
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.location_on_outlined, size: 16, color: p.highlight),
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: p.highlight,
+                    ),
                     const SizedBox(width: 4),
-                    Flexible(child: Text(venue.place, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(p.secondaryText))),
+                    Flexible(
+                      child: Text(
+                        venue.place,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body(p.secondaryText),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
           if (wide) ...[
-            Container(width: 1, height: 52, margin: const EdgeInsets.symmetric(horizontal: 18), color: p.border),
-            Row(children: [Icon(Icons.grid_view_rounded, size: 24, color: p.primaryText), const SizedBox(width: 10), Text(venue.courtCount == 1 ? '1 Court' : '${venue.courtCount} Courts', style: AppTextStyles.body(p.primaryText))]),
+            Container(
+              width: 1,
+              height: 52,
+              margin: const EdgeInsets.symmetric(horizontal: 18),
+              color: p.border,
+            ),
+            Row(
+              children: [
+                Icon(Icons.grid_view_rounded, size: 24, color: p.primaryText),
+                const SizedBox(width: 10),
+                Text(
+                  venue.courtCount == 1
+                      ? '1 Court'
+                      : '${venue.courtCount} Courts',
+                  style: AppTextStyles.body(p.primaryText),
+                ),
+              ],
+            ),
             if (venue.hoursLabel != null) ...[
-              Container(width: 1, height: 52, margin: const EdgeInsets.symmetric(horizontal: 18), color: p.border),
-              Row(children: [Icon(Icons.schedule_rounded, size: 24, color: p.primaryText), const SizedBox(width: 10), Text(venue.hoursLabel!, style: AppTextStyles.body(p.primaryText))]),
+              Container(
+                width: 1,
+                height: 52,
+                margin: const EdgeInsets.symmetric(horizontal: 18),
+                color: p.border,
+              ),
+              Row(
+                children: [
+                  Icon(Icons.schedule_rounded, size: 24, color: p.primaryText),
+                  const SizedBox(width: 10),
+                  Text(
+                    venue.hoursLabel!,
+                    style: AppTextStyles.body(p.primaryText),
+                  ),
+                ],
+              ),
             ],
           ],
         ],
@@ -500,7 +823,11 @@ class _Steps extends StatelessWidget {
             key: ValueKey('book-sport-${s.name}'),
             selected: s.id == sportId,
             onTap: () => onSport(s.id),
-            leading: SportIcon(s.name, size: 20, color: s.id == sportId ? Colors.white : p.primaryText),
+            leading: SportIcon(
+              s.name,
+              size: 20,
+              color: s.id == sportId ? Colors.white : p.primaryText,
+            ),
             label: s.name,
           ),
       ],
@@ -515,7 +842,12 @@ class _Steps extends StatelessWidget {
           () {
             final d = anchor.add(Duration(days: i));
             final on = d == day;
-            return _DateChip(key: ValueKey('book-date-${d.year}-${d.month}-${d.day}'), day: d, selected: on, onTap: () => onDay(d));
+            return _DateChip(
+              key: ValueKey('book-date-${d.year}-${d.month}-${d.day}'),
+              day: d,
+              selected: on,
+              onTap: () => onDay(d),
+            );
           }(),
         Semantics(
           button: true,
@@ -524,7 +856,16 @@ class _Steps extends StatelessWidget {
             key: const ValueKey('book-calendar'),
             onTap: onCalendar,
             borderRadius: BorderRadius.circular(24),
-            child: Container(width: 52, height: 52, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: p.border), color: p.isDark ? const Color(0xFF0E1630) : p.elevated), child: Icon(Icons.calendar_month_outlined, color: p.primaryText)),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: p.border),
+                color: p.isDark ? const Color(0xFF0E1630) : p.elevated,
+              ),
+              child: Icon(Icons.calendar_month_outlined, color: p.primaryText),
+            ),
           ),
         ),
       ],
@@ -533,13 +874,29 @@ class _Steps extends StatelessWidget {
     Widget courtsAndSlots;
     final async = slotsAsync;
     if (venue.sports.isEmpty) {
-      courtsAndSlots = Text('This venue has no courts open for booking yet.', key: const ValueKey('book-none'), style: AppTextStyles.body(p.secondaryText));
+      courtsAndSlots = Text(
+        'This venue has no courts open for booking yet.',
+        key: const ValueKey('book-none'),
+        style: AppTextStyles.body(p.secondaryText),
+      );
     } else if (async == null || (async.isLoading && !async.hasValue)) {
-      courtsAndSlots = const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: SizedBox(key: ValueKey('book-loading'), width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)));
+      courtsAndSlots = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: SizedBox(
+          key: ValueKey('book-loading'),
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 3),
+        ),
+      );
     } else if (async.hasError && !async.hasValue) {
       courtsAndSlots = SlotsError(error: async.error, onRetry: onRetry);
     } else if (courts.isEmpty) {
-      courtsAndSlots = Text('No slots on this day. Try another day.', key: const ValueKey('book-no-slots'), style: AppTextStyles.body(p.secondaryText));
+      courtsAndSlots = Text(
+        'No slots on this day. Try another day.',
+        key: const ValueKey('book-no-slots'),
+        style: AppTextStyles.body(p.secondaryText),
+      );
     } else {
       courtsAndSlots = const SizedBox.shrink();
     }
@@ -553,7 +910,11 @@ class _Steps extends StatelessWidget {
             key: ValueKey('book-court-${c.courtName}'),
             selected: c.courtId == court?.courtId,
             onTap: () => onCourt(c.courtId),
-            leading: Icon(Icons.grid_view_rounded, size: 18, color: c.courtId == court?.courtId ? Colors.white : p.primaryText),
+            leading: Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              color: c.courtId == court?.courtId ? Colors.white : p.primaryText,
+            ),
             label: c.courtName,
           ),
       ],
@@ -564,22 +925,66 @@ class _Steps extends StatelessWidget {
       runSpacing: 12,
       children: [
         for (final s in court?.slots ?? const <CourtSlot>[])
-          _SlotChip(key: ValueKey('book-slot-${time12(s.start)}'), slot: s, selected: picked.contains(s), onTap: s.available ? () => onSlot(s) : null),
+          _SlotChip(
+            key: ValueKey('book-slot-${time12(s.start)}'),
+            slot: s,
+            selected: picked.contains(s),
+            onTap: s.available ? () => onSlot(s) : null,
+          ),
       ],
     );
 
     final hasCourts = courts.isNotEmpty;
     return Container(
       padding: EdgeInsets.all(wide ? 22 : 16),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), border: Border.all(color: p.border), color: p.surface.withValues(alpha: p.isDark ? 0.45 : 1)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: p.border),
+        color: p.surface.withValues(alpha: p.isDark ? 0.45 : 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
-          if (venue.sports.length > 1) ...[step(1, 'Select Sport', sports), rule()] else const SizedBox(height: 4),
+          if (venue.sports.length > 1) ...[
+            step(1, 'Select Sport', sports),
+            rule(),
+          ] else
+            const SizedBox(height: 4),
           step(venue.sports.length > 1 ? 2 : 1, 'Select Date', dates),
           rule(),
-          if (!hasCourts) step(venue.sports.length > 1 ? 3 : 2, 'Select Court', courtsAndSlots) else ...[step(venue.sports.length > 1 ? 3 : 2, 'Select Court', courtChips), rule(), step(venue.sports.length > 1 ? 4 : 3, 'Select Time Slot', court!.slots.isEmpty ? Text('No slots on this court today.', key: const ValueKey('book-full'), style: AppTextStyles.body(p.secondaryText)) : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [slotChips, const SizedBox(height: 12), Text('Tap more than one hour to book them together.', key: const ValueKey('slots-hint'), style: AppTextStyles.support(p.secondaryText))]))],
+          if (!hasCourts)
+            step(
+              venue.sports.length > 1 ? 3 : 2,
+              'Select Court',
+              courtsAndSlots,
+            )
+          else ...[
+            step(venue.sports.length > 1 ? 3 : 2, 'Select Court', courtChips),
+            rule(),
+            step(
+              venue.sports.length > 1 ? 4 : 3,
+              'Select Time Slot',
+              court!.slots.isEmpty
+                  ? Text(
+                      'No slots on this court today.',
+                      key: const ValueKey('book-full'),
+                      style: AppTextStyles.body(p.secondaryText),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        slotChips,
+                        const SizedBox(height: 12),
+                        Text(
+                          'Tap more than one hour to book them together.',
+                          key: const ValueKey('slots-hint'),
+                          style: AppTextStyles.support(p.secondaryText),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
         ],
       ),
     );
@@ -601,18 +1006,43 @@ class BookingStepTitle extends StatelessWidget {
           width: 30,
           height: 30,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [AppColors.violet, AppColors.purple])),
-          child: Text('$n', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [AppColors.violet, AppColors.purple],
+            ),
+          ),
+          child: Text(
+            '$n',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
         ),
         const SizedBox(width: 12),
-        Flexible(child: Text(title, style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 18))),
+        Flexible(
+          child: Text(
+            title,
+            style: AppTextStyles.sectionHeading(p.primaryText)
+                .copyWith(fontSize: 18),
+          ),
+        ),
       ],
     );
   }
 }
 
 class BookingPill extends StatelessWidget {
-  const BookingPill({super.key, required this.selected, required this.onTap, required this.label, required this.leading, this.compact = false});
+  const BookingPill({
+    super.key,
+    required this.selected,
+    required this.onTap,
+    required this.label,
+    required this.leading,
+    this.compact = false,
+  });
 
   /// The phone's smaller chip (it fills the cell it is given).
   final bool compact;
@@ -635,20 +1065,53 @@ class BookingPill extends StatelessWidget {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             constraints: BoxConstraints(minHeight: compact ? 46 : 52),
-            padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 24, vertical: compact ? 6 : 0),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 24,
+              vertical: compact ? 6 : 0,
+            ),
             // only the phone's chip fills its cell; on the web it is as wide as its label
             alignment: compact ? Alignment.center : null,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(26),
-              gradient: selected ? const LinearGradient(colors: [AppColors.violet, AppColors.purple]) : null,
-              color: selected ? null : (p.isDark ? const Color(0xFF0E1630) : p.elevated),
+              gradient: selected
+                  ? const LinearGradient(
+                      colors: [AppColors.violet, AppColors.purple],
+                    )
+                  : null,
+              color: selected
+                  ? null
+                  : (p.isDark ? const Color(0xFF0E1630) : p.elevated),
               border: Border.all(color: selected ? AppColors.purple : p.border),
-              boxShadow: selected ? [BoxShadow(color: AppColors.violet.withValues(alpha: 0.4), blurRadius: 14)] : null,
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.violet.withValues(alpha: 0.4),
+                        blurRadius: 14,
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [leading, SizedBox(width: compact ? 6 : 10), Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(selected ? Colors.white : p.primaryText).copyWith(fontWeight: FontWeight.w600, fontSize: compact ? 13 : 14)))],
+              children: [
+                leading,
+                SizedBox(width: compact ? 6 : 10),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        AppTextStyles.body(
+                          selected ? Colors.white : p.primaryText,
+                        ).copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: compact ? 13 : 14,
+                        ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -658,7 +1121,13 @@ class BookingPill extends StatelessWidget {
 }
 
 class _DateChip extends StatelessWidget {
-  const _DateChip({super.key, required this.day, required this.selected, required this.onTap, this.compact = false});
+  const _DateChip({
+    super.key,
+    required this.day,
+    required this.selected,
+    required this.onTap,
+    this.compact = false,
+  });
 
   final bool compact;
 
@@ -686,8 +1155,14 @@ class _DateChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: selected ? const LinearGradient(colors: [AppColors.violet, AppColors.purple]) : null,
-              color: selected ? null : (p.isDark ? const Color(0xFF0E1630) : p.elevated),
+              gradient: selected
+                  ? const LinearGradient(
+                      colors: [AppColors.violet, AppColors.purple],
+                    )
+                  : null,
+              color: selected
+                  ? null
+                  : (p.isDark ? const Color(0xFF0E1630) : p.elevated),
               border: Border.all(color: selected ? AppColors.purple : p.border),
             ),
             // scales down rather than overflowing when the chip is narrow and the text is large
@@ -696,8 +1171,18 @@ class _DateChip extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(parts.first, style: AppTextStyles.body(selected ? Colors.white : p.primaryText).copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
-                  Text(parts.length > 1 ? parts.last : '', style: AppTextStyles.body(selected ? Colors.white : p.primaryText).copyWith(fontSize: 14)),
+                  Text(
+                    parts.first,
+                    style: AppTextStyles.body(
+                      selected ? Colors.white : p.primaryText,
+                    ).copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    parts.length > 1 ? parts.last : '',
+                    style: AppTextStyles.body(
+                      selected ? Colors.white : p.primaryText,
+                    ).copyWith(fontSize: 14),
+                  ),
                 ],
               ),
             ),
@@ -709,7 +1194,14 @@ class _DateChip extends StatelessWidget {
 }
 
 class _SlotChip extends StatelessWidget {
-  const _SlotChip({super.key, required this.slot, required this.selected, required this.onTap, this.width = 118, this.height = 52});
+  const _SlotChip({
+    super.key,
+    required this.slot,
+    required this.selected,
+    required this.onTap,
+    this.width = 118,
+    this.height = 52,
+  });
 
   final double width;
   final double height;
@@ -733,20 +1225,56 @@ class _SlotChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            constraints: BoxConstraints(minWidth: width, maxWidth: width, minHeight: height),
+            constraints: BoxConstraints(
+              minWidth: width,
+              maxWidth: width,
+              minHeight: height,
+            ),
             padding: const EdgeInsets.symmetric(vertical: 6),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              gradient: selected ? const LinearGradient(colors: [AppColors.violet, AppColors.purple]) : null,
-              color: selected ? null : (free ? AppColors.success.withValues(alpha: 0.08) : p.elevated.withValues(alpha: 0.6)),
-              border: Border.all(color: selected ? AppColors.purple : (free ? AppColors.success : p.border), width: free ? 1.4 : 1),
+              gradient: selected
+                  ? const LinearGradient(
+                      colors: [AppColors.violet, AppColors.purple],
+                    )
+                  : null,
+              color: selected
+                  ? null
+                  : (free
+                        ? AppColors.success.withValues(alpha: 0.08)
+                        : p.elevated.withValues(alpha: 0.6)),
+              border: Border.all(
+                color: selected
+                    ? AppColors.purple
+                    : (free ? AppColors.success : p.border),
+                width: free ? 1.4 : 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (selected) ...[const Icon(Icons.check_rounded, size: 18, color: Colors.white), const SizedBox(width: 6)],
-                Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(time12(slot.start), style: AppTextStyles.body(selected ? Colors.white : (free ? p.primaryText : p.mutedText)).copyWith(fontWeight: FontWeight.w600)))),
+                if (selected) ...[
+                  const Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      time12(slot.start),
+                      style: AppTextStyles.body(
+                        selected
+                            ? Colors.white
+                            : (free ? p.primaryText : p.mutedText),
+                      ).copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -759,7 +1287,14 @@ class _SlotChip extends StatelessWidget {
 // ── the booking summary ────────────────────────────────────────────────────
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.venue, required this.sport, required this.court, required this.day, required this.slots, required this.onBook});
+  const _Summary({
+    required this.venue,
+    required this.sport,
+    required this.court,
+    required this.day,
+    required this.slots,
+    required this.onBook,
+  });
 
   final VenueDetail venue;
   final String? sport;
@@ -775,7 +1310,8 @@ class _Summary extends StatelessWidget {
     final time = describeSlots(slots);
     final amount = slotsAmount(slots);
 
-    Widget row(IconData icon, String label, String value, {Key? key}) => Padding(
+    Widget row(IconData icon, String label, String value, {Key? key}) =>
+        Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Row(
             children: [
@@ -783,7 +1319,15 @@ class _Summary extends StatelessWidget {
               const SizedBox(width: 14),
               Text(label, style: AppTextStyles.body(p.primaryText)),
               const Spacer(),
-              Flexible(child: Text(value, key: key, textAlign: TextAlign.right, style: AppTextStyles.body(p.primaryText).copyWith(fontWeight: FontWeight.w600))),
+              Flexible(
+                child: Text(
+                  value,
+                  key: key,
+                  textAlign: TextAlign.right,
+                  style: AppTextStyles.body(p.primaryText)
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
             ],
           ),
         );
@@ -794,30 +1338,86 @@ class _Summary extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AppColors.violet.withValues(alpha: 0.6)),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.alphaBlend(AppColors.violet.withValues(alpha: 0.28), p.surface), Color.alphaBlend(AppColors.violet.withValues(alpha: 0.10), p.surface)]),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              AppColors.violet.withValues(alpha: 0.28),
+              p.surface,
+            ),
+            Color.alphaBlend(
+              AppColors.violet.withValues(alpha: 0.10),
+              p.surface,
+            ),
+          ],
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [Icon(Icons.calendar_month_outlined, size: 30, color: p.primaryText), const SizedBox(width: 14), Text('Booking Summary', style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 22))]),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                size: 30,
+                color: p.primaryText,
+              ),
+              const SizedBox(width: 14),
+              Text(
+                'Booking Summary',
+                style: AppTextStyles.sectionHeading(p.primaryText)
+                    .copyWith(fontSize: 22),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           Container(height: 1, color: p.border),
-          row(Icons.sports_tennis_rounded, 'Sport', sport ?? '—', key: const ValueKey('summary-sport')),
+          row(
+            Icons.sports_tennis_rounded,
+            'Sport',
+            sport ?? '—',
+            key: const ValueKey('summary-sport'),
+          ),
           Container(height: 1, color: p.border),
-          row(Icons.grid_view_rounded, 'Court', court ?? '—', key: const ValueKey('summary-court')),
+          row(
+            Icons.grid_view_rounded,
+            'Court',
+            court ?? '—',
+            key: const ValueKey('summary-court'),
+          ),
           Container(height: 1, color: p.border),
-          row(Icons.event_outlined, 'Date', '${shortDate(day)} ${day.year}', key: const ValueKey('summary-date')),
+          row(
+            Icons.event_outlined,
+            'Date',
+            '${shortDate(day)} ${day.year}',
+            key: const ValueKey('summary-date'),
+          ),
           Container(height: 1, color: p.border),
-          row(Icons.schedule_rounded, 'Time', time, key: const ValueKey('summary-time')),
+          row(
+            Icons.schedule_rounded,
+            'Time',
+            time,
+            key: const ValueKey('summary-time'),
+          ),
           const SizedBox(height: 6),
           Container(height: 1, color: p.border),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 18),
             child: Row(
               children: [
-                Text('Amount', style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 19)),
+                Text(
+                  'Amount',
+                  style: AppTextStyles.sectionHeading(p.primaryText)
+                      .copyWith(fontSize: 19),
+                ),
                 const Spacer(),
-                Text(amount ?? (s == null ? '—' : 'At the venue'), key: const ValueKey('summary-amount'), style: AppTextStyles.desktopHeroHeading(p.primaryText).copyWith(fontSize: 34)),
+                Text(
+                  amount ?? (s == null ? '—' : 'At the venue'),
+                  key: const ValueKey('summary-amount'),
+                  style: AppTextStyles.desktopHeroHeading(p.primaryText)
+                      .copyWith(fontSize: 34),
+                ),
               ],
             ),
           ),
@@ -836,17 +1436,48 @@ class _Summary extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(30),
-                    gradient: s == null ? null : const LinearGradient(colors: [AppColors.violet, AppColors.purple]),
+                    gradient: s == null
+                        ? null
+                        : const LinearGradient(
+                            colors: [AppColors.violet, AppColors.purple],
+                          ),
                     color: s == null ? p.elevated : null,
-                    boxShadow: s == null ? null : [BoxShadow(color: AppColors.violet.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 6))],
+                    boxShadow: s == null
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppColors.violet.withValues(alpha: 0.45),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [Text('Book Now', style: AppTextStyles.button(s == null ? p.mutedText : Colors.white).copyWith(fontSize: 18)), const SizedBox(width: 10), Icon(Icons.arrow_forward_rounded, color: s == null ? p.mutedText : Colors.white)]),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Book Now',
+                        style: AppTextStyles.button(
+                          s == null ? p.mutedText : Colors.white,
+                        ).copyWith(fontSize: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: s == null ? p.mutedText : Colors.white,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 12),
-          Text("You'll confirm and pay on GameAll's booking page.", textAlign: TextAlign.center, style: AppTextStyles.meta(p.mutedText)),
+          Text(
+            "You'll confirm and pay on GameAll's booking page.",
+            textAlign: TextAlign.center,
+            style: AppTextStyles.meta(p.mutedText),
+          ),
         ],
       ),
     );
@@ -856,7 +1487,11 @@ class _Summary extends StatelessWidget {
 // ── phone design pieces ────────────────────────────────────────────────────
 
 class _PhoneVenueCard extends StatelessWidget {
-  const _PhoneVenueCard({required this.venue, required this.mainSport, this.showStats = false});
+  const _PhoneVenueCard({
+    required this.venue,
+    required this.mainSport,
+    this.showStats = false,
+  });
 
   final VenueDetail venue;
   final String? mainSport;
@@ -868,23 +1503,76 @@ class _PhoneVenueCard extends StatelessWidget {
     final photo = venue.photos.isEmpty ? null : venue.photos.first;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: p.border), color: p.surface.withValues(alpha: p.isDark ? 0.55 : 1)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: p.border),
+        color: p.surface.withValues(alpha: p.isDark ? 0.55 : 1),
+      ),
       child: Column(
         children: [
           Row(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: SizedBox(width: 92, height: 64, child: photo == null ? VenueScene(sport: mainSport) : Image.network(photo, fit: BoxFit.cover, errorBuilder: (_, _, _) => VenueScene(sport: mainSport))),
+                child: SizedBox(
+                  width: 92,
+                  height: 64,
+                  child: photo == null
+                      ? VenueScene(sport: mainSport)
+                      : Image.network(
+                          photo,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              VenueScene(sport: mainSport),
+                        ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [Flexible(child: Text(venue.name, key: const ValueKey('booking-venue-name'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 18))), if (venue.locationVerified) ...[const SizedBox(width: 6), const Icon(Icons.verified_rounded, size: 18, color: AppColors.violet)]]),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            venue.name,
+                            key: const ValueKey('booking-venue-name'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.sectionHeading(p.primaryText)
+                                .copyWith(fontSize: 18),
+                          ),
+                        ),
+                        if (venue.locationVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 18,
+                            color: AppColors.violet,
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 4),
-                    Row(children: [Icon(Icons.location_on_outlined, size: 15, color: p.highlight), const SizedBox(width: 4), Flexible(child: Text(venue.place, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.support(p.secondaryText)))]),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 15,
+                          color: p.highlight,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            venue.place,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.support(p.secondaryText),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -896,10 +1584,52 @@ class _PhoneVenueCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.grid_view_rounded, size: 18, color: p.primaryText), const SizedBox(width: 8), Flexible(child: Text(venue.courtCount == 1 ? '1 Court' : '${venue.courtCount} Courts', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(p.primaryText)))])),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.grid_view_rounded,
+                        size: 18,
+                        color: p.primaryText,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          venue.courtCount == 1
+                              ? '1 Court'
+                              : '${venue.courtCount} Courts',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.body(p.primaryText),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (venue.hoursLabel != null) ...[
                   Container(width: 1, height: 22, color: p.border),
-                  Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.schedule_rounded, size: 18, color: p.primaryText), const SizedBox(width: 8), Flexible(child: Text(venue.hoursLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(p.primaryText)))])),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 18,
+                          color: p.primaryText,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            venue.hoursLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.body(p.primaryText),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -911,7 +1641,12 @@ class _PhoneVenueCard extends StatelessWidget {
 }
 
 class _PhoneSection extends StatelessWidget {
-  const _PhoneSection({required this.number, required this.title, required this.child, this.trailing});
+  const _PhoneSection({
+    required this.number,
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
 
   final int number;
   final String title;
@@ -923,15 +1658,43 @@ class _PhoneSection extends StatelessWidget {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: p.border), color: p.surface.withValues(alpha: p.isDark ? 0.45 : 1)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: p.border),
+        color: p.surface.withValues(alpha: p.isDark ? 0.45 : 1),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(width: 24, height: 24, alignment: Alignment.center, decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [AppColors.violet, AppColors.purple])), child: Text('$number', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [AppColors.violet, AppColors.purple],
+                  ),
+                ),
+                child: Text(
+                  '$number',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: Text(title, style: AppTextStyles.body(p.primaryText).copyWith(fontWeight: FontWeight.w700))),
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTextStyles.body(p.primaryText)
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
               if (trailing != null) Flexible(child: trailing!),
             ],
           ),
@@ -949,12 +1712,30 @@ class _Legend extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [Container(width: 9, height: 9, decoration: BoxDecoration(shape: BoxShape.circle, color: color)), const SizedBox(width: 6), Text(label, style: AppTextStyles.meta(context.palette.secondaryText))]);
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      ),
+      const SizedBox(width: 6),
+      Text(label, style: AppTextStyles.meta(context.palette.secondaryText)),
+    ],
+  );
 }
 
 /// The phone's second screen: what is about to be booked, the price, and Book Now.
 class _PhoneSummary extends StatelessWidget {
-  const _PhoneSummary({required this.venue, required this.sport, required this.court, required this.day, required this.slots, required this.onBook});
+  const _PhoneSummary({
+    required this.venue,
+    required this.sport,
+    required this.court,
+    required this.day,
+    required this.slots,
+    required this.onBook,
+  });
 
   final VenueDetail venue;
   final String? sport;
@@ -971,42 +1752,141 @@ class _PhoneSummary extends StatelessWidget {
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
 
     Widget row(Widget icon, String label, String value, Key key) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(children: [icon, const SizedBox(width: 14), Text(label, style: AppTextStyles.body(p.primaryText)), const Spacer(), Flexible(child: Text(value, key: key, textAlign: TextAlign.right, style: AppTextStyles.body(p.primaryText).copyWith(fontWeight: FontWeight.w600)))]),
-        );
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          icon,
+          const SizedBox(width: 14),
+          Text(label, style: AppTextStyles.body(p.primaryText)),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              key: key,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.body(p.primaryText)
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
 
     return SingleChildScrollView(
       key: const ValueKey('booking-summary-scroll'),
-      padding: const EdgeInsets.fromLTRB(AppDimensions.screenPadding, 6, AppDimensions.screenPadding, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppDimensions.screenPadding,
+        6,
+        AppDimensions.screenPadding,
+        32,
+      ),
       child: Container(
         key: const ValueKey('booking-summary'),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.violet.withValues(alpha: 0.5)), color: p.surface.withValues(alpha: p.isDark ? 0.6 : 1)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.violet.withValues(alpha: 0.5)),
+          color: p.surface.withValues(alpha: p.isDark ? 0.6 : 1),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Container(width: 44, height: 44, decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: p.elevated), child: Icon(Icons.calendar_month_outlined, color: p.primaryText)),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: p.elevated,
+                  ),
+                  child: Icon(
+                    Icons.calendar_month_outlined,
+                    color: p.primaryText,
+                  ),
+                ),
                 const SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Booking Summary', style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 19)), Text('Review your booking details', style: AppTextStyles.support(p.secondaryText))])),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Booking Summary',
+                        style: AppTextStyles.sectionHeading(p.primaryText)
+                            .copyWith(fontSize: 19),
+                      ),
+                      Text(
+                        'Review your booking details',
+                        style: AppTextStyles.support(p.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
             _PhoneVenueCard(venue: venue, mainSport: mainSport),
             const SizedBox(height: 6),
-            row(Icon(Icons.sports_tennis_rounded, size: 22, color: p.primaryText), 'Sport', sport ?? '—', const ValueKey('summary-sport')),
+            row(
+              Icon(Icons.sports_tennis_rounded, size: 22, color: p.primaryText),
+              'Sport',
+              sport ?? '—',
+              const ValueKey('summary-sport'),
+            ),
             Container(height: 1, color: p.border),
-            row(Icon(Icons.grid_view_rounded, size: 22, color: p.primaryText), 'Court', court ?? '—', const ValueKey('summary-court')),
+            row(
+              Icon(Icons.grid_view_rounded, size: 22, color: p.primaryText),
+              'Court',
+              court ?? '—',
+              const ValueKey('summary-court'),
+            ),
             Container(height: 1, color: p.border),
-            row(Icon(Icons.event_outlined, size: 22, color: p.primaryText), 'Date', '${shortDate(day)} ${day.year}', const ValueKey('summary-date')),
+            row(
+              Icon(Icons.event_outlined, size: 22, color: p.primaryText),
+              'Date',
+              '${shortDate(day)} ${day.year}',
+              const ValueKey('summary-date'),
+            ),
             Container(height: 1, color: p.border),
-            row(Icon(Icons.schedule_rounded, size: 22, color: p.primaryText), 'Time', time, const ValueKey('summary-time')),
+            row(
+              Icon(Icons.schedule_rounded, size: 22, color: p.primaryText),
+              'Time',
+              time,
+              const ValueKey('summary-time'),
+            ),
             const SizedBox(height: 4),
-            LayoutBuilder(builder: (context, box) => Row(children: [for (var i = 0; i < (box.maxWidth / 8).floor(); i++) Expanded(child: Container(height: 1, margin: const EdgeInsets.symmetric(horizontal: 2), color: p.border))])),
+            LayoutBuilder(
+              builder: (context, box) => Row(
+                children: [
+                  for (var i = 0; i < (box.maxWidth / 8).floor(); i++)
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        color: p.border,
+                      ),
+                    ),
+                ],
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(children: [Text('Amount', style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 18)), const Spacer(), Text(amount, key: const ValueKey('summary-amount'), style: AppTextStyles.desktopHeroHeading(p.primaryText).copyWith(fontSize: 30))]),
+              child: Row(
+                children: [
+                  Text(
+                    'Amount',
+                    style: AppTextStyles.sectionHeading(p.primaryText)
+                        .copyWith(fontSize: 18),
+                  ),
+                  const Spacer(),
+                  Text(
+                    amount,
+                    key: const ValueKey('summary-amount'),
+                    style: AppTextStyles.desktopHeroHeading(p.primaryText)
+                        .copyWith(fontSize: 30),
+                  ),
+                ],
+              ),
             ),
             Semantics(
               button: true,
@@ -1019,14 +1899,47 @@ class _PhoneSummary extends StatelessWidget {
                   child: Container(
                     height: 56,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), gradient: const LinearGradient(colors: [AppColors.violet, AppColors.purple]), boxShadow: [BoxShadow(color: AppColors.violet.withValues(alpha: 0.45), blurRadius: 16, offset: const Offset(0, 5))]),
-                    child: Text('Book Now', style: AppTextStyles.button(Colors.white).copyWith(fontSize: 17)),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: const LinearGradient(
+                        colors: [AppColors.violet, AppColors.purple],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.violet.withValues(alpha: 0.45),
+                          blurRadius: 16,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'Book Now',
+                      style: AppTextStyles.button(Colors.white)
+                          .copyWith(fontSize: 17),
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.verified_user_outlined, size: 16, color: p.secondaryText), const SizedBox(width: 8), Flexible(child: Text("You'll confirm and pay on GameAll's booking page.", textAlign: TextAlign.center, style: AppTextStyles.meta(p.secondaryText)))]),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.verified_user_outlined,
+                  size: 16,
+                  color: p.secondaryText,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    "You'll confirm and pay on GameAll's booking page.",
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.meta(p.secondaryText),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1047,7 +1960,12 @@ String describeSlots(List<CourtSlot> picked) {
       ranges.add((s.start, s.end));
     }
   }
-  final hours = sorted.fold<int>(0, (sum, s) => sum + s.end.difference(s.start).inMinutes) / 60;
+  final hours =
+      sorted.fold<int>(
+        0,
+        (sum, s) => sum + s.end.difference(s.start).inMinutes,
+      ) /
+      60;
   return '${ranges.map((r) => timeRange(r.$1, r.$2)).join(', ')} (${hours == hours.roundToDouble() ? hours.round() : hours} hr)';
 }
 
@@ -1065,7 +1983,12 @@ String? slotsAmount(List<CourtSlot> picked) {
 
 /// The hours could not be loaded: says so, shows what went wrong (so it can be reported) and lets the player try again.
 class SlotsError extends StatelessWidget {
-  const SlotsError({super.key, required this.error, required this.onRetry, this.message = "We couldn't load the slots just now."});
+  const SlotsError({
+    super.key,
+    required this.error,
+    required this.onRetry,
+    this.message = "We couldn't load the slots just now.",
+  });
   final String message;
   final Object? error;
   final VoidCallback onRetry;
@@ -1080,9 +2003,18 @@ class SlotsError extends StatelessWidget {
       children: [
         Text(message, style: AppTextStyles.body(p.secondaryText)),
         const SizedBox(height: 4),
-        Text(detail.length > 160 ? '${detail.substring(0, 160)}…' : detail, key: const ValueKey('book-error-detail'), style: AppTextStyles.meta(p.mutedText)),
+        Text(
+          detail.length > 160 ? '${detail.substring(0, 160)}…' : detail,
+          key: const ValueKey('book-error-detail'),
+          style: AppTextStyles.meta(p.mutedText),
+        ),
         const SizedBox(height: 8),
-        TextButton.icon(key: const ValueKey('book-retry'), onPressed: onRetry, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Try again')),
+        TextButton.icon(
+          key: const ValueKey('book-retry'),
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: const Text('Try again'),
+        ),
       ],
     );
   }

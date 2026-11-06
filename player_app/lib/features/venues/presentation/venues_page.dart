@@ -22,7 +22,11 @@ enum _Sort { name, priceLow, priceHigh }
 /// Which venues appear depends on [kind]: every bookable venue, only those that have created a membership plan, or only those that
 /// have created a coaching programme. With none in the picked city the page shows the no-venues message instead.
 class VenuesPage extends ConsumerStatefulWidget {
-  const VenuesPage({super.key, required this.onNavigate, this.kind = VenueKind.venues});
+  const VenuesPage({
+    super.key,
+    required this.onNavigate,
+    this.kind = VenueKind.venues,
+  });
 
   final void Function(String route) onNavigate;
   final VenueKind kind;
@@ -36,7 +40,8 @@ class _VenuesPageState extends ConsumerState<VenuesPage> {
 
   List<Venue> _sorted(List<Venue> venues) {
     final list = [...venues];
-    int byName(Venue a, Venue b) => a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    int byName(Venue a, Venue b) =>
+        a.name.toLowerCase().compareTo(b.name.toLowerCase());
     list.sort((a, b) {
       if (_sort == _Sort.name) return byName(a, b);
       final pa = a.priceFor(widget.kind);
@@ -63,13 +68,19 @@ class _VenuesPageState extends ConsumerState<VenuesPage> {
   @override
   Widget build(BuildContext context) {
     final city = cityOf(ref.watch(selectedCityProvider));
-    final count = ref.watch(venuesForSelectedCityProvider(widget.kind)).value?.length;
-    final side = MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint
+    final count = ref
+        .watch(venuesForSelectedCityProvider(widget.kind))
+        .value
+        ?.length;
+    final side =
+        MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint
         ? AppDimensions.desktopSidePadding(MediaQuery.sizeOf(context).width)
         : AppDimensions.screenPadding;
     return SectionScaffold(
       title: _title(city, (count ?? 0) == 0 ? null : count),
-      trailing: (count ?? 0) == 0 ? null : _SortTabs(sort: _sort, onChanged: (s) => setState(() => _sort = s)),
+      trailing: (count ?? 0) == 0
+          ? null
+          : _SortTabs(sort: _sort, onChanged: (s) => setState(() => _sort = s)),
       child: LocationAwareBody(
         kind: widget.kind,
         builder: (context, venues) => _Grid(
@@ -93,33 +104,71 @@ class _SortTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    Widget tab(String label, bool selected, VoidCallback onTap, {IconData? icon, Key? key}) => Pressable(
-          key: key,
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            margin: const EdgeInsets.only(left: 22),
-            padding: const EdgeInsets.only(top: 8, bottom: 8),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: selected ? AppColors.blue : Colors.transparent, width: 3))),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(label, style: AppTextStyles.body(selected ? p.primaryText : p.secondaryText).copyWith(fontSize: 16, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
-                if (icon != null) ...[const SizedBox(width: 6), Icon(icon, size: 20, color: selected ? p.primaryText : p.secondaryText)],
-              ],
+    Widget tab(
+      String label,
+      bool selected,
+      VoidCallback onTap, {
+      IconData? icon,
+      Key? key,
+    }) => Pressable(
+      key: key,
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        margin: const EdgeInsets.only(left: 22),
+        padding: const EdgeInsets.only(top: 8, bottom: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? AppColors.blue : Colors.transparent,
+              width: 3,
             ),
           ),
-        );
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style:
+                  AppTextStyles.body(
+                    selected ? p.primaryText : p.secondaryText,
+                  ).copyWith(
+                    fontSize: 16,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+            ),
+            if (icon != null) ...[
+              const SizedBox(width: 6),
+              Icon(
+                icon,
+                size: 20,
+                color: selected ? p.primaryText : p.secondaryText,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
     final byPrice = sort == _Sort.priceLow || sort == _Sort.priceHigh;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        tab('Name', sort == _Sort.name, () => onChanged(_Sort.name), key: const ValueKey('sort-name')),
+        tab(
+          'Name',
+          sort == _Sort.name,
+          () => onChanged(_Sort.name),
+          key: const ValueKey('sort-name'),
+        ),
         tab(
           'Price',
           byPrice,
-          () => onChanged(sort == _Sort.priceLow ? _Sort.priceHigh : _Sort.priceLow),
-          icon: sort == _Sort.priceHigh ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+          () => onChanged(
+            sort == _Sort.priceLow ? _Sort.priceHigh : _Sort.priceLow,
+          ),
+          icon: sort == _Sort.priceHigh
+              ? Icons.arrow_upward_rounded
+              : Icons.arrow_downward_rounded,
           key: const ValueKey('sort-price'),
         ),
       ],
@@ -129,7 +178,12 @@ class _SortTabs extends StatelessWidget {
 
 /// Cards in rows: three across on a wide window, two on a tablet, one on a phone.
 class _Grid extends StatelessWidget {
-  const _Grid({required this.venues, required this.kind, required this.side, required this.onOpen});
+  const _Grid({
+    required this.venues,
+    required this.kind,
+    required this.side,
+    required this.onOpen,
+  });
 
   final List<Venue> venues;
   final VenueKind kind;
@@ -156,7 +210,11 @@ class _Grid extends StatelessWidget {
                   width: cardWidth,
                   child: Reveal(
                     delay: Duration(milliseconds: 30 * (i < 6 ? i : 6)),
-                    child: VenueCard(venue: venues[i], kind: kind, onTap: onOpen == null ? null : () => onOpen!(venues[i])),
+                    child: VenueCard(
+                      venue: venues[i],
+                      kind: kind,
+                      onTap: onOpen == null ? null : () => onOpen!(venues[i]),
+                    ),
                   ),
                 ),
             ],
@@ -169,7 +227,12 @@ class _Grid extends StatelessWidget {
 
 /// One venue: its photo with the main sport on it, the name and area, and chips with the price.
 class VenueCard extends StatelessWidget {
-  const VenueCard({super.key, required this.venue, required this.onTap, this.kind = VenueKind.venues});
+  const VenueCard({
+    super.key,
+    required this.venue,
+    required this.onTap,
+    this.kind = VenueKind.venues,
+  });
 
   final Venue venue;
   final VenueKind kind;
@@ -189,7 +252,8 @@ class VenueCard extends StatelessWidget {
         ? null
         : switch (kind) {
             VenueKind.venues => '${rupees(price)} / hr',
-            VenueKind.memberships || VenueKind.coaching => 'from ${rupees(price)}',
+            VenueKind.memberships ||
+            VenueKind.coaching => 'from ${rupees(price)}',
           };
 
     // No photo: a picture of the court or pitch for this sport (drawn in code), with the venue's logo as a small badge when it has one.
@@ -205,8 +269,18 @@ class VenueCard extends StatelessWidget {
               width: 44,
               height: 44,
               padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, border: Border.all(color: Colors.black.withValues(alpha: 0.12))),
-              child: ClipOval(child: Image.network(logo, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox.shrink())),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
+              ),
+              child: ClipOval(
+                child: Image.network(
+                  logo,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
             ),
           ),
       ],
@@ -236,7 +310,17 @@ class VenueCard extends StatelessWidget {
                               photo,
                               fit: BoxFit.cover,
                               // The picture fades in when it arrives instead of popping in; a broken link shows the placeholder.
-                              frameBuilder: (context, child, frame, sync) => sync ? child : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 350), curve: Curves.easeOut, child: child),
+                              frameBuilder: (context, child, frame, sync) =>
+                                  sync
+                                  ? child
+                                  : AnimatedOpacity(
+                                      opacity: frame == null ? 0 : 1,
+                                      duration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                      curve: Curves.easeOut,
+                                      child: child,
+                                    ),
                               errorBuilder: (_, _, _) => placeholder,
                             ),
                       if (mainSport != null)
@@ -244,14 +328,31 @@ class VenueCard extends StatelessWidget {
                           left: 12,
                           bottom: 12,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.black.withValues(alpha: 0.55)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.black.withValues(alpha: 0.55),
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SportIcon(mainSport, size: 18, color: Colors.white),
+                                SportIcon(
+                                  mainSport,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 7),
-                                Text(mainSport, style: AppTextStyles.meta(Colors.white).copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+                                Text(
+                                  mainSport,
+                                  style: AppTextStyles.meta(Colors.white)
+                                      .copyWith(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
                               ],
                             ),
                           ),
@@ -264,8 +365,17 @@ class VenueCard extends StatelessWidget {
               Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: venue.name, style: AppTextStyles.cardHeading(p.primaryText).copyWith(fontSize: 19, fontWeight: FontWeight.w700)),
-                    if (venue.area != null) TextSpan(text: ',  ${venue.area}', style: AppTextStyles.body(p.secondaryText).copyWith(fontSize: 16)),
+                    TextSpan(
+                      text: venue.name,
+                      style: AppTextStyles.cardHeading(p.primaryText)
+                          .copyWith(fontSize: 19, fontWeight: FontWeight.w700),
+                    ),
+                    if (venue.area != null)
+                      TextSpan(
+                        text: ',  ${venue.area}',
+                        style: AppTextStyles.body(p.secondaryText)
+                            .copyWith(fontSize: 16),
+                      ),
                   ],
                 ),
                 maxLines: 1,
@@ -281,7 +391,11 @@ class VenueCard extends StatelessWidget {
                   if (chips.length > 2) _Chip(label: '+${chips.length - 2}'),
                   if (priceText != null) ...[
                     Text('•', style: AppTextStyles.body(p.secondaryText)),
-                    Text(priceText, style: AppTextStyles.body(p.secondaryText).copyWith(fontSize: 16)),
+                    Text(
+                      priceText,
+                      style: AppTextStyles.body(p.secondaryText)
+                          .copyWith(fontSize: 16),
+                    ),
                   ],
                 ],
               ),
@@ -302,8 +416,17 @@ class _Chip extends StatelessWidget {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(color: p.isDark ? p.elevated.withValues(alpha: 0.9) : p.elevated, borderRadius: BorderRadius.circular(22)),
-      child: HoverText(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.body(p.primaryText).copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
+      decoration: BoxDecoration(
+        color: p.isDark ? p.elevated.withValues(alpha: 0.9) : p.elevated,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: HoverText(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.body(p.primaryText)
+            .copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }

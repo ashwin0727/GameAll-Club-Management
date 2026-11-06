@@ -16,6 +16,7 @@ import '../widgets/player_header.dart';
 import '../widgets/player_search_bar.dart';
 import '../widgets/player_shortcut_card.dart';
 import '../widgets/sports_selector.dart';
+import '../widgets/payment_prompts.dart';
 import '../widgets/player_dashboard.dart';
 import 'player_dashboard_desktop.dart';
 import 'player_home_desktop.dart';
@@ -59,7 +60,10 @@ class PlayerHomePage extends ConsumerWidget {
     // session exists, the page waits (with a placeholder shaped like the dashboard) until the player's own data is here.
     final hasSession = ref.watch(playerAuthRepositoryProvider).isSignedIn;
     final auth = ref.watch(authControllerProvider);
-    final waitingForPlayer = hasSession && (auth.isLoading || (home.isLoading && !(home.hasValue && data.signedIn)));
+    final waitingForPlayer =
+        hasSession &&
+        (auth.isLoading ||
+            (home.isLoading && !(home.hasValue && data.signedIn)));
     if (waitingForPlayer) {
       return _SignedInPlaceholder(wide: wide, header: desktopHeader);
     }
@@ -114,15 +118,29 @@ class _SignedInPlaceholder extends StatelessWidget {
       return SafeArea(
         child: SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppDimensions.screenPadding, 12, AppDimensions.screenPadding, 24),
+          padding: const EdgeInsets.fromLTRB(
+            AppDimensions.screenPadding,
+            12,
+            AppDimensions.screenPadding,
+            24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(children: [
-                Container(width: 56, height: 56, decoration: BoxDecoration(shape: BoxShape.circle, color: p.surface)),
-                const SizedBox(width: 14),
-                const Expanded(child: _Skeleton(height: 44)),
-              ]),
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: p.surface,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(child: _Skeleton(height: 44)),
+                ],
+              ),
               const SizedBox(height: 20),
               const _Skeleton(height: 104),
               const SizedBox(height: 12),
@@ -136,7 +154,9 @@ class _SignedInPlaceholder extends StatelessWidget {
         ),
       );
     }
-    final side = AppDimensions.desktopSidePadding(MediaQuery.sizeOf(context).width);
+    final side = AppDimensions.desktopSidePadding(
+      MediaQuery.sizeOf(context).width,
+    );
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       child: Column(
@@ -148,25 +168,38 @@ class _SignedInPlaceholder extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  Container(width: 76, height: 76, decoration: BoxDecoration(shape: BoxShape.circle, color: p.surface)),
-                  const SizedBox(width: 18),
-                  const SizedBox(width: 320, child: _Skeleton(height: 64)),
-                ]),
+                Row(
+                  children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: p.surface,
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                    const SizedBox(width: 320, child: _Skeleton(height: 64)),
+                  ],
+                ),
                 const SizedBox(height: 24),
-                const Row(children: [
-                  Expanded(child: _Skeleton(height: 128)),
-                  SizedBox(width: 18),
-                  Expanded(child: _Skeleton(height: 128)),
-                  SizedBox(width: 18),
-                  Expanded(child: _Skeleton(height: 128)),
-                ]),
+                const Row(
+                  children: [
+                    Expanded(child: _Skeleton(height: 128)),
+                    SizedBox(width: 18),
+                    Expanded(child: _Skeleton(height: 128)),
+                    SizedBox(width: 18),
+                    Expanded(child: _Skeleton(height: 128)),
+                  ],
+                ),
                 const SizedBox(height: 22),
-                const Row(children: [
-                  Expanded(flex: 11, child: _Skeleton(height: 150)),
-                  SizedBox(width: 20),
-                  Expanded(flex: 9, child: _Skeleton(height: 150)),
-                ]),
+                const Row(
+                  children: [
+                    Expanded(flex: 11, child: _Skeleton(height: 150)),
+                    SizedBox(width: 20),
+                    Expanded(flex: 9, child: _Skeleton(height: 150)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -288,7 +321,9 @@ class _PhoneBody extends ConsumerWidget {
                                     )
                                   : Reveal(
                                       dy: 0,
-                                      duration: const Duration(milliseconds: 220),
+                                      duration: const Duration(
+                                        milliseconds: 220,
+                                      ),
                                       child: PlayerShortcutCards(
                                         hasActiveMembership:
                                             data.hasActiveMembership,
@@ -307,7 +342,9 @@ class _PhoneBody extends ConsumerWidget {
                                   ? const _Skeleton(height: 108)
                                   : Reveal(
                                       dy: 0,
-                                      duration: const Duration(milliseconds: 220),
+                                      duration: const Duration(
+                                        milliseconds: 220,
+                                      ),
                                       child: NextGameSection(
                                         next: next,
                                         onNavigate: onNavigate,
@@ -319,6 +356,10 @@ class _PhoneBody extends ConsumerWidget {
                             // today's courts, found by their phone number at every club.
                             if (data.signedIn) ...[
                               const SizedBox(height: 24),
+                              if (data.pendingPayments.isNotEmpty) ...[
+                                PaymentPrompts(payments: data.pendingPayments),
+                                const SizedBox(height: 12),
+                              ],
                               Reveal(
                                 child: DashboardSummaryCards(
                                   data: data,
@@ -327,9 +368,18 @@ class _PhoneBody extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              Reveal(delay: const Duration(milliseconds: 40), child: ScheduleCard(items: data.schedule, now: now)),
+                              Reveal(
+                                delay: const Duration(milliseconds: 40),
+                                child: ScheduleCard(
+                                  items: data.schedule,
+                                  now: now,
+                                ),
+                              ),
                               const SizedBox(height: 16),
-                              Reveal(delay: const Duration(milliseconds: 80), child: QuickActionsCard(onNavigate: onNavigate)),
+                              Reveal(
+                                delay: const Duration(milliseconds: 80),
+                                child: QuickActionsCard(onNavigate: onNavigate),
+                              ),
                             ],
                           ],
                         ),

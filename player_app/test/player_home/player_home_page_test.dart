@@ -385,20 +385,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the web brand bar shows only the agreed links, with the logo leading Home', (tester) async {
+    testWidgets('the web brand bar: Venues, Memberships, Coaching, Tournaments, the city, a bell and a profile circle (no Home link)', (tester) async {
       final h = await pumpHome(tester, size: const Size(1280, 800));
-      for (final label in ['Venues', 'Coaching', 'Tournaments', 'Login', 'Location']) {
-        expect(find.text(label), findsWidgets, reason: label);
+      for (final label in ['Venues', 'Memberships', 'Coaching', 'Tournaments']) {
+        expect(find.byKey(ValueKey('nav-$label')), findsOneWidget, reason: label);
       }
-      // no Memberships link (it was removed from the bar), no Home link, no notification bell, no profile icon
-      expect(find.widgetWithText(Pressable, 'Memberships'), findsNothing);
+      // no Home link (the logo is the way home); the Location button shows the picked city; bell and profile circle on the right
+      expect(find.byKey(const ValueKey('nav-Home')), findsNothing);
       expect(find.widgetWithText(Pressable, 'Home'), findsNothing);
-      expect(find.bySemanticsLabel(RegExp('Notifications')), findsNothing);
-      expect(find.byIcon(Icons.person_rounded), findsNothing);
+      expect(find.descendant(of: find.byKey(const ValueKey('location-button')), matching: find.text('Bangalore, Karnataka')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('Notifications')), findsOneWidget);
+      expect(find.byIcon(Icons.person_rounded), findsOneWidget);
 
-      await tester.tap(find.text('Login'));
-      await tester.tap(find.text('Coaching').first);
-      expect(h.routes, [AppRoutes.login, AppRoutes.coaching]);
+      await tester.tap(find.byKey(const ValueKey('login-button')));
+      await tester.tap(find.byKey(const ValueKey('nav-Coaching')));
+      await tester.tap(find.byKey(const ValueKey('nav-Memberships')));
+      await tester.tap(find.bySemanticsLabel(RegExp('Notifications')));
+      expect(h.routes, [AppRoutes.login, AppRoutes.coaching, AppRoutes.memberships, AppRoutes.notifications]);
 
       // the logo goes to Home from any tab
       await tester.tap(find.text('Venues'));

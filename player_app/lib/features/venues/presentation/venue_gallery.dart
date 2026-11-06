@@ -54,17 +54,28 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
     final n = widget.photos.length;
     if (n == 0) return;
     final target = (i % n + n) % n;
-    _controller.animateToPage(target, duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
+    _controller.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
   }
 
   Widget _photo(String url) => Image.network(
-        url,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        frameBuilder: (context, child, frame, sync) => sync ? child : AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 350), curve: Curves.easeOut, child: child),
-        errorBuilder: (_, _, _) => VenueScene(sport: widget.sport),
-      );
+    url,
+    fit: BoxFit.cover,
+    width: double.infinity,
+    height: double.infinity,
+    frameBuilder: (context, child, frame, sync) => sync
+        ? child
+        : AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOut,
+            child: child,
+          ),
+    errorBuilder: (_, _, _) => VenueScene(sport: widget.sport),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +106,32 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
                 left: 12,
                 top: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: AppColors.violet.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.violet.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [Icon(Icons.verified_rounded, size: 15, color: Colors.white), SizedBox(width: 6), Text('Verified Venue', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))],
+                    children: [
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Verified Venue',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -111,20 +143,53 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
                 label: saved ? 'Remove from saved' : 'Save venue',
                 child: Pressable(
                   key: const ValueKey('gallery-heart'),
-                  onTap: () => ref.read(savedVenuesProvider.notifier).toggle(widget.venueId),
+                  onTap: () => ref
+                      .read(savedVenuesProvider.notifier)
+                      .toggle(widget.venueId),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     width: 38,
                     height: 38,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.black.withValues(alpha: 0.5)),
-                    child: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 21, color: saved ? AppColors.danger : Colors.white),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.black.withValues(alpha: 0.5),
+                    ),
+                    child: Icon(
+                      saved
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 21,
+                      color: saved ? AppColors.danger : Colors.white,
+                    ),
                   ),
                 ),
               ),
             ),
             if (widget.arrows && photos.length > 1) ...[
-              Positioned(left: 12, top: 0, bottom: 0, child: Center(child: _Arrow(key: const ValueKey('gallery-prev'), icon: Icons.chevron_left_rounded, onTap: () => _go(_page - 1)))),
-              Positioned(right: 12, top: 0, bottom: 0, child: Center(child: _Arrow(key: const ValueKey('gallery-next'), icon: Icons.chevron_right_rounded, onTap: () => _go(_page + 1)))),
+              Positioned(
+                left: 12,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _Arrow(
+                    key: const ValueKey('gallery-prev'),
+                    icon: Icons.chevron_left_rounded,
+                    onTap: () => _go(_page - 1),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _Arrow(
+                    key: const ValueKey('gallery-next'),
+                    icon: Icons.chevron_right_rounded,
+                    onTap: () => _go(_page + 1),
+                  ),
+                ),
+              ),
             ],
             if (photos.length > 1)
               Positioned(
@@ -137,9 +202,23 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(14)),
-                            child: Text('${_page + 1} / ${photos.length}', key: const ValueKey('gallery-counter'), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              '${_page + 1} / ${photos.length}',
+                              key: const ValueKey('gallery-counter'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       )
@@ -152,7 +231,12 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
                               margin: const EdgeInsets.symmetric(horizontal: 4),
                               width: i == _page ? 22 : 8,
                               height: 8,
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: i == _page ? AppColors.violet : Colors.white.withValues(alpha: 0.8)),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                color: i == _page
+                                    ? AppColors.violet
+                                    : Colors.white.withValues(alpha: 0.8),
+                              ),
                             ),
                         ],
                       ),
@@ -182,9 +266,18 @@ class _VenueGalleryState extends ConsumerState<VenueGallery> {
                   onTap: () => _go(i),
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: i == _page ? AppColors.cyan : p.border, width: i == _page ? 2 : 1)),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: i == _page ? AppColors.cyan : p.border,
+                        width: i == _page ? 2 : 1,
+                      ),
+                    ),
                     clipBehavior: Clip.antiAlias,
-                    child: AspectRatio(aspectRatio: 1.45, child: _photo(thumbs[i])),
+                    child: AspectRatio(
+                      aspectRatio: 1.45,
+                      child: _photo(thumbs[i]),
+                    ),
                   ),
                 ),
               ],
@@ -204,13 +297,17 @@ class _Arrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Pressable(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5), border: Border.all(color: Colors.white24)),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-      );
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(20),
+    child: Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.black.withValues(alpha: 0.5),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Icon(icon, color: Colors.white, size: 24),
+    ),
+  );
 }

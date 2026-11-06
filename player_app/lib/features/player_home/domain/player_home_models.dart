@@ -18,6 +18,7 @@ class PlayerHomeData {
     this.guestBookings = const GuestBookingSummary(),
     this.schedule = const [],
     this.courtsToday = const [],
+    this.pendingPayments = const [],
   });
 
   /// A visitor who is not signed in (or a brand-new player): nothing enrolled, nothing booked.
@@ -34,7 +35,8 @@ class PlayerHomeData {
       coaching = const [],
       guestBookings = const GuestBookingSummary(),
       schedule = const [],
-      courtsToday = const [];
+      courtsToday = const [],
+      pendingPayments = const [];
 
   factory PlayerHomeData.fromJson(Map<String, dynamic> json) {
     final bookings = (json['upcomingBookings'] as List<dynamic>? ?? const [])
@@ -55,14 +57,22 @@ class PlayerHomeData {
       email: json['email'] as String?,
       memberships: _list(json['memberships'], ActiveMembership.fromJson),
       coaching: _list(json['coaching'], ActiveCoaching.fromJson),
-      guestBookings: GuestBookingSummary.fromJson(json['guestBookings'] is Map ? (json['guestBookings'] as Map).cast<String, dynamic>() : null),
+      guestBookings: GuestBookingSummary.fromJson(
+        json['guestBookings'] is Map
+            ? (json['guestBookings'] as Map).cast<String, dynamic>()
+            : null,
+      ),
       schedule: _list(json['schedule'], ScheduleItem.fromJson),
       courtsToday: _list(json['courtsToday'], ScheduleItem.fromJson),
+      pendingPayments: _list(json['pendingPayments'], PendingPayment.fromJson),
     );
   }
 
   static List<T> _list<T>(Object? raw, T Function(Map<String, dynamic>) make) =>
-      [for (final e in (raw as List<dynamic>? ?? const [])) make((e as Map).cast<String, dynamic>())];
+      [
+        for (final e in (raw as List<dynamic>? ?? const []))
+          make((e as Map).cast<String, dynamic>()),
+      ];
 
   /// True when the player is signed in with a profile (so the personal Home is shown rather than the visitor's).
   final bool signedIn;
@@ -79,6 +89,9 @@ class PlayerHomeData {
 
   /// What is happening today (on a court).
   final List<ScheduleItem> courtsToday;
+
+  /// Memberships, coaching and bookings that are not fully paid: shown as prompts with a way to pay, never as Active / Enrolled.
+  final List<PendingPayment> pendingPayments;
 
   final String? fullName;
   final int unreadNotifications;

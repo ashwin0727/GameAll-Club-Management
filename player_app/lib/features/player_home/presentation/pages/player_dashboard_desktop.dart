@@ -4,11 +4,18 @@ import '../../../../core/routing/app_routes.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/reveal.dart';
 import '../../domain/player_home_models.dart';
+import '../widgets/payment_prompts.dart';
 import '../widgets/player_dashboard.dart';
 
 /// The wide-screen Home of a signed-in player: welcome, the three summary cards, then the schedule and quick actions side by side. The brand bar scrolls with the page, as on the visitor's Home.
 class PlayerDashboardDesktop extends StatelessWidget {
-  const PlayerDashboardDesktop({super.key, required this.data, required this.onNavigate, this.header, this.now});
+  const PlayerDashboardDesktop({
+    super.key,
+    required this.data,
+    required this.onNavigate,
+    this.header,
+    this.now,
+  });
 
   final PlayerHomeData data;
   final RouteCallback onNavigate;
@@ -21,8 +28,14 @@ class PlayerDashboardDesktop extends StatelessWidget {
     final side = AppDimensions.desktopSidePadding(width);
     final twoColumns = width >= 1000;
 
-    final schedule = Reveal(delay: const Duration(milliseconds: 120), child: ScheduleCard(items: data.schedule, now: now));
-    final actions = Reveal(delay: const Duration(milliseconds: 160), child: QuickActionsCard(onNavigate: onNavigate));
+    final schedule = Reveal(
+      delay: const Duration(milliseconds: 120),
+      child: ScheduleCard(items: data.schedule, now: now),
+    );
+    final actions = Reveal(
+      delay: const Duration(milliseconds: 160),
+      child: QuickActionsCard(onNavigate: onNavigate),
+    );
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -37,14 +50,33 @@ class PlayerDashboardDesktop extends StatelessWidget {
               children: [
                 Reveal(child: DashboardWelcome(data: data)),
                 const SizedBox(height: 24),
-                Reveal(delay: const Duration(milliseconds: 60), child: DashboardSummaryCards(data: data, onNavigate: onNavigate)),
+                // Anything not fully paid is a prompt with a way to pay, ahead of the cards (it is not "Active" until it is paid).
+                if (data.pendingPayments.isNotEmpty) ...[
+                  PaymentPrompts(payments: data.pendingPayments),
+                  const SizedBox(height: 10),
+                ],
+                Reveal(
+                  delay: const Duration(milliseconds: 60),
+                  child: DashboardSummaryCards(
+                    data: data,
+                    onNavigate: onNavigate,
+                  ),
+                ),
                 const SizedBox(height: 22),
                 if (twoColumns)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [Expanded(flex: 11, child: schedule), const SizedBox(width: 20), Expanded(flex: 9, child: actions)],
+                    children: [
+                      Expanded(flex: 11, child: schedule),
+                      const SizedBox(width: 20),
+                      Expanded(flex: 9, child: actions),
+                    ],
                   )
-                else ...[schedule, const SizedBox(height: 20), actions],
+                else ...[
+                  schedule,
+                  const SizedBox(height: 20),
+                  actions,
+                ],
               ],
             ),
           ),

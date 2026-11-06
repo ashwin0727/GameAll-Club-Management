@@ -230,7 +230,7 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('explore-memberships')));
       await tester.tap(find.byKey(const ValueKey('explore-memberships')));
       await tester.tap(find.byKey(const ValueKey('explore-coaching')));
-      expect(routes, [AppRoutes.enrollPath('v1'), AppRoutes.coaching]);
+      expect(routes, [AppRoutes.enrollPath('v1'), AppRoutes.coachingEnrollPath('v1')]);
     });
 
     testWidgets('has no breadcrumb row above the title', (tester) async {
@@ -617,6 +617,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('programs-list')), findsOneWidget);
       expect(find.text('Juniors'), findsOneWidget);
+      // the phone's Coaching tab leads to the venue's coaching page (programs, coaches, time slots, pay)
+      await tester.ensureVisible(find.byKey(const ValueKey('join-coaching')));
+      await tester.tap(find.byKey(const ValueKey('join-coaching')));
+      expect(r.last, AppRoutes.coachingEnrollPath('v1'));
       expect(tester.takeException(), isNull);
     });
 

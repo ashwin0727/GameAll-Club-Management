@@ -26,16 +26,51 @@ class AppRoutes {
   /// A venue's Enroll Membership page: `/enroll/<id>`.
   static const enroll = '/enroll';
   static String enrollPath(String id) => '$enroll/$id';
-  static String? enrollVenueIdOf(String route) => route.startsWith('$enroll/') && route.length > enroll.length + 1 ? route.substring(enroll.length + 1) : null;
+  static String? enrollVenueIdOf(String route) =>
+      route.startsWith('$enroll/') && route.length > enroll.length + 1
+      ? route.substring(enroll.length + 1)
+      : null;
+
+  /// A venue's Coaching enrolment page: `/coaching-enroll/<id>`.
+  static const coachingEnroll = '/coaching-enroll';
+  static String coachingEnrollPath(String id) => '$coachingEnroll/$id';
+  static String? coachingEnrollVenueIdOf(String route) =>
+      route.startsWith('$coachingEnroll/') &&
+          route.length > coachingEnroll.length + 1
+      ? route.substring(coachingEnroll.length + 1)
+      : null;
 
   /// A venue's Book a Court page: `/book/<id>`.
   static const book = '/book';
   static String bookPath(String id) => '$book/$id';
 
   /// The venue id in a `/book/<id>` route, or null when [route] is not one.
-  static String? bookVenueIdOf(String route) => route.startsWith('$book/') && route.length > book.length + 1 ? route.substring(book.length + 1) : null;
+  static String? bookVenueIdOf(String route) =>
+      route.startsWith('$book/') && route.length > book.length + 1
+      ? route.substring(book.length + 1)
+      : null;
 
-  static String? venueIdOf(String route) => route.startsWith('$venue/') && route.length > venue.length + 1 ? route.substring(venue.length + 1) : null;
+  static String? venueIdOf(String route) =>
+      route.startsWith('$venue/') && route.length > venue.length + 1
+      ? route.substring(venue.length + 1)
+      : null;
+
+  /// True for a route the signed-in shell shows itself (a tab, a brand-bar page, or a venue / booking / enrolment page), so a
+  /// refreshed browser tab on one of them reopens the shell on that page instead of on Home.
+  static bool isShellRoute(String route) =>
+      venueIdOf(route) != null ||
+      bookVenueIdOf(route) != null ||
+      enrollVenueIdOf(route) != null ||
+      coachingEnrollVenueIdOf(route) != null ||
+      const {
+        explore,
+        bookings,
+        profile,
+        memberships,
+        coaching,
+        guestBooking,
+        tournaments,
+      }.contains(route);
 }
 
 /// Opens a route. The Home widgets take one of these so a test can record the taps.

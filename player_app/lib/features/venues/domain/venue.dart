@@ -16,10 +16,18 @@ enum VenueType { indoor, outdoor }
 
 /// The five things a venue says it offers. Each is simply on or off.
 class Amenities {
-  const Amenities({this.parking = false, this.changingRooms = false, this.toilets = false, this.cafeteria = false, this.equipmentRental = false});
+  const Amenities({
+    this.parking = false,
+    this.changingRooms = false,
+    this.toilets = false,
+    this.cafeteria = false,
+    this.equipmentRental = false,
+  });
 
   factory Amenities.fromJson(Object? raw) {
-    final m = raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
+    final m = raw is Map
+        ? raw.cast<String, dynamic>()
+        : const <String, dynamic>{};
     return Amenities(
       parking: m['parking'] == true,
       changingRooms: m['changingRooms'] == true,
@@ -37,12 +45,12 @@ class Amenities {
 
   /// The labels of the ones that are on, in a fixed order: "Free Parking", "Changing Rooms"...
   List<String> get labels => [
-        if (parking) 'Free Parking',
-        if (changingRooms) 'Changing Rooms',
-        if (toilets) 'Toilets / Rest Room',
-        if (cafeteria) 'Cafeteria',
-        if (equipmentRental) 'Equipment Rental',
-      ];
+    if (parking) 'Free Parking',
+    if (changingRooms) 'Changing Rooms',
+    if (toilets) 'Toilets / Rest Room',
+    if (cafeteria) 'Cafeteria',
+    if (equipmentRental) 'Equipment Rental',
+  ];
 }
 
 /// A venue a player can see: only what a visitor needs.
@@ -68,13 +76,24 @@ class Venue {
     this.programNames = const [],
     this.programCount = 0,
     this.minProgramPriceInr,
+    this.planPrices = const [],
+    this.membershipDays = const {},
+    this.opens,
+    this.closes,
+    this.open24h = false,
   });
 
   factory Venue.fromJson(Map<String, dynamic> json) {
-    Map<String, dynamic> group(String key) => json[key] is Map ? (json[key] as Map).cast<String, dynamic>() : const {};
-    List<String> names(Object? raw) => [for (final s in (raw as List<dynamic>? ?? const [])) if (s != null) s.toString()];
+    Map<String, dynamic> group(String key) => json[key] is Map
+        ? (json[key] as Map).cast<String, dynamic>()
+        : const {};
+    List<String> names(Object? raw) => [
+      for (final s in (raw as List<dynamic>? ?? const []))
+        if (s != null) s.toString(),
+    ];
     final memberships = group('memberships');
     final coaching = group('coaching');
+    final hours = group('hours');
     return Venue(
       id: json['id'] as String,
       name: (json['name'] as String?) ?? 'Venue',
@@ -100,6 +119,14 @@ class Venue {
       programNames: names(coaching['names']),
       programCount: (coaching['count'] as num?)?.toInt() ?? 0,
       minProgramPriceInr: _price(coaching['minPriceInr']),
+      planPrices: PlanPrice.listFrom(memberships['plans']),
+      membershipDays: {
+        for (final d in (memberships['days'] as List<dynamic>? ?? const []))
+          if (d is num) d.toInt(),
+      },
+      opens: _clean(hours['opens'] as String?),
+      closes: _clean(hours['closes'] as String?),
+      open24h: hours['open24h'] == true,
     );
   }
 
@@ -136,36 +163,63 @@ class Venue {
   final int programCount;
   final int? minProgramPriceInr;
 
+  /// Every active membership plan: its length in days and price (the Memberships page shows the lowest of each length).
+  final List<PlanPrice> planPrices;
+
+  /// The weekdays any membership batch runs on (0 = Sunday ... 6 = Saturday).
+  final Set<int> membershipDays;
+
+  /// Opening hours as "HH:MM" (null when the owner has not set them), and whether the venue is open round the clock.
+  final String? opens;
+  final String? closes;
+  final bool open24h;
+
+  /// "6:00 AM - 10:00 PM", "Open 24 hours", or null.
+  String? get hoursLabel {
+    if (open24h && opens == null) return 'Open 24 hours';
+    if (opens == null || closes == null) return null;
+    return '${_clock12(opens!)} - ${_clock12(closes!)}';
+  }
+
   /// True when any court is on turf (or grass).
-  bool get hasTurf => surfaces.any((s) => s.contains('turf') || s.contains('grass'));
+  bool get hasTurf =>
+      surfaces.any((s) => s.contains('turf') || s.contains('grass'));
 
   /// "Indiranagar, Bangalore"
   String get place {
     // "Chennai, Chennai" is just "Chennai": the area is dropped when it repeats the city
     final a = (area ?? '').trim();
-    final showArea = a.isNotEmpty && a.toLowerCase() != city.trim().toLowerCase();
+    final showArea =
+        a.isNotEmpty && a.toLowerCase() != city.trim().toLowerCase();
     return [if (showArea) a, city].where((p) => p.trim().isNotEmpty).join(', ');
   }
 
   String get initials {
-    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.isEmpty) return '?';
-    return (words.length == 1 ? words.first.substring(0, 1) : words.first.substring(0, 1) + words[1].substring(0, 1)).toUpperCase();
+    return (words.length == 1
+            ? words.first.substring(0, 1)
+            : words.first.substring(0, 1) + words[1].substring(0, 1))
+        .toUpperCase();
   }
 
   /// The price a card for [kind] shows (rupees), or null when there is none.
   int? priceFor(VenueKind kind) => switch (kind) {
-        VenueKind.venues => minCourtPriceInr,
-        VenueKind.memberships => minPlanPriceInr,
-        VenueKind.coaching => minProgramPriceInr,
-      };
+    VenueKind.venues => minCourtPriceInr,
+    VenueKind.memberships => minPlanPriceInr,
+    VenueKind.coaching => minProgramPriceInr,
+  };
 
   /// The chips a card for [kind] shows: sports, plan names or programme names.
   List<String> chipsFor(VenueKind kind) => switch (kind) {
-        VenueKind.venues => sports,
-        VenueKind.memberships => planNames,
-        VenueKind.coaching => programNames,
-      };
+    VenueKind.venues => sports,
+    VenueKind.memberships => planNames,
+    VenueKind.coaching => programNames,
+  };
 
   /// A price in rupees, or null when it is missing or 0 (a rate that was never set is not "free").
   static int? _price(Object? v) {
@@ -173,7 +227,8 @@ class Venue {
     return (n == null || n <= 0) ? null : n;
   }
 
-  static String? _clean(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
+  static String? _clean(String? v) =>
+      (v == null || v.trim().isEmpty) ? null : v.trim();
 }
 
 /// The two halves of a picked location such as "Bangalore, Karnataka".
@@ -205,4 +260,27 @@ String rupees(int amount) {
     grouped = '${parts.join(',')},$last3';
   }
   return '${amount < 0 ? '-' : ''}₹$grouped';
+}
+
+/// "06:00" -> "6:00 AM", "22:30" -> "10:30 PM".
+String _clock12(String hhmm) {
+  final parts = hhmm.split(':');
+  final h = int.tryParse(parts.first) ?? 0;
+  final m = parts.length > 1 ? parts[1].padLeft(2, '0') : '00';
+  final hour = h % 12 == 0 ? 12 : h % 12;
+  return '$hour:$m ${h < 12 || h == 24 ? 'AM' : 'PM'}';
+}
+
+/// One membership plan's length and price.
+class PlanPrice {
+  const PlanPrice(this.durationDays, this.priceInr);
+
+  final int durationDays;
+  final int priceInr;
+
+  static List<PlanPrice> listFrom(Object? raw) => [
+    for (final e in (raw as List<dynamic>? ?? const []))
+      if (e is Map && e['priceInr'] is num && e['durationDays'] is num)
+        PlanPrice((e['durationDays'] as num).toInt(), (e['priceInr'] as num).toInt()),
+  ];
 }

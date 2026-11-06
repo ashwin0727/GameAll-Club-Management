@@ -44,7 +44,12 @@ class SectionScaffold extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Expanded(child: Text(title, style: AppTextStyles.greeting(p.primaryText))),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: AppTextStyles.greeting(p.primaryText),
+                        ),
+                      ),
                       ?trailing,
                     ],
                   ),
@@ -52,7 +57,12 @@ class SectionScaffold extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(subtitle!, style: AppTextStyles.body(p.secondaryText)),
                   ],
-                  if (trailing != null) Container(height: 1, margin: const EdgeInsets.only(top: 0), color: p.border),
+                  if (trailing != null)
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.only(top: 0),
+                      color: p.border,
+                    ),
                 ],
               ),
             ),

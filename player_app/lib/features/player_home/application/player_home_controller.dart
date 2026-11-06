@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/pending_payment_repository.dart';
 import '../data/player_home_repository.dart';
 import '../domain/player_home_models.dart';
 
 /// The data source. Tests override this with a fake.
 final playerHomeRepositoryProvider = Provider<PlayerHomeRepository>(
   (ref) => SupabasePlayerHomeRepository(),
+);
+
+/// Opens the payment page for an unpaid membership, coaching enrolment or booking. Tests override this with a fake.
+final pendingPaymentRepositoryProvider = Provider<PendingPaymentRepository>(
+  (ref) => SupabasePendingPaymentRepository(),
 );
 
 /// Loads the Home data once, and again on pull-to-refresh.

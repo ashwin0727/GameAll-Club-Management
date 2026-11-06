@@ -11,14 +11,23 @@ class EnrollInfo {
   });
 
   factory EnrollInfo.fromJson(Map<String, dynamic> json) {
-    Map<String, dynamic> map(Object? v) => v is Map ? v.cast<String, dynamic>() : const {};
-    List<Map<String, dynamic>> list(Object? v) => [for (final e in (v as List<dynamic>? ?? const [])) map(e)];
+    Map<String, dynamic> map(Object? v) =>
+        v is Map ? v.cast<String, dynamic>() : const {};
+    List<Map<String, dynamic>> list(Object? v) => [
+      for (final e in (v as List<dynamic>? ?? const [])) map(e),
+    ];
     return EnrollInfo(
       venueId: (json['facilityId'] as String?) ?? '',
       venueName: (json['facilityName'] as String?) ?? '',
       accepting: json['accepting'] != false,
       autopayAvailable: json['autopayAvailable'] != false,
-      sports: [for (final s in list(json['sports'])) EnrollSport(id: (s['id'] as String?) ?? '', name: (s['name'] as String?) ?? '')],
+      sports: [
+        for (final s in list(json['sports']))
+          EnrollSport(
+            id: (s['id'] as String?) ?? '',
+            name: (s['name'] as String?) ?? '',
+          ),
+      ],
       slots: [for (final s in list(json['slots'])) EnrollSlot.fromJson(s)],
       plans: [for (final p in list(json['plans'])) EnrollPlan.fromJson(p)],
     );
@@ -62,15 +71,18 @@ class EnrollSlot {
   });
 
   factory EnrollSlot.fromJson(Map<String, dynamic> json) => EnrollSlot(
-        sportId: (json['facilitySportId'] as String?) ?? '',
-        sportName: (json['sportName'] as String?) ?? '',
-        start: _clock(json['startTime']),
-        end: _clock(json['endTime']),
-        capacity: (json['capacity'] as num?)?.toInt() ?? 0,
-        membersNow: (json['membersNow'] as num?)?.toInt() ?? 0,
-        spare: (json['spare'] as num?)?.toInt() ?? 0,
-        batches: [for (final b in (json['batches'] as List<dynamic>? ?? const [])) EnrollBatch.fromJson((b as Map).cast<String, dynamic>())],
-      );
+    sportId: (json['facilitySportId'] as String?) ?? '',
+    sportName: (json['sportName'] as String?) ?? '',
+    start: _clock(json['startTime']),
+    end: _clock(json['endTime']),
+    capacity: (json['capacity'] as num?)?.toInt() ?? 0,
+    membersNow: (json['membersNow'] as num?)?.toInt() ?? 0,
+    spare: (json['spare'] as num?)?.toInt() ?? 0,
+    batches: [
+      for (final b in (json['batches'] as List<dynamic>? ?? const []))
+        EnrollBatch.fromJson((b as Map).cast<String, dynamic>()),
+    ],
+  );
 
   final String sportId;
   final String sportName;
@@ -93,10 +105,13 @@ class EnrollSlot {
   Set<String> get planIds => {for (final b in batches) b.planId};
 
   /// The first batch of [planId] in this slot. (Clubs put no limit on how many members share a slot.)
-  EnrollBatch? batchFor(String planId) => batches.where((b) => b.planId == planId).firstOrNull;
+  EnrollBatch? batchFor(String planId) =>
+      batches.where((b) => b.planId == planId).firstOrNull;
 
   /// Members playing in this slot on [planId]'s batches.
-  int membersOn(String planId) => batches.where((b) => b.planId == planId).fold(0, (n, b) => n + b.enrolled);
+  int membersOn(String planId) => batches
+      .where((b) => b.planId == planId)
+      .fold(0, (n, b) => n + b.enrolled);
 
   @override
   bool operator ==(Object other) => other is EnrollSlot && other.key == key;
@@ -106,17 +121,28 @@ class EnrollSlot {
 }
 
 class EnrollBatch {
-  const EnrollBatch({required this.id, required this.planId, this.courtName = '', this.capacity = 0, this.enrolled = 0, this.spare = 0, this.days = const []});
+  const EnrollBatch({
+    required this.id,
+    required this.planId,
+    this.courtName = '',
+    this.capacity = 0,
+    this.enrolled = 0,
+    this.spare = 0,
+    this.days = const [],
+  });
 
   factory EnrollBatch.fromJson(Map<String, dynamic> json) => EnrollBatch(
-        id: (json['batchId'] as String?) ?? '',
-        planId: (json['planId'] as String?) ?? '',
-        courtName: (json['courtName'] as String?) ?? '',
-        capacity: (json['capacity'] as num?)?.toInt() ?? 0,
-        enrolled: (json['enrolled'] as num?)?.toInt() ?? 0,
-        spare: (json['spare'] as num?)?.toInt() ?? 0,
-        days: [for (final d in (json['daysOfWeek'] as List<dynamic>? ?? const [])) (d as num).toInt()],
-      );
+    id: (json['batchId'] as String?) ?? '',
+    planId: (json['planId'] as String?) ?? '',
+    courtName: (json['courtName'] as String?) ?? '',
+    capacity: (json['capacity'] as num?)?.toInt() ?? 0,
+    enrolled: (json['enrolled'] as num?)?.toInt() ?? 0,
+    spare: (json['spare'] as num?)?.toInt() ?? 0,
+    days: [
+      for (final d in (json['daysOfWeek'] as List<dynamic>? ?? const []))
+        (d as num).toInt(),
+    ],
+  );
 
   final String id;
   final String planId;
@@ -154,7 +180,10 @@ class EnrollPlan {
       durationDays: (json['durationDays'] as num?)?.toInt() ?? 30,
       description: clean(json['description']),
       badge: clean(json['badgeText']),
-      features: [for (final f in (json['features'] as List<dynamic>? ?? const [])) if (clean(f) != null) clean(f)!],
+      features: [
+        for (final f in (json['features'] as List<dynamic>? ?? const []))
+          if (clean(f) != null) clean(f)!,
+      ],
       joiningFeeInr: (json['joiningFeeInr'] as num?)?.toInt() ?? 0,
     );
   }
@@ -169,13 +198,16 @@ class EnrollPlan {
   final int joiningFeeInr;
 
   /// Whole months of the plan (30 → 1, 90 → 3, 365 → 12), or null for a custom length under four weeks.
-  int? get months => durationDays >= 28 ? (durationDays / 30).round().clamp(1, 120) : null;
+  int? get months =>
+      durationDays >= 28 ? (durationDays / 30).round().clamp(1, 120) : null;
 
   /// "Valid for 1 month", "Valid for 3 months", "Valid for 1 year", "Valid for 10 days".
   String get validFor {
     final m = months;
-    if (m == null) return 'Valid for $durationDays ${durationDays == 1 ? 'day' : 'days'}';
-    if (durationDays >= 360 && m % 12 == 0) return 'Valid for ${m ~/ 12} ${m == 12 ? 'year' : 'years'}';
+    if (m == null)
+      return 'Valid for $durationDays ${durationDays == 1 ? 'day' : 'days'}';
+    if (durationDays >= 360 && m % 12 == 0)
+      return 'Valid for ${m ~/ 12} ${m == 12 ? 'year' : 'years'}';
     return 'Valid for $m ${m == 1 ? 'month' : 'months'}';
   }
 
@@ -204,27 +236,39 @@ class EnrollPlan {
     var year = from.year + (from.month - 1 + m) ~/ 12;
     var month = (from.month - 1 + m) % 12 + 1;
     final last = DateTime(year, month + 1, 0).day;
-    return DateTime(year, month, from.day > last ? last : from.day).subtract(const Duration(days: 1));
+    return DateTime(
+      year,
+      month,
+      from.day > last ? last : from.day,
+    ).subtract(const Duration(days: 1));
   }
 }
 
 /// A membership the player's phone number already has at the venue (`get_my_memberships_at`).
 class ExistingMembership {
-  const ExistingMembership({required this.id, required this.planName, this.endDate, this.autoRenew = false, this.slots = const []});
+  const ExistingMembership({
+    required this.id,
+    required this.planName,
+    this.endDate,
+    this.autoRenew = false,
+    this.slots = const [],
+  });
 
-  factory ExistingMembership.fromJson(Map<String, dynamic> json) => ExistingMembership(
-        id: (json['membershipId'] as String?) ?? '',
-        planName: (json['planName'] as String?) ?? 'Membership',
-        endDate: DateTime.tryParse((json['endDate'] as String?) ?? ''),
-        autoRenew: json['autoRenew'] == true,
-        slots: [
-          for (final s in (json['slots'] as List<dynamic>? ?? const []))
-            () {
-              final m = (s as Map).cast<String, dynamic>();
-              return '${clockLabel(_clock(m['startTime']))} – ${clockLabel(_clock(m['endTime']))}';
-            }(),
-        ],
-      );
+  factory ExistingMembership.fromJson(
+    Map<String, dynamic> json,
+  ) => ExistingMembership(
+    id: (json['membershipId'] as String?) ?? '',
+    planName: (json['planName'] as String?) ?? 'Membership',
+    endDate: DateTime.tryParse((json['endDate'] as String?) ?? ''),
+    autoRenew: json['autoRenew'] == true,
+    slots: [
+      for (final s in (json['slots'] as List<dynamic>? ?? const []))
+        () {
+          final m = (s as Map).cast<String, dynamic>();
+          return '${clockLabel(_clock(m['startTime']))} – ${clockLabel(_clock(m['endTime']))}';
+        }(),
+    ],
+  );
 
   final String id;
   final String planName;

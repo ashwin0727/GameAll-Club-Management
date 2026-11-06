@@ -29,15 +29,21 @@ class VenueDetail {
   });
 
   factory VenueDetail.fromJson(Map<String, dynamic> json) {
-    Map<String, dynamic> map(Object? v) => v is Map ? v.cast<String, dynamic>() : const {};
-    List<Map<String, dynamic>> list(Object? v) => [for (final e in (v as List<dynamic>? ?? const [])) map(e)];
+    Map<String, dynamic> map(Object? v) =>
+        v is Map ? v.cast<String, dynamic>() : const {};
+    List<Map<String, dynamic>> list(Object? v) => [
+      for (final e in (v as List<dynamic>? ?? const [])) map(e),
+    ];
     String? clean(Object? v) {
       final s = (v as String?)?.trim();
       return (s == null || s.isEmpty) ? null : s;
     }
 
     final hours = map(json['hours']);
-    final photos = [for (final p in (json['photos'] as List<dynamic>? ?? const [])) if (p != null) p.toString()];
+    final photos = [
+      for (final p in (json['photos'] as List<dynamic>? ?? const []))
+        if (p != null) p.toString(),
+    ];
     final hero = clean(json['heroImageUrl']);
     return VenueDetail(
       id: json['id'] as String,
@@ -63,18 +69,39 @@ class VenueDetail {
         final n = (json['minCourtPriceInr'] as num?)?.toInt();
         return (n == null || n <= 0) ? null : n;
       }(),
-      sports: [for (final s in list(json['sports'])) VenueSport(id: s['facilitySportId'] as String, name: (s['name'] as String?) ?? '')],
-      courts: [for (final c in list(json['courts'])) VenueCourt(id: c['id'] as String, name: (c['name'] as String?) ?? '', sportId: c['facilitySportId'] as String?)],
+      sports: [
+        for (final s in list(json['sports']))
+          VenueSport(
+            id: s['facilitySportId'] as String,
+            name: (s['name'] as String?) ?? '',
+          ),
+      ],
+      courts: [
+        for (final c in list(json['courts']))
+          VenueCourt(
+            id: c['id'] as String,
+            name: (c['name'] as String?) ?? '',
+            sportId: c['facilitySportId'] as String?,
+          ),
+      ],
       opens: clean(hours['opens']),
       closes: clean(hours['closes']),
       open24h: hours['open24h'] == true,
       plans: [
         for (final p in list(map(json['memberships'])['plans']))
-          VenuePlan(name: (p['name'] as String?) ?? '', priceInr: (p['priceInr'] as num?)?.toInt() ?? 0, durationDays: (p['durationDays'] as num?)?.toInt() ?? 30),
+          VenuePlan(
+            name: (p['name'] as String?) ?? '',
+            priceInr: (p['priceInr'] as num?)?.toInt() ?? 0,
+            durationDays: (p['durationDays'] as num?)?.toInt() ?? 30,
+          ),
       ],
       programs: [
         for (final p in list(map(json['coaching'])['programs']))
-          VenueProgram(name: (p['name'] as String?) ?? '', level: clean(p['level']), priceInr: (p['priceInr'] as num?)?.toInt()),
+          VenueProgram(
+            name: (p['name'] as String?) ?? '',
+            level: clean(p['level']),
+            priceInr: (p['priceInr'] as num?)?.toInt(),
+          ),
       ],
     );
   }
@@ -134,7 +161,9 @@ class VenueDetail {
     var total = 0;
     for (final court in courts) {
       final kind = sportKindOf(sportNames[court.sportId]);
-      total += (kind == SportKind.cricket || kind == SportKind.football) ? 15 : 8;
+      total += (kind == SportKind.cricket || kind == SportKind.football)
+          ? 15
+          : 8;
     }
     return total;
   }
@@ -148,10 +177,16 @@ class VenueDetail {
     return '${rounded < 10 ? 10 : rounded}+ Players';
   }
 
-  VenuePlan? get cheapestPlan => plans.isEmpty ? null : (plans.toList()..sort((a, b) => a.priceInr.compareTo(b.priceInr))).first;
+  VenuePlan? get cheapestPlan => plans.isEmpty
+      ? null
+      : (plans.toList()..sort((a, b) => a.priceInr.compareTo(b.priceInr)))
+            .first;
 
   int? get cheapestProgramPrice {
-    final prices = [for (final p in programs) if (p.priceInr != null) p.priceInr!];
+    final prices = [
+      for (final p in programs)
+        if (p.priceInr != null) p.priceInr!,
+    ];
     return prices.isEmpty ? null : (prices..sort()).first;
   }
 
@@ -173,7 +208,11 @@ class VenueCourt {
 }
 
 class VenuePlan {
-  const VenuePlan({required this.name, required this.priceInr, required this.durationDays});
+  const VenuePlan({
+    required this.name,
+    required this.priceInr,
+    required this.durationDays,
+  });
   final String name;
   final int priceInr;
   final int durationDays;
@@ -198,21 +237,25 @@ class VenueProgram {
 
 /// One court's hourly slots on a day (`get_public_court_availability`).
 class CourtSlots {
-  const CourtSlots({required this.courtId, required this.courtName, required this.slots});
+  const CourtSlots({
+    required this.courtId,
+    required this.courtName,
+    required this.slots,
+  });
 
   factory CourtSlots.fromJson(Map<String, dynamic> json) => CourtSlots(
-        courtId: json['courtId'] as String,
-        courtName: (json['courtName'] as String?) ?? '',
-        slots: [
-          for (final s in (json['slots'] as List<dynamic>? ?? const []))
-            CourtSlot(
-              start: DateTime.parse((s as Map)['startTime'] as String).toLocal(),
-              end: DateTime.parse(s['endTime'] as String).toLocal(),
-              available: s['available'] == true,
-              priceMinor: (s['priceMinor'] as num?)?.toInt(),
-            ),
-        ],
-      );
+    courtId: json['courtId'] as String,
+    courtName: (json['courtName'] as String?) ?? '',
+    slots: [
+      for (final s in (json['slots'] as List<dynamic>? ?? const []))
+        CourtSlot(
+          start: DateTime.parse((s as Map)['startTime'] as String).toLocal(),
+          end: DateTime.parse(s['endTime'] as String).toLocal(),
+          available: s['available'] == true,
+          priceMinor: (s['priceMinor'] as num?)?.toInt(),
+        ),
+    ],
+  );
 
   final String courtId;
   final String courtName;
@@ -220,7 +263,12 @@ class CourtSlots {
 }
 
 class CourtSlot {
-  const CourtSlot({required this.start, required this.end, required this.available, this.priceMinor});
+  const CourtSlot({
+    required this.start,
+    required this.end,
+    required this.available,
+    this.priceMinor,
+  });
   final DateTime start;
   final DateTime end;
   final bool available;
@@ -229,7 +277,8 @@ class CourtSlot {
   final int? priceMinor;
 
   @override
-  bool operator ==(Object other) => other is CourtSlot && other.start == start && other.end == end;
+  bool operator ==(Object other) =>
+      other is CourtSlot && other.start == start && other.end == end;
 
   @override
   int get hashCode => Object.hash(start, end);
@@ -242,10 +291,15 @@ class AvailabilityQuery {
   final String sportId;
   final DateTime day;
 
-  String get dayKey => '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+  String get dayKey =>
+      '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
 
   @override
-  bool operator ==(Object other) => other is AvailabilityQuery && other.venueId == venueId && other.sportId == sportId && other.dayKey == dayKey;
+  bool operator ==(Object other) =>
+      other is AvailabilityQuery &&
+      other.venueId == venueId &&
+      other.sportId == sportId &&
+      other.dayKey == dayKey;
 
   @override
   int get hashCode => Object.hash(venueId, sportId, dayKey);

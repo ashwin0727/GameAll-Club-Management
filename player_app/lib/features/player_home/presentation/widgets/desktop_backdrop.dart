@@ -19,10 +19,17 @@ class DesktopBackdrop extends StatefulWidget {
   State<DesktopBackdrop> createState() => _DesktopBackdropState();
 }
 
-class _DesktopBackdropState extends State<DesktopBackdrop> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1900))..forward();
+class _DesktopBackdropState extends State<DesktopBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1900),
+  )..forward();
   // The first 0.4s is a pause, so the lines start drawing just as the page content is landing.
-  late final Animation<double> _draw = CurvedAnimation(parent: _controller, curve: const Interval(0.2, 1, curve: Curves.easeInOutCubic));
+  late final Animation<double> _draw = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0.2, 1, curve: Curves.easeInOutCubic),
+  );
 
   @override
   void dispose() {
@@ -37,7 +44,12 @@ class _DesktopBackdropState extends State<DesktopBackdrop> with SingleTickerProv
     return IgnorePointer(
       child: ExcludeSemantics(
         child: SizedBox.expand(
-          child: CustomPaint(painter: _BackdropPainter(dark: dark, progress: still ? const AlwaysStoppedAnimation(1.0) : _draw)),
+          child: CustomPaint(
+            painter: _BackdropPainter(
+              dark: dark,
+              progress: still ? const AlwaysStoppedAnimation(1.0) : _draw,
+            ),
+          ),
         ),
       ),
     );
@@ -45,7 +57,8 @@ class _DesktopBackdropState extends State<DesktopBackdrop> with SingleTickerProv
 }
 
 class _BackdropPainter extends CustomPainter {
-  _BackdropPainter({required this.dark, required this.progress}) : super(repaint: progress);
+  _BackdropPainter({required this.dark, required this.progress})
+    : super(repaint: progress);
   final bool dark;
 
   /// 0 = no lines yet, 1 = fully drawn.
@@ -127,7 +140,10 @@ class _BackdropPainter extends CustomPainter {
           ..strokeWidth = width * 5
           ..shader = shader
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10)
-          ..colorFilter = ColorFilter.mode(Colors.white.withValues(alpha: glowAlpha), BlendMode.modulate),
+          ..colorFilter = ColorFilter.mode(
+            Colors.white.withValues(alpha: glowAlpha),
+            BlendMode.modulate,
+          ),
       );
       canvas.drawPath(
         path,
@@ -174,5 +190,6 @@ class _BackdropPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BackdropPainter old) => old.dark != dark || old.progress != progress;
+  bool shouldRepaint(_BackdropPainter old) =>
+      old.dark != dark || old.progress != progress;
 }

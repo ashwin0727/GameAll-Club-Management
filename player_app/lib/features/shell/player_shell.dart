@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/routing/app_routes.dart';
@@ -18,6 +20,7 @@ import '../player_home/presentation/widgets/player_bottom_nav.dart';
 import '../player_home/presentation/widgets/player_header.dart';
 import '../player_home/presentation/widgets/player_search_bar.dart';
 import '../venues/presentation/discover_venues_page.dart';
+import '../venues/presentation/coaching_enroll_page.dart';
 import '../venues/presentation/enroll_membership_page.dart';
 import '../venues/presentation/guest_booking_page.dart';
 import '../venues/presentation/venue_detail_page.dart';
@@ -30,10 +33,14 @@ class PlayerShell extends ConsumerStatefulWidget {
   const PlayerShell({
     super.key,
     this.initialTab = PlayerTab.home,
+    this.initialRoute,
     this.onNavigate,
   });
 
   final PlayerTab initialTab;
+
+  /// A route to open straight away: on the web, the address the browser was refreshed on (`/venue/<id>`, `/explore` ...).
+  final String? initialRoute;
 
   /// Replaces opening a route (tests use it to record taps).
   final RouteCallback? onNavigate;
@@ -57,6 +64,56 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
   /// The venue whose Enroll Membership page is open inside the shell on a wide window.
   String? _enrollId;
 
+  /// The venue whose Coaching enrolment page is open inside the shell on a wide window.
+  String? _coachingId;
+
+  /// The address last written to the browser's address bar.
+  late String _reportedRoute = widget.initialRoute ?? AppRoutes.home;
+
+  @override
+  void initState() {
+    super.initState();
+    final first = widget.initialRoute;
+    if (first != null && first != AppRoutes.home) {
+      // after the first frame, so a phone can push the page onto the navigator
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _go(first);
+      });
+    }
+  }
+
+  /// The address of what the shell shows now. The wide shell switches pages without the navigator, so it keeps the address bar in
+  /// step itself: a refresh then comes back to the same page instead of Home.
+  String _currentRoute() {
+    if (_coachingId != null) return AppRoutes.coachingEnrollPath(_coachingId!);
+    if (_enrollId != null) return AppRoutes.enrollPath(_enrollId!);
+    if (_bookingId != null) return AppRoutes.bookPath(_bookingId!);
+    if (_venueId != null) return AppRoutes.venuePath(_venueId!);
+    if (_page != null) return _page!;
+    return switch (_tab) {
+      PlayerTab.bookings => AppRoutes.bookings,
+      PlayerTab.explore => AppRoutes.explore,
+      PlayerTab.profile => AppRoutes.profile,
+      _ => AppRoutes.home,
+    };
+  }
+
+  void _syncAddressBar() {
+    if (!kIsWeb) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.onNavigate != null) return;
+      // a page pushed on top of the shell (phone) owns the address while it is open
+      if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+      final route = _currentRoute();
+      if (route == _reportedRoute) return;
+      _reportedRoute = route;
+      SystemNavigator.routeInformationUpdated(
+        uri: Uri.parse(route),
+        replace: true,
+      );
+    });
+  }
+
   static const _inShell = {
     AppRoutes.guestBooking,
     AppRoutes.memberships,
@@ -70,6 +127,7 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
     _venueId = null;
     _bookingId = null;
     _enrollId = null;
+    _coachingId = null;
   });
 
   void _go(String route) {
@@ -86,7 +144,8 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
         _page = route;
         _venueId = null;
         _bookingId = null;
-    _enrollId = null;
+        _enrollId = null;
+        _coachingId = null;
       });
     }
     // "/venue/<id>": a venue's own page
@@ -97,10 +156,16 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
           _venueId = venueId;
           _page = null;
           _bookingId = null;
-    _enrollId = null;
+          _enrollId = null;
+          _coachingId = null;
         });
       }
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VenueDetailPage(venueId: venueId, onNavigate: _go)));
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: route),
+          builder: (_) => VenueDetailPage(venueId: venueId, onNavigate: _go),
+        ),
+      );
       return;
     }
     // "/book/<id>": a venue's Book a Court page
@@ -110,11 +175,17 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
         return setState(() {
           _bookingId = bookingId;
           _enrollId = null;
+          _coachingId = null;
           _venueId = null;
           _page = null;
         });
       }
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => GuestBookingPage(venueId: bookingId, onNavigate: _go)));
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: route),
+          builder: (_) => GuestBookingPage(venueId: bookingId, onNavigate: _go),
+        ),
+      );
       return;
     }
     // "/enroll/<id>": a venue's Enroll Membership page
@@ -123,12 +194,40 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
       if (MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
         return setState(() {
           _enrollId = enrollId;
+          _coachingId = null;
           _bookingId = null;
           _venueId = null;
           _page = null;
         });
       }
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EnrollMembershipPage(venueId: enrollId, onNavigate: _go)));
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: route),
+          builder: (_) =>
+              EnrollMembershipPage(venueId: enrollId, onNavigate: _go),
+        ),
+      );
+      return;
+    }
+    // "/coaching-enroll/<id>": a venue's Coaching page (programmes, coaches, time slots, pay)
+    final coachingId = AppRoutes.coachingEnrollVenueIdOf(route);
+    if (coachingId != null) {
+      if (MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint) {
+        return setState(() {
+          _coachingId = coachingId;
+          _enrollId = null;
+          _bookingId = null;
+          _venueId = null;
+          _page = null;
+        });
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: RouteSettings(name: route),
+          builder: (_) =>
+              CoachingEnrollPage(venueId: coachingId, onNavigate: _go),
+        ),
+      );
       return;
     }
     switch (route) {
@@ -189,6 +288,7 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
 
   @override
   Widget build(BuildContext context) {
+    _syncAddressBar();
     final p = context.palette;
     final wide =
         MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
@@ -207,7 +307,9 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
         : Column(
             children: [
               bar,
-              Expanded(child: KeyedSubtree(key: key, child: page)),
+              Expanded(
+                child: KeyedSubtree(key: key, child: page),
+              ),
             ],
           );
     final pages = IndexedStack(
@@ -236,16 +338,50 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
             // The page background: navy-to-blue gradient, soft light and glowing arcs (no panels, no lines).
             const Positioned.fill(child: DesktopBackdrop()),
             Positioned.fill(
-              child: _enrollId != null
-                  ? withBar(EnrollMembershipPage(venueId: _enrollId!, onNavigate: _go, embedded: true), key: ValueKey('enroll-$_enrollId'))
+              child: _coachingId != null
+                  ? withBar(
+                      CoachingEnrollPage(
+                        venueId: _coachingId!,
+                        onNavigate: _go,
+                        embedded: true,
+                      ),
+                      key: ValueKey('coaching-$_coachingId'),
+                    )
+                  : _enrollId != null
+                  ? withBar(
+                      EnrollMembershipPage(
+                        venueId: _enrollId!,
+                        onNavigate: _go,
+                        embedded: true,
+                      ),
+                      key: ValueKey('enroll-$_enrollId'),
+                    )
                   : _bookingId != null
-                  ? withBar(GuestBookingPage(venueId: _bookingId!, onNavigate: _go, embedded: true), key: ValueKey('book-$_bookingId'))
+                  ? withBar(
+                      GuestBookingPage(
+                        venueId: _bookingId!,
+                        onNavigate: _go,
+                        embedded: true,
+                      ),
+                      key: ValueKey('book-$_bookingId'),
+                    )
                   : _venueId != null
-                  ? withBar(VenueDetailPage(venueId: _venueId!, onNavigate: _go, embedded: true), key: ValueKey('venue-$_venueId'))
+                  ? withBar(
+                      VenueDetailPage(
+                        venueId: _venueId!,
+                        onNavigate: _go,
+                        embedded: true,
+                      ),
+                      key: ValueKey('venue-$_venueId'),
+                    )
                   : _page == null
                   ? pages
                   : withBar(
-                      playerPageForRoute(_page!, embedded: true, onNavigate: _go),
+                      playerPageForRoute(
+                        _page!,
+                        embedded: true,
+                        onNavigate: _go,
+                      ),
                       key: ValueKey(_page),
                     ),
             ),
@@ -287,25 +423,44 @@ class _TopBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final animate = !_brandBarLanded;
-    if (animate) WidgetsBinding.instance.addPostFrameCallback((_) => _brandBarLanded = true);
+    if (animate) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _brandBarLanded = true,
+      );
+    }
     // The logo settles in from above, then the links one by one, then the Location button.
-    Widget land(int ms, Widget child) => animate ? Reveal(delay: Duration(milliseconds: ms), duration: const Duration(milliseconds: 300), dy: 0, child: child) : child;
+    Widget land(int ms, Widget child) => animate
+        ? Reveal(
+            delay: Duration(milliseconds: ms),
+            duration: const Duration(milliseconds: 300),
+            dy: 0,
+            child: child,
+          )
+        : child;
 
     Widget link(String label, {PlayerTab? tab, String? route}) {
       final selected = tab != null
           ? (tab == current && page == null)
           : route == page;
       return Pressable(
+        key: ValueKey('nav-$label'),
         onTap: () => tab != null ? onSelect(tab) : onNavigate(route!),
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            // the page you are on is a filled blue pill, the others are plain text
+            color: selected ? AppColors.blue : Colors.transparent,
+          ),
           child: HoverText(
             label,
-            // Light at rest, a little heavier under the mouse; the current page is simply a touch brighter.
             style:
                 AppTextStyles.body(
-                  p.primaryText.withValues(alpha: selected ? 1 : 0.88),
+                  selected
+                      ? Colors.white
+                      : p.primaryText.withValues(alpha: 0.9),
                 ).copyWith(
                   fontSize: 15,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
@@ -314,6 +469,10 @@ class _TopBar extends ConsumerWidget {
         ),
       );
     }
+
+    final city = ref.watch(selectedCityProvider);
+    final unread =
+        ref.watch(playerHomeProvider).value?.unreadNotifications ?? 0;
 
     return SizedBox(
       height: 84,
@@ -325,62 +484,92 @@ class _TopBar extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            land(0, Semantics(
-              button: true,
-              label: 'GameAll, go to Home',
-              child: Pressable(
-                key: const ValueKey('brand-home'),
-                onTap: () => onSelect(PlayerTab.home),
-                borderRadius: BorderRadius.circular(10),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  child: GameAllLogo(height: 34),
+            land(
+              0,
+              Semantics(
+                button: true,
+                label: 'GameAll, go to Home',
+                child: Pressable(
+                  key: const ValueKey('brand-home'),
+                  onTap: () => onSelect(PlayerTab.home),
+                  borderRadius: BorderRadius.circular(10),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: GameAllLogo(height: 34),
+                  ),
                 ),
               ),
-            )),
-            const Spacer(),
+            ),
+            const SizedBox(width: 36),
+            // No Home link: the logo is the way home.
             land(50, link('Venues', tab: PlayerTab.explore)),
-            land(80, link('Coaching', route: AppRoutes.coaching)),
-            land(105, link('Tournaments', route: AppRoutes.tournaments)),
-            land(130, _AccountLink(link: link('Login', route: AppRoutes.login))),
-            const SizedBox(width: 12),
-            // A plain Location button, in the style of the reference's "Download" button.
-            land(160, Semantics(
-              button: true,
-              label: 'Location',
-              child: Pressable(
-                key: const ValueKey('location-button'),
-                onTap: () => showCityPicker(context, ref),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: p.isDark
-                        ? p.elevated.withValues(alpha: 0.75)
-                        : p.surface,
-                    border: p.isDark ? null : Border.all(color: p.border),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 18,
-                        color: p.highlight,
+            land(70, link('Memberships', route: AppRoutes.memberships)),
+            land(90, link('Coaching', route: AppRoutes.coaching)),
+            land(110, link('Tournaments', route: AppRoutes.tournaments)),
+            const Spacer(),
+            // The picked city, in an outlined pill: the Location button.
+            land(
+              140,
+              Semantics(
+                button: true,
+                label: 'Location, $city',
+                child: Pressable(
+                  key: const ValueKey('location-button'),
+                  onTap: () => showCityPicker(context, ref),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: p.isDark
+                          ? AppColors.darkBackground.withValues(alpha: 0.35)
+                          : p.surface,
+                      border: Border.all(
+                        color: AppColors.violet.withValues(
+                          alpha: p.isDark ? 0.7 : 0.5,
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      HoverText(
-                        'Location',
-                        style: AppTextStyles.button(p.primaryText)
-                            .copyWith(fontSize: 15),
-                      ),
-                    ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 18,
+                          color: p.highlight,
+                        ),
+                        const SizedBox(width: 8),
+                        HoverText(
+                          city,
+                          style: AppTextStyles.button(p.primaryText)
+                              .copyWith(fontSize: 14),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: p.secondaryText,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            )),
+            ),
+            const SizedBox(width: 18),
+            land(
+              160,
+              NotificationBell(
+                unread: unread,
+                onPressed: () => onNavigate(AppRoutes.notifications),
+              ),
+            ),
+            const SizedBox(width: 8),
+            land(
+              180,
+              _AccountAvatar(onLogin: () => onNavigate(AppRoutes.login)),
+            ),
           ],
         ),
       ),
@@ -388,52 +577,80 @@ class _TopBar extends ConsumerWidget {
   }
 }
 
-/// The "Login" link of the brand bar; once the player is signed in it becomes their name, with a menu to log out.
-class _AccountLink extends ConsumerWidget {
-  const _AccountLink({required this.link});
+/// The round profile picture at the right of the brand bar. Signed out, it is a person icon that opens Login; signed in, it shows the
+/// player's initials and opens a menu to log out.
+class _AccountAvatar extends ConsumerWidget {
+  const _AccountAvatar({required this.onLogin});
 
-  /// The plain "Login" link, shown while nobody is signed in.
-  final Widget link;
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(currentPlayerProvider);
-    // A player who is already signed in must not see "Login" flash while the page reloads: hold the space until we know.
-    if (player == null && ref.watch(authControllerProvider).isLoading && ref.read(playerAuthRepositoryProvider).isSignedIn) {
-      return const SizedBox(width: 110, height: 48);
+    // A player who is already signed in must not see the signed-out avatar flash while the page reloads: hold the space until we know.
+    if (player == null &&
+        ref.watch(authControllerProvider).isLoading &&
+        ref.read(playerAuthRepositoryProvider).isSignedIn) {
+      return const SizedBox(width: 44, height: 44);
     }
-    if (player == null) return link;
     final p = context.palette;
+    Widget circle(Widget child) => Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppColors.accentGradient,
+      ),
+      child: child,
+    );
+    if (player == null) {
+      return Semantics(
+        button: true,
+        label: 'Login',
+        child: Pressable(
+          key: const ValueKey('login-button'),
+          onTap: onLogin,
+          borderRadius: BorderRadius.circular(22),
+          child: circle(
+            const Icon(Icons.person_rounded, size: 26, color: Colors.white),
+          ),
+        ),
+      );
+    }
     return PopupMenuButton<String>(
       key: const ValueKey('account-menu'),
       tooltip: 'Account',
-      offset: const Offset(0, 48),
+      offset: const Offset(0, 52),
       color: p.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: p.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: p.border),
+      ),
       onSelected: (v) {
         if (v == 'logout') ref.read(authControllerProvider.notifier).signOut();
       },
       itemBuilder: (context) => [
-        PopupMenuItem<String>(enabled: false, child: Text(player.phone.isEmpty ? player.fullName : '+91 ${player.phone}', style: AppTextStyles.support(p.secondaryText))),
-        PopupMenuItem<String>(value: 'logout', child: Row(children: [Icon(Icons.logout_rounded, size: 18, color: p.primaryText), const SizedBox(width: 10), Text('Log out', style: AppTextStyles.body(p.primaryText))])),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppColors.brandGradient),
-              child: Text(player.initials, style: AppTextStyles.meta(Colors.white).copyWith(fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 10),
-            Text(player.firstName, style: AppTextStyles.body(p.primaryText).copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
-            Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: p.secondaryText),
-          ],
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Text(
+            player.phone.isEmpty ? player.fullName : '+91 ${player.phone}',
+            style: AppTextStyles.support(p.secondaryText),
+          ),
         ),
+        PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded, size: 18, color: p.primaryText),
+              const SizedBox(width: 10),
+              Text('Log out', style: AppTextStyles.body(p.primaryText)),
+            ],
+          ),
+        ),
+      ],
+      child: circle(
+        Text(player.initials, style: AppTextStyles.cardHeading(Colors.white)),
       ),
     );
   }
@@ -451,16 +668,31 @@ class _AccountCard extends ConsumerWidget {
     final player = ref.watch(currentPlayerProvider);
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: p.surface, borderRadius: AppDimensions.cardBorderRadius, border: Border.all(color: p.border)),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: AppDimensions.cardBorderRadius,
+        border: Border.all(color: p.border),
+      ),
       child: player == null
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('You are not signed in', style: AppTextStyles.cardHeading(p.primaryText)),
+                Text(
+                  'You are not signed in',
+                  style: AppTextStyles.cardHeading(p.primaryText),
+                ),
                 const SizedBox(height: 4),
-                Text('Log in with your phone number to see your memberships, coaching and bookings from every club.', style: AppTextStyles.support(p.secondaryText)),
+                Text(
+                  'Log in with your phone number to see your memberships, coaching and bookings from every club.',
+                  style: AppTextStyles.support(p.secondaryText),
+                ),
                 const SizedBox(height: 14),
-                GameAllButton.gradient(key: const ValueKey('profile-login'), label: 'Log in', expand: true, onPressed: onLogin),
+                GameAllButton.gradient(
+                  key: const ValueKey('profile-login'),
+                  label: 'Log in',
+                  expand: true,
+                  onPressed: onLogin,
+                ),
               ],
             )
           : Column(
@@ -472,24 +704,51 @@ class _AccountCard extends ConsumerWidget {
                       width: 48,
                       height: 48,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppColors.brandGradient),
-                      child: Text(player.initials, style: AppTextStyles.cardHeading(Colors.white)),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppColors.brandGradient,
+                      ),
+                      child: Text(
+                        player.initials,
+                        style: AppTextStyles.cardHeading(Colors.white),
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(player.fullName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.cardHeading(p.primaryText)),
-                          Text('+91 ${player.phone}', style: AppTextStyles.support(p.secondaryText)),
-                          if (player.email != null) Text(player.email!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.support(p.secondaryText)),
+                          Text(
+                            player.fullName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.cardHeading(p.primaryText),
+                          ),
+                          Text(
+                            '+91 ${player.phone}',
+                            style: AppTextStyles.support(p.secondaryText),
+                          ),
+                          if (player.email != null)
+                            Text(
+                              player.email!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.support(p.secondaryText),
+                            ),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-                GameAllButton.secondary(key: const ValueKey('profile-logout'), label: 'Log out', icon: Icons.logout_rounded, expand: true, onPressed: () => ref.read(authControllerProvider.notifier).signOut()),
+                GameAllButton.secondary(
+                  key: const ValueKey('profile-logout'),
+                  label: 'Log out',
+                  icon: Icons.logout_rounded,
+                  expand: true,
+                  onPressed: () =>
+                      ref.read(authControllerProvider.notifier).signOut(),
+                ),
               ],
             ),
     );
