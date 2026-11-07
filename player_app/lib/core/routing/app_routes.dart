@@ -69,6 +69,8 @@ class AppRoutes {
         memberships,
         coaching,
         guestBooking,
+        myMembership,
+        myCoaching,
         tournaments,
       }.contains(route);
 }

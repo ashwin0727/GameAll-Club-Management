@@ -329,6 +329,8 @@ class _PhoneBody extends ConsumerWidget {
                                             data.hasActiveMembership,
                                         hasActiveCoaching:
                                             data.hasActiveCoaching,
+                                        hasGuestBookings:
+                                            data.hasBookingHistory,
                                         onNavigate: onNavigate,
                                       ),
                                     ),
@@ -357,7 +359,7 @@ class _PhoneBody extends ConsumerWidget {
                             if (data.signedIn) ...[
                               const SizedBox(height: 24),
                               if (data.pendingPayments.isNotEmpty) ...[
-                                PaymentPrompts(payments: data.pendingPayments),
+                                PaymentPrompts(payments: data.pendingPayments, onNavigate: onNavigate),
                                 const SizedBox(height: 12),
                               ],
                               Reveal(
@@ -374,11 +376,6 @@ class _PhoneBody extends ConsumerWidget {
                                   items: data.schedule,
                                   now: now,
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              Reveal(
-                                delay: const Duration(milliseconds: 80),
-                                child: QuickActionsCard(onNavigate: onNavigate),
                               ),
                             ],
                           ],

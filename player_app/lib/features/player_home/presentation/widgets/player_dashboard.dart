@@ -5,7 +5,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/date_format.dart';
-import '../../../../core/widgets/hover_scope.dart';
 import '../../../../core/widgets/pressable.dart';
 import '../../domain/player_dashboard_models.dart';
 import '../../domain/player_home_models.dart';
@@ -122,12 +121,27 @@ class DashboardWelcome extends StatelessWidget {
                 style: AppTextStyles.body(p.primaryText)
                     .copyWith(fontWeight: FontWeight.w600),
               ),
-              Text(
-                '${name.isEmpty ? 'there' : name} 👋',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.greeting(p.primaryText)
-                    .copyWith(fontSize: large ? 34 : 24),
+              // The wave is an icon from the bundled icon font, not the 👋 emoji: the web build downloads its emoji font late (or never,
+              // on a slow or blocked network), so a refresh showed an empty box next to the name.
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      name.isEmpty ? 'there' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.greeting(p.primaryText)
+                          .copyWith(fontSize: large ? 34 : 24),
+                    ),
+                  ),
+                  SizedBox(width: large ? 10 : 8),
+                  Icon(
+                    Icons.waving_hand_rounded,
+                    key: const ValueKey('welcome-wave'),
+                    size: large ? 30 : 22,
+                    color: const Color(0xFFFFC857),
+                  ),
+                ],
               ),
               Text(
                 'Your play, training and bookings at a glance.',
@@ -222,7 +236,7 @@ class DashboardSummaryCards extends StatelessWidget {
         emptyTitle: 'No guest bookings',
         emptyLine: 'Book a court in seconds',
         onTap: () => onNavigate(
-          data.guestBookings.count == 0
+          !data.hasBookingHistory && data.guestBookings.count == 0
               ? AppRoutes.guestBooking
               : AppRoutes.bookings,
         ),
@@ -582,127 +596,3 @@ class _ScheduleRow extends StatelessWidget {
   }
 }
 
-/// "Quick Actions": five shortcuts.
-class QuickActionsCard extends StatelessWidget {
-  const QuickActionsCard({super.key, required this.onNavigate});
-
-  final RouteCallback onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    final actions = [
-      (
-        'Book a Court',
-        Icons.calendar_month_outlined,
-        AppRoutes.guestBooking,
-        AppColors.cyan,
-      ),
-      (
-        'View Membership',
-        Icons.workspace_premium_outlined,
-        AppRoutes.myMembership,
-        AppColors.violet,
-      ),
-      (
-        'My Coaching',
-        Icons.school_outlined,
-        AppRoutes.myCoaching,
-        AppColors.blue,
-      ),
-      (
-        'Tournaments',
-        Icons.emoji_events_outlined,
-        AppRoutes.tournaments,
-        AppColors.purple,
-      ),
-      (
-        'My Activity',
-        Icons.bar_chart_rounded,
-        AppRoutes.bookings,
-        AppColors.cyan,
-      ),
-    ];
-    return DashboardPanel(
-      title: 'Quick Actions',
-      icon: Icons.bolt_rounded,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final cols = box.maxWidth >= 460 ? 5 : 3;
-          const gap = 10.0;
-          final w = (box.maxWidth - gap * (cols - 1)) / cols;
-          return Wrap(
-            spacing: gap,
-            runSpacing: gap,
-            children: [
-              for (final a in actions)
-                SizedBox(
-                  width: w,
-                  child: _QuickAction(
-                    label: a.$1,
-                    icon: a.$2,
-                    color: a.$4,
-                    onTap: () => onNavigate(a.$3),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final radius = BorderRadius.circular(14);
-    return Semantics(
-      button: true,
-      label: label,
-      child: ExcludeSemantics(
-        child: Pressable(
-          onTap: onTap,
-          borderRadius: radius,
-          child: Container(
-            height: 92,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              border: Border.all(color: Color.lerp(p.border, color, 0.35)!),
-              color: p.isDark
-                  ? p.background.withValues(alpha: 0.35)
-                  : p.elevated,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: color, size: 28),
-                const SizedBox(height: 8),
-                HoverText(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.meta(p.primaryText)
-                      .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

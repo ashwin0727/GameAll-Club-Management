@@ -487,17 +487,39 @@ void main() {
         // the sports are a dropdown left of the search box now (no chip row under it)
         expect(find.byKey(const ValueKey('sport-dropdown')), findsOneWidget);
         expect(find.text('All Sports'), findsOneWidget);
-        expect(find.byKey(const ValueKey('sport-all')), findsNothing, reason: 'the menu is closed');
-        final dropdown = tester.getRect(find.byKey(const ValueKey('sport-dropdown')));
-        final search = tester.getRect(find.byKey(const ValueKey('discover-search')));
-        final city = tester.getRect(find.byKey(const ValueKey('discover-city')));
+        expect(
+          find.byKey(const ValueKey('sport-all')),
+          findsNothing,
+          reason: 'the menu is closed',
+        );
+        final dropdown = tester.getRect(
+          find.byKey(const ValueKey('sport-dropdown')),
+        );
+        final search = tester.getRect(
+          find.byKey(const ValueKey('discover-search')),
+        );
+        final city = tester.getRect(
+          find.byKey(const ValueKey('discover-city')),
+        );
         final views = tester.getRect(find.byKey(const ValueKey('view-grid')));
         expect(city.right, lessThan(dropdown.left));
         expect(dropdown.right, lessThan(search.left));
-        expect(views.left, greaterThan(search.right), reason: 'grid / list switch is right of the search bar');
+        expect(
+          views.left,
+          greaterThan(search.right),
+          reason: 'grid / list switch is right of the search bar',
+        );
         await tester.tap(find.byKey(const ValueKey('sport-dropdown')));
         await tester.pumpAndSettle();
-        for (final s in ['Badminton', 'Football', 'Cricket', 'Tennis', 'Basketball', 'Pickleball', 'Padel']) {
+        for (final s in [
+          'Badminton',
+          'Football',
+          'Cricket',
+          'Tennis',
+          'Basketball',
+          'Pickleball',
+          'Padel',
+        ]) {
           expect(find.byKey(ValueKey('sport-$s')), findsOneWidget, reason: s);
         }
         await tester.tapAt(const Offset(5, 5));
@@ -517,7 +539,11 @@ void main() {
         ]) {
           expect(find.text(t), findsWidgets, reason: t);
         }
-        expect(find.byKey(const ValueKey('sort-by')), findsNothing, reason: 'no sort option');
+        expect(
+          find.byKey(const ValueKey('sort-by')),
+          findsNothing,
+          reason: 'no sort option',
+        );
         expect(find.text('Apply Filters (2)'), findsOneWidget);
         expect(find.text('Price per hour'), findsOneWidget);
         expect(
@@ -571,7 +597,11 @@ void main() {
         expect(find.text('1 Venue Found'), findsOneWidget);
         expect(find.text('Ace Courts'), findsOneWidget);
         expect(find.text('Smash Arena'), findsNothing);
-        expect(find.text('Cricket'), findsWidgets, reason: 'the dropdown shows the choice');
+        expect(
+          find.text('Cricket'),
+          findsWidgets,
+          reason: 'the dropdown shows the choice',
+        );
         await tester.tap(find.byKey(const ValueKey('sport-dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('sport-all')));
@@ -778,73 +808,88 @@ void main() {
       expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
     });
 
-    testWidgets('cards in a row are the same height even when one has more chips', (
-      tester,
-    ) async {
-      await pumpApp(
-        tester,
-        () => PlayerShell(initialTab: PlayerTab.explore, onNavigate: (_) {}),
-        city: inChennai,
-        size: const Size(1600, 1000),
-        venues: {
-          inChennai: {
-            VenueKind.venues: [
-              smash,
-              const Venue(
-                id: 'wide',
-                name: 'Many Sports',
-                city: 'Chennai',
-                sports: ['Badminton', 'Basketball', 'Cricket'],
-                minCourtPriceInr: 380,
-              ),
-              ace,
-            ],
+    testWidgets(
+      'cards in a row are the same height even when one has more chips',
+      (tester) async {
+        await pumpApp(
+          tester,
+          () => PlayerShell(initialTab: PlayerTab.explore, onNavigate: (_) {}),
+          city: inChennai,
+          size: const Size(1600, 1000),
+          venues: {
+            inChennai: {
+              VenueKind.venues: [
+                smash,
+                const Venue(
+                  id: 'wide',
+                  name: 'Many Sports',
+                  city: 'Chennai',
+                  sports: ['Badminton', 'Basketball', 'Cricket'],
+                  minCourtPriceInr: 380,
+                ),
+                ace,
+              ],
+            },
           },
-        },
-      );
-      final heights = [
-        for (final id in ['v1', 'wide', 'v2'])
-          tester.getSize(find.byKey(ValueKey('card-$id'))).height,
-      ];
-      expect(heights[1], heights[0]);
-      expect(heights[2], heights[0]);
-      // the View & Book buttons line up along the bottom
-      final bottoms = [
-        for (final id in ['v1', 'wide', 'v2'])
-          tester.getBottomLeft(find.byKey(ValueKey('view-book-$id'))).dy,
-      ];
-      expect(bottoms[1], bottoms[0]);
-      expect(bottoms[2], bottoms[0]);
-      expect(tester.takeException(), isNull);
-    });
+        );
+        final heights = [
+          for (final id in ['v1', 'wide', 'v2'])
+            tester.getSize(find.byKey(ValueKey('card-$id'))).height,
+        ];
+        expect(heights[1], heights[0]);
+        expect(heights[2], heights[0]);
+        // the View & Book buttons line up along the bottom
+        final bottoms = [
+          for (final id in ['v1', 'wide', 'v2'])
+            tester.getBottomLeft(find.byKey(ValueKey('view-book-$id'))).dy,
+        ];
+        expect(bottoms[1], bottoms[0]);
+        expect(bottoms[2], bottoms[0]);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('filter rows keep each label on one line with the count at the right', (
-      tester,
-    ) async {
-      await pumpApp(
-        tester,
-        () => PlayerShell(initialTab: PlayerTab.explore, onNavigate: (_) {}),
-        city: inChennai,
-        size: const Size(1600, 1000),
-      );
-      const rows = {
-        'filter-rental': 'Equipment Rental',
-        'filter-changing': 'Locker Room',
-        'filter-cafeteria': 'Café / Snacks',
-        'filter-memberships': 'Memberships',
-        'filter-academy': 'Academy / Coaching',
-        'filter-saved': 'Saved venues only',
-      };
-      rows.forEach((key, label) {
-        final text = find.descendant(of: find.byKey(ValueKey(key)), matching: find.text(label));
-        expect(tester.getSize(text).height, lessThan(24), reason: '$label is on one line');
-      });
-      final rights = {
-        for (final label in ['Parking', 'Locker Room', 'Washroom', 'Equipment Rental', 'Memberships'])
-          tester.getTopRight(find.byKey(ValueKey('count-$label'))).dx,
-      };
-      expect(rights, hasLength(1), reason: 'the counts line up');
-    });
+    testWidgets(
+      'filter rows keep each label on one line with the count at the right',
+      (tester) async {
+        await pumpApp(
+          tester,
+          () => PlayerShell(initialTab: PlayerTab.explore, onNavigate: (_) {}),
+          city: inChennai,
+          size: const Size(1600, 1000),
+        );
+        const rows = {
+          'filter-rental': 'Equipment Rental',
+          'filter-changing': 'Locker Room',
+          'filter-cafeteria': 'Café / Snacks',
+          'filter-memberships': 'Memberships',
+          'filter-academy': 'Academy / Coaching',
+          'filter-saved': 'Saved venues only',
+        };
+        rows.forEach((key, label) {
+          final text = find.descendant(
+            of: find.byKey(ValueKey(key)),
+            matching: find.text(label),
+          );
+          expect(
+            tester.getSize(text).height,
+            lessThan(24),
+            reason: '$label is on one line',
+          );
+        });
+        final rights = {
+          for (final label in [
+            'Parking',
+            'Locker Room',
+            'Washroom',
+            'Equipment Rental',
+            'Memberships',
+          ])
+            tester.getTopRight(find.byKey(ValueKey('count-$label'))).dx,
+        };
+        expect(rights, hasLength(1), reason: 'the counts line up');
+      },
+    );
 
     testWidgets('a sport that only appears in the data sits under More', (
       tester,
@@ -955,15 +1000,28 @@ void main() {
         await openMemberships(tester);
         expect(find.textContaining('Explore'), findsOneWidget);
         expect(
-          find.text('Long-term play plans with dedicated court time, priority access and more.'),
+          find.text(
+            'Long-term play plans with dedicated court time, priority access and more.',
+          ),
           findsOneWidget,
         );
-        for (final t in ['Dedicated Court Time', 'Priority Access', 'Better Value', 'Play at your preferred slot', 'Get preferred court bookings', 'Save more with long-term plans']) {
+        for (final t in [
+          'Dedicated Court Time',
+          'Priority Access',
+          'Better Value',
+          'Play at your preferred slot',
+          'Get preferred court bookings',
+          'Save more with long-term plans',
+        ]) {
           expect(find.text(t), findsOneWidget, reason: t);
         }
         expect(find.text('1 Venue Found'), findsOneWidget);
         expect(find.text('Smash Arena'), findsOneWidget);
-        expect(find.text('Ace Courts'), findsNothing, reason: 'no membership plan');
+        expect(
+          find.text('Ace Courts'),
+          findsNothing,
+          reason: 'no membership plan',
+        );
         expect(find.text('Adyar, Chennai'), findsOneWidget);
         expect(find.text('Badminton, Tennis'), findsOneWidget);
         expect(find.text('3 Courts'), findsOneWidget);
@@ -971,10 +1029,22 @@ void main() {
         expect(find.text('Available Memberships'), findsOneWidget);
         // the lowest price of each length: Monthly has ₹1,800 and ₹1,500 (₹1,500 wins), the 10-day pass is no length at all
         Finder tile(String key) => find.byKey(ValueKey('mem-tile-v1-$key'));
-        expect(find.descendant(of: tile('monthly'), matching: find.text('₹1,500')), findsOneWidget);
-        expect(find.descendant(of: tile('threeMonths'), matching: find.text('₹4,000')), findsOneWidget);
+        expect(
+          find.descendant(of: tile('monthly'), matching: find.text('₹1,500')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: tile('threeMonths'),
+            matching: find.text('₹4,000'),
+          ),
+          findsOneWidget,
+        );
         expect(tile('sixMonths'), findsNothing, reason: 'no 6-month plan');
-        expect(find.descendant(of: tile('yearly'), matching: find.text('₹12,000')), findsOneWidget);
+        expect(
+          find.descendant(of: tile('yearly'), matching: find.text('₹12,000')),
+          findsOneWidget,
+        );
         expect(find.text('₹1,800'), findsNothing);
         expect(find.text('₹300'), findsNothing);
         expect(find.byKey(const ValueKey('sort-by')), findsNothing);
@@ -982,112 +1052,388 @@ void main() {
       },
     );
 
-    testWidgets('View Plans (and the card) open the venue\'s Enroll Membership page', (
+    testWidgets(
+      'View Plans (and the card) open the venue\'s Enroll Membership page',
+      (tester) async {
+        lastRoutes.clear();
+        await openMemberships(tester);
+        await tester.tap(find.byKey(const ValueKey('view-plans-v1')));
+        expect(lastRoutes, [AppRoutes.enrollPath('v1')]);
+      },
+    );
+
+    testWidgets(
+      'Memberships has the venue page\'s search card and the design\'s filters',
+      (tester) async {
+        await openMemberships(tester);
+        final dropdown = tester.getRect(
+          find.byKey(const ValueKey('sport-dropdown')),
+        );
+        final search = tester.getRect(
+          find.byKey(const ValueKey('discover-search')),
+        );
+        final views = tester.getRect(find.byKey(const ValueKey('view-grid')));
+        expect(find.byKey(const ValueKey('discover-city')), findsOneWidget);
+        expect(dropdown.right, lessThan(search.left));
+        expect(views.left, greaterThan(search.right));
+        expect(find.text('Filters'), findsOneWidget);
+        for (final t in [
+          'Membership Duration',
+          'Monthly',
+          '3 Months',
+          '6 Months',
+          'Yearly',
+          'Time Slot',
+          'Days',
+          'Mon – Fri',
+          'Mon – Sat',
+          'All Days',
+        ]) {
+          expect(find.text(t), findsWidgets, reason: t);
+        }
+        Text count(String label) =>
+            tester.widget<Text>(find.byKey(ValueKey('count-$label')));
+        expect(count('Monthly').data, '(1)');
+        expect(count('3 Months').data, '(1)');
+        expect(count('6 Months').data, '(0)');
+        expect(count('Yearly').data, '(1)');
+        expect(count('Mon – Fri').data, '(1)');
+        expect(count('Mon – Sat').data, '(0)');
+        expect(count('All Days').data, '(0)');
+        expect(find.text('Any Time'), findsOneWidget);
+        expect(find.text('Apply Filters (1)'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Memberships filters narrow the list and Clear All brings it back',
+      (tester) async {
+        await openMemberships(tester);
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-duration-sixMonths')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('no-matches')), findsOneWidget);
+        expect(find.text('Apply Filters (0)'), findsOneWidget);
+        await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
+        await tester.pumpAndSettle();
+        expect(find.text('1 Venue Found'), findsOneWidget);
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-duration-yearly')),
+        );
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-days-monFri')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Smash Arena'), findsOneWidget);
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-days-allDays')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Smash Arena'),
+          findsOneWidget,
+          reason: 'days are "any of"',
+        );
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-days-monFri')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('no-matches')),
+          findsOneWidget,
+          reason: 'only All Days is left, the venue does not run on weekends',
+        );
+        await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
+        await tester.tap(find.byKey(const ValueKey('slot-dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Evening (5 – 10 PM)').last);
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Smash Arena'),
+          findsOneWidget,
+          reason: 'open until 10 PM',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('discover-search')),
+          'zzzz',
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('no-matches')), findsOneWidget);
+      },
+    );
+
+    testWidgets('Memberships: the grid switch stacks the cards', (
       tester,
     ) async {
-      lastRoutes.clear();
       await openMemberships(tester);
-      await tester.tap(find.byKey(const ValueKey('view-plans-v1')));
-      expect(lastRoutes, [AppRoutes.enrollPath('v1')]);
-    });
-
-    testWidgets('Memberships has the venue page\'s search card and the design\'s filters', (
-      tester,
-    ) async {
-      await openMemberships(tester);
-      final dropdown = tester.getRect(find.byKey(const ValueKey('sport-dropdown')));
-      final search = tester.getRect(find.byKey(const ValueKey('discover-search')));
-      final views = tester.getRect(find.byKey(const ValueKey('view-grid')));
-      expect(find.byKey(const ValueKey('discover-city')), findsOneWidget);
-      expect(dropdown.right, lessThan(search.left));
-      expect(views.left, greaterThan(search.right));
-      expect(find.text('Filters'), findsOneWidget);
-      for (final t in ['Membership Duration', 'Monthly', '3 Months', '6 Months', 'Yearly', 'Time Slot', 'Days', 'Mon – Fri', 'Mon – Sat', 'All Days']) {
-        expect(find.text(t), findsWidgets, reason: t);
-      }
-      Text count(String label) => tester.widget<Text>(find.byKey(ValueKey('count-$label')));
-      expect(count('Monthly').data, '(1)');
-      expect(count('3 Months').data, '(1)');
-      expect(count('6 Months').data, '(0)');
-      expect(count('Yearly').data, '(1)');
-      expect(count('Mon – Fri').data, '(1)');
-      expect(count('Mon – Sat').data, '(0)');
-      expect(count('All Days').data, '(0)');
-      expect(find.text('Any Time'), findsOneWidget);
-      expect(find.text('Apply Filters (1)'), findsOneWidget);
-    });
-
-    testWidgets('Memberships filters narrow the list and Clear All brings it back', (
-      tester,
-    ) async {
-      await openMemberships(tester);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-duration-sixMonths')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('no-matches')), findsOneWidget);
-      expect(find.text('Apply Filters (0)'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
-      await tester.pumpAndSettle();
-      expect(find.text('1 Venue Found'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-duration-yearly')));
-      await tapVisible(tester, find.byKey(const ValueKey('filter-days-monFri')));
-      await tester.pumpAndSettle();
-      expect(find.text('Smash Arena'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-days-allDays')));
-      await tester.pumpAndSettle();
-      expect(find.text('Smash Arena'), findsOneWidget, reason: 'days are "any of"');
-      await tapVisible(tester, find.byKey(const ValueKey('filter-days-monFri')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('no-matches')), findsOneWidget, reason: 'only All Days is left, the venue does not run on weekends');
-      await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
-      await tester.tap(find.byKey(const ValueKey('slot-dropdown')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Evening (5 – 10 PM)').last);
-      await tester.pumpAndSettle();
-      expect(find.text('Smash Arena'), findsOneWidget, reason: 'open until 10 PM');
-      await tester.enterText(find.byKey(const ValueKey('discover-search')), 'zzzz');
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('no-matches')), findsOneWidget);
-    });
-
-    testWidgets('Memberships: the grid switch stacks the cards', (tester) async {
-      await openMemberships(tester);
-      final rowCardHeight = tester.getSize(find.byKey(const ValueKey('card-v1'))).height;
+      final rowCardHeight = tester
+          .getSize(find.byKey(const ValueKey('card-v1')))
+          .height;
       await tester.tap(find.byKey(const ValueKey('view-grid')));
       await tester.pumpAndSettle();
       expect(find.text('Smash Arena'), findsOneWidget);
-      expect(tester.getSize(find.byKey(const ValueKey('card-v1'))).height, greaterThan(rowCardHeight), reason: 'photo on top, so taller');
+      expect(
+        tester.getSize(find.byKey(const ValueKey('card-v1'))).height,
+        greaterThan(rowCardHeight),
+        reason: 'photo on top, so taller',
+      );
       expect(find.byKey(const ValueKey('view-plans-v1')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Memberships on a phone: stacked card, a Filters button, no overflow', (
-      tester,
-    ) async {
-      await openMemberships(tester, size: const Size(390, 844));
-      expect(find.byKey(const ValueKey('discover-search-button')), findsNothing);
-      expect(find.text('Smash Arena'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('view-plans-v1')));
-      expect(find.byKey(const ValueKey('mem-tile-v1-monthly')), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('open-filters')));
-      await tester.tap(find.byKey(const ValueKey('open-filters')));
-      await tester.pumpAndSettle();
-      expect(find.text('Membership Duration'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-duration-sixMonths')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('apply-filters')));
-      await tester.pumpAndSettle();
-      expect(find.text('Filters (1)'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+    // a venue whose plans belong to two sports through their batches
+    const multiSport = Venue(
+      id: 'm1',
+      name: 'Multi Sports',
+      city: 'Chennai',
+      sports: ['Badminton', 'Tennis'],
+      courtCount: 4,
+      planCount: 4,
+      minPlanPriceInr: 1500,
+      planPrices: [
+        PlanPrice(30, 1500),
+        PlanPrice(90, 4000),
+        PlanPrice(30, 2500),
+        PlanPrice(365, 20000),
+      ],
+      sportPlans: {
+        'Badminton': [PlanPrice(30, 1500), PlanPrice(90, 4000)],
+        'Tennis': [PlanPrice(30, 2500), PlanPrice(365, 20000)],
+      },
+    );
+
+    testWidgets(
+      'Memberships: a venue with plans in several sports has a chip per sport and the prices follow the sport',
+      (tester) async {
+        final (_, container) = await pumpApp(
+          tester,
+          () => Scaffold(
+            body: playerPageForRoute(
+              AppRoutes.memberships,
+              embedded: true,
+              onNavigate: lastRoutes.add,
+            ),
+          ),
+          city: inChennai,
+          size: const Size(1600, 1000),
+          venues: {
+            inChennai: {
+              VenueKind.venues: [smash, multiSport],
+              VenueKind.memberships: [smash, multiSport],
+            },
+          },
+        );
+        Finder tile(String venue, String key) =>
+            find.byKey(ValueKey('mem-tile-$venue-$key'));
+        // chips only on the venue whose plans differ by sport
+        expect(
+          find.byKey(const ValueKey('mem-sport-m1-Badminton')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('mem-sport-m1-Tennis')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('mem-sport-v1-Badminton')),
+          findsNothing,
+        );
+        // Badminton to start with
+        expect(
+          find.descendant(
+            of: tile('m1', 'monthly'),
+            matching: find.text('₹1,500'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: tile('m1', 'threeMonths'),
+            matching: find.text('₹4,000'),
+          ),
+          findsOneWidget,
+        );
+        expect(tile('m1', 'yearly'), findsNothing);
+        // Tennis: its own prices
+        await tester.tap(find.byKey(const ValueKey('mem-sport-m1-Tennis')));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: tile('m1', 'monthly'),
+            matching: find.text('₹2,500'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: tile('m1', 'yearly'),
+            matching: find.text('₹20,000'),
+          ),
+          findsOneWidget,
+        );
+        expect(tile('m1', 'threeMonths'), findsNothing);
+        // the other venue is untouched
+        expect(
+          find.descendant(
+            of: tile('v1', 'monthly'),
+            matching: find.text('₹1,500'),
+          ),
+          findsOneWidget,
+        );
+        // View Plans still opens the venue's enrolment page
+        lastRoutes.clear();
+        await tester.tap(find.byKey(const ValueKey('view-plans-m1')));
+        expect(lastRoutes, [AppRoutes.enrollPath('m1')]);
+        expect(
+          container.read(preferredSportProvider),
+          'Tennis',
+          reason: 'the enrolment page starts on the sport shown on the card',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Memberships: the sport picked in the search card selects the sport on the card',
+      (tester) async {
+        await pumpApp(
+          tester,
+          () => Scaffold(
+            body: playerPageForRoute(AppRoutes.memberships, embedded: true),
+          ),
+          city: inChennai,
+          size: const Size(1600, 1000),
+          venues: {
+            inChennai: {
+              VenueKind.venues: [multiSport],
+              VenueKind.memberships: [multiSport],
+            },
+          },
+        );
+        await tester.tap(find.byKey(const ValueKey('sport-dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('sport-Tennis')));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('mem-tile-m1-monthly')),
+            matching: find.text('₹2,500'),
+          ),
+          findsOneWidget,
+        );
+        // a duration filter looks at that sport's plans: Tennis has no 3-month plan, so the venue goes
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-duration-threeMonths')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('no-matches')), findsOneWidget);
+      },
+    );
+
+    test('plans of a sport: plansFor, membershipSports and the fallback to every plan', () {
+      expect(multiSport.membershipSports, ['Badminton', 'Tennis']);
+      expect(multiSport.plansFor('tennis').map((p) => p.priceInr), [
+        2500,
+        20000,
+      ]);
+      expect(
+        multiSport.plansFor('Cricket'),
+        isEmpty,
+        reason: 'no plans in that sport',
+      );
+      expect(multiSport.plansFor(null), hasLength(4));
+      expect(smash.sportPlans, isEmpty);
+      expect(smash.membershipSports, [
+        'Badminton',
+        'Tennis',
+      ], reason: 'no sport split: its sports');
+      expect(
+        smash.plansFor('Tennis'),
+        smash.planPrices,
+        reason: 'no sport split: every plan',
+      );
+      expect(lowestPriceByDuration(multiSport, sport: 'Tennis'), {
+        PlanDuration.monthly: 2500,
+        PlanDuration.yearly: 20000,
+      });
+      expect(lowestPlanPrice(multiSport, sport: 'Tennis'), 2500);
+      final read = Venue.fromJson({
+        'id': 'x',
+        'name': 'X',
+        'city': 'Chennai',
+        'memberships': {
+          'count': 2,
+          'plans': [
+            {'durationDays': 30, 'priceInr': 1000},
+          ],
+          'bySport': [
+            {
+              'sport': 'Squash',
+              'plans': [
+                {'durationDays': 30, 'priceInr': 1000},
+              ],
+            },
+          ],
+        },
+      });
+      expect(read.sportPlans.keys, ['Squash']);
+      final filled = smash.withPlans(
+        const [PlanPrice(30, 900)],
+        const {
+          'Padel': [PlanPrice(30, 900)],
+        },
+      );
+      expect(filled.name, 'Smash Arena');
+      expect(filled.sportPlans.keys, ['Padel']);
+      expect(filled.planPrices.single.priceInr, 900);
     });
 
-    testWidgets('Memberships on a small phone with large text does not overflow', (
-      tester,
-    ) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 1.4;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await openMemberships(tester, size: const Size(320, 640));
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'Memberships on a phone: stacked card, a Filters button, no overflow',
+      (tester) async {
+        await openMemberships(tester, size: const Size(390, 844));
+        expect(
+          find.byKey(const ValueKey('discover-search-button')),
+          findsNothing,
+        );
+        expect(find.text('Smash Arena'), findsOneWidget);
+        await tester.ensureVisible(find.byKey(const ValueKey('view-plans-v1')));
+        expect(
+          find.byKey(const ValueKey('mem-tile-v1-monthly')),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(find.byKey(const ValueKey('open-filters')));
+        await tester.tap(find.byKey(const ValueKey('open-filters')));
+        await tester.pumpAndSettle();
+        expect(find.text('Membership Duration'), findsOneWidget);
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-duration-sixMonths')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('apply-filters')));
+        await tester.pumpAndSettle();
+        expect(find.text('Filters (1)'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Memberships on a small phone with large text does not overflow',
+      (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.4;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await openMemberships(tester, size: const Size(320, 640));
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     test('plan lengths, lowest prices, time slots and days', () {
       expect(PlanDuration.ofDays(30), PlanDuration.monthly);
@@ -1101,15 +1447,35 @@ void main() {
         PlanDuration.yearly: 12000,
       });
       expect(lowestPlanPrice(smash), 1500);
-      List<String> names(MembershipFilters f) => applyMembershipFilters([smash, ace], f).map((v) => v.name).toList();
+      List<String> names(MembershipFilters f) =>
+          applyMembershipFilters([smash, ace], f).map((v) => v.name).toList();
       expect(names(const MembershipFilters()), ['Smash Arena', 'Ace Courts']);
-      expect(names(const MembershipFilters(durations: {PlanDuration.sixMonths})), isEmpty);
-      expect(names(const MembershipFilters(durations: {PlanDuration.monthly, PlanDuration.sixMonths})), ['Smash Arena']);
-      expect(names(const MembershipFilters(slot: TimeSlot.morning)), ['Smash Arena'], reason: 'Ace has no hours');
+      expect(
+        names(const MembershipFilters(durations: {PlanDuration.sixMonths})),
+        isEmpty,
+      );
+      expect(
+        names(
+          const MembershipFilters(
+            durations: {PlanDuration.monthly, PlanDuration.sixMonths},
+          ),
+        ),
+        ['Smash Arena'],
+      );
+      expect(names(const MembershipFilters(slot: TimeSlot.morning)), [
+        'Smash Arena',
+      ], reason: 'Ace has no hours');
       expect(names(const MembershipFilters(days: {DayCover.monSat})), isEmpty);
-      expect(names(const MembershipFilters(sport: 'badminton')), ['Smash Arena']);
+      expect(names(const MembershipFilters(sport: 'badminton')), [
+        'Smash Arena',
+      ]);
       expect(names(const MembershipFilters(query: 'adyar')), ['Smash Arena']);
-      const f = MembershipFilters(durations: {PlanDuration.monthly}, days: {DayCover.monFri}, slot: TimeSlot.evening, view: VenueView.grid);
+      const f = MembershipFilters(
+        durations: {PlanDuration.monthly},
+        days: {DayCover.monFri},
+        slot: TimeSlot.evening,
+        view: VenueView.grid,
+      );
       expect(f.activeCount, 3);
       expect(f.cleared().activeCount, 0);
       expect(f.cleared().view, VenueView.grid);
@@ -1127,7 +1493,9 @@ void main() {
       feeType: 'MONTHLY',
       priceInr: 2999,
       maxCapacity: 8,
-      batches: [ListedBatch(startHour: 6, days: {1, 2, 3, 4, 5})],
+      batches: [
+        ListedBatch(startHour: 6, days: {1, 2, 3, 4, 5}),
+      ],
       coach: ListedCoach(
         name: 'Arjun',
         certifications: 'BWF Level 1 Certified',
@@ -1147,14 +1515,16 @@ void main() {
       programType: 'ONE_ON_ONE',
       priceInr: 4999,
       maxCapacity: 4,
-      batches: [ListedBatch(startHour: 18, days: {0, 6})],
+      batches: [
+        ListedBatch(startHour: 18, days: {0, 6}),
+      ],
       coach: ListedCoach(name: 'Coach Divya'),
     );
     const noCoach = CoachingListing(
       programId: 'p3',
       name: 'Juniors',
-      venueId: 'v2',
-      venueName: 'Ace Courts',
+      venueId: 'v3',
+      venueName: 'Zen Courts',
       venueCity: 'Chennai',
       priceInr: 1200,
     );
@@ -1180,93 +1550,144 @@ void main() {
       coaching: data,
     );
 
-    testWidgets('Coaching: banner, highlights, and a card per programme with its coach', (
-      tester,
-    ) async {
-      lastRoutes.clear();
-      await openCoaching(tester);
-      expect(find.textContaining('Explore'), findsOneWidget);
-      expect(find.text('Learn, improve and compete with certified coaches near you.'), findsOneWidget);
-      for (final t in ['Certified Coaches', 'All Skill Levels', 'Flexible Batches', 'Multiple Venues', 'Train with verified experts', 'Beginner to advanced', 'Group or individual training', 'Choose a venue near you']) {
-        expect(find.text(t), findsOneWidget, reason: t);
-      }
-      expect(find.text('3 Coaching Programs Found'), findsOneWidget);
-      // the venue on the photo
-      expect(find.byKey(const ValueKey('venue-p1')), findsOneWidget);
-      expect(find.text('Adyar, Chennai'), findsOneWidget);
-      // the coach: "Coach" in front of a plain name, the certification, rating and years
-      expect(find.text('Coach Arjun'), findsOneWidget);
-      expect(find.text('BWF Level 1 Certified'), findsOneWidget);
-      expect(find.text('4.9'), findsOneWidget);
-      expect(find.text('5+ Years Experience'), findsOneWidget);
-      expect(find.text('Coach Divya'), findsOneWidget, reason: 'a name that already says Coach is kept');
-      // the programme
-      expect(find.text('Badminton – Beginner Program'), findsOneWidget);
-      expect(find.text('Build a strong foundation with proper techniques.'), findsOneWidget);
-      expect(find.text('Group Batch'), findsWidgets);
-      expect(find.text('Individual'), findsOneWidget);
-      expect(find.text('Beginner'), findsWidgets);
-      expect(find.text('Max 8'), findsOneWidget);
-      // the fee
-      expect(find.textContaining('₹2,999'), findsOneWidget);
-      expect(find.textContaining('/ month'), findsOneWidget);
-      expect(find.textContaining('₹4,999'), findsOneWidget);
-      expect(find.textContaining('one-time'), findsNWidgets(2), reason: 'Advanced and Juniors are one-time fees');
-      // a programme with no coach says so instead of leaving a gap
-      expect(find.text('Coach details are shared when you enroll'), findsOneWidget);
-      expect(find.byKey(const ValueKey('sort-by')), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'Coaching: banner, highlights, and a card per programme with its coach',
+      (tester) async {
+        lastRoutes.clear();
+        await openCoaching(tester);
+        expect(find.textContaining('Explore'), findsOneWidget);
+        expect(
+          find.text(
+            'Learn, improve and compete with certified coaches near you.',
+          ),
+          findsOneWidget,
+        );
+        for (final t in [
+          'Certified Coaches',
+          'All Skill Levels',
+          'Flexible Batches',
+          'Multiple Venues',
+          'Train with verified experts',
+          'Beginner to advanced',
+          'Group or individual training',
+          'Choose a venue near you',
+        ]) {
+          expect(find.text(t), findsOneWidget, reason: t);
+        }
+        expect(find.text('3 Coaching Programs Found'), findsOneWidget);
+        // the venue on the photo
+        expect(find.byKey(const ValueKey('venue-p1')), findsOneWidget);
+        expect(find.text('Adyar, Chennai'), findsOneWidget);
+        // the coach: "Coach" in front of a plain name, the certification, rating and years
+        expect(find.text('Coach Arjun'), findsOneWidget);
+        expect(find.text('BWF Level 1 Certified'), findsOneWidget);
+        expect(find.text('4.9'), findsOneWidget);
+        expect(find.text('5+ Years Experience'), findsOneWidget);
+        expect(
+          find.text('Coach Divya'),
+          findsOneWidget,
+          reason: 'a name that already says Coach is kept',
+        );
+        // the programme
+        expect(find.text('Badminton – Beginner Program'), findsOneWidget);
+        expect(
+          find.text('Build a strong foundation with proper techniques.'),
+          findsOneWidget,
+        );
+        expect(find.text('Group Batch'), findsWidgets);
+        expect(find.text('Individual'), findsOneWidget);
+        expect(find.text('Beginner'), findsWidgets);
+        expect(find.text('Max 8'), findsOneWidget);
+        // the fee
+        expect(find.textContaining('₹2,999'), findsOneWidget);
+        expect(find.textContaining('/ month'), findsOneWidget);
+        expect(find.textContaining('₹4,999'), findsOneWidget);
+        expect(
+          find.textContaining('one-time'),
+          findsNWidgets(2),
+          reason: 'Advanced and Juniors are one-time fees',
+        );
+        // a programme with no coach says so instead of leaving a gap
+        expect(find.text('Coach Details are not available'), findsOneWidget);
+        expect(find.byKey(const ValueKey('sort-by')), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('Coaching: View & Enroll, the card and the arrow open the right pages; the heart saves the venue', (
-      tester,
-    ) async {
-      lastRoutes.clear();
-      final (_, container) = await openCoaching(tester);
-      await tester.tap(find.byKey(const ValueKey('enroll-p1')));
-      expect(lastRoutes, [AppRoutes.coachingEnrollPath('v2')]);
-      lastRoutes.clear();
-      await tester.tap(find.byKey(const ValueKey('open-venue-p2')));
-      expect(lastRoutes, [AppRoutes.venuePath('v1')]);
-      await tester.tap(find.byKey(const ValueKey('heart-p2')));
-      await tester.pumpAndSettle();
-      expect(container.read(savedVenuesProvider), {'v1'});
-    });
+    testWidgets(
+      'Coaching: View & Enroll, the card and the arrow open the right pages; the heart saves the venue',
+      (tester) async {
+        lastRoutes.clear();
+        final (_, container) = await openCoaching(tester);
+        await tester.tap(find.byKey(const ValueKey('enroll-p1')));
+        expect(lastRoutes, [AppRoutes.coachingEnrollPath('v2')]);
+        lastRoutes.clear();
+        await tester.tap(find.byKey(const ValueKey('open-venue-p2')));
+        expect(lastRoutes, [AppRoutes.venuePath('v1')]);
+        await tester.tap(find.byKey(const ValueKey('heart-p2')));
+        await tester.pumpAndSettle();
+        expect(container.read(savedVenuesProvider), {'v1'});
+      },
+    );
 
-    testWidgets('Coaching has the venue page\'s search card and the design\'s filters', (
-      tester,
-    ) async {
-      await openCoaching(tester);
-      final dropdown = tester.getRect(find.byKey(const ValueKey('sport-dropdown')));
-      final search = tester.getRect(find.byKey(const ValueKey('discover-search')));
-      final views = tester.getRect(find.byKey(const ValueKey('view-grid')));
-      expect(dropdown.right, lessThan(search.left));
-      expect(views.left, greaterThan(search.right));
-      for (final t in ['Coaching Level', 'Beginner', 'Intermediate', 'Advanced', 'Coaching Type', 'Group Training', 'Individual Training', 'Preferred Time', 'Days', 'Any Time', 'Any Days']) {
-        expect(find.text(t), findsWidgets, reason: t);
-      }
-      Text count(String label) => tester.widget<Text>(find.byKey(ValueKey('count-$label')));
-      // "All Levels" programmes (Juniors) fit every level
-      expect(count('Beginner').data, '(2)');
-      expect(count('Intermediate').data, '(1)');
-      expect(count('Advanced').data, '(2)');
-      expect(count('Group Training').data, '(2)');
-      expect(count('Individual Training').data, '(1)');
-      expect(find.text('Apply Filters (3)'), findsOneWidget);
-    });
+    testWidgets(
+      'Coaching has the venue page\'s search card and the design\'s filters',
+      (tester) async {
+        await openCoaching(tester);
+        final dropdown = tester.getRect(
+          find.byKey(const ValueKey('sport-dropdown')),
+        );
+        final search = tester.getRect(
+          find.byKey(const ValueKey('discover-search')),
+        );
+        final views = tester.getRect(find.byKey(const ValueKey('view-grid')));
+        expect(dropdown.right, lessThan(search.left));
+        expect(views.left, greaterThan(search.right));
+        for (final t in [
+          'Coaching Level',
+          'Beginner',
+          'Intermediate',
+          'Advanced',
+          'Coaching Type',
+          'Group Training',
+          'Individual Training',
+          'Preferred Time',
+          'Days',
+          'Any Time',
+          'Any Days',
+        ]) {
+          expect(find.text(t), findsWidgets, reason: t);
+        }
+        Text count(String label) =>
+            tester.widget<Text>(find.byKey(ValueKey('count-$label')));
+        // "All Levels" programmes (Juniors) fit every level
+        expect(count('Beginner').data, '(2)');
+        expect(count('Intermediate').data, '(1)');
+        expect(count('Advanced').data, '(2)');
+        expect(count('Group Training').data, '(2)');
+        expect(count('Individual Training').data, '(1)');
+        expect(find.text('Apply Filters (3)'), findsOneWidget);
+      },
+    );
 
     testWidgets('Coaching filters narrow the list; Clear All brings it back', (
       tester,
     ) async {
       await openCoaching(tester);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-type-individual')));
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('filter-type-individual')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('1 Coaching Program Found'), findsOneWidget);
       expect(find.text('Coach Divya'), findsOneWidget);
       await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
       await tester.pumpAndSettle();
       expect(find.text('3 Coaching Programs Found'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-level-advanced')));
+      await tapVisible(
+        tester,
+        find.byKey(const ValueKey('filter-level-advanced')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('2 Coaching Programs Found'), findsOneWidget);
       await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
@@ -1280,7 +1701,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Morning (5 AM – 12 PM)').last);
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('no-matches')), findsOneWidget, reason: 'the weekend batch is in the evening');
+      expect(
+        find.byKey(const ValueKey('no-matches')),
+        findsOneWidget,
+        reason: 'the weekend batch is in the evening',
+      );
       await tapVisible(tester, find.byKey(const ValueKey('clear-filters')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('sport-dropdown')));
@@ -1288,50 +1713,138 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('sport-Tennis')));
       await tester.pumpAndSettle();
       expect(find.text('1 Coaching Program Found'), findsOneWidget);
-      await tester.enterText(find.byKey(const ValueKey('discover-search')), 'arjun');
+      await tester.enterText(
+        find.byKey(const ValueKey('discover-search')),
+        'arjun',
+      );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('no-matches')), findsOneWidget, reason: 'Arjun teaches badminton, the sport is Tennis');
+      expect(
+        find.byKey(const ValueKey('no-matches')),
+        findsOneWidget,
+        reason: 'Arjun teaches badminton, the sport is Tennis',
+      );
     });
 
     testWidgets('Coaching: the list switch makes one wide row per programme', (
       tester,
     ) async {
       await openCoaching(tester);
-      final gridWidth = tester.getSize(find.byKey(const ValueKey('card-p1'))).width;
+      final gridWidth = tester
+          .getSize(find.byKey(const ValueKey('card-v2')))
+          .width;
       await tester.tap(find.byKey(const ValueKey('view-list')));
       await tester.pumpAndSettle();
-      expect(tester.getSize(find.byKey(const ValueKey('card-p1'))).width, greaterThan(gridWidth));
-      expect(tester.getTopLeft(find.byKey(const ValueKey('card-p1'))).dy, isNot(tester.getTopLeft(find.byKey(const ValueKey('card-p2'))).dy));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('card-v2'))).width,
+        greaterThan(gridWidth),
+      );
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('card-v2'))).dy,
+        isNot(tester.getTopLeft(find.byKey(const ValueKey('card-v1'))).dy),
+      );
       expect(find.text('Coach Arjun'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
+    // a venue (v2) with a programme in each of two sports: one card, a chip per sport
+    const tennisAtAce = CoachingListing(
+      programId: 'p4',
+      name: 'Starters',
+      venueId: 'v2',
+      venueName: 'Ace Courts',
+      venueCity: 'Chennai',
+      level: 'Intermediate',
+      sport: 'Tennis',
+      feeType: 'MONTHLY',
+      priceInr: 3500,
+      maxCapacity: 6,
+      coach: ListedCoach(name: 'Meera', certifications: 'ITF Level 2'),
+    );
+    const twoSports = {
+      inChennai: [beginner, tennisAtAce, advanced],
+    };
+
+    testWidgets(
+      'Coaching: a venue with programmes in several sports is one card, without a row of sport chips',
+      (tester) async {
+        lastRoutes.clear();
+        await openCoaching(tester, data: twoSports);
+        expect(
+          find.text('2 Coaching Programs Found'),
+          findsOneWidget,
+          reason: 'Ace Courts and Smash Arena',
+        );
+        expect(find.byKey(const ValueKey('card-v2')), findsOneWidget);
+        // no sport chips on any card
+        expect(
+          find.byKey(const ValueKey('coach-sport-v2-Badminton')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('coach-sport-v2-Tennis')),
+          findsNothing,
+        );
+        // Badminton first (the better presented), with its own coach and fee
+        expect(find.text('Coach Arjun'), findsOneWidget);
+        expect(find.text('Badminton – Beginner Program'), findsOneWidget);
+        expect(find.textContaining('₹2,999'), findsOneWidget);
+        // View & Enroll opens the venue's enrolment page (where the sport is chosen)
+        await tester.tap(find.byKey(const ValueKey('enroll-p1')));
+        expect(lastRoutes, [AppRoutes.coachingEnrollPath('v2')]);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Coaching: the sport picked in the search card selects the sport on the card',
+      (tester) async {
+        await openCoaching(tester, data: twoSports);
+        await tester.tap(find.byKey(const ValueKey('sport-dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('sport-Tennis')));
+        await tester.pumpAndSettle();
+        // Tennis: Ace Courts (Starters) and Smash Arena (Advanced)
+        expect(find.text('2 Coaching Programs Found'), findsOneWidget);
+        expect(find.text('Coach Meera'), findsOneWidget);
+        expect(find.text('Tennis – Starters'), findsOneWidget);
+        expect(find.text('Coach Arjun'), findsNothing);
+      },
+    );
+
     testWidgets('Coaching cards in a row are the same height', (tester) async {
       await openCoaching(tester);
       final heights = [
-        for (final id in ['p1', 'p2', 'p3']) tester.getSize(find.byKey(ValueKey('card-$id'))).height,
+        for (final id in ['v2', 'v1', 'v3'])
+          tester.getSize(find.byKey(ValueKey('card-$id'))).height,
       ];
       expect(heights[1], heights[0]);
       expect(heights[2], heights[0]);
     });
 
-    testWidgets('Coaching on a phone: stacked card, Filters sheet, no overflow', (
-      tester,
-    ) async {
-      await openCoaching(tester, size: const Size(390, 844));
-      expect(find.byKey(const ValueKey('discover-search-button')), findsNothing);
-      expect(find.text('Coach Arjun'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('open-filters')));
-      await tester.tap(find.byKey(const ValueKey('open-filters')));
-      await tester.pumpAndSettle();
-      expect(find.text('Coaching Level'), findsOneWidget);
-      await tapVisible(tester, find.byKey(const ValueKey('filter-type-individual')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('apply-filters')));
-      await tester.pumpAndSettle();
-      expect(find.text('Filters (1)'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'Coaching on a phone: stacked card, Filters sheet, no overflow',
+      (tester) async {
+        await openCoaching(tester, size: const Size(390, 844));
+        expect(
+          find.byKey(const ValueKey('discover-search-button')),
+          findsNothing,
+        );
+        expect(find.text('Coach Arjun'), findsOneWidget);
+        await tester.ensureVisible(find.byKey(const ValueKey('open-filters')));
+        await tester.tap(find.byKey(const ValueKey('open-filters')));
+        await tester.pumpAndSettle();
+        expect(find.text('Coaching Level'), findsOneWidget);
+        await tapVisible(
+          tester,
+          find.byKey(const ValueKey('filter-type-individual')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('apply-filters')));
+        await tester.pumpAndSettle();
+        expect(find.text('Filters (1)'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('Coaching on a small phone with large text does not overflow', (
       tester,
@@ -1342,26 +1855,39 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Coaching still lists the venues when only the older venue list is available', (
-      tester,
-    ) async {
-      await openCoaching(tester, data: const {});
-      // ace has the programme name "Juniors" and a lowest price of ₹1,200, no coach
-      expect(find.text('1 Coaching Program Found'), findsOneWidget);
-      expect(find.text('Cricket – Juniors'), findsOneWidget);
-      expect(find.textContaining('₹1,200'), findsOneWidget);
-      expect(find.text('Coach details are shared when you enroll'), findsOneWidget);
-    });
+    testWidgets(
+      'Coaching still lists the venues when only the older venue list is available',
+      (tester) async {
+        await openCoaching(tester, data: const {});
+        // ace has the programme name "Juniors" and a lowest price of ₹1,200, no coach
+        expect(find.text('1 Coaching Program Found'), findsOneWidget);
+        expect(find.text('Cricket – Juniors'), findsOneWidget);
+        expect(find.textContaining('₹1,200'), findsOneWidget);
+        expect(find.text('Coach Details are not available'), findsOneWidget);
+      },
+    );
 
     test('coaching listings: coach labels, titles, places and filters', () {
       expect(beginner.coach!.experienceLabel, '5+ Years Experience');
       expect(beginner.coach!.ratingLabel, '4.9');
-      expect(const ListedCoach(name: 'X', experienceYears: 0.5).experienceLabel, isNull);
+      expect(
+        const ListedCoach(name: 'X', experienceYears: 0.5).experienceLabel,
+        isNull,
+      );
       expect(const ListedCoach(name: 'X', rating: 0).ratingLabel, isNull);
       expect(const ListedCoach(name: 'Coach Divya').initials, 'D');
       expect(const ListedCoach(name: 'Arjun Kumar').initials, 'AK');
       expect(beginner.title, 'Badminton – Beginner Program');
-      expect(const CoachingListing(programId: 'a', name: 'Badminton Basics', venueId: 'v', venueName: 'V', sport: 'Badminton').title, 'Badminton Basics');
+      expect(
+        const CoachingListing(
+          programId: 'a',
+          name: 'Badminton Basics',
+          venueId: 'v',
+          venueName: 'V',
+          sport: 'Badminton',
+        ).title,
+        'Badminton Basics',
+      );
       expect(advanced.venuePlace, 'Adyar, Chennai');
       expect(beginner.venuePlace, 'Chennai');
       expect(advanced.typeLabel, 'Individual');
@@ -1375,10 +1901,25 @@ void main() {
         'priceMinor': 250000,
         'maxCapacity': 6,
         'batches': [
-          {'startTime': '06:30:00', 'endTime': '07:30:00', 'daysOfWeek': [1, 3]},
+          {
+            'startTime': '06:30:00',
+            'endTime': '07:30:00',
+            'daysOfWeek': [1, 3],
+          },
         ],
-        'coach': {'name': 'Vignesh', 'rating': 4.9, 'experienceYears': 6.0, 'certifications': 'National Level Player'},
-        'venue': {'id': 'v3', 'name': 'Smash Court', 'area': 'Velachery', 'city': 'Chennai', 'verified': true},
+        'coach': {
+          'name': 'Vignesh',
+          'rating': 4.9,
+          'experienceYears': 6.0,
+          'certifications': 'National Level Player',
+        },
+        'venue': {
+          'id': 'v3',
+          'name': 'Smash Court',
+          'area': 'Velachery',
+          'city': 'Chennai',
+          'verified': true,
+        },
       });
       expect(parsed.priceInr, 2500);
       expect(parsed.isMonthly, isTrue);
@@ -1387,18 +1928,47 @@ void main() {
       expect(parsed.venueVerified, isTrue);
       expect(parsed.coach!.headline, 'National Level Player');
 
-      List<String> ids(CoachingFilters f) => applyCoachingFilters([beginner, advanced, noCoach], f).map((p) => p.programId).toList();
-      expect(ids(const CoachingFilters()), ['p1', 'p2', 'p3'], reason: 'coach + rating + description first');
-      expect(ids(const CoachingFilters(levels: {CoachingLevel.beginner})), ['p1', 'p3']);
-      expect(ids(const CoachingFilters(types: {CoachingType.individual})), ['p2']);
+      List<String> ids(CoachingFilters f) => applyCoachingFilters([
+        beginner,
+        advanced,
+        noCoach,
+      ], f).map((p) => p.programId).toList();
+      expect(ids(const CoachingFilters()), [
+        'p1',
+        'p2',
+        'p3',
+      ], reason: 'coach + rating + description first');
+      expect(ids(const CoachingFilters(levels: {CoachingLevel.beginner})), [
+        'p1',
+        'p3',
+      ]);
+      expect(ids(const CoachingFilters(types: {CoachingType.individual})), [
+        'p2',
+      ]);
       expect(ids(const CoachingFilters(time: TimeSlot.evening)), ['p2']);
       expect(ids(const CoachingFilters(days: DaysPick.weekdays)), ['p1']);
       expect(ids(const CoachingFilters(days: DaysPick.weekends)), ['p2']);
       expect(ids(const CoachingFilters(query: 'divya')), ['p2']);
       expect(ids(const CoachingFilters(sport: 'badminton')), ['p1']);
-      expect(const CoachingFilters(levels: {CoachingLevel.beginner}, days: DaysPick.weekends, view: VenueView.list).activeCount, 2);
-      expect(const CoachingFilters(levels: {CoachingLevel.beginner}, view: VenueView.list).cleared().view, VenueView.list);
-      expect(coachingSports([beginner, advanced, noCoach]), ['Badminton', 'Tennis']);
+      expect(
+        const CoachingFilters(
+          levels: {CoachingLevel.beginner},
+          days: DaysPick.weekends,
+          view: VenueView.list,
+        ).activeCount,
+        2,
+      );
+      expect(
+        const CoachingFilters(
+          levels: {CoachingLevel.beginner},
+          view: VenueView.list,
+        ).cleared().view,
+        VenueView.list,
+      );
+      expect(coachingSports([beginner, advanced, noCoach]), [
+        'Badminton',
+        'Tennis',
+      ]);
     });
 
     testWidgets('a city with venues but none with plans says so', (
@@ -1531,7 +2101,7 @@ void main() {
     );
 
     testWidgets(
-      'Find a Court on the web home opens guest booking inside the page, no back button',
+      'Find a Court on the web home opens the Venues page inside the page, no back button',
       (tester) async {
         await pumpApp(
           tester,
@@ -1542,12 +2112,37 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(AppBar), findsNothing);
         expect(find.byType(BackButton), findsNothing);
-        expect(find.text('Guest Court Booking'), findsOneWidget);
-        expect(find.byKey(const ValueKey('no-venues')), findsOneWidget);
+        // the same page as Venues, not a "coming soon" placeholder
+        expect(find.textContaining('Discover Sports'), findsOneWidget);
+        expect(find.text('Coming soon'), findsNothing);
+        expect(find.text('Guest Court Booking'), findsNothing);
         expect(
-          tester.getTopLeft(find.text('Guest Court Booking')).dx,
-          lessThan(300),
+          find.byKey(const ValueKey('no-venues')),
+          findsOneWidget,
+          reason: 'no venues in the default city',
         );
+      },
+    );
+
+    testWidgets(
+      'Guest Booking lists the city\'s venues like the Venues page, and a venue opens its page',
+      (tester) async {
+        await pumpApp(
+          tester,
+          () => const PlayerShell(),
+          size: const Size(1600, 900),
+          city: inChennai,
+        );
+        await tester.tap(find.text('Find a Court'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Discover Sports'), findsOneWidget);
+        expect(find.byKey(const ValueKey('discover-search')), findsOneWidget);
+        expect(find.byKey(const ValueKey('sport-dropdown')), findsOneWidget);
+        expect(find.text('2 Venues Found'), findsOneWidget);
+        expect(find.text('Smash Arena'), findsOneWidget);
+        expect(find.text('Ace Courts'), findsOneWidget);
+        expect(find.byKey(const ValueKey('view-book-v1')), findsOneWidget);
+        expect(tester.takeException(), isNull);
       },
     );
   });
@@ -1657,6 +2252,7 @@ void main() {
     test('which addresses the shell owns', () {
       for (final r in [
         '/explore',
+        '/my-coaching',
         '/bookings',
         '/profile',
         '/coaching',
@@ -1667,7 +2263,7 @@ void main() {
       ]) {
         expect(AppRoutes.isShellRoute(r), isTrue, reason: r);
       }
-      for (final r in ['/', '/login', '/welcome', '/venue', '/my-coaching']) {
+      for (final r in ['/', '/login', '/welcome', '/venue']) {
         expect(AppRoutes.isShellRoute(r), isFalse, reason: r);
       }
     });

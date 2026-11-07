@@ -13,6 +13,7 @@ import '../../core/widgets/pressable.dart';
 import '../../core/widgets/reveal.dart';
 import '../auth/application/auth_providers.dart';
 import '../auth/presentation/login_flow.dart';
+import '../my_bookings/presentation/my_bookings_page.dart';
 import '../player_home/application/player_home_controller.dart';
 import '../player_home/presentation/pages/player_home_page.dart';
 import '../player_home/presentation/widgets/desktop_backdrop.dart';
@@ -115,6 +116,8 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
   }
 
   static const _inShell = {
+    AppRoutes.myMembership,
+    AppRoutes.myCoaching,
     AppRoutes.guestBooking,
     AppRoutes.memberships,
     AppRoutes.coaching,
@@ -316,14 +319,7 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
       index: _tab == PlayerTab.quick ? 0 : _tab.index.clamp(0, 4),
       children: [
         PlayerHomePage(onNavigate: _go, desktopHeader: bar),
-        withBar(
-          const ComingSoonPage(
-            title: 'Bookings',
-            icon: Icons.calendar_month_outlined,
-            message: 'Your upcoming and past bookings will be listed here.',
-            embedded: true,
-          ),
-        ),
+        withBar(MyBookingsPage(onNavigate: _go)),
         const SizedBox.shrink(),
         withBar(DiscoverVenuesPage(onNavigate: _go)),
         withBar(const _ProfileTab()),
@@ -438,10 +434,23 @@ class _TopBar extends ConsumerWidget {
           )
         : child;
 
-    Widget link(String label, {PlayerTab? tab, String? route}) {
+    final hasCoaching = ref.watch(
+      playerHomeProvider.select((a) => a.value?.hasActiveCoaching ?? false),
+    );
+    final hasMembership = ref.watch(
+      playerHomeProvider.select((a) => a.value?.hasActiveMembership ?? false),
+    );
+    Widget link(
+      String label, {
+      PlayerTab? tab,
+      String? route,
+      String? alsoRoute,
+    }) {
       final selected = tab != null
-          ? (tab == current && page == null)
-          : route == page;
+          // on Guest Court Booking (which is the venue list) "Venues" stays lit
+          ? ((tab == current && page == null) ||
+                (tab == PlayerTab.explore && page == AppRoutes.guestBooking))
+          : (route == page || (alsoRoute != null && alsoRoute == page));
       return Pressable(
         key: ValueKey('nav-$label'),
         onTap: () => tab != null ? onSelect(tab) : onNavigate(route!),
@@ -503,8 +512,28 @@ class _TopBar extends ConsumerWidget {
             const SizedBox(width: 36),
             // No Home link: the logo is the way home.
             land(50, link('Venues', tab: PlayerTab.explore)),
-            land(70, link('Memberships', route: AppRoutes.memberships)),
-            land(90, link('Coaching', route: AppRoutes.coaching)),
+            // a player with an active membership goes to its details; everyone else to the list of memberships
+            land(
+              70,
+              link(
+                'Memberships',
+                route: hasMembership
+                    ? AppRoutes.myMembership
+                    : AppRoutes.memberships,
+                alsoRoute: hasMembership
+                    ? AppRoutes.memberships
+                    : AppRoutes.myMembership,
+              ),
+            ),
+            // a player enrolled in coaching goes to My Coaching; everyone else to the list of programmes
+            land(
+              90,
+              link(
+                'Coaching',
+                route: hasCoaching ? AppRoutes.myCoaching : AppRoutes.coaching,
+                alsoRoute: hasCoaching ? AppRoutes.coaching : AppRoutes.myCoaching,
+              ),
+            ),
             land(110, link('Tournaments', route: AppRoutes.tournaments)),
             const Spacer(),
             // The picked city, in an outlined pill: the Location button.

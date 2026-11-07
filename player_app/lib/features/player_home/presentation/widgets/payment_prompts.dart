@@ -4,19 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/external_links.dart';
 import '../../../../core/widgets/pressable.dart';
+import '../../../payments/application/payment_flow.dart';
+import '../../../payments/domain/payment_receipt.dart';
 import '../../application/player_home_controller.dart';
-import '../../data/pending_payment_repository.dart';
 import '../../domain/player_dashboard_models.dart';
 
 /// "Complete your payment" prompts at the top of Home: one per membership, coaching enrolment or booking that is not fully paid.
 /// A failed or late payment is shown in red and spoken about more firmly; each has a button that opens the Razorpay page right here.
 /// Coming back from that page reloads Home, so a prompt disappears by itself once the payment has gone through.
 class PaymentPrompts extends ConsumerStatefulWidget {
-  const PaymentPrompts({super.key, required this.payments});
+  const PaymentPrompts({super.key, required this.payments, this.onNavigate});
 
   final List<PendingPayment> payments;
+
+  /// Opens a route from the "Payment Successful" page's buttons.
+  final void Function(String route)? onNavigate;
 
   @override
   ConsumerState<PaymentPrompts> createState() => _PaymentPromptsState();
@@ -46,45 +49,72 @@ class _PaymentPromptsState extends ConsumerState<PaymentPrompts>
     }
   }
 
-  void _toast(String text) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-    }
-  }
 
   Future<void> _pay(PendingPayment p) async {
     final key = '${p.kind.name}-${p.id}';
     setState(() => _busy = key);
     try {
-      final link = await ref
-          .read(pendingPaymentRepositoryProvider)
-          .paymentLink(p);
-      if (link == null) {
-        _toast('That payment is already done. Refreshing…');
-        await ref.read(playerHomeProvider.notifier).refresh();
-        return;
-      }
-      final opened = await ref.read(linkOpenerProvider)(link);
-      if (!opened) {
-        throw const PaymentLinkException(
-          "We couldn't open the payment page. Please try again.",
-        );
-      }
-      _toast(
-        'Finish the payment on the page that opened. This will update here once it is done.',
+      await openPaymentFlow(
+        context,
+        onNavigate: widget.onNavigate ?? (_) {},
+        job: PaymentJob(
+          kind: switch (p.kind) {
+            PendingPaymentKind.membership => PaymentKind.membership,
+            PendingPaymentKind.coaching => PaymentKind.coaching,
+            _ => PaymentKind.booking,
+          },
+          title: p.title,
+          venueName: p.venueName,
+          balance: p.isBalance,
+          prepare: () async => PaymentTarget(
+            id: p.id,
+            link: await ref
+                .read(pendingPaymentRepositoryProvider)
+                .paymentLink(p),
+          ),
+        ),
       );
-    } on PaymentLinkException catch (e) {
-      _toast(e.message);
-    } catch (_) {
-      _toast("We couldn't open the payment page. Please try again.");
     } finally {
-      if (mounted) setState(() => _busy = null);
+      if (mounted) {
+        setState(() => _busy = null);
+        ref.read(playerHomeProvider.notifier).refresh();
+      }
     }
+  }
+
+  final _synced = <String>{};
+
+  /// Razorpay may have taken a payment while our webhook was late: ask once per item, and reload Home if any turn out paid.
+  void _syncPending() {
+    final todo = [
+      for (final p in widget.payments)
+        if (p.kind != PendingPaymentKind.booking &&
+            _synced.add('${p.kind.name}-${p.id}'))
+          p,
+    ];
+    if (todo.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      var changed = false;
+      for (final p in todo) {
+        final r = await ref
+            .read(paymentReceiptRepositoryProvider)
+            .sync(
+              p.kind == PendingPaymentKind.membership
+                  ? PaymentKind.membership
+                  : PaymentKind.coaching,
+              p.id,
+            )
+            .catchError((_) => null);
+        if (r != null && r.isPaid) changed = true;
+      }
+      if (mounted && changed) ref.read(playerHomeProvider.notifier).refresh();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.payments.isEmpty) return const SizedBox.shrink();
+    _syncPending();
     return Column(
       key: const ValueKey('payment-prompts'),
       crossAxisAlignment: CrossAxisAlignment.stretch,

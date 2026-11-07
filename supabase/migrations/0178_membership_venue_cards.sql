@@ -6,6 +6,7 @@
 --
 --   memberships.plans : [{ durationDays, priceInr }, ...]   every active plan (the app picks the lowest per duration)
 --   memberships.days  : [0..6]                              days any active batch runs on (0 = Sunday ... 6 = Saturday)
+--   memberships.bySport : [{ sport, plans: [{ durationDays, priceInr }] }]   the plans each sport has batches for (a plan belongs to a sport through its batches), so a venue with several sports can show each sport's prices
 --   hours             : { opens, closes, open24h }          as in get_public_venue (0174)
 create or replace function list_public_venue_cards(p_city text, p_state text default null, p_kind text default 'venues')
 returns jsonb
@@ -48,6 +49,18 @@ as $$
            (select min(mp.price_inr) from membership_plans mp where mp.facility_id = f.id and mp.is_active) as min_plan_price,
            coalesce((select jsonb_agg(jsonb_build_object('durationDays', mp.duration_days, 'priceInr', mp.price_inr) order by mp.duration_days, mp.price_inr)
                        from membership_plans mp where mp.facility_id = f.id and mp.is_active), '[]'::jsonb) as plan_prices,
+           coalesce((
+             select jsonb_agg(jsonb_build_object('sport', s.sport, 'plans', s.plans) order by s.sport)
+               from (
+                 select coalesce(fs.custom_sport_name, sp.name) as sport,
+                        jsonb_agg(distinct jsonb_build_object('durationDays', mp.duration_days, 'priceInr', mp.price_inr)) as plans
+                   from membership_batches mb
+                   join membership_plans mp on mp.id = mb.plan_id and mp.is_active
+                   join facility_sports fs on fs.id = mb.facility_sport_id
+                   left join sports sp on sp.id = fs.sport_id
+                  where mb.facility_id = f.id and mb.is_active
+                  group by coalesce(fs.custom_sport_name, sp.name)
+               ) s), '[]'::jsonb) as sport_plans,
            coalesce((select jsonb_agg(distinct d.day order by d.day)
                        from membership_batches mb, unnest(mb.days_of_week) as d(day)
                       where mb.facility_id = f.id and mb.is_active), '[]'::jsonb) as batch_days,
@@ -79,7 +92,7 @@ as $$
       'memberships', jsonb_build_object(
         'count', v.plan_count + case when v.plan_count = 0 then v.batch_count else 0 end,
         'names', v.plan_names, 'minPriceInr', v.min_plan_price,
-        'plans', v.plan_prices, 'days', v.batch_days),
+        'plans', v.plan_prices, 'days', v.batch_days, 'bySport', v.sport_plans),
       'coaching', jsonb_build_object('count', v.program_count, 'names', v.program_names, 'minPriceInr', case when v.min_program_minor is null then null else v.min_program_minor / 100 end)
     ) order by v.name
   ), '[]'::jsonb)

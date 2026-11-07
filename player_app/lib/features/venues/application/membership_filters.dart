@@ -47,10 +47,10 @@ enum DayCover {
   final Set<int> days;
 }
 
-/// The lowest price of each length a venue sells, in rupees.
-Map<PlanDuration, int> lowestPriceByDuration(Venue v) {
+/// The lowest price of each length a venue sells, in rupees. With [sport], only the plans of that sport.
+Map<PlanDuration, int> lowestPriceByDuration(Venue v, {String? sport}) {
   final out = <PlanDuration, int>{};
-  for (final p in v.planPrices) {
+  for (final p in v.plansFor(sport)) {
     final d = PlanDuration.ofDays(p.durationDays);
     if (d == null || p.priceInr <= 0) continue;
     final cur = out[d];
@@ -60,8 +60,8 @@ Map<PlanDuration, int> lowestPriceByDuration(Venue v) {
 }
 
 /// The lowest price among every active plan of the venue (any length), or null when it has none.
-int? lowestPlanPrice(Venue v) {
-  final tiers = lowestPriceByDuration(v).values;
+int? lowestPlanPrice(Venue v, {String? sport}) {
+  final tiers = lowestPriceByDuration(v, sport: sport).values;
   if (tiers.isNotEmpty) return tiers.reduce((a, b) => a < b ? a : b);
   return v.minPlanPriceInr;
 }
@@ -182,13 +182,13 @@ List<Venue> applyMembershipFilters(List<Venue> venues, MembershipFilters f) {
       if (!q.split(RegExp(r'\s+')).every(haystack.contains)) return false;
     }
     if (f.sport != null &&
-        !v.sports.any(
+        !v.membershipSports.any(
           (s) => s.trim().toLowerCase() == f.sport!.trim().toLowerCase(),
         )) {
       return false;
     }
     if (f.durations.isNotEmpty) {
-      final have = lowestPriceByDuration(v).keys.toSet();
+      final have = lowestPriceByDuration(v, sport: f.sport).keys.toSet();
       if (f.durations.intersection(have).isEmpty) return false;
     }
     if (!_opensDuring(v, f.slot)) return false;

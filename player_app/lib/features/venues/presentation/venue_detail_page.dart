@@ -1363,3 +1363,290 @@ class _OfferList extends ConsumerWidget {
     );
   }
 }
+
+
+/// The venue's own page content without its action buttons (Book a Court / Memberships / Coaching): the photos, name with the verified
+/// tick, place, sport chips, description, the courts / hours / players / facilities stats and (on a phone) the location card. The
+/// Guest Booking page shows it above the booking steps, so the player sees the same venue they just opened.
+class VenueOverview extends ConsumerWidget {
+  const VenueOverview({super.key, required this.venue, required this.wide});
+
+  final VenueDetail venue;
+
+  /// The web layout (photos beside the title, one stats bar) or the phone layout (photos on top, "At a Glance", "Facilities").
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
+    final amenities = venue.amenities.labels;
+
+    if (wide) {
+      return Column(
+        key: const ValueKey('venue-overview'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            venue.name,
+                            key: const ValueKey('venue-title'),
+                            style: AppTextStyles.desktopHeroHeading(
+                              p.primaryText,
+                            ).copyWith(fontSize: 42, height: 1.1),
+                          ),
+                        ),
+                        if (venue.locationVerified) ...[
+                          const SizedBox(width: 12),
+                          Tooltip(
+                            message: 'Verified venue',
+                            child: Icon(
+                              Icons.verified_rounded,
+                              key: const ValueKey('venue-verified'),
+                              size: 28,
+                              color: AppColors.violet,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _Place(venue.place),
+                    const SizedBox(height: 18),
+                    _Chips(venue: venue),
+                    if (venue.description != null) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        venue.description!,
+                        key: const ValueKey('venue-description'),
+                        style: AppTextStyles.body(
+                          p.secondaryText,
+                        ).copyWith(fontSize: 16, height: 1.5),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 36),
+              Expanded(
+                flex: 12,
+                child: VenueGallery(
+                  venueId: venue.id,
+                  photos: venue.photos,
+                  sport: mainSport,
+                  thumbnails: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 30),
+          Container(
+            key: const ValueKey('venue-stats'),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: p.border),
+              color: p.surface.withValues(alpha: p.isDark ? 0.6 : 1),
+            ),
+            child: Row(
+              children: [
+                _Stat(
+                  icon: Icons.grid_view_rounded,
+                  label: venue.courtCount == 1
+                      ? '1 Court'
+                      : '${venue.courtCount} Courts',
+                ),
+                if (venue.hoursLabel != null) ...[
+                  const _Divider(),
+                  _Stat(icon: Icons.schedule_rounded, label: venue.hoursLabel!),
+                ],
+                if (venue.playersLabel != null) ...[
+                  const _Divider(),
+                  _Stat(
+                    key: const ValueKey('stat-players'),
+                    icon: Icons.groups_outlined,
+                    label: venue.playersLabel!,
+                    bold: true,
+                  ),
+                ],
+                if (amenities.isNotEmpty) ...[
+                  const _Divider(),
+                  for (final a in amenities.take(4))
+                    Expanded(
+                      child: _Stat(
+                        icon: _amenityIcon(a),
+                        label: a,
+                        compact: true,
+                      ),
+                    ),
+                  const SizedBox(width: 10),
+                  Pressable(
+                    key: const ValueKey('view-all-facilities'),
+                    onTap: () => _showFacilities(context, venue),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: p.border),
+                      ),
+                      child: Text(
+                        'View All',
+                        style: AppTextStyles.button(
+                          p.primaryText,
+                        ).copyWith(fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      key: const ValueKey('venue-overview'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        VenueGallery(
+          venueId: venue.id,
+          photos: venue.photos,
+          sport: mainSport,
+          arrows: false,
+          counter: true,
+          verifiedBadge: venue.locationVerified,
+          aspectRatio: 1.6,
+          borderRadius: 22,
+        ),
+        const SizedBox(height: 18),
+        Text(
+          venue.name,
+          key: const ValueKey('venue-title'),
+          style: AppTextStyles.desktopHeroHeading(
+            p.primaryText,
+          ).copyWith(fontSize: 30, height: 1.1),
+        ),
+        const SizedBox(height: 8),
+        Align(alignment: Alignment.centerLeft, child: _Place(venue.place)),
+        const SizedBox(height: 14),
+        _Chips(venue: venue, max: 2),
+        if (venue.description != null) ...[
+          const SizedBox(height: 14),
+          Text(
+            venue.description!,
+            key: const ValueKey('venue-description'),
+            style: AppTextStyles.body(p.secondaryText),
+          ),
+        ],
+        const SizedBox(height: 22),
+        Text(
+          'At a Glance',
+          style: AppTextStyles.sectionHeading(
+            p.primaryText,
+          ).copyWith(fontSize: 18),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          key: const ValueKey('venue-glance'),
+          children: [
+            _Stat(
+              icon: Icons.grid_view_rounded,
+              label: venue.courtCount == 1
+                  ? '1 Court'
+                  : '${venue.courtCount} Courts',
+            ),
+            if (venue.hoursShort != null) ...[
+              const _Divider(),
+              _Stat(icon: Icons.schedule_rounded, label: venue.hoursShort!),
+            ],
+            if (venue.playersLabel != null) ...[
+              const _Divider(),
+              _Stat(
+                key: const ValueKey('stat-players'),
+                icon: Icons.groups_outlined,
+                label: venue.playersLabel!,
+                bold: true,
+              ),
+            ],
+            if (venue.minCourtPriceInr != null) ...[
+              const _Divider(),
+              _Stat(
+                icon: Icons.currency_rupee_rounded,
+                label: 'From ${rupees(venue.minCourtPriceInr!)} / hr',
+              ),
+            ],
+          ],
+        ),
+        if (amenities.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Facilities',
+                  style: AppTextStyles.sectionHeading(
+                    p.primaryText,
+                  ).copyWith(fontSize: 18),
+                ),
+              ),
+              Pressable(
+                key: const ValueKey('view-all-facilities'),
+                onTap: () => _showFacilities(context, venue),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Text(
+                    'View All',
+                    style: AppTextStyles.body(p.secondaryText),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (final a in amenities.take(4))
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(_amenityIcon(a), size: 26, color: p.primaryText),
+                      const SizedBox(height: 8),
+                      Text(
+                        a,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: AppTextStyles.meta(
+                          p.secondaryText,
+                        ).copyWith(fontSize: 11.5),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+        if (venue.address != null) ...[
+          const SizedBox(height: 22),
+          _LocationCard(venue: venue),
+        ],
+      ],
+    );
+  }
+}

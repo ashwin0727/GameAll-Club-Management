@@ -204,10 +204,12 @@ class EnrollPlan {
   /// "Valid for 1 month", "Valid for 3 months", "Valid for 1 year", "Valid for 10 days".
   String get validFor {
     final m = months;
-    if (m == null)
+    if (m == null) {
       return 'Valid for $durationDays ${durationDays == 1 ? 'day' : 'days'}';
-    if (durationDays >= 360 && m % 12 == 0)
+    }
+    if (durationDays >= 360 && m % 12 == 0) {
       return 'Valid for ${m ~/ 12} ${m == 12 ? 'year' : 'years'}';
+    }
     return 'Valid for $m ${m == 1 ? 'month' : 'months'}';
   }
 

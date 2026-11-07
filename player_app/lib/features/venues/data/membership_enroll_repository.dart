@@ -54,10 +54,11 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
       if (result == null) return null;
       return EnrollInfo.fromJson((result as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      if (_notInstalled(e))
+      if (_notInstalled(e)) {
         throw const EnrollException(
           'The memberships update is not live on the database yet (migration 0175 or its schema reload is missing).',
         );
+      }
       rethrow;
     }
   }
@@ -88,8 +89,9 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
     String? batchId,
   }) async {
     final client = _client;
-    if (client == null)
+    if (client == null) {
       throw const EnrollException('Please sign in to join a membership.');
+    }
     try {
       final r = await client.rpc(
         'player_start_membership_enroll',
@@ -112,8 +114,9 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
   @override
   Future<Uri> autopayLink(String membershipId) async {
     final client = _client;
-    if (client == null)
+    if (client == null) {
       throw const EnrollException('Please sign in to join a membership.');
+    }
     try {
       final res = await client.functions.invoke(
         'create-membership-subscription',
@@ -121,10 +124,11 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
       );
       final data = res.data;
       final url = data is Map ? data['shortUrl'] as String? : null;
-      if (url == null || url.isEmpty)
+      if (url == null || url.isEmpty) {
         throw const EnrollException(
           "We couldn't open the payment page. Please try again.",
         );
+      }
       return Uri.parse(url);
     } on FunctionException catch (e) {
       final details = e.details;
@@ -136,10 +140,12 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
   }
 
   String _friendly(PostgrestException e) {
-    if (e.code == '23503' && e.message.contains('slot'))
+    if (e.code == '23503' && e.message.contains('slot')) {
       return 'That time slot is no longer available. Pick another.';
-    if (e.message.toLowerCase().contains('full'))
+    }
+    if (e.message.toLowerCase().contains('full')) {
       return 'That time slot is full. Pick another.';
+    }
     if (e.code == '42501') return e.message;
     return "We couldn't start your membership. Please try again.";
   }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fake_payment_receipts.dart';
+
+import 'package:gameall_player/features/payments/application/payment_flow.dart';
 import 'package:gameall_player/core/routing/app_routes.dart';
 import 'package:gameall_player/core/theme/app_theme.dart';
 import 'package:gameall_player/core/utils/external_links.dart';
@@ -217,6 +221,7 @@ Future<(_Coaching, List<Uri>, List<String>)> _pump(
               )
             : null,
       ),
+      paymentReceiptRepositoryProvider.overrideWithValue(FakePaymentReceipts()),
       linkOpenerProvider.overrideWithValue((uri) async {
         opened.add(uri);
         return true;
@@ -438,7 +443,7 @@ void main() {
         expect(repo.started, [('p1', 'b1')]);
         expect(repo.linked, ['e-p1']);
         expect(opened.single.toString(), 'https://rzp.io/i/e-p1');
-        expect(find.textContaining('AutoPay'), findsWidgets);
+        expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
       },
     );
 

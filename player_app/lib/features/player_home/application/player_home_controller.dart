@@ -50,7 +50,7 @@ class SportOption {
 
 const sportOptions = <SportOption>[
   SportOption('all', 'All', Icons.grid_view_rounded),
-  SportOption('badminton', 'Badminton', Icons.sports_tennis_rounded),
+  SportOption('badminton', 'Badminton', Icons.sports_rounded),
   SportOption('football', 'Football', Icons.sports_soccer_rounded),
   SportOption('tennis', 'Tennis', Icons.sports_baseball_rounded),
   SportOption('pickleball', 'Pickleball', Icons.sports_handball_rounded),

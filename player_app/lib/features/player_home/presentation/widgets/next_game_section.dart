@@ -8,6 +8,7 @@ import '../../../../core/utils/date_format.dart';
 import '../../../../core/widgets/gameall_buttons.dart';
 import '../../../../core/widgets/hover_scope.dart';
 import '../../../../core/widgets/pressable.dart';
+import '../../../../core/widgets/sport_icon.dart';
 import '../../domain/player_home_models.dart';
 
 /// "Your Next Game": the nearest confirmed booking, or an invitation to book.
@@ -228,7 +229,7 @@ class _Thumb extends StatelessWidget {
     final fallback = Container(
       color: p.elevated,
       alignment: Alignment.center,
-      child: Icon(Icons.sports_tennis_rounded, color: p.highlight, size: 28),
+      child: CorkIcon(color: p.highlight, size: 28),
     );
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -279,11 +280,7 @@ class _InviteCard extends StatelessWidget {
               shape: BoxShape.circle,
               color: p.elevated,
             ),
-            child: Icon(
-              Icons.sports_tennis_rounded,
-              color: p.highlight,
-              size: 26,
-            ),
+            child: CorkIcon(color: p.highlight, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(

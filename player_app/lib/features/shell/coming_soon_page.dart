@@ -87,7 +87,7 @@ class ComingSoonPage extends StatelessWidget {
       ),
       _ => (
         'GameAll',
-        Icons.sports_tennis_rounded,
+        Icons.sports_rounded,
         'This part of the app is coming soon.',
       ),
     };

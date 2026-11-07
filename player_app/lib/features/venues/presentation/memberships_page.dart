@@ -17,6 +17,7 @@ import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import 'discover_venues_page.dart';
 import 'no_venues_state.dart';
+import 'sport_picker.dart';
 
 /// The three promises under the Memberships banner.
 const membershipHighlights = [
@@ -70,7 +71,9 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
     final side = wide
         ? AppDimensions.desktopSidePadding(width)
         : AppDimensions.screenPadding;
-    final async = ref.watch(venuesForSelectedCityProvider(VenueKind.memberships));
+    final async = ref.watch(
+      venuesForSelectedCityProvider(VenueKind.memberships),
+    );
     final filters = ref.watch(membershipFiltersProvider);
     final city = ref.watch(selectedCityProvider);
     final all = async.value ?? const <Venue>[];
@@ -97,8 +100,7 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
                 side: side,
                 title: 'Explore ',
                 accent: 'Memberships',
-                subtitle:
-                    'Long-term play plans with dedicated court time, priority access and more.',
+                subtitle: 'Long-term play plans with dedicated court time, priority access and more.',
                 highlights: membershipHighlights,
                 image: 'assets/images/memberships_banner.jpg',
                 imageSize: const Size(440, 121),
@@ -245,7 +247,12 @@ class _Results extends ConsumerWidget {
             onClear: () => ref.read(membershipFiltersProvider.notifier).clear(),
           )
         else
-          _Cards(venues: shown, view: filters.view, onNavigate: onNavigate),
+          _Cards(
+            venues: shown,
+            view: filters.view,
+            sport: filters.sport,
+            onNavigate: onNavigate,
+          ),
       ],
     );
 
@@ -255,10 +262,7 @@ class _Results extends ConsumerWidget {
       children: [
         SizedBox(
           width: 264,
-          child: Reveal(
-            delay: const Duration(milliseconds: 100),
-            child: panel,
-          ),
+          child: Reveal(delay: const Duration(milliseconds: 100), child: panel),
         ),
         const SizedBox(width: 26),
         Expanded(child: results),
@@ -421,7 +425,11 @@ class MembershipFiltersPanel extends ConsumerWidget {
                   color: value ? AppColors.violet : Colors.transparent,
                 ),
                 child: value
-                    ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               const SizedBox(width: 12),
@@ -430,14 +438,16 @@ class MembershipFiltersPanel extends ConsumerWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.body(p.primaryText).copyWith(fontSize: 14),
+                  style: AppTextStyles.body(p.primaryText)
+                      .copyWith(fontSize: 14),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 '($count)',
                 key: ValueKey('count-$label'),
-                style: AppTextStyles.body(p.secondaryText).copyWith(fontSize: 14),
+                style: AppTextStyles.body(p.secondaryText)
+                    .copyWith(fontSize: 14),
               ),
             ],
           ),
@@ -449,7 +459,11 @@ class MembershipFiltersPanel extends ConsumerWidget {
       padding: const EdgeInsets.only(top: 18, bottom: 8),
       child: Text(text, style: AppTextStyles.cardHeading(p.primaryText)),
     );
-    Widget rule() => Container(height: 1, margin: const EdgeInsets.only(top: 10), color: p.border);
+    Widget rule() => Container(
+      height: 1,
+      margin: const EdgeInsets.only(top: 10),
+      color: p.border,
+    );
 
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -461,7 +475,8 @@ class MembershipFiltersPanel extends ConsumerWidget {
             Expanded(
               child: Text(
                 'Filters',
-                style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 18),
+                style: AppTextStyles.sectionHeading(p.primaryText)
+                    .copyWith(fontSize: 18),
               ),
             ),
             Pressable(
@@ -510,7 +525,10 @@ class MembershipFiltersPanel extends ConsumerWidget {
               isExpanded: true,
               value: f.slot,
               dropdownColor: p.surface,
-              icon: Icon(Icons.keyboard_arrow_down_rounded, color: p.secondaryText),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: p.secondaryText,
+              ),
               style: AppTextStyles.body(p.primaryText),
               items: [
                 for (final s in TimeSlot.values)
@@ -518,13 +536,13 @@ class MembershipFiltersPanel extends ConsumerWidget {
                     value: s,
                     child: Text(
                       s.label,
-                      style: AppTextStyles.body(p.primaryText).copyWith(fontSize: 14),
+                      style: AppTextStyles.body(p.primaryText)
+                          .copyWith(fontSize: 14),
                     ),
                   ),
               ],
-              onChanged: (s) => s == null
-                  ? null
-                  : ctl.update((cur) => cur.copyWith(slot: s)),
+              onChanged: (s) =>
+                  s == null ? null : ctl.update((cur) => cur.copyWith(slot: s)),
             ),
           ),
         ),
@@ -567,11 +585,16 @@ class MembershipFiltersPanel extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.filter_alt_outlined, size: 20, color: Colors.white),
+                const Icon(
+                  Icons.filter_alt_outlined,
+                  size: 20,
+                  color: Colors.white,
+                ),
                 const SizedBox(width: 10),
                 Text(
                   'Apply Filters ($matching)',
-                  style: AppTextStyles.button(Colors.white).copyWith(fontSize: 16),
+                  style: AppTextStyles.button(Colors.white)
+                      .copyWith(fontSize: 16),
                 ),
               ],
             ),
@@ -599,11 +622,15 @@ class _Cards extends StatelessWidget {
   const _Cards({
     required this.venues,
     required this.view,
+    required this.sport,
     required this.onNavigate,
   });
 
   final List<Venue> venues;
   final VenueView view;
+
+  /// The sport picked in the search card (null = all).
+  final String? sport;
   final void Function(String route) onNavigate;
 
   @override
@@ -624,9 +651,10 @@ class _Cards extends StatelessWidget {
           child: Reveal(
             key: ValueKey('card-${venues[i].id}'),
             delay: Duration(milliseconds: 30 * (i < 6 ? i : 6)),
-            child: MembershipVenueCard(
+            child: _CardHost(
               venue: venues[i],
               row: rowLayout,
+              sportFilter: sport,
               onOpen: () => onNavigate(AppRoutes.enrollPath(venues[i].id)),
             ),
           ),
@@ -641,16 +669,80 @@ class _Cards extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var i = start; i < start + cols && i < venues.length; i++) ...[
-                      if (i > start) const SizedBox(width: gap),
-                      card(i),
-                    ],
+                    for (
+                      var i = start;
+                      i < start + cols && i < venues.length;
+                      i++
+                    ) ...[if (i > start) const SizedBox(width: gap), card(i)],
                   ],
                 ),
               ),
             ],
           ],
         );
+      },
+    );
+  }
+}
+
+/// Remembers which sport a venue's card is showing. The sport picked in the search card wins when the venue has it; a chip tapped on
+/// the card overrides that until the search card's sport changes again.
+class _CardHost extends StatefulWidget {
+  const _CardHost({
+    required this.venue,
+    required this.row,
+    required this.sportFilter,
+    required this.onOpen,
+  });
+
+  final Venue venue;
+  final bool row;
+  final String? sportFilter;
+  final VoidCallback onOpen;
+
+  @override
+  State<_CardHost> createState() => _CardHostState();
+}
+
+class _CardHostState extends State<_CardHost> {
+  String? _picked;
+
+  @override
+  void didUpdateWidget(_CardHost old) {
+    super.didUpdateWidget(old);
+    if (old.sportFilter != widget.sportFilter) _picked = null;
+  }
+
+  String? _match(List<String> sports, String? want) {
+    if (want == null) return null;
+    for (final s in sports) {
+      if (s.trim().toLowerCase() == want.trim().toLowerCase()) return s;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sports = widget.venue.membershipSports;
+    final shown =
+        _match(sports, _picked) ??
+        _match(sports, widget.sportFilter) ??
+        (sports.isEmpty ? null : sports.first);
+    return MembershipVenueCard(
+      venue: widget.venue,
+      row: widget.row,
+      sport: shown,
+      // chips only when the venue has plans of its own in more than one sport (otherwise the prices would not change)
+      onSport: widget.venue.sportPlans.length > 1
+          ? (s) => setState(() => _picked = s)
+          : null,
+      // the sport shown on the card is the sport the enrolment page starts on
+      onOpen: () {
+        ProviderScope.containerOf(
+          context,
+          listen: false,
+        ).read(preferredSportProvider.notifier).set(shown);
+        widget.onOpen();
       },
     );
   }
@@ -664,6 +756,8 @@ class MembershipVenueCard extends StatelessWidget {
     required this.venue,
     required this.row,
     required this.onOpen,
+    this.sport,
+    this.onSport,
   });
 
   final Venue venue;
@@ -671,6 +765,10 @@ class MembershipVenueCard extends StatelessWidget {
   /// The wide one-line layout of the design; false is the stacked card (grid, tablet, phone).
   final bool row;
   final VoidCallback onOpen;
+
+  /// The sport whose prices are shown, and what to do when another sport chip is tapped (null: the venue has one sport, no chips).
+  final String? sport;
+  final ValueChanged<String>? onSport;
 
   @override
   Widget build(BuildContext context) {
@@ -787,7 +885,7 @@ class MembershipVenueCard extends StatelessWidget {
       ],
     );
 
-    final plans = _PlanTiles(venue: venue);
+    final plans = _PlanTiles(venue: venue, sport: sport, onSport: onSport);
     final button = Pressable(
       key: ValueKey('view-plans-${venue.id}'),
       onTap: onOpen,
@@ -817,7 +915,11 @@ class MembershipVenueCard extends StatelessWidget {
               style: AppTextStyles.button(Colors.white).copyWith(fontSize: 14),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 17, color: Colors.white),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              size: 17,
+              color: Colors.white,
+            ),
           ],
         ),
       ),
@@ -888,7 +990,9 @@ class MembershipVenueCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: radius,
-            border: Border.all(color: p.isDark ? const Color(0xFF2E3B63) : p.border),
+            border: Border.all(
+              color: p.isDark ? const Color(0xFF2E3B63) : p.border,
+            ),
             color: p.surface.withValues(alpha: p.isDark ? 0.75 : 1),
           ),
           clipBehavior: Clip.antiAlias,
@@ -902,14 +1006,18 @@ class MembershipVenueCard extends StatelessWidget {
 /// "Available Memberships": the lowest price of each length the venue sells, two tiles across. The cheapest of all is lit up.
 /// When the venue has plans but none of the usual lengths (or the list does not carry prices per length yet) one "From ₹X" tile shows.
 class _PlanTiles extends StatelessWidget {
-  const _PlanTiles({required this.venue});
+  const _PlanTiles({required this.venue, this.sport, this.onSport});
 
   final Venue venue;
+
+  /// The sport whose prices are shown (null: every plan), and the chip handler (null: no chips).
+  final String? sport;
+  final ValueChanged<String>? onSport;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final byLength = lowestPriceByDuration(venue);
+    final byLength = lowestPriceByDuration(venue, sport: sport);
     final tiles = <({String key, String label, int price})>[
       for (final d in PlanDuration.values)
         if (byLength[d] != null)
@@ -932,7 +1040,8 @@ class _PlanTiles extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: best
-              ? const Color(0xFF7C5CFF).withValues(alpha: p.isDark ? 0.22 : 0.12)
+              ? const Color(0xFF7C5CFF)
+                    .withValues(alpha: p.isDark ? 0.22 : 0.12)
               : (p.isDark ? const Color(0xFF111A35) : p.elevated),
           border: Border.all(
             color: best
@@ -982,7 +1091,9 @@ class _PlanTiles extends StatelessWidget {
             Expanded(child: tile(tiles[i])),
             const SizedBox(width: 10),
             Expanded(
-              child: i + 1 < tiles.length ? tile(tiles[i + 1]) : const SizedBox(),
+              child: i + 1 < tiles.length
+                  ? tile(tiles[i + 1])
+                  : const SizedBox(),
             ),
           ],
         ),
@@ -994,9 +1105,20 @@ class _PlanTiles extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // a venue with memberships in several sports: choose the sport, the prices below follow it
+        if (onSport != null) ...[
+          SportPicker(
+            keyPrefix: 'mem-sport-${venue.id}',
+            sports: venue.sportPlans.keys.toList(),
+            selected: sport,
+            onSelected: onSport!,
+          ),
+          const SizedBox(height: 12),
+        ],
         Text(
           'Available Memberships',
-          style: AppTextStyles.cardHeading(p.primaryText).copyWith(fontSize: 14),
+          style: AppTextStyles.cardHeading(p.primaryText)
+              .copyWith(fontSize: 14),
         ),
         const SizedBox(height: 10),
         ...rows,

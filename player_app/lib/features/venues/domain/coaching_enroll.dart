@@ -347,8 +347,9 @@ class CoachingOffer {
   /// Group size shown on the card: "Group (Max 8)", "One-on-one", "Trial".
   String get groupLabel {
     final b = batch;
-    if (program.programType == 'GROUP' && b != null && b.capacity > 0)
+    if (program.programType == 'GROUP' && b != null && b.capacity > 0) {
       return 'Group (Max ${b.capacity})';
+    }
     return program.typeLabel;
   }
 

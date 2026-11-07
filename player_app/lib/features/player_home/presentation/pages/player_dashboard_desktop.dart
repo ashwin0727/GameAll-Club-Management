@@ -26,15 +26,10 @@ class PlayerDashboardDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final side = AppDimensions.desktopSidePadding(width);
-    final twoColumns = width >= 1000;
 
     final schedule = Reveal(
       delay: const Duration(milliseconds: 120),
       child: ScheduleCard(items: data.schedule, now: now),
-    );
-    final actions = Reveal(
-      delay: const Duration(milliseconds: 160),
-      child: QuickActionsCard(onNavigate: onNavigate),
     );
 
     return SingleChildScrollView(
@@ -52,7 +47,7 @@ class PlayerDashboardDesktop extends StatelessWidget {
                 const SizedBox(height: 24),
                 // Anything not fully paid is a prompt with a way to pay, ahead of the cards (it is not "Active" until it is paid).
                 if (data.pendingPayments.isNotEmpty) ...[
-                  PaymentPrompts(payments: data.pendingPayments),
+                  PaymentPrompts(payments: data.pendingPayments, onNavigate: onNavigate),
                   const SizedBox(height: 10),
                 ],
                 Reveal(
@@ -63,20 +58,8 @@ class PlayerDashboardDesktop extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                if (twoColumns)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 11, child: schedule),
-                      const SizedBox(width: 20),
-                      Expanded(flex: 9, child: actions),
-                    ],
-                  )
-                else ...[
-                  schedule,
-                  const SizedBox(height: 20),
-                  actions,
-                ],
+                // the schedule has the whole width now that Quick Actions is gone
+                schedule,
               ],
             ),
           ),

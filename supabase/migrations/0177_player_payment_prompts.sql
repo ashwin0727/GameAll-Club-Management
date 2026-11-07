@@ -5,7 +5,7 @@
 --   get_player_dashboard()                 same function as 0169, with:
 --       memberships / coaching   every active one, each with paymentIncomplete (true until it is paid in full, or the AutoPay mandate
 --                                                        is approved, or nothing is owed)
---       pendingPayments                                  [{ kind, id, title, venueName, state, dueOn, overdue, startTime }]
+--       pendingPayments                                  [{ kind, id, title, venueName, state, dueOn, overdue, startTime, mode, balance, balanceInr }]
 --                                                        kind  membership | coaching | booking
 --                                                        state PENDING (not paid yet) | FAILED (a payment failed, or AutoPay is
 --                                                              halted / retrying, or the payment link ran out)
@@ -110,7 +110,7 @@ as $$
 
   -- ── bookings with money still owed ──
   bk_state as (
-    select mb.id, mb.customer_type, mb.venue_name, mb.start_time,
+    select mb.id, mb.customer_type, mb.venue_name, mb.start_time, mb.status,
            coalesce(mb.amount_minor, 0)::bigint as total_minor,
            coalesce((select sum(p.amount_inr) * 100 from payments p where p.booking_id = mb.id and p.status = 'paid'), 0)::bigint as paid_minor,
            exists (select 1 from payments p where p.booking_id = mb.id and p.status = 'failed') as has_failed
@@ -118,7 +118,23 @@ as $$
      where mb.status in ('pending', 'confirmed') and mb.end_time > now()
        and coalesce(mb.payment_status, '') <> 'PAID'
   ),
-  bk_due as (select * from bk_state s where s.total_minor > 0 and s.paid_minor < s.total_minor),
+  -- A confirmed booking whose online advance (50% of a booking over an hour) is paid is NOT "payment pending": its court is secured and
+  -- the rest is paid at the venue. Only a booking that has not been paid at all, or is still a hold, asks for payment.
+  bk_due as (select * from bk_state s where s.total_minor > 0 and s.paid_minor < s.total_minor and not (s.status = 'confirmed' and s.paid_minor > 0)),
+
+  -- ── a booking whose advance is paid but whose balance is still owed, as its time runs out ──
+  -- A guest booking over an hour is secured with a 50% advance and the rest is paid at the venue. From 5 minutes before the booking
+  -- ends (and for a week after, until it is paid) Home asks for the balance, so it can be paid online instead.
+  bk_balance_due as (
+    select mb.id, mb.customer_type, mb.venue_name, mb.start_time, mb.end_time,
+           coalesce(mb.amount_minor, 0)::bigint as total_minor,
+           coalesce((select sum(p.amount_inr) * 100 from payments p where p.booking_id = mb.id and p.status = 'paid'), 0)::bigint as paid_minor
+      from my_bookings mb
+     where mb.status = 'confirmed'
+       and coalesce(mb.payment_status, '') <> 'PAID'
+       and now() >= mb.end_time - interval '5 minutes'
+       and mb.end_time > now() - interval '7 days'
+  ),
 
   active_memberships as (
     select ms.id, coalesce(nullif(trim(ms.name), ''), mp.name, 'Membership') as plan_name, f.name as venue_name, ms.start_date, ms.end_date,
@@ -194,17 +210,21 @@ as $$
   schedule as (select * from items order by start_at limit 12),
   prompts as (
     select 'membership' as kind, s.id, s.plan_name as title, s.venue_name, s.pay_state as state, s.start_date as due_on,
-           (s.start_date < current_date) as overdue, null::timestamptz as start_at, 'AUTOPAY' as mode
+           (s.start_date < current_date) as overdue, null::timestamptz as start_at, 'AUTOPAY' as mode, null::bigint as balance_minor
       from ms_state s where s.pay_state in ('PENDING', 'FAILED')
     union all
     select 'coaching', s.id, s.program_name, s.venue_name, s.pay_state, s.start_date,
-           (s.start_date < current_date), null::timestamptz, case when s.fee_type = 'MONTHLY' then 'AUTOPAY' else 'LINK' end
+           (s.start_date < current_date), null::timestamptz, case when s.fee_type = 'MONTHLY' then 'AUTOPAY' else 'LINK' end, null::bigint
       from co_state s where s.pay_state in ('PENDING', 'FAILED')
     union all
     select 'booking', d.id, case when d.customer_type = 'GUEST' then 'Guest Booking' else 'Court Booking' end, d.venue_name,
            case when d.has_failed then 'FAILED' else 'PENDING' end, (d.start_time at time zone 'Asia/Kolkata')::date,
-           false, d.start_time, 'LINK'
+           false, d.start_time, 'LINK', null::bigint
       from bk_due d
+    union all
+    select 'booking', d.id, case when d.customer_type = 'GUEST' then 'Guest Booking' else 'Court Booking' end, d.venue_name,
+           'PENDING', (d.end_time at time zone 'Asia/Kolkata')::date, (d.end_time < now()), d.start_time, 'LINK', (d.total_minor - d.paid_minor)
+      from bk_balance_due d where d.total_minor > 0 and d.paid_minor > 0 and d.paid_minor < d.total_minor
   )
   select jsonb_build_object(
     'fullName', (select full_name from pl),
@@ -241,7 +261,8 @@ as $$
     'pendingPayments', coalesce((
       select jsonb_agg(jsonb_build_object(
         'kind', q.kind, 'id', q.id, 'title', q.title, 'venueName', q.venue_name, 'state', q.state,
-        'dueOn', q.due_on, 'overdue', q.overdue, 'startTime', q.start_at, 'mode', q.mode
+        'dueOn', q.due_on, 'overdue', q.overdue, 'startTime', q.start_at, 'mode', q.mode,
+        'balance', q.balance_minor is not null, 'balanceInr', (q.balance_minor / 100)
       ) order by (q.state = 'FAILED') desc, q.due_on)
         from prompts q), '[]'::jsonb),
     'schedule', coalesce((

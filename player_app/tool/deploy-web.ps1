@@ -24,8 +24,10 @@ if (-not (Test-Path (Join-Path $here "env.json"))) { throw "player_app\env.json 
 & vercel whoami *> $null
 if ($LASTEXITCODE -ne 0) { throw "Not signed in to Vercel. Run: vercel login" }
 
-# 1. Build (on a copy outside OneDrive; see run-in-copy.ps1)
-& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run-in-copy.ps1") build web --release --dart-define-from-file=env.json
+# 1. Build (on a copy outside OneDrive; see run-in-copy.ps1).
+#    --pwa-strategy=none: no caching service worker. The site only works online anyway, and the worker kept stale copies of the app and
+#    its icon font in the browser's Cache Storage (which "clear cache" does not reach), so a new deploy showed blank icons.
+& powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "run-in-copy.ps1") build web --release --pwa-strategy=none --dart-define-from-file=env.json
 if ($LASTEXITCODE -ne 0) { throw "The web build failed." }
 
 # 2. Stage the site, keeping the project link between deployments

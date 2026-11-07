@@ -77,6 +77,7 @@ class Venue {
     this.programCount = 0,
     this.minProgramPriceInr,
     this.planPrices = const [],
+    this.sportPlans = const {},
     this.membershipDays = const {},
     this.opens,
     this.closes,
@@ -120,6 +121,11 @@ class Venue {
       programCount: (coaching['count'] as num?)?.toInt() ?? 0,
       minProgramPriceInr: _price(coaching['minPriceInr']),
       planPrices: PlanPrice.listFrom(memberships['plans']),
+      sportPlans: {
+        for (final e in (memberships['bySport'] as List<dynamic>? ?? const []))
+          if (e is Map && e['sport'] is String)
+            (e['sport'] as String): PlanPrice.listFrom(e['plans']),
+      },
       membershipDays: {
         for (final d in (memberships['days'] as List<dynamic>? ?? const []))
           if (d is num) d.toInt(),
@@ -182,6 +188,54 @@ class Venue {
   }
 
   /// True when any court is on turf (or grass).
+  /// The plans each sport has (a plan belongs to a sport through its membership batches), by sport name. Empty when the list does not
+  /// say (then every plan is for every sport).
+  final Map<String, List<PlanPrice>> sportPlans;
+
+  /// The sports this venue sells memberships in: the ones with plans of their own, else all its sports.
+  List<String> get membershipSports =>
+      sportPlans.isNotEmpty ? sportPlans.keys.toList() : sports;
+
+  /// The plans of one sport ([sport] null, or a sport with no plans of its own: every plan).
+  List<PlanPrice> plansFor(String? sport) {
+    if (sport == null || sportPlans.isEmpty) return planPrices;
+    for (final e in sportPlans.entries) {
+      if (e.key.trim().toLowerCase() == sport.trim().toLowerCase()) return e.value;
+    }
+    return const [];
+  }
+
+  /// This venue with its membership prices filled in (used when they were read from the venue's own enrolment answer).
+  Venue withPlans(List<PlanPrice> prices, Map<String, List<PlanPrice>> bySport) =>
+      Venue(
+        id: id,
+        name: name,
+        city: city,
+        state: state,
+        area: area,
+        logoUrl: logoUrl,
+        heroImageUrl: heroImageUrl,
+        sports: sports,
+        surfaces: surfaces,
+        venueType: venueType,
+        amenities: amenities,
+        photos: photos,
+        courtCount: courtCount,
+        minCourtPriceInr: minCourtPriceInr,
+        planNames: planNames,
+        planCount: planCount,
+        minPlanPriceInr: minPlanPriceInr,
+        programNames: programNames,
+        programCount: programCount,
+        minProgramPriceInr: minProgramPriceInr,
+        planPrices: prices,
+        sportPlans: bySport,
+        membershipDays: membershipDays,
+        opens: opens,
+        closes: closes,
+        open24h: open24h,
+      );
+
   bool get hasTurf =>
       surfaces.any((s) => s.contains('turf') || s.contains('grass'));
 

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fake_payment_receipts.dart';
+
+import 'package:gameall_player/features/payments/application/payment_flow.dart';
 import 'package:gameall_player/core/routing/app_routes.dart';
 import 'package:gameall_player/core/theme/app_theme.dart';
 import 'package:gameall_player/core/utils/external_links.dart';
@@ -45,6 +49,7 @@ EnrollInfo _info({
   bool accepting = true,
   bool autopay = true,
   bool slots = true,
+  bool oneSport = false,
 }) => EnrollInfo.fromJson({
   'facilityId': 'v1',
   'facilityName': 'Champz Turf',
@@ -52,7 +57,7 @@ EnrollInfo _info({
   'autopayAvailable': autopay,
   'sports': [
     {'id': 's1', 'name': 'Badminton'},
-    {'id': 's2', 'name': 'Turf'},
+    if (!oneSport) {'id': 's2', 'name': 'Turf'},
   ],
   'slots': slots
       ? [
@@ -145,6 +150,7 @@ Future<(_Enroll, List<Uri>, List<String>)> _pump(
   _Enroll? repo,
   bool signedIn = true,
   Size size = const Size(1640, 1100),
+  String? preferredSport,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -165,6 +171,7 @@ Future<(_Enroll, List<Uri>, List<String>)> _pump(
               )
             : null,
       ),
+      paymentReceiptRepositoryProvider.overrideWithValue(FakePaymentReceipts()),
       linkOpenerProvider.overrideWithValue((uri) async {
         opened.add(uri);
         return true;
@@ -172,6 +179,8 @@ Future<(_Enroll, List<Uri>, List<String>)> _pump(
     ],
   );
   addTearDown(c.dispose);
+  if (preferredSport != null)
+    c.read(preferredSportProvider.notifier).set(preferredSport);
   final wide = size.width >= 840;
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -403,6 +412,54 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'Select Sport is the first step even when the venue has one sport',
+      (tester) async {
+        await _pump(tester, repo: _Enroll(data: _info(oneSport: true)));
+        expect(find.text('Select Sport'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('enroll-sport-Badminton')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('enroll-sport-Turf')), findsNothing);
+        expect(find.text('Select Membership Time Slot'), findsOneWidget);
+        expect(_text(tester, 'summary-sport'), 'Badminton');
+        // the slots still follow: the time slot comes after the sport
+        final sport = tester
+            .getTopLeft(find.byKey(const ValueKey('enroll-sport-Badminton')))
+            .dy;
+        final slot = tester
+            .getTopLeft(find.text('Select Membership Time Slot'))
+            .dy;
+        expect(sport, lessThan(slot));
+      },
+    );
+
+    testWidgets(
+      'the sport chosen on the venue card is the sport the page starts on, once',
+      (tester) async {
+        await _pump(tester, preferredSport: 'turf');
+        expect(_text(tester, 'summary-sport'), 'Turf');
+        expect(find.text('No time slots for this sport yet.'), findsOneWidget);
+        // it was used up: the next visit starts on the first sport again
+        final c = ProviderScope.containerOf(
+          tester.element(find.byType(EnrollMembershipPage)),
+        );
+        expect(c.read(preferredSportProvider), isNull);
+        await _tap(tester, 'enroll-sport-Badminton');
+        expect(_text(tester, 'summary-sport'), 'Badminton');
+        expect(find.byKey(const ValueKey('enroll-sport-Turf')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'a preferred sport the venue does not have falls back to the first',
+      (tester) async {
+        await _pump(tester, preferredSport: 'Cricket');
+        expect(_text(tester, 'summary-sport'), 'Badminton');
+      },
+    );
 
     testWidgets('a club with no time slots offers its plans straight away', (
       tester,

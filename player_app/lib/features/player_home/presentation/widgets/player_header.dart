@@ -130,12 +130,22 @@ class PlayerHeader extends StatelessWidget {
             alignment: Alignment.centerLeft,
             children: [...previous, ?current],
           ),
-          child: Text(
-            'Hi, $firstName 👋',
+          // An icon, not the 👋 emoji: the web emoji font loads late and showed an empty box on refresh.
+          child: Row(
             key: ValueKey(firstName),
-            style: AppTextStyles.greeting(p.primaryText),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  'Hi, $firstName',
+                  style: AppTextStyles.greeting(p.primaryText),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.waving_hand_rounded, size: 20, color: Color(0xFFFFC857)),
+            ],
           ),
         ),
         const SizedBox(height: 2),

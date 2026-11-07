@@ -66,6 +66,7 @@ class PlayerHomeDesktopBody extends StatelessWidget {
                         child: PlayerShortcutCards(
                           hasActiveMembership: data.hasActiveMembership,
                           hasActiveCoaching: data.hasActiveCoaching,
+                          hasGuestBookings: data.hasBookingHistory,
                           onNavigate: onNavigate,
                           wide: true,
                         ),

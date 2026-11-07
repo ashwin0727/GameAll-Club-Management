@@ -52,7 +52,12 @@ class SupabaseVenueRepository implements VenueRepository {
         'list_public_venue_cards',
         params: {...params, 'p_kind': kind.wire},
       );
-      return _parse(result);
+      final venues = _parse(result);
+      if (kind != VenueKind.memberships) return venues;
+      // Migration 0178 (prices per length and per sport) may not be installed: then each venue's own enrolment answer has them.
+      return await Future.wait([
+        for (final v in venues) _withPlanPrices(client, v),
+      ]);
     } on PostgrestException catch (e) {
       if (e.code != 'PGRST202' && e.code != '42883') rethrow;
     }
@@ -86,12 +91,58 @@ class SupabaseVenueRepository implements VenueRepository {
     // Migration 0179 is not installed yet. The venue list still knows which venues have coaching, and each venue's own enrolment answer
     // (migration 0176) has its programmes with description, level, batches and coach: take one programme per venue from that.
     final venues = await listForLocation(location, kind: VenueKind.coaching);
-    return Future.wait([for (final v in venues) _fromEnrollAnswer(client, v)]);
+    final lists = await Future.wait([
+      for (final v in venues) _fromEnrollAnswer(client, v),
+    ]);
+    return [for (final l in lists) ...l];
   }
 
-  /// One venue's programme (the first that already has a coach, else the first) from its enrolment answer; just the venue card's own
-  /// name and price when that answer is not there.
-  Future<CoachingListing> _fromEnrollAnswer(
+  /// [v] with its plans (length and price) and the plans each sport has, read from the venue's enrolment answer
+  /// (`get_public_membership_enroll`, migration 0175) when the list did not carry them.
+  Future<Venue> _withPlanPrices(SupabaseClient client, Venue v) async {
+    if (v.planPrices.isNotEmpty) return v;
+    try {
+      final r = await client.rpc(
+        'get_public_membership_enroll',
+        params: {'p_facility_id': v.id},
+      );
+      if (r is! Map) return v;
+      final prices = <String, PlanPrice>{};
+      for (final p in (r['plans'] as List<dynamic>? ?? const [])) {
+        if (p is Map &&
+            p['id'] is String &&
+            p['priceInr'] is num &&
+            p['durationDays'] is num) {
+          prices[p['id'] as String] = PlanPrice(
+            (p['durationDays'] as num).toInt(),
+            (p['priceInr'] as num).toInt(),
+          );
+        }
+      }
+      if (prices.isEmpty) return v;
+      // a plan belongs to a sport through the batches behind the time slots
+      final bySport = <String, Map<String, PlanPrice>>{};
+      for (final s in (r['slots'] as List<dynamic>? ?? const [])) {
+        if (s is! Map || s['sportName'] is! String) continue;
+        for (final b in (s['batches'] as List<dynamic>? ?? const [])) {
+          final plan = b is Map ? prices[b['planId']] : null;
+          if (plan != null) {
+            (bySport[s['sportName'] as String] ??= {})[b['planId'] as String] =
+                plan;
+          }
+        }
+      }
+      return v.withPlans(prices.values.toList(), {
+        for (final e in bySport.entries) e.key: e.value.values.toList(),
+      });
+    } on Object {
+      return v;
+    }
+  }
+
+  /// One venue's programmes from its enrolment answer: for each sport, the first programme that already has a coach (else the first);
+  /// just the venue card's own name and price when that answer is not there.
+  Future<List<CoachingListing>> _fromEnrollAnswer(
     SupabaseClient client,
     Venue v,
   ) async {
@@ -111,16 +162,23 @@ class SupabaseVenueRepository implements VenueRepository {
           for (final b in (p['batches'] as List<dynamic>? ?? const []))
             if (b is Map && b['coach'] is Map) b,
         ].isNotEmpty;
-        final pick = programs.firstWhere(
-          hasCoach,
-          orElse: () => programs.first,
-        );
-        return CoachingListing.fromEnrollProgram(v, pick);
+        final bySport = <String, List<Map<String, dynamic>>>{};
+        for (final p in programs) {
+          (bySport[(p['sportName'] as String?)?.toLowerCase() ?? ''] ??= [])
+              .add(p);
+        }
+        return [
+          for (final group in bySport.values)
+            CoachingListing.fromEnrollProgram(
+              v,
+              group.firstWhere(hasCoach, orElse: () => group.first),
+            ),
+        ];
       }
     } on Object {
       // fall through to the card's own name and price
     }
-    return fromVenueCards([v]).first;
+    return fromVenueCards([v]);
   }
 
   @override

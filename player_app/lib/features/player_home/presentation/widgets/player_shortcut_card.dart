@@ -161,12 +161,16 @@ class PlayerShortcutCards extends StatelessWidget {
     super.key,
     required this.hasActiveMembership,
     required this.hasActiveCoaching,
+    this.hasGuestBookings = false,
     required this.onNavigate,
     this.wide = false,
   });
 
   final bool hasActiveMembership;
   final bool hasActiveCoaching;
+
+  /// The player has made guest bookings before: the card opens their list ("My Guest Bookings") instead of the booking flow.
+  final bool hasGuestBookings;
   final RouteCallback onNavigate;
 
   /// The desktop layout (see [PlayerShortcutCard.wide]).
@@ -206,12 +210,17 @@ class PlayerShortcutCards extends StatelessWidget {
       PlayerShortcutCard(
         key: const ValueKey('shortcut-guest'),
         wide: wide,
-        description:
-            'Find nearby venues, check available slots and book instantly.',
-        title: 'Guest\nCourt\nBooking',
+        description: hasGuestBookings
+            ? 'View and manage your court bookings.'
+            : 'Find nearby venues, check available slots and book instantly.',
+        title: hasGuestBookings
+            ? 'My Guest\nBookings'
+            : 'Guest\nCourt\nBooking',
         icon: Icons.event_available_outlined,
         tint: AppColors.purple,
-        onTap: () => onNavigate(AppRoutes.guestBooking),
+        onTap: () => onNavigate(
+          hasGuestBookings ? AppRoutes.bookings : AppRoutes.guestBooking,
+        ),
       ),
     ];
     return IntrinsicHeight(

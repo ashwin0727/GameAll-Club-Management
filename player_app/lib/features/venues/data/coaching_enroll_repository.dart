@@ -54,10 +54,11 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
       if (result == null) return null;
       return CoachingInfo.fromJson((result as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      if (_notInstalled(e))
+      if (_notInstalled(e)) {
         throw const CoachingException(
           'The coaching update is not live on the database yet (migration 0176 or its schema reload is missing).',
         );
+      }
       rethrow;
     }
   }
@@ -88,8 +89,9 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
     String? batchId,
   }) async {
     final client = _client;
-    if (client == null)
+    if (client == null) {
       throw const CoachingException('Please sign in to join coaching.');
+    }
     try {
       final r = await client.rpc(
         'player_start_coaching_enroll',
@@ -115,8 +117,9 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
   @override
   Future<Uri> paymentLink(String enrollmentId) async {
     final client = _client;
-    if (client == null)
+    if (client == null) {
       throw const CoachingException('Please sign in to join coaching.');
+    }
     try {
       final res = await client.functions.invoke(
         'create-player-coaching-billing',
@@ -124,10 +127,11 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
       );
       final data = res.data;
       final url = data is Map ? data['shortUrl'] as String? : null;
-      if (url == null || url.isEmpty)
+      if (url == null || url.isEmpty) {
         throw const CoachingException(
           "We couldn't open the payment page. Please try again.",
         );
+      }
       return Uri.parse(url);
     } on FunctionException catch (e) {
       final details = e.details;
@@ -140,13 +144,16 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
 
   String _friendly(PostgrestException e) {
     final m = e.message.toLowerCase();
-    if (m.contains('already enrolled'))
+    if (m.contains('already enrolled')) {
       return 'You are already enrolled in this programme.';
-    if (m.contains('full'))
+    }
+    if (m.contains('full')) {
       return 'That batch is full. Pick another time slot.';
+    }
     if (m.contains('closed')) return 'Enrolment for this programme has closed.';
-    if (m.contains('not available'))
+    if (m.contains('not available')) {
       return 'That programme or time slot is no longer available.';
+    }
     // our own plain-language messages (sign in, enrolled at the club ...) pass through
     if (e.code == '42501' || e.code == '23514') return e.message;
     return "We couldn't start your enrolment. Please try again.";

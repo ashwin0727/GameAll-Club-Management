@@ -6,14 +6,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_format.dart';
-import '../../../core/utils/external_links.dart';
 import '../../../core/widgets/gameall_buttons.dart';
 import '../../../core/widgets/pressable.dart';
 import '../../../core/widgets/reveal.dart';
 import '../../../core/widgets/sport_icon.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../payments/application/payment_flow.dart';
+import '../../payments/domain/payment_receipt.dart';
 import '../application/venues_providers.dart';
-import '../data/membership_enroll_repository.dart';
 import '../domain/membership_enroll.dart';
 import '../domain/venue.dart';
 import 'guest_booking_page.dart' show BookingPill, SlotsError;
@@ -63,45 +63,27 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
       widget.onNavigate(AppRoutes.login);
       return;
     }
+    final repo = ref.read(membershipEnrollRepositoryProvider);
     setState(() => _paying = true);
     try {
-      final repo = ref.read(membershipEnrollRepositoryProvider);
-      final start = await repo.start(
-        venueId: info.venueId,
-        planId: plan.id,
-        batchId: slot?.batchFor(plan.id)?.id,
+      await openPaymentFlow(
+        context,
+        onNavigate: widget.onNavigate,
+        job: PaymentJob(
+          kind: PaymentKind.membership,
+          title: plan.name,
+          venueName: info.venueName,
+          prepare: () async {
+            final start = await repo.start(
+              venueId: info.venueId,
+              planId: plan.id,
+              batchId: slot?.batchFor(plan.id)?.id,
+            );
+            final link = await repo.autopayLink(start.membershipId);
+            return PaymentTarget(id: start.membershipId, link: link);
+          },
+        ),
       );
-      final link = await repo.autopayLink(start.membershipId);
-      final opened = await ref.read(linkOpenerProvider)(link);
-      if (!opened) {
-        throw const EnrollException(
-          "We couldn't open the payment page. Please try again.",
-        );
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Finish setting up AutoPay on the page that opened. Your membership starts once it is done.',
-            ),
-          ),
-        );
-      }
-    } on EnrollException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "We couldn't start your membership. Please try again.",
-            ),
-          ),
-        );
-      }
     } finally {
       if (mounted) setState(() => _paying = false);
     }
@@ -233,7 +215,18 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
 
     // 1 · the sport and time slot
     final sports = info.sports;
-    _sportId ??= sports.isEmpty ? null : sports.first.id;
+    if (_sportId == null && sports.isNotEmpty) {
+      // the sport chosen on the venue's card, else the first
+      final want = ref.read(preferredSportProvider)?.trim().toLowerCase();
+      _sportId = sports
+          .where((s) => s.name.trim().toLowerCase() == want)
+          .firstOrNull
+          ?.id ??
+          sports.first.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(preferredSportProvider.notifier).set(null);
+      });
+    }
     final slots = [
       for (final s in info.slots)
         if (s.sportId == _sportId) s,
@@ -278,7 +271,8 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
       }),
     );
 
-    final hasSportRow = sports.length > 1;
+    // the sport is always the first step, even for a venue with one sport (it shows as the chosen chip)
+    final hasSportRow = sports.isNotEmpty;
     final left = EnrollCard(
       key: const ValueKey('enroll-left'),
       child: Column(
@@ -1049,12 +1043,12 @@ class _SummaryPanel extends StatelessWidget {
     final fee = pl?.joiningFeeInr ?? 0;
     final total = pl == null ? null : pl.priceInr + fee;
 
-    Widget row(IconData icon, String label, String value, {Key? key}) =>
+    Widget row(IconData icon, String label, String value, {Key? key, Widget? leading}) =>
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: p.primaryText),
+              leading ?? Icon(icon, size: 20, color: p.primaryText),
               const SizedBox(width: 12),
               Flexible(
                 flex: 0,
@@ -1134,9 +1128,10 @@ class _SummaryPanel extends StatelessWidget {
               Container(height: 1, color: p.border),
               if (sport != null)
                 row(
-                  Icons.sports_tennis_rounded,
+                  Icons.sports_rounded,
                   'Sport',
                   sport!,
+                  leading: SportIcon(sport, size: 20, color: p.primaryText),
                   key: const ValueKey('summary-sport'),
                 ),
               if (info.hasSlots)

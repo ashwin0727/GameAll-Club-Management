@@ -5,14 +5,14 @@ import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/external_links.dart';
 import '../../../core/widgets/gameall_buttons.dart';
 import '../../../core/widgets/pressable.dart';
 import '../../../core/widgets/reveal.dart';
 import '../../../core/widgets/sport_icon.dart';
 import '../../auth/application/auth_providers.dart';
+import '../../payments/application/payment_flow.dart';
+import '../../payments/domain/payment_receipt.dart';
 import '../application/venues_providers.dart';
-import '../data/coaching_enroll_repository.dart';
 import '../domain/coaching_enroll.dart';
 import '../domain/venue.dart';
 import 'enroll_membership_page.dart'
@@ -140,69 +140,63 @@ class _CoachingEnrollPageState extends ConsumerState<CoachingEnrollPage>
 
   void _choose(CoachingOffer o) => setState(() => _offerKey = o.key);
 
-  void _toast(String text) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-    }
-  }
 
   Future<void> _pay(CoachingInfo info, CoachingOffer o) async {
     if (ref.read(currentPlayerProvider) == null) {
       widget.onNavigate(AppRoutes.login);
       return;
     }
-    setState(() => _paying = true);
-    try {
-      final repo = ref.read(coachingEnrollRepositoryProvider);
-      final start = await repo.start(
-        venueId: info.venueId,
-        programId: o.program.id,
-        batchId: o.batch?.id,
-      );
-      await _openPayment(
-        start.enrollmentId,
-        monthly: start.feeType == 'MONTHLY',
-      );
-    } on CoachingException catch (e) {
-      _toast(e.message);
-    } catch (_) {
-      _toast("We couldn't start your enrolment. Please try again.");
-    } finally {
-      if (mounted) setState(() => _paying = false);
-      ref.invalidate(myCoachingAtProvider(widget.venueId));
-    }
-  }
-
-  Future<void> _openPayment(
-    String enrollmentId, {
-    required bool monthly,
-  }) async {
     final repo = ref.read(coachingEnrollRepositoryProvider);
-    final link = await repo.paymentLink(enrollmentId);
-    final opened = await ref.read(linkOpenerProvider)(link);
-    if (!opened) {
-      throw const CoachingException(
-        "We couldn't open the payment page. Please try again.",
-      );
-    }
-    _toast(
-      monthly
-          ? 'Finish setting up AutoPay on the page that opened. You are enrolled once it is done.'
-          : 'Finish your payment on the page that opened. You are enrolled once it is paid.',
+    await _runFlow(
+      title: o.program.name,
+      venueName: info.venueName,
+      prepare: () async {
+        final start = await repo.start(
+          venueId: info.venueId,
+          programId: o.program.id,
+          batchId: o.batch?.id,
+        );
+        final link = await repo.paymentLink(start.enrollmentId);
+        return PaymentTarget(id: start.enrollmentId, link: link);
+      },
     );
   }
 
-  Future<void> _resume(MyCoaching m) async {
+  Future<void> _runFlow({
+    required String title,
+    required String? venueName,
+    required Future<PaymentTarget> Function() prepare,
+  }) async {
     setState(() => _paying = true);
     try {
-      await _openPayment(m.enrollmentId, monthly: m.feeType == 'MONTHLY');
-    } on CoachingException catch (e) {
-      _toast(e.message);
-    } catch (_) {
-      _toast("We couldn't open the payment page. Please try again.");
+      await openPaymentFlow(
+        context,
+        onNavigate: widget.onNavigate,
+        job: PaymentJob(
+          kind: PaymentKind.coaching,
+          title: title,
+          venueName: venueName,
+          prepare: prepare,
+        ),
+      );
     } finally {
-      if (mounted) setState(() => _paying = false);
+      if (mounted) {
+        setState(() => _paying = false);
+        ref.invalidate(myCoachingAtProvider(widget.venueId));
+      }
     }
+  }
+
+  Future<void> _resume(MyCoaching m) {
+    final repo = ref.read(coachingEnrollRepositoryProvider);
+    return _runFlow(
+      title: m.programName,
+      venueName: null,
+      prepare: () async => PaymentTarget(
+        id: m.enrollmentId,
+        link: await repo.paymentLink(m.enrollmentId),
+      ),
+    );
   }
 
   @override
@@ -339,7 +333,18 @@ class _CoachingEnrollPageState extends ConsumerState<CoachingEnrollPage>
         const <MyCoaching>[];
 
     final sports = info.sports;
-    _sportId ??= sports.isEmpty ? null : sports.first.id;
+    if (_sportId == null && sports.isNotEmpty) {
+      // the sport chosen on the venue's card, else the first
+      final want = ref.read(preferredSportProvider)?.trim().toLowerCase();
+      _sportId = sports
+          .where((s) => s.name.trim().toLowerCase() == want)
+          .firstOrNull
+          ?.id ??
+          sports.first.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(preferredSportProvider.notifier).set(null);
+      });
+    }
     final sportName = sports.where((s) => s.id == _sportId).firstOrNull?.name;
 
     // every time slot the club made for this sport
@@ -1454,7 +1459,7 @@ class _Features extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     const items = [
-      (Icons.sports_tennis_rounded, 'Certified\nCoaches'),
+      (Icons.verified_user_outlined, 'Certified\nCoaches'),
       (Icons.bar_chart_rounded, 'Structured\nTraining'),
       (Icons.groups_2_outlined, 'Small\nBatch Size'),
       (Icons.emoji_events_outlined, 'Skill & Match\nDevelopment'),
@@ -1602,12 +1607,12 @@ class _SummaryPanel extends StatelessWidget {
     final pr = offer?.program;
     final coach = offer?.batch?.coach;
 
-    Widget row(IconData icon, String label, String value, {Key? key}) =>
+    Widget row(IconData icon, String label, String value, {Key? key, Widget? leading}) =>
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 9),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: p.primaryText),
+              leading ?? Icon(icon, size: 20, color: p.primaryText),
               const SizedBox(width: 12),
               Flexible(
                 flex: 0,
@@ -1702,10 +1707,11 @@ class _SummaryPanel extends StatelessWidget {
               const SizedBox(height: 10),
               Container(height: 1, color: p.border),
               row(
-                Icons.sports_tennis_rounded,
+                Icons.sports_rounded,
                 'Sport',
                 sport ?? '—',
                 key: const ValueKey('summary-sport'),
+                leading: SportIcon(sport, size: 20, color: p.primaryText),
               ),
               row(
                 Icons.person_outline_rounded,

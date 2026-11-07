@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/fake_payment_receipts.dart';
+
+import 'package:gameall_player/features/payments/application/payment_flow.dart';
 import 'package:gameall_player/core/theme/app_theme.dart';
 import 'package:gameall_player/core/utils/external_links.dart';
 import 'package:gameall_player/features/player_home/application/player_home_controller.dart';
@@ -70,6 +74,7 @@ Future<(_Pay, _Home, List<Uri>)> _pump(
     overrides: [
       pendingPaymentRepositoryProvider.overrideWithValue(repo),
       playerHomeRepositoryProvider.overrideWithValue(home),
+      paymentReceiptRepositoryProvider.overrideWithValue(FakePaymentReceipts()),
       linkOpenerProvider.overrideWithValue((uri) async {
         opened.add(uri);
         return true;
@@ -244,7 +249,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(opened, isEmpty);
-        expect(find.textContaining('already done'), findsOneWidget);
+        expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
         expect(home.loads, greaterThan(0));
       },
     );

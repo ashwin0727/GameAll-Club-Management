@@ -84,3 +84,17 @@ final coachingListingsProvider =
       final location = ref.watch(selectedCityProvider);
       return ref.watch(venueRepositoryProvider).listCoaching(location);
     });
+
+/// The sport the player had chosen on a Memberships or Coaching card (or in the search card) when they pressed View Plans / View & Enroll.
+/// The enrolment page picks it first, then clears it, so a later visit starts fresh.
+class PreferredSportController extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? sport) => state = sport;
+}
+
+final preferredSportProvider =
+    NotifierProvider<PreferredSportController, String?>(
+      PreferredSportController.new,
+    );

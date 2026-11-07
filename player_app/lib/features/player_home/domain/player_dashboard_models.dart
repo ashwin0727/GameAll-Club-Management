@@ -2,6 +2,8 @@
 // (database function `get_player_dashboard`, migration 0169). Every list can hold several entries: a player may have more than one
 // membership, more than one coaching enrolment and several guest bookings, at several clubs.
 
+import '../../venues/domain/venue.dart' show rupees;
+
 const _weekdayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /// "Mon - Fri", "Sat & Sun", "Mon, Wed, Fri": the days a batch runs, from the database's 0 = Sunday ... 6 = Saturday.
@@ -218,6 +220,7 @@ class PendingPayment {
     this.overdue = false,
     this.autopay = false,
     this.startTime,
+    this.balanceInr,
   });
 
   factory PendingPayment.fromJson(Map<String, dynamic> json) => PendingPayment(
@@ -232,6 +235,7 @@ class PendingPayment {
     failed: json['state'] == 'FAILED',
     overdue: json['overdue'] == true,
     autopay: json['mode'] == 'AUTOPAY',
+    balanceInr: json['balance'] == true ? (json['balanceInr'] as num?)?.toInt() : null,
     startTime: json['startTime'] == null
         ? null
         : DateTime.tryParse(json['startTime'] as String)?.toLocal(),
@@ -257,6 +261,11 @@ class PendingPayment {
 
   /// A booking's start.
   final DateTime? startTime;
+
+  /// A booking whose advance is paid: what is still owed (null for everything else). Its prompt asks for the balance as the booking ends.
+  final int? balanceInr;
+
+  bool get isBalance => balanceInr != null;
 
   /// A payment that went wrong or ran late is spoken about more firmly than one that has only just been started.
   bool get urgent => failed || overdue;
@@ -313,6 +322,16 @@ PaymentPromptCopy paymentPromptCopy(PendingPayment p) {
       final when = p.startTime == null
           ? ''
           : ' for ${_weekdayShort[p.startTime!.weekday % 7]}, ${p.startTime!.day} ${_monthShort[p.startTime!.month - 1]} · ${clock12('${p.startTime!.hour}:${p.startTime!.minute}')}';
+      if (p.isBalance) {
+        final left = rupees(p.balanceInr!);
+        return PaymentPromptCopy(
+          title: 'Balance payment pending for ${p.title} at ${p.venueName}',
+          message: p.overdue
+              ? 'Your booking has ended. Please pay the remaining $left$when to complete it.'
+              : 'Your booking is about to end. Pay the remaining $left$when now, online.',
+          button: 'Pay balance',
+        );
+      }
       return PaymentPromptCopy(
         title: 'Payment pending for ${p.title} at ${p.venueName}',
         message: p.failed

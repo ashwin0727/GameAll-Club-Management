@@ -33,9 +33,62 @@ class SportIcon extends StatelessWidget {
   final Color color;
 
   @override
+  Widget build(BuildContext context) {
+    final kind = sportKindOf(sport);
+    // badminton (the shuttlecock) and padel (the padel racket) are pictures from assets/images, tinted like the other icons
+    if (kind == SportKind.badminton) return CorkIcon(size: size, color: color);
+    if (kind == SportKind.padel) return PadelIcon(size: size, color: color);
+    return ExcludeSemantics(
+      child: CustomPaint(size: Size.square(size), painter: SportIconPainter(kind, color)),
+    );
+  }
+}
+
+/// An icon that is a picture (a white drawing on a clear background), coloured with [color] so it follows the Dark / Light theme and the
+/// selected state like every other icon.
+class SportPictureIcon extends StatelessWidget {
+  const SportPictureIcon(this.asset, {super.key, this.size = 20, required this.color});
+
+  final String asset;
+  final double size;
+  final Color color;
+
+  @override
   Widget build(BuildContext context) => ExcludeSemantics(
-        child: CustomPaint(size: Size.square(size), painter: SportIconPainter(sportKindOf(sport), color)),
-      );
+    child: Image.asset(
+      asset,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      color: color,
+      colorBlendMode: BlendMode.srcIn,
+      filterQuality: FilterQuality.high,
+    ),
+  );
+}
+
+/// The badminton icon: the shuttlecock (assets/images/cork.png).
+class CorkIcon extends StatelessWidget {
+  const CorkIcon({super.key, this.size = 20, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) =>
+      SportPictureIcon('assets/images/cork.png', size: size, color: color);
+}
+
+/// The padel icon: the same shuttlecock picture as badminton (assets/images/cork.png).
+class PadelIcon extends StatelessWidget {
+  const PadelIcon({super.key, this.size = 20, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) =>
+      SportPictureIcon('assets/images/cork.png', size: size, color: color);
 }
 
 class SportIconPainter extends CustomPainter {

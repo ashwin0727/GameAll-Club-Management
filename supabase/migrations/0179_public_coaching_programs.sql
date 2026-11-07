@@ -1,6 +1,7 @@
 -- The Player app's Coaching page: one entry per coaching programme in a city, with its venue, its coach and its batches.
 --
--- ONE programme per venue: the one the club created most recently (the Player app opens the enrolment page from it, where every
+-- ONE programme per venue AND SPORT: the one the club created most recently in each sport (the Player app shows a sport picker on a
+-- venue with several, and opens the enrolment page from the card, where every
 -- programme of the venue can be chosen). Only ACTIVE programmes that have not finished, at venues that are open (ACTIVE + onboarding COMPLETED) in the picked city. The coach is
 -- the one on the programme's first ACTIVE batch (name / photo from the staff profile behind the coach). The price is the programme's
 -- base fee less a running early-bird discount (tax is added on the enrolment page, as before). Anyone can call it, no sign-in.
@@ -37,7 +38,7 @@ as $$
   ),
   progs as (
     select cp.id, cp.facility_id, cp.name, cp.level, cp.description, cp.program_type, cp.fee_type, cp.image_url,
-           row_number() over (partition by cp.facility_id order by cp.created_at desc, cp.id) as rn,
+           row_number() over (partition by cp.facility_id, cp.facility_sport_id order by cp.created_at desc, cp.id) as rn,
            coalesce(fs.custom_sport_name, sp.name) as sport_name,
            greatest(
              coalesce(cp.default_price_minor, 0)

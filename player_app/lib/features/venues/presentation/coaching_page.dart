@@ -228,7 +228,19 @@ class _Results extends ConsumerWidget {
       );
     }
 
-    final shown = applyCoachingFilters(all, filters);
+    final matching = applyCoachingFilters(all, filters);
+    // one card per venue: its latest programme in each sport (the sport chips on the card switch between them)
+    final shown = <List<CoachingListing>>[];
+    final byVenue = <String, List<CoachingListing>>{};
+    for (final l in matching) {
+      final g = byVenue[l.venueId];
+      if (g == null) {
+        byVenue[l.venueId] = [l];
+        shown.add(byVenue[l.venueId]!);
+      } else {
+        g.add(l);
+      }
+    }
     final panel = CoachingFiltersPanel(
       onApply: () {
         final target = resultsKey.currentContext;
@@ -309,7 +321,12 @@ class _Results extends ConsumerWidget {
             onClear: () => ref.read(coachingFiltersProvider.notifier).clear(),
           )
         else
-          _Cards(items: shown, view: filters.view, onNavigate: onNavigate),
+          _Cards(
+            groups: shown,
+            view: filters.view,
+            sport: filters.sport,
+            onNavigate: onNavigate,
+          ),
       ],
     );
 
@@ -380,7 +397,11 @@ class CoachingFiltersPanel extends ConsumerWidget {
     final all =
         ref.watch(coachingListingsProvider).value ?? const <CoachingListing>[];
     final counts = coachingCounts(all);
-    final matching = applyCoachingFilters(all, f).length;
+    // the cards are venues (one each), so "Apply Filters (N)" counts venues too
+    final matching = applyCoachingFilters(
+      all,
+      f,
+    ).map((l) => l.venueId).toSet().length;
 
     Widget check(
       String label,
@@ -623,13 +644,18 @@ class CoachingFiltersPanel extends ConsumerWidget {
 
 class _Cards extends StatelessWidget {
   const _Cards({
-    required this.items,
+    required this.groups,
     required this.view,
+    required this.sport,
     required this.onNavigate,
   });
 
-  final List<CoachingListing> items;
+  /// One list per venue: its programmes, one per sport.
+  final List<List<CoachingListing>> groups;
   final VenueView view;
+
+  /// The sport picked in the search card (null = all).
+  final String? sport;
   final void Function(String route) onNavigate;
 
   @override
@@ -647,15 +673,14 @@ class _Cards extends StatelessWidget {
         Widget card(int i) => SizedBox(
           width: cardWidth,
           child: Reveal(
-            key: ValueKey('card-${items[i].programId}'),
+            key: ValueKey('card-${groups[i].first.venueId}'),
             delay: Duration(milliseconds: 30 * (i < 6 ? i : 6)),
-            child: CoachingProgramCard(
-              item: items[i],
+            child: _CoachCardHost(
+              group: groups[i],
+              sportFilter: sport,
               row: rowLayout,
               narrow: cardWidth < 330,
-              onEnroll: () =>
-                  onNavigate(AppRoutes.coachingEnrollPath(items[i].venueId)),
-              onVenue: () => onNavigate(AppRoutes.venuePath(items[i].venueId)),
+              onNavigate: onNavigate,
             ),
           ),
         );
@@ -663,7 +688,7 @@ class _Cards extends StatelessWidget {
           key: const ValueKey('venue-grid'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (var start = 0; start < items.length; start += cols) ...[
+            for (var start = 0; start < groups.length; start += cols) ...[
               if (start > 0) const SizedBox(height: gap),
               IntrinsicHeight(
                 child: Row(
@@ -671,7 +696,7 @@ class _Cards extends StatelessWidget {
                   children: [
                     for (
                       var i = start;
-                      i < start + cols && i < items.length;
+                      i < start + cols && i < groups.length;
                       i++
                     ) ...[if (i > start) const SizedBox(width: gap), card(i)],
                   ],
@@ -681,6 +706,74 @@ class _Cards extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Remembers which sport a venue's card is showing. The sport picked in the search card wins when the venue has it; a chip tapped on
+/// the card overrides that until the search card's sport changes again.
+class _CoachCardHost extends StatefulWidget {
+  const _CoachCardHost({
+    required this.group,
+    required this.sportFilter,
+    required this.row,
+    required this.narrow,
+    required this.onNavigate,
+  });
+
+  /// The venue's programmes, one per sport (the same venue in each).
+  final List<CoachingListing> group;
+  final String? sportFilter;
+  final bool row;
+  final bool narrow;
+  final void Function(String route) onNavigate;
+
+  @override
+  State<_CoachCardHost> createState() => _CoachCardHostState();
+}
+
+class _CoachCardHostState extends State<_CoachCardHost> {
+  String? _picked;
+
+  @override
+  void didUpdateWidget(_CoachCardHost old) {
+    super.didUpdateWidget(old);
+    if (old.sportFilter != widget.sportFilter) _picked = null;
+  }
+
+  CoachingListing? _find(String? sport) {
+    if (sport == null) return null;
+    for (final l in widget.group) {
+      if ((l.sport ?? '').trim().toLowerCase() == sport.trim().toLowerCase()) {
+        return l;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item =
+        _find(_picked) ?? _find(widget.sportFilter) ?? widget.group.first;
+    final sports = [
+      for (final l in widget.group)
+        if (l.sport != null) l.sport!,
+    ];
+    return CoachingProgramCard(
+      item: item,
+      row: widget.row,
+      narrow: widget.narrow,
+      sports: sports,
+      onSport: sports.length > 1 ? (s) => setState(() => _picked = s) : null,
+      // the sport shown on the card is the sport the enrolment page starts on
+      onEnroll: () {
+        ProviderScope.containerOf(
+          context,
+          listen: false,
+        ).read(preferredSportProvider.notifier).set(item.sport);
+        widget.onNavigate(AppRoutes.coachingEnrollPath(item.venueId));
+      },
+      onVenue: () => widget.onNavigate(AppRoutes.venuePath(item.venueId)),
     );
   }
 }
@@ -695,9 +788,15 @@ class CoachingProgramCard extends ConsumerWidget {
     required this.onEnroll,
     required this.onVenue,
     this.narrow = false,
+    this.sports = const [],
+    this.onSport,
   });
 
   final CoachingListing item;
+
+  /// The sports of the venue's programmes, and the handler for a tapped sport chip (null: one sport, no chips).
+  final List<String> sports;
+  final ValueChanged<String>? onSport;
 
   /// The wide one-line layout (list view); false is the stacked card of the design.
   final bool row;
@@ -906,7 +1005,11 @@ class CoachingProgramCard extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [coach, const SizedBox(height: 12), program],
+                      children: [
+                        coach,
+                        const SizedBox(height: 12),
+                        program,
+                      ],
                     ),
                   ),
                 ),
@@ -1003,29 +1106,14 @@ class _CoachRow extends StatelessWidget {
     final p = context.palette;
     final coach = item.coach;
     if (coach == null) {
-      return Row(
-        key: ValueKey('coach-${item.programId}'),
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: p.isDark ? const Color(0xFF151E3A) : p.elevated,
-              border: Border.all(
-                color: p.isDark ? const Color(0xFF2E3B63) : p.border,
-              ),
-            ),
-            child: Icon(Icons.sports_rounded, color: p.secondaryText),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Coach details are shared when you enroll',
-              style: AppTextStyles.support(p.secondaryText),
-            ),
-          ),
-        ],
+      // no coach on this programme yet: just say so (no picture, the text starts at the left like the coach's name does)
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Coach Details are not available',
+          key: ValueKey('coach-${item.programId}'),
+          style: AppTextStyles.support(p.secondaryText),
+        ),
       );
     }
     final displayName = coach.name.toLowerCase().startsWith('coach')
@@ -1204,8 +1292,10 @@ class _ProgramBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+        // when the row makes the box taller than its content, the content sits in the middle with an even margin above and below
+        // (not the title at the top and the chips stranded at the bottom with a hole between them)
         mainAxisAlignment: expand
-            ? MainAxisAlignment.spaceBetween
+            ? MainAxisAlignment.center
             : MainAxisAlignment.start,
         children: [
           Row(

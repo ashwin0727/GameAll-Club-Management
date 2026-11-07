@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/config/app_config.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_format.dart';
-import '../../../core/utils/external_links.dart';
 import '../../../core/widgets/gameall_buttons.dart';
 import '../../../core/widgets/pressable.dart';
 import '../../../core/widgets/reveal.dart';
 import '../../../core/widgets/sport_icon.dart';
 import '../../../core/widgets/venue_scene.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../payments/application/payment_flow.dart';
+import '../../payments/domain/payment_receipt.dart';
+import '../../player_home/application/player_home_controller.dart' show pendingPaymentRepositoryProvider;
+import '../../player_home/domain/player_dashboard_models.dart' show PendingPayment, PendingPaymentKind;
 import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import '../domain/venue_detail.dart';
@@ -85,17 +88,69 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     });
   }
 
-  Future<void> _book(VenueDetail venue) async {
-    final opened = await ref.read(linkOpenerProvider)(
-      Uri.parse('${AppConfig.clubSiteUrl}/book/${venue.id}'),
-    );
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("We couldn't open the booking page. Please try again."),
-        ),
-      );
+  /// Book Now: makes the booking for the signed-in player, then opens the payment progress page (spinner, the payment page, and
+  /// the "Payment Successful" page with the booking's details and a PDF receipt once the payment is in).
+  Future<void> _book(
+    VenueDetail venue,
+    String sportName,
+    CourtSlots? court,
+    List<CourtSlot> slots,
+  ) async {
+    void say(String text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      }
     }
+
+    if (ref.read(currentPlayerProvider) == null) {
+      widget.onNavigate(AppRoutes.login);
+      return;
+    }
+    if (court == null || slots.isEmpty) return;
+    // one booking is one unbroken stretch of time
+    final sorted = [...slots]..sort((a, b) => a.start.compareTo(b.start));
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i].start != sorted[i - 1].end) {
+        say('Please pick one continuous time. Book other times separately.');
+        return;
+      }
+    }
+    final start = sorted.first.start;
+    final end = sorted.last.end;
+    final title = '$sportName booking';
+    // read once, now: the page may be replaced while the payment is being prepared, and `ref` must not be used after that
+    final bookings = ref.read(playerBookingRepositoryProvider);
+    final links = ref.read(pendingPaymentRepositoryProvider);
+    await openPaymentFlow(
+      context,
+      onNavigate: widget.onNavigate,
+      job: PaymentJob(
+        kind: PaymentKind.booking,
+        title: title,
+        venueName: venue.name,
+        prepare: () async {
+          final id = await bookings.create(
+            facilityId: venue.id,
+            courtId: court.courtId,
+            start: start,
+            end: end,
+          );
+          final link = await links.paymentLink(
+            PendingPayment(
+              kind: PendingPaymentKind.booking,
+              id: id,
+              title: title,
+              venueName: venue.name,
+            ),
+          );
+          return PaymentTarget(id: id, link: link);
+        },
+      ),
+    );
+    if (!mounted) return;
+    // the slots just taken must not show as free
+    setState(() => _picked.clear());
+    ref.invalidate(courtSlotsProvider);
   }
 
   @override
@@ -189,7 +244,6 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final picked =
         (court?.slots.where(_picked.contains).toList() ?? <CourtSlot>[])
           ..sort((a, b) => a.start.compareTo(b.start));
-    final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
     final multi = venue.sports.length > 1;
     var n = 0;
 
@@ -200,7 +254,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
         court: court?.courtName,
         day: _day,
         slots: picked,
-        onBook: () => _book(venue),
+        onBook: () => _book(venue, sport?.name ?? "Court", court, picked),
       );
     }
 
@@ -377,7 +431,6 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PhoneVenueCard(venue: venue, mainSport: mainSport, showStats: true),
           const SizedBox(height: 12),
           if (multi) ...[
             _PhoneSection(
@@ -544,7 +597,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
       court: court?.courtName,
       day: _day,
       slots: picked,
-      onBook: () => _book(venue),
+      onBook: () => _book(venue, sport?.name ?? "Court", court, picked),
     );
 
     return SingleChildScrollView(
@@ -592,6 +645,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
                 ],
               ),
             ),
+          const SizedBox(height: 30),
           Reveal(
             dy: 8,
             child: wide
@@ -677,8 +731,6 @@ class _Steps extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final photo = venue.photos.isEmpty ? null : venue.photos.first;
-    final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
 
     Widget step(int n, String title, Widget content) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -700,119 +752,6 @@ class _Steps extends StatelessWidget {
             ),
     );
     Widget rule() => Container(height: 1, color: p.border);
-
-    final header = Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: p.border),
-        color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: wide ? 160 : 84,
-              height: wide ? 88 : 60,
-              child: photo == null
-                  ? VenueScene(sport: mainSport)
-                  : Image.network(
-                      photo,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => VenueScene(sport: mainSport),
-                    ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        venue.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.sectionHeading(p.primaryText)
-                            .copyWith(fontSize: wide ? 24 : 18),
-                      ),
-                    ),
-                    if (venue.locationVerified) ...[
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.verified_rounded,
-                        size: wide ? 22 : 18,
-                        color: AppColors.violet,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: p.highlight,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        venue.place,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body(p.secondaryText),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (wide) ...[
-            Container(
-              width: 1,
-              height: 52,
-              margin: const EdgeInsets.symmetric(horizontal: 18),
-              color: p.border,
-            ),
-            Row(
-              children: [
-                Icon(Icons.grid_view_rounded, size: 24, color: p.primaryText),
-                const SizedBox(width: 10),
-                Text(
-                  venue.courtCount == 1
-                      ? '1 Court'
-                      : '${venue.courtCount} Courts',
-                  style: AppTextStyles.body(p.primaryText),
-                ),
-              ],
-            ),
-            if (venue.hoursLabel != null) ...[
-              Container(
-                width: 1,
-                height: 52,
-                margin: const EdgeInsets.symmetric(horizontal: 18),
-                color: p.border,
-              ),
-              Row(
-                children: [
-                  Icon(Icons.schedule_rounded, size: 24, color: p.primaryText),
-                  const SizedBox(width: 10),
-                  Text(
-                    venue.hoursLabel!,
-                    style: AppTextStyles.body(p.primaryText),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ],
-      ),
-    );
 
     final sports = Wrap(
       spacing: 12,
@@ -945,7 +884,6 @@ class _Steps extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          header,
           if (venue.sports.length > 1) ...[
             step(1, 'Select Sport', sports),
             rule(),
@@ -1310,27 +1248,32 @@ class _Summary extends StatelessWidget {
     final time = describeSlots(slots);
     final amount = slotsAmount(slots);
 
-    Widget row(IconData icon, String label, String value, {Key? key}) =>
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 22, color: p.primaryText),
-              const SizedBox(width: 14),
-              Text(label, style: AppTextStyles.body(p.primaryText)),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  value,
-                  key: key,
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.body(p.primaryText)
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+    Widget row(
+      IconData icon,
+      String label,
+      String value, {
+      Key? key,
+      Widget? leading,
+    }) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          leading ?? Icon(icon, size: 22, color: p.primaryText),
+          const SizedBox(width: 14),
+          Text(label, style: AppTextStyles.body(p.primaryText)),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              key: key,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.body(p.primaryText)
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
           ),
-        );
+        ],
+      ),
+    );
 
     return Container(
       key: const ValueKey('booking-summary'),
@@ -1374,10 +1317,11 @@ class _Summary extends StatelessWidget {
           const SizedBox(height: 14),
           Container(height: 1, color: p.border),
           row(
-            Icons.sports_tennis_rounded,
+            Icons.sports_rounded,
             'Sport',
             sport ?? '—',
             key: const ValueKey('summary-sport'),
+            leading: SportIcon(sport, size: 22, color: p.primaryText),
           ),
           Container(height: 1, color: p.border),
           row(
@@ -1487,15 +1431,10 @@ class _Summary extends StatelessWidget {
 // ── phone design pieces ────────────────────────────────────────────────────
 
 class _PhoneVenueCard extends StatelessWidget {
-  const _PhoneVenueCard({
-    required this.venue,
-    required this.mainSport,
-    this.showStats = false,
-  });
+  const _PhoneVenueCard({required this.venue, required this.mainSport});
 
   final VenueDetail venue;
   final String? mainSport;
-  final bool showStats;
 
   @override
   Widget build(BuildContext context) {
@@ -1578,62 +1517,6 @@ class _PhoneVenueCard extends StatelessWidget {
               ),
             ],
           ),
-          if (showStats) ...[
-            const SizedBox(height: 10),
-            Container(height: 1, color: p.border),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.grid_view_rounded,
-                        size: 18,
-                        color: p.primaryText,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          venue.courtCount == 1
-                              ? '1 Court'
-                              : '${venue.courtCount} Courts',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.body(p.primaryText),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (venue.hoursLabel != null) ...[
-                  Container(width: 1, height: 22, color: p.border),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 18,
-                          color: p.primaryText,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            venue.hoursLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.body(p.primaryText),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -1828,7 +1711,7 @@ class _PhoneSummary extends StatelessWidget {
             _PhoneVenueCard(venue: venue, mainSport: mainSport),
             const SizedBox(height: 6),
             row(
-              Icon(Icons.sports_tennis_rounded, size: 22, color: p.primaryText),
+              SportIcon(sport, size: 22, color: p.primaryText),
               'Sport',
               sport ?? '—',
               const ValueKey('summary-sport'),

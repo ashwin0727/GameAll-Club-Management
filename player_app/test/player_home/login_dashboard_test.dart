@@ -679,7 +679,7 @@ void main() {
         );
         await pump(tester, auth: auth, home: signedInData());
         expect(find.text('Welcome back,'), findsOneWidget);
-        expect(find.text('Uma Shankar 👋'), findsOneWidget);
+        expect(find.text('Uma Shankar'), findsOneWidget);
         expect(
           find.text('Your Game,'),
           findsNothing,
@@ -695,16 +695,10 @@ void main() {
         expect(find.text('Intermediate Batch'), findsWidgets);
         expect(find.text('Your Schedule'), findsOneWidget);
         expect(find.text('My Courts (Today)'), findsNothing);
-        expect(find.text('Quick Actions'), findsOneWidget);
-        for (final a in [
-          'Book a Court',
-          'View Membership',
-          'My Coaching',
-          'Tournaments',
-          'My Activity',
-        ]) {
-          expect(find.text(a), findsWidgets);
-        }
+        // the Quick Actions card is gone, and the schedule has the page's width
+        expect(find.text('Quick Actions'), findsNothing);
+        expect(find.text('View Membership'), findsNothing);
+        expect(find.text('My Activity'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -758,14 +752,14 @@ void main() {
           size: const Size(390, 844),
         );
         await tester.dragUntilVisible(
-          find.text('Quick Actions'),
+          find.text('Your Schedule'),
           find.byType(Scrollable).first,
           const Offset(0, -300),
         );
         await tester.pumpAndSettle();
         expect(find.text('Your Schedule'), findsOneWidget);
         expect(find.text('My Courts (Today)'), findsNothing);
-        expect(find.text('Quick Actions'), findsOneWidget);
+        expect(find.text('Quick Actions'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -790,7 +784,7 @@ void main() {
         size: const Size(320, 640),
       );
       await tester.dragUntilVisible(
-        find.text('Quick Actions'),
+        find.text('Your Schedule'),
         find.byType(Scrollable).first,
         const Offset(0, -300),
       );

@@ -131,29 +131,35 @@ Deno.serve(async (req) => {
   // 2 · from here on the club's payment tables are used, with the service role
   const admin = createClient(supabaseUrl, serviceKey);
 
-  // an advance (or the full amount) that was already received is never asked for twice
-  const { data: settled } = await admin
-    .from("payment_orders")
-    .select("*")
-    .eq("facility_id", ctx.facilityId)
-    .eq("booking_id", ctx.bookingId)
-    .in("status", PAID_STATES)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (settled) return jsonResponse(linkPayload(settled as PaymentOrderRow, { status: "PAID" }), 200);
+  // The advance of a confirmed booking is paid and part of the amount is still owed: this is the BALANCE (migration 0182), asked for
+  // from the Home page as the booking runs out. Otherwise an advance (or the full amount) already received is never asked for twice.
+  const isBalance = ctx.status === "confirmed" && ctx.paidMinor > 0 && ctx.paidMinor < ctx.amountMinor;
+  if (!isBalance) {
+    const { data: settled } = await admin
+      .from("payment_orders")
+      .select("*")
+      .eq("facility_id", ctx.facilityId)
+      .eq("booking_id", ctx.bookingId)
+      .in("status", PAID_STATES)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (settled) return jsonResponse(linkPayload(settled as PaymentOrderRow, { status: "PAID" }), 200);
+  }
 
   const isGuest = ctx.customerType === "GUEST";
-  const { data: orderData, error: orderErr } = await admin.rpc("create_payment_order", {
-    p_facility_id: ctx.facilityId,
-    p_source_type: isGuest ? "GUEST_BOOKING" : "MEMBER_BOOKING",
-    p_booking_id: ctx.bookingId,
-    p_membership_session_booking_id: null,
-    p_member_id: null,
-    p_plan_id: null,
-    // a guest booking longer than an hour is secured with a 50% advance (migration 0130); the rest pay in full
-    p_advance: isGuest,
-  });
+  const { data: orderData, error: orderErr } = isBalance
+    ? await admin.rpc("create_booking_balance_order", { p_booking_id: ctx.bookingId })
+    : await admin.rpc("create_payment_order", {
+        p_facility_id: ctx.facilityId,
+        p_source_type: isGuest ? "GUEST_BOOKING" : "MEMBER_BOOKING",
+        p_booking_id: ctx.bookingId,
+        p_membership_session_booking_id: null,
+        p_member_id: null,
+        p_plan_id: null,
+        // a guest booking longer than an hour is secured with a 50% advance (migration 0130); the rest pay in full
+        p_advance: isGuest,
+      });
   if (orderErr || !orderData) {
     console.error("[create-player-booking-payment-link] create_payment_order failed", orderErr?.code, orderErr?.message);
     const friendly = orderErr?.code === "23514" || orderErr?.code === "23503" ? orderErr.message : "Unable to start this payment.";
@@ -194,7 +200,7 @@ Deno.serve(async (req) => {
       accept_partial: false,
       reference_id: order.id,
       description:
-        (order.amount_minor < ctx.amountMinor ? "Advance (50%) · " : "") +
+        (isBalance ? "Balance · " : order.amount_minor < ctx.amountMinor ? "Advance (50%) · " : "") +
         linkDescription((court as { name?: string } | null)?.name ?? null, ctx.startTime, ctx.endTime, (facility as { timezone?: string } | null)?.timezone ?? "Asia/Kolkata"),
       expire_by: expireBy,
       customer: {
