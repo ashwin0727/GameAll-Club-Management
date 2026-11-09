@@ -14,6 +14,7 @@ import '../../../core/widgets/venue_scene.dart';
 import '../../player_home/application/player_home_controller.dart';
 import '../../player_home/presentation/widgets/player_search_bar.dart';
 import '../application/venue_filters.dart';
+import 'phone_list_header.dart';
 import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import 'no_venues_state.dart';
@@ -24,7 +25,14 @@ import 'no_venues_state.dart';
 /// Filters offered are the ones the database can answer: price per hour, turf, coaching and membership venues, and venues the player
 /// has saved with the heart. (There are no distances, ratings, indoor/outdoor flags or facility lists in the database yet.)
 class DiscoverVenuesPage extends ConsumerStatefulWidget {
-  const DiscoverVenuesPage({super.key, required this.onNavigate});
+  const DiscoverVenuesPage({
+    super.key,
+    required this.onNavigate,
+    this.showTitle = false,
+  });
+
+  /// Phone: draw the "Book a Court" title line (with the location icon) in the page itself. A pushed page has it in the app bar.
+  final bool showTitle;
 
   final void Function(String route) onNavigate;
 
@@ -74,41 +82,62 @@ class _DiscoverVenuesPageState extends ConsumerState<DiscoverVenuesPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Reveal(
-              dy: 10,
-              child: DiscoverBanner(wide: wide, side: side),
-            ),
-            if (!wide) ...[
-              const SizedBox(height: 4),
+            if (wide) ...[
+              Reveal(
+                dy: 10,
+                child: DiscoverBanner(wide: wide, side: side),
+              ),
+              const SizedBox(height: 6),
               inset(
                 Reveal(
-                  delay: const Duration(milliseconds: 20),
-                  child: DiscoverHighlights(room: width - side * 2, compact: true),
+                  delay: const Duration(milliseconds: 40),
+                  child: DiscoverSearchRow(
+                    controller: _search,
+                    city: city,
+                    venues: all,
+                    wide: wide,
+                    onChanged: _setQuery,
+                    onSearch: () => _setQuery(_search.text),
+                    sport: filters.sport,
+                    onSport: (s) => ref
+                        .read(venueFiltersProvider.notifier)
+                        .update((f) => f.copyWith(sport: s)),
+                    view: filters.view,
+                    onView: (v) => ref
+                        .read(venueFiltersProvider.notifier)
+                        .update((f) => f.copyWith(view: v)),
+                  ),
+                ),
+              ),
+            ] else ...[
+              // phone: [title + location icon when this is a tab], the sports, a small search box
+              if (widget.showTitle)
+                inset(
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 6),
+                    child: PhoneTitleRow(title: 'Book a Court'),
+                  ),
+                ),
+              const SizedBox(height: 6),
+              inset(
+                SportChipsRow(
+                  sports: [...featuredSports, ...otherSports(all)],
+                  selected: filters.sport,
+                  onSelect: (s) => ref
+                      .read(venueFiltersProvider.notifier)
+                      .update((f) => f.copyWith(sport: s)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              inset(
+                CompactSearchField(
+                  controller: _search,
+                  hint: 'Search venues, sports or areas...',
+                  onChanged: _setQuery,
+                  onSearch: () => _setQuery(_search.text),
                 ),
               ),
             ],
-            SizedBox(height: wide ? 6 : 16),
-            inset(
-              Reveal(
-                delay: const Duration(milliseconds: 40),
-                child: DiscoverSearchRow(
-                  controller: _search,
-                  city: city,
-                  venues: all,
-                  wide: wide,
-                  onChanged: _setQuery,
-                  onSearch: () => _setQuery(_search.text),
-                  sport: filters.sport,
-                  onSport: (s) => ref
-                      .read(venueFiltersProvider.notifier)
-                      .update((f) => f.copyWith(sport: s)),
-                  view: filters.view,
-                  onView: (v) => ref
-                      .read(venueFiltersProvider.notifier)
-                      .update((f) => f.copyWith(view: v)),
-                ),
-              ),
-            ),
             SizedBox(height: wide ? 26 : 18),
             inset(
               _Results(
@@ -230,9 +259,16 @@ class DiscoverBanner extends StatelessWidget {
                         )
                       : ShaderMask(
                           blendMode: BlendMode.dstIn,
-                          shaderCallback: (r) => const LinearGradient(
-                            colors: [Color(0x00000000), Color(0x99000000)],
-                            stops: [0.0, 0.5],
+                          // light mode: the photo is dark, so it is kept faint behind the dark title and fades out well
+                          // before the text, which stays readable
+                          shaderCallback: (r) => LinearGradient(
+                            colors: [
+                              const Color(0x00000000),
+                              p.isDark
+                                  ? const Color(0x99000000)
+                                  : const Color(0x4D000000),
+                            ],
+                            stops: [0.0, p.isDark ? 0.5 : 0.75],
                           ).createShader(r),
                           child: Image.asset(
                             image,
@@ -365,6 +401,26 @@ class DiscoverHighlights extends StatelessWidget {
           p.primaryText,
         ).copyWith(fontSize: compact ? 12.5 : 16, fontWeight: FontWeight.w700),
       );
+      // a phone with three items: each is a column (icon over its title, centred), so nothing is cut short with an ellipsis
+      if (compact && _items.length <= 3) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            icon,
+            const SizedBox(height: 6),
+            Text(
+              it.$2,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: AppTextStyles.cardHeading(p.primaryText).copyWith(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+          ],
+        );
+      }
       if (!detailed) {
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -420,7 +476,11 @@ class DiscoverHighlights extends StatelessWidget {
                         SizedBox(width: (room - 12) / 2, child: item(it)),
                     ],
                   )
-                : Row(children: [for (final it in _items) Expanded(child: item(it))]))
+                : Row(
+                    children: [
+                      for (final it in _items) Expanded(child: item(it)),
+                    ],
+                  ))
           : detailed
           ? Row(
               mainAxisSize: MainAxisSize.min,
@@ -450,6 +510,7 @@ class DiscoverSearchRow extends ConsumerWidget {
     required this.view,
     required this.onView,
     this.hint = 'Search venues, sports or areas...',
+    this.lean = false,
     required this.controller,
     required this.city,
     required this.venues,
@@ -469,6 +530,9 @@ class DiscoverSearchRow extends ConsumerWidget {
   final VenueView view;
   final ValueChanged<VenueView> onView;
   final String hint;
+
+  /// On a phone, only the search box: the city is an icon at the top of the page, the sport lives in Filters, and there is no grid switch.
+  final bool lean;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -610,7 +674,9 @@ class DiscoverSearchRow extends ConsumerWidget {
       ),
       // wide: city, sport, the search box and the grid / list switch on one line.
       // phone: city and sport stacked, then the search box with the switch beside it
-      child: wide
+      child: (lean && !wide)
+          ? searchBox
+          : wide
           ? Row(
               children: [
                 SizedBox(width: 280, child: citySelector),
@@ -879,7 +945,12 @@ class _Results extends ConsumerWidget {
     }
     if (all.isEmpty) return const SizedBox(height: 420, child: NoVenuesState());
 
-    final shown = applyVenueFilters(all, filters, saved);
+    // nearest first (when the device position and the venues' positions are known) unless a sort was chosen by hand
+    final km = ref.watch(venueDistancesProvider).value ?? const <String, double>{};
+    final byFilters = applyVenueFilters(all, filters, saved);
+    final shown = filters.sort == VenueSort.recommended
+        ? sortNearestFirst(byFilters, (v) => v.id, km)
+        : byFilters;
     final ceiling = priceCeiling(all);
     // Apply Filters: the filters are already in force, so this just brings the results into view
     final panel = FiltersPanel(
@@ -914,7 +985,7 @@ class _Results extends ConsumerWidget {
         else
           _CardGrid(
             venues: shown,
-            view: filters.view,
+            view: wide ? filters.view : VenueView.grid,
             saved: saved,
             onNavigate: onNavigate,
           ),
@@ -1184,6 +1255,62 @@ class FiltersPanel extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         Container(height: 1, color: p.border),
+        // on a phone the sport is chosen here (the search card only has the search box)
+        if (inSheet) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 10),
+            child: Text('Sport', style: AppTextStyles.cardHeading(p.primaryText)),
+          ),
+          Wrap(
+            key: const ValueKey('filter-sports'),
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final s in <String?>[
+                null,
+                ...featuredSports,
+                ...otherSports(all),
+              ])
+                Semantics(
+                  button: true,
+                  selected: f.sport == s,
+                  label: s ?? 'All Sports',
+                  child: Pressable(
+                    key: ValueKey(s == null ? 'sport-all' : 'sport-$s'),
+                    onTap: () => ctl.update((cur) => cur.copyWith(sport: s)),
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: f.sport == s ? AppColors.violet : p.border,
+                        ),
+                        color: f.sport == s
+                            ? AppColors.violet
+                            : Colors.transparent,
+                      ),
+                      child: Text(
+                        s ?? 'All Sports',
+                        style: AppTextStyles.body(
+                          f.sport == s ? Colors.white : p.primaryText,
+                        ).copyWith(fontSize: 13.5),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.only(top: 16),
+            color: p.border,
+          ),
+        ],
         if (ceiling > 0) ...[
           Padding(
             padding: const EdgeInsets.only(top: 16, bottom: 4),
@@ -1425,10 +1552,11 @@ class _CardGrid extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (var i = start; i < start + cols && i < venues.length; i++) ...[
-                      if (i > start) const SizedBox(width: gap),
-                      card(i),
-                    ],
+                    for (
+                      var i = start;
+                      i < start + cols && i < venues.length;
+                      i++
+                    ) ...[if (i > start) const SizedBox(width: gap), card(i)],
                   ],
                 ),
               ),
@@ -1461,6 +1589,7 @@ class DiscoverVenueCard extends ConsumerWidget {
     final photo = venue.heroImageUrl;
     final logo = venue.logoUrl;
     final main = venue.sports.isEmpty ? null : venue.sports.first;
+    final km = ref.watch(venueDistancesProvider).value?[venue.id];
     final radius = BorderRadius.circular(16);
 
     // No photo: a picture of the court or pitch for this sport (drawn in code), with the venue's logo as a small badge when it has one.
@@ -1615,7 +1744,7 @@ class DiscoverVenueCard extends ConsumerWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  venue.place,
+                  km == null ? venue.place : '${venue.place}  ·  ${distanceLabel(km)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.support(p.secondaryText),

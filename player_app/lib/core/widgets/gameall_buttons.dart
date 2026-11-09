@@ -29,11 +29,23 @@ class GameAllButton extends StatelessWidget {
     this.height = AppDimensions.buttonHeight,
   });
 
-  const GameAllButton.gradient({super.key, required this.label, required this.onPressed, this.icon, this.expand = false, this.height = AppDimensions.buttonHeight})
-      : kind = GameAllButtonKind.gradient;
+  const GameAllButton.gradient({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.expand = false,
+    this.height = AppDimensions.buttonHeight,
+  }) : kind = GameAllButtonKind.gradient;
 
-  const GameAllButton.secondary({super.key, required this.label, required this.onPressed, this.icon, this.expand = false, this.height = AppDimensions.buttonHeight})
-      : kind = GameAllButtonKind.secondary;
+  const GameAllButton.secondary({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.expand = false,
+    this.height = AppDimensions.buttonHeight,
+  }) : kind = GameAllButtonKind.secondary;
 
   final String label;
 
@@ -55,7 +67,10 @@ class GameAllButton extends StatelessWidget {
     final Decoration decoration;
     if (!_enabled) {
       textColor = p.mutedText;
-      decoration = BoxDecoration(borderRadius: radius, color: p.elevated.withValues(alpha: p.isDark ? 0.6 : 1));
+      decoration = BoxDecoration(
+        borderRadius: radius,
+        color: p.elevated.withValues(alpha: p.isDark ? 0.6 : 1),
+      );
     } else {
       switch (kind) {
         case GameAllButtonKind.gradient:
@@ -63,14 +78,27 @@ class GameAllButton extends StatelessWidget {
           decoration = BoxDecoration(
             borderRadius: radius,
             gradient: AppColors.brandGradient,
-            boxShadow: [BoxShadow(color: AppColors.blue.withValues(alpha: 0.30), blurRadius: 16, offset: const Offset(0, 6))],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.blue.withValues(alpha: 0.30),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
           );
         case GameAllButtonKind.solid:
           textColor = Colors.white;
-          decoration = BoxDecoration(borderRadius: radius, color: AppColors.blue);
+          decoration = BoxDecoration(
+            borderRadius: radius,
+            color: AppColors.blue,
+          );
         case GameAllButtonKind.secondary:
           textColor = p.primaryText;
-          decoration = BoxDecoration(borderRadius: radius, border: Border.all(color: p.border), color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1));
+          decoration = BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: p.border),
+            color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1),
+          );
       }
     }
 
@@ -78,7 +106,15 @@ class GameAllButton extends StatelessWidget {
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Flexible(child: HoverText(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppTextStyles.button(textColor))),
+        Flexible(
+          child: HoverText(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.button(textColor),
+          ),
+        ),
         if (icon != null) ...[
           const SizedBox(width: 8),
           Icon(icon, color: textColor, size: 18),
@@ -97,7 +133,9 @@ class GameAllButton extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             height: height,
             width: expand ? double.infinity : null,
-            constraints: const BoxConstraints(minWidth: AppDimensions.minTouchTarget),
+            constraints: const BoxConstraints(
+              minWidth: AppDimensions.minTouchTarget,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: decoration,
             child: content,

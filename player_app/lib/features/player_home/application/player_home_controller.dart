@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/network/resilient.dart';
 import '../data/pending_payment_repository.dart';
 import '../data/player_home_repository.dart';
 import '../domain/player_home_models.dart';
@@ -22,7 +24,14 @@ class PlayerHomeController extends AsyncNotifier<PlayerHomeData> {
       ref.watch(playerHomeRepositoryProvider).load();
 
   /// Reloads without blanking the page: the old data stays on screen until the new data arrives.
-  Future<void> refresh() async {
+  ///
+  /// Several places ask for this at once (coming back to the app, a payment finishing, a page closing): they all share the one reload
+  /// that is already running instead of each sending its own.
+  Future<void> refresh() => _inFlight.run('home', _reload);
+
+  final _inFlight = InFlight();
+
+  Future<void> _reload() async {
     final next = await AsyncValue.guard(
       () => ref.read(playerHomeRepositoryProvider).load(),
     );
@@ -35,38 +44,6 @@ final playerHomeProvider =
     AsyncNotifierProvider<PlayerHomeController, PlayerHomeData>(
       PlayerHomeController.new,
     );
-
-// ── Sports ────────────────────────────────────────────────────────────────
-
-class SportOption {
-  const SportOption(this.id, this.label, this.icon);
-  final String id;
-  final String label;
-  final IconData icon;
-
-  /// The sport name as the database spells it; null for "All" and "More".
-  String? get sportName => (id == 'all' || id == 'more') ? null : label;
-}
-
-const sportOptions = <SportOption>[
-  SportOption('all', 'All', Icons.grid_view_rounded),
-  SportOption('badminton', 'Badminton', Icons.sports_rounded),
-  SportOption('football', 'Football', Icons.sports_soccer_rounded),
-  SportOption('tennis', 'Tennis', Icons.sports_baseball_rounded),
-  SportOption('pickleball', 'Pickleball', Icons.sports_handball_rounded),
-  SportOption('more', 'More', Icons.more_horiz_rounded),
-];
-
-class SelectedSport extends Notifier<String> {
-  @override
-  String build() => 'all';
-
-  void select(String id) => state = id;
-}
-
-final selectedSportProvider = NotifierProvider<SelectedSport, String>(
-  SelectedSport.new,
-);
 
 // ── Location ──────────────────────────────────────────────────────────────
 
@@ -97,14 +74,29 @@ final selectedCityProvider = NotifierProvider<SelectedCity, String>(
 
 // ── Theme ─────────────────────────────────────────────────────────────────
 
-class ThemeModeController extends Notifier<ThemeMode> {
-  @override
-  ThemeMode build() => ThemeMode.dark;
+/// The theme the app starts with (read from the device before the app runs; dark when nothing was saved). Tests can override it.
+final initialThemeModeProvider = Provider<ThemeMode>((ref) => ThemeMode.dark);
 
-  void set(ThemeMode mode) => state = mode;
+class ThemeModeController extends Notifier<ThemeMode> {
+  static const prefsKey = 'theme_mode';
+
+  @override
+  ThemeMode build() => ref.watch(initialThemeModeProvider);
+
+  void set(ThemeMode mode) {
+    state = mode;
+    _save(mode);
+  }
 
   void toggle() =>
-      state = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+      set(state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
+
+  Future<void> _save(ThemeMode mode) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(prefsKey, mode == ThemeMode.light ? 'light' : 'dark');
+    } catch (_) {}
+  }
 }
 
 final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(

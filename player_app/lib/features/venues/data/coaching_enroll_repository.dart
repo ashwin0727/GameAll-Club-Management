@@ -144,6 +144,8 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
 
   String _friendly(PostgrestException e) {
     final m = e.message.toLowerCase();
+    // "Please choose another time: you already have coaching at this court at this time." (migration 0190)
+    if (e.code == '23505' && e.message.startsWith('Please')) return e.message;
     if (m.contains('already enrolled')) {
       return 'You are already enrolled in this programme.';
     }

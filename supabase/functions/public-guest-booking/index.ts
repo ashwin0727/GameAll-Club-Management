@@ -40,6 +40,8 @@ interface BookingRequest {
   purpose?: string | null;
   notes?: string | null;
   partySize?: number;
+  /** "ADVANCE" (pay 50% now) or "FULL" (migration 0188). */
+  paymentOption?: string;
   captchaToken?: string;
   /** Signed proof from mobile-otp that this phone number passed SMS verification. */
   mobileProof?: string;
@@ -145,6 +147,7 @@ Deno.serve(async (req) => {
     p_purpose: body.purpose || null,
     p_notes: body.notes || null,
     p_party_size: body.partySize ?? 1,
+    p_payment_option: body.paymentOption ?? null,
   });
 
   if (error) {
@@ -152,7 +155,7 @@ Deno.serve(async (req) => {
     if (message.toLowerCase().includes("no longer available")) {
       return jsonResponse({ error: message, code: "SLOT_UNAVAILABLE" }, 409);
     }
-    if (message.startsWith("Please ") || message.startsWith("We could not") || message.startsWith("You have unpaid") || message.startsWith("That time has")) {
+    if (message.startsWith("Choose ") || message.startsWith("Please ") || message.startsWith("We could not") || message.startsWith("You have unpaid") || message.startsWith("That time has")) {
       return jsonResponse({ error: message }, 400);
     }
     console.error("[public-guest-booking] public_create_guest_booking failed", { code: error.code, message });

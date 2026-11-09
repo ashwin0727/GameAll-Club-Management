@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/resilient.dart';
 import '../domain/player_home_models.dart';
 
 /// Where the Home page gets its data. The Supabase version is the real one; tests supply a fake.
@@ -33,10 +34,10 @@ class SupabasePlayerHomeRepository implements PlayerHomeRepository {
       // Older databases only have get_my_player_home, which still answers the basics.
       Object? result;
       try {
-        result = await client.rpc('get_player_dashboard');
+        result = await retryTransient(() => client.rpc('get_player_dashboard'));
       } on PostgrestException catch (e) {
         if (e.code != 'PGRST202' && e.code != '42883') rethrow;
-        result = await client.rpc('get_my_player_home');
+        result = await retryTransient(() => client.rpc('get_my_player_home'));
       }
       final data = PlayerHomeData.fromJson(
         (result as Map).cast<String, dynamic>(),

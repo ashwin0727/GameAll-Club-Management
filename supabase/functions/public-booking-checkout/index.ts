@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
 
   const { data: bookingRows } = await supabase
     .from("bookings")
-    .select("id, facility_id, status, start_time, end_time, hold_expires_at")
+    .select("id, facility_id, status, start_time, end_time, hold_expires_at, payment_option")
     .in("id", ids);
   const bookings = bookingRows ?? [];
   if (bookings.length !== ids.length) return notFound();
@@ -198,7 +198,8 @@ Deno.serve(async (req) => {
       if (booking.status !== "pending" || booking.hold_expires_at == null) {
         return json({ error: "This booking does not need an online advance." }, 400);
       }
-      if (new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime() <= HOUR_MS) {
+      // a booking made with the 50% / full choice (migration 0188) is always paid online; an older one only when longer than an hour
+      if (booking.payment_option == null && new Date(booking.end_time).getTime() - new Date(booking.start_time).getTime() <= HOUR_MS) {
         return json({ error: "This booking does not need an online advance." }, 400);
       }
     }

@@ -237,6 +237,14 @@ export function GuestBookingWizard() {
   // Otherwise online payment settles one booking; several separate bookings are paid at the venue.
   const onlineAllowed = advance.required || runs.length <= 1;
   const effectivePayMode: "offline" | "online" = advance.required ? "online" : payMode;
+  // Online, the player pays 50% now (the rest at the venue) or the full amount: asked for every booking (migration 0188).
+  const [payOption, setPayOption] = useState<"ADVANCE" | "FULL">("FULL");
+  const onlineDue = useMemo(() => {
+    if (runPrices.some((r) => r.totalMinor == null)) return { dueNowMinor: null as number | null, balanceMinor: null as number | null };
+    const total = runPrices.reduce((sum, r) => sum + (r.totalMinor as number), 0);
+    const due = payOption === "FULL" ? total : runPrices.reduce((sum, r) => sum + Math.ceil((r.totalMinor as number) / 2), 0);
+    return { dueNowMinor: due, balanceMinor: total - due };
+  }, [runPrices, payOption]);
 
   const canNext = useCallback(() => {
     if (step === 0) return courtIds.length > 0 && picks.length > 0;
@@ -276,8 +284,9 @@ export function GuestBookingWizard() {
       if (online) {
         // The player is not here: no checkout opens on this screen. The panel makes the payment link for this
         // booking (amount taken from the booking on the server) and the player pays from it.
-        // Only the bookings that need an advance get a link; a short one booked alongside is paid at the venue.
-        setLinkBookings(advance.required ? created.filter((x) => needsAdvance(x.startTime, x.endTime)) : created);
+        // Every booking gets a link for what the player chose to pay now: 50% or the full amount.
+        await Promise.all(created.map((x) => getBookingService().setBookingPaymentOption(x.id, payOption)));
+        setLinkBookings(created);
         return;
       }
 
@@ -611,8 +620,8 @@ export function GuestBookingWizard() {
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
                     Booking created for {sportName} · {courtsLabel} · {fmtDateLong(date)} · {timeLabel}.{" "}
-                    {advance.required
-                      ? "It is confirmed once the 50% advance is received online; the balance is collected at the venue."
+                    {payOption === "ADVANCE"
+                      ? "It is confirmed once the 50% advance is received online; the balance is collected at the venue before the booking ends."
                       : "It is confirmed once the payment is received."}
                   </p>
                   {linkBookings.map((lb) => (
@@ -627,8 +636,8 @@ export function GuestBookingWizard() {
                         bookingId={lb.id}
                         guestName={guestName}
                         guestPhone={guestPhone.trim() || null}
-                        advance={needsAdvance(lb.startTime, lb.endTime)}
-                        description={`${advance.required ? "Advance (50%) · " : ""}${sportName} · ${courtName(lb.courtId)} · ${fmtDateLong(date)}, ${hhmm(lb.startTime)} – ${hhmm(lb.endTime)}`}
+                        advance={payOption === "ADVANCE"}
+                        description={`${payOption === "ADVANCE" ? "Advance (50%) · " : ""}${sportName} · ${courtName(lb.courtId)} · ${fmtDateLong(date)}, ${hhmm(lb.startTime)} – ${hhmm(lb.endTime)}`}
                       />
                     </div>
                   ))}
@@ -639,12 +648,9 @@ export function GuestBookingWizard() {
                     <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm" role="note">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                       <div>
-                        <p className="font-medium">50% advance required online</p>
+                        <p className="font-medium">Online payment required</p>
                         <p className="text-xs text-muted-foreground">
-                          Bookings longer than 1 hour are accepted only after the player pays 50% in advance through the payment link
-                          {advance.dueNowMinor != null && advance.balanceMinor != null
-                            ? ` — ${formatCurrency(advance.dueNowMinor, currency)} now, ${formatCurrency(advance.balanceMinor, currency)} at the venue.`
-                            : "."}
+                          Bookings longer than 1 hour are accepted only after the player pays online through the payment link: 50% now or the full amount.
                         </p>
                       </div>
                     </div>
@@ -677,15 +683,42 @@ export function GuestBookingWizard() {
                       <span>
                         <span className="font-medium">Pay Online</span>
                         <span className="block text-xs text-muted-foreground">
-                          {advance.required
-                            ? `Get ${advance.longCount > 1 ? "a payment link for each long booking" : "a payment link"} for the 50% advance${advance.dueNowMinor != null ? ` (${formatCurrency(advance.dueNowMinor, currency)})` : ""} to share with the player. The booking is confirmed once it is paid; the balance is collected at the venue.`
-                            : onlineAllowed
-                            ? `Get a payment link for ${totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} to share with the player. They pay on their own phone (UPI / card / net banking) and the booking is confirmed as Paid once the payment goes through.`
+                          {onlineAllowed
+                            ? "Get a payment link to share with the player. They pay on their own phone (UPI / card / net banking) and the booking is confirmed once the payment goes through."
                             : "Online payment covers a single booking. You picked several courts or separate time ranges, so each is booked and paid at the venue."}
                         </span>
                       </span>
                     </label>
                   </div>
+
+                  {effectivePayMode === "online" && onlineAllowed && (
+                    <div className="space-y-2" role="radiogroup" aria-label="How much to pay online">
+                      <p className="text-xs font-semibold">How much does the player pay online?</p>
+                      {(
+                        [
+                          { id: "ADVANCE" as const, title: "Pay 50% now", note: "The balance is collected at the venue before the booking ends. The 50% advance is not refundable if the booking is cancelled." },
+                          { id: "FULL" as const, title: "Pay full amount", note: "Nothing left to pay. If the booking is cancelled early the player gets a refund (95% back with 12 hours or more to go)." },
+                        ]
+                      ).map((o) => {
+                        const amount = totalMinor == null ? null : o.id === "FULL" ? totalMinor : runPrices.reduce((sum, r) => sum + Math.ceil((r.totalMinor ?? 0) / 2), 0);
+                        return (
+                          <label
+                            key={o.id}
+                            className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm", payOption === o.id ? "border-primary bg-primary/5" : "border-border")}
+                          >
+                            <input type="radio" name="pay-option" className="mt-0.5" checked={payOption === o.id} onChange={() => setPayOption(o.id)} />
+                            <span>
+                              <span className="font-medium">
+                                {o.title}
+                                {amount != null && <span className="ml-2 font-semibold">{formatCurrency(amount, currency)} now</span>}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">{o.note}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {(effectivePayMode === "offline" || !onlineAllowed) && (
                     <div className="block max-w-xs space-y-1 text-sm">
@@ -730,23 +763,25 @@ export function GuestBookingWizard() {
               <span>Total Amount</span>
               <span>{totalMinor == null ? "—" : formatCurrency(totalMinor, currency)}</span>
             </div>
-            {advance.required && (
+            {effectivePayMode === "online" && onlineAllowed && (
               <>
                 <div className="mt-1 flex justify-between text-sm font-semibold">
-                  <span>Advance Due Online (50%)</span>
-                  <span>{advance.dueNowMinor == null ? "—" : formatCurrency(advance.dueNowMinor, currency)}</span>
+                  <span>{payOption === "FULL" ? "Pay Online Now" : "Advance Due Online (50%)"}</span>
+                  <span>{onlineDue.dueNowMinor == null ? "—" : formatCurrency(onlineDue.dueNowMinor, currency)}</span>
                 </div>
-                <div className="mt-1 flex justify-between text-sm text-muted-foreground">
-                  <span>Balance at Venue</span>
-                  <span>{advance.balanceMinor == null ? "—" : formatCurrency(advance.balanceMinor, currency)}</span>
-                </div>
+                {payOption === "ADVANCE" && (
+                  <div className="mt-1 flex justify-between text-sm text-muted-foreground">
+                    <span>Balance at Venue</span>
+                    <span>{onlineDue.balanceMinor == null ? "—" : formatCurrency(onlineDue.balanceMinor, currency)}</span>
+                  </div>
+                )}
               </>
             )}
           </div>
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-secondary/40 p-2.5 text-xs">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <div>
-              <p className="font-medium">{effectivePayMode === "online" ? (advance.required ? "50% advance online" : "Pay online") : "Pay at the venue"}</p>
+              <p className="font-medium">{effectivePayMode === "online" ? (payOption === "ADVANCE" ? "50% advance online" : "Full payment online") : "Pay at the venue"}</p>
               <p className="text-muted-foreground">
                 {effectivePayMode === "online" ? "A secure Razorpay payment link is sent to the player" : "Payment is collected offline"}
               </p>

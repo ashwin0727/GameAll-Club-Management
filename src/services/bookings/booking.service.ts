@@ -22,6 +22,8 @@ export interface BookingService {
   /** Moves an existing booking to a new time/court, revalidating exactly as creation does. */
   rescheduleBooking(input: RescheduleBookingInput): Promise<Booking>;
   cancelBooking(bookingId: string, reason?: string): Promise<void>;
+  /** Records how the guest chose to pay online for a booking made at the club: 50% now ("ADVANCE") or the full amount ("FULL"). Migration 0188. */
+  setBookingPaymentOption(bookingId: string, option: "ADVANCE" | "FULL"): Promise<void>;
   /**
    * Name/phone/email search over this facility's member records, for the
    * "Member" customer picker — facility-scoped (members are a per-facility

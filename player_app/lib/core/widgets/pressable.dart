@@ -4,7 +4,13 @@ import 'hover_scope.dart';
 
 /// Makes anything tappable with the app's 150ms press animation (a small scale-down). A null [onTap] makes it inert.
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, required this.onTap, this.scale = 0.97, this.borderRadius});
+  const Pressable({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.scale = 0.97,
+    this.borderRadius,
+  });
 
   final Widget child;
   final VoidCallback? onTap;

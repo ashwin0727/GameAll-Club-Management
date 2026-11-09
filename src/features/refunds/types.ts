@@ -132,3 +132,54 @@ export interface InitiateRefundInput {
   reason?: RefundReason;
   overrideReason?: string;
 }
+
+/** What cancelling a court booking right now would do, as worked out by the database (migration 0188). Money is in minor units (paise). */
+export interface BookingCancellationQuote {
+  bookingId: string;
+  status: string;
+  startTime: string;
+  paymentOption: "ADVANCE" | "FULL" | null;
+  totalMinor: number;
+  paidMinor: number;
+  onlinePaidMinor: number;
+  offlinePaidMinor: number;
+  hoursUntilStart: number;
+  /** UNPAID | ADVANCE_ONLY | FULL | STARTED */
+  rule: "UNPAID" | "ADVANCE_ONLY" | "FULL" | "STARTED";
+  deductionPercent: number;
+  refundPercent: number;
+  deductionMinor: number;
+  refundMinor: number;
+  /** Goes back to the customer through Razorpay. */
+  onlineRefundMinor: number;
+  /** Money taken in cash at the club: the club hands this back itself. */
+  offlineRefundDueMinor: number;
+  isOverride: boolean;
+  /** The sentence to show: how long is left, the % deducted, the refund. */
+  message: string;
+}
+
+/** What a cancellation decided, as recorded (booking_cancellations). */
+export interface BookingCancellationSummary {
+  hoursUntilStart: number;
+  rule: string;
+  deductionPercent: number;
+  refundPercent: number;
+  isOverride: boolean;
+  totalMinor: number;
+  paidMinor: number;
+  refundMinor: number;
+  onlineRefundMinor: number;
+  offlineRefundDueMinor: number;
+}
+
+/** Cash the club took at the desk for a booking that was then cancelled: the club hands it back itself (migration 0188). */
+export interface OfflineRefundDue {
+  bookingId: string;
+  guestName: string | null;
+  guestPhone: string | null;
+  startTime: string;
+  refundDueMinor: number;
+  settledAt: string | null;
+  cancelledAt: string;
+}

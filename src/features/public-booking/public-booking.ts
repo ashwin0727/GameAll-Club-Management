@@ -81,6 +81,8 @@ export async function createPublicGuestBooking(input: {
   endTime: string;
   guest: PublicGuestDetails;
   partySize?: number;
+  /** 50% now ("ADVANCE") or the full amount ("FULL"). */
+  paymentOption?: "ADVANCE" | "FULL";
   /** Signed proof from the SMS verification of guest.phone (mobile-otp). */
   mobileProof?: string;
 }): Promise<PublicBookingConfirmation> {
@@ -109,6 +111,7 @@ export async function createPublicGuestBooking(input: {
         purpose: guest.purpose || null,
         notes: notes || null,
         partySize: input.partySize ?? 1,
+        paymentOption: input.paymentOption,
         mobileProof: input.mobileProof,
       },
     },
@@ -129,6 +132,7 @@ export async function createPublicGuestBooking(input: {
       throw new SlotUnavailableError();
     }
     if (
+      message.startsWith("Choose ") ||
       message.startsWith("Please ") ||
       message.startsWith("We could not") ||
       message.startsWith("You have unpaid") ||
@@ -262,3 +266,57 @@ export async function downloadPublicBookingInvoice(bookingId: string, phone: str
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** What cancelling a booking right now would do (the database decides: migration 0188). Money is in minor units (paise). */
+export interface PublicCancellationQuote {
+  rule: "UNPAID" | "ADVANCE_ONLY" | "FULL" | "STARTED";
+  hoursUntilStart: number;
+  deductionPercent: number;
+  refundPercent: number;
+  paidMinor: number;
+  deductionMinor: number;
+  refundMinor: number;
+  /** The sentence to show the guest. */
+  message: string;
+}
+
+/** Public: what a cancellation would cost, for the guest who made the booking (booking id + the phone number it was made with). */
+export async function getPublicCancellationQuote(bookingId: string, phone: string): Promise<PublicCancellationQuote | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke<{ quote?: PublicCancellationQuote; error?: string }>("public-cancel-booking", {
+    body: { action: "quote", bookingId, phone },
+  });
+  if (error) return null;
+  return data?.quote ?? null;
+}
+
+/** Public: cancels the booking; any refund goes back to the original payment method through Razorpay. */
+export async function cancelPublicBooking(bookingId: string, phone: string): Promise<PublicCancellationQuote> {
+  const supabase = createClient();
+  const { data, error } = await supabase.functions.invoke<{ quote?: PublicCancellationQuote; error?: string }>("public-cancel-booking", {
+    body: { action: "cancel", bookingId, phone },
+  });
+  if (error) {
+    const payload = await readFunctionError(error);
+    throw new Error(payload.error ?? "We couldn't cancel this booking. Please try again.");
+  }
+  if (!data?.quote) throw new Error("We couldn't cancel this booking. Please try again.");
+  return data.quote;
+}
+
+/** The fixed refund schedule for a fully paid booking, as shown to the guest before they pay: [time left, % deducted]. */
+export const CANCELLATION_SCHEDULE: readonly (readonly [string, number])[] = [
+  ["12 hours or more", 5],
+  ["11 – 12 hours", 10],
+  ["10 – 11 hours", 15],
+  ["9 – 10 hours", 20],
+  ["8 – 9 hours", 30],
+  ["7 – 8 hours", 40],
+  ["6 – 7 hours", 45],
+  ["5 – 6 hours", 50],
+  ["4 – 5 hours", 70],
+  ["3 – 4 hours", 75],
+  ["2 – 3 hours", 80],
+  ["1 – 2 hours", 90],
+  ["Under 1 hour", 100],
+];

@@ -235,7 +235,9 @@ class PendingPayment {
     failed: json['state'] == 'FAILED',
     overdue: json['overdue'] == true,
     autopay: json['mode'] == 'AUTOPAY',
-    balanceInr: json['balance'] == true ? (json['balanceInr'] as num?)?.toInt() : null,
+    balanceInr: json['balance'] == true
+        ? (json['balanceInr'] as num?)?.toInt()
+        : null,
     startTime: json['startTime'] == null
         ? null
         : DateTime.tryParse(json['startTime'] as String)?.toLocal(),

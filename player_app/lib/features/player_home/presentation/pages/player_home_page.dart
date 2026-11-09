@@ -8,14 +8,14 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/reveal.dart';
 import '../../../../core/widgets/gameall_buttons.dart';
 import '../../../auth/application/auth_providers.dart';
+import '../../../notifications/application/notification_providers.dart';
+import '../../../notifications/presentation/notifications_ui.dart';
 import '../../application/player_home_controller.dart';
 import '../../domain/player_home_models.dart';
 import '../widgets/home_promo_carousel.dart';
 import '../widgets/next_game_section.dart';
 import '../widgets/player_header.dart';
 import '../widgets/player_search_bar.dart';
-import '../widgets/player_shortcut_card.dart';
-import '../widgets/sports_selector.dart';
 import '../widgets/payment_prompts.dart';
 import '../widgets/player_dashboard.dart';
 import 'player_dashboard_desktop.dart';
@@ -42,16 +42,10 @@ class PlayerHomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final home = ref.watch(playerHomeProvider);
-    final sport = ref.watch(selectedSportProvider);
     final data = home.value ?? const PlayerHomeData.guest();
     final loading = home.isLoading && !home.hasValue;
     final failed = home.hasError && !home.hasValue;
-    final sportName = sportOptions.firstWhere((s) => s.id == sport).sportName;
-    final next = resolveNextGame(
-      data,
-      now ?? DateTime.now(),
-      sportName: sportName,
-    );
+    final next = resolveNextGame(data, now ?? DateTime.now());
 
     final wide =
         MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
@@ -277,9 +271,12 @@ class _PhoneBody extends ConsumerWidget {
                             Reveal(
                               child: PlayerHeader(
                                 firstName: loading ? '' : data.firstName,
-                                unread: data.unreadNotifications,
-                                onNotifications: () =>
-                                    onNavigate(AppRoutes.notifications),
+                                showBell: ref.watch(currentPlayerProvider) != null,
+                                unread: ref.watch(unreadNotificationCountProvider),
+                                onNotifications: () => openNotifications(
+                                  context,
+                                  onNavigate: onNavigate,
+                                ),
                               ),
                             ),
                             if (failed) ...[
@@ -299,39 +296,38 @@ class _PhoneBody extends ConsumerWidget {
                             const SizedBox(height: gap),
                             Reveal(
                               delay: const Duration(milliseconds: 64),
-                              child: SportsSelector(
-                                onMore: () => onNavigate(AppRoutes.explore),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Reveal(
-                              delay: const Duration(milliseconds: 96),
                               child: HomePromoCarousel(onNavigate: onNavigate),
                             ),
                             const SizedBox(height: gap),
-                            // When the data arrives the placeholder is replaced by the real content with a short fade; the height change is
+                            // Anything not fully paid comes first, with a way to pay (it is not "Active" until it is paid).
+                            if (data.signedIn &&
+                                data.pendingPayments.isNotEmpty) ...[
+                              PaymentPrompts(
+                                payments: data.pendingPayments,
+                                popup: true,
+                                onNavigate: onNavigate,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            // The three service cards: Membership, Coaching, Guest Bookings. One set for everyone: what the player has, or an
+                            // invitation to start, and each one opens its own page (or the search for it when there is nothing yet).
+                            // When the data arrives the placeholder is replaced by the real cards with a short fade; the height change is
                             // eased (AnimatedSize), never a jump.
                             AnimatedSize(
                               duration: const Duration(milliseconds: 220),
                               curve: Curves.easeOut,
                               alignment: Alignment.topCenter,
                               child: loading
-                                  ? const _Skeleton(
-                                      height: AppDimensions.shortcutHeight,
-                                    )
+                                  ? const _Skeleton(height: 300)
                                   : Reveal(
                                       dy: 0,
                                       duration: const Duration(
                                         milliseconds: 220,
                                       ),
-                                      child: PlayerShortcutCards(
-                                        hasActiveMembership:
-                                            data.hasActiveMembership,
-                                        hasActiveCoaching:
-                                            data.hasActiveCoaching,
-                                        hasGuestBookings:
-                                            data.hasBookingHistory,
+                                      child: DashboardSummaryCards(
+                                        data: data,
                                         onNavigate: onNavigate,
+                                        vertical: true,
                                       ),
                                     ),
                             ),
@@ -354,21 +350,8 @@ class _PhoneBody extends ConsumerWidget {
                                       ),
                                     ),
                             ),
-                            // A signed-in player also sees every active membership and coaching enrolment, the week's schedule and
-                            // today's courts, found by their phone number at every club.
+                            // A signed-in player also sees the week's schedule, found by their phone number at every club.
                             if (data.signedIn) ...[
-                              const SizedBox(height: 24),
-                              if (data.pendingPayments.isNotEmpty) ...[
-                                PaymentPrompts(payments: data.pendingPayments, onNavigate: onNavigate),
-                                const SizedBox(height: 12),
-                              ],
-                              Reveal(
-                                child: DashboardSummaryCards(
-                                  data: data,
-                                  onNavigate: onNavigate,
-                                  vertical: true,
-                                ),
-                              ),
                               const SizedBox(height: 16),
                               Reveal(
                                 delay: const Duration(milliseconds: 40),

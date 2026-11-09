@@ -22,7 +22,10 @@ class AppConfig {
   static const bool inventoryEnabled = false;
 
   /// The club website, where a court is booked and paid for (`/book/<venue id>`).
-  static const String clubSiteUrl = String.fromEnvironment('CLUB_SITE_URL', defaultValue: 'https://club.gameall.co');
+  static const String clubSiteUrl = String.fromEnvironment(
+    'CLUB_SITE_URL',
+    defaultValue: 'https://club.gameall.co',
+  );
 
   static bool get isConfigured =>
       supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;

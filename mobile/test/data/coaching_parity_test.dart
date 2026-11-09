@@ -67,7 +67,7 @@ void main() {
       expect(b.isFull, isFalse); // an unknown fill level is never treated as full
     });
 
-    test('reads list_coaching_program_batches rows and knows when it is full', () {
+    test('reads list_coaching_program_batches rows; a batch never counts as full and shows 6/6 past its capacity', () {
       final b = ProgramBatch.fromJson({
         'id': 'b1',
         'name': 'Morning',
@@ -75,13 +75,14 @@ void main() {
         'start_time': '07:00:00',
         'end_time': '08:30:00',
         'capacity': 5,
-        'enrolled_count': 5,
+        'enrolled_count': 6,
         'status': 'ACTIVE',
         'court_id': 'c1',
         'court_name': 'Court 2',
       });
       expect(b.scheduleLabel, 'Sun, Sat · 07:00–08:30');
-      expect(b.isFull, isTrue);
+      expect(b.isFull, isFalse);
+      expect(b.shownCapacity, 6);
     });
   });
 

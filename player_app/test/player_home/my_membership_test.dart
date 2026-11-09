@@ -378,7 +378,8 @@ void main() {
         expect(pay.asked.single.id, 'ms1');
         expect(opened.single.toString(), 'https://rzp.io/i/pay');
         expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
-        Navigator.of(tester.element(find.byKey(const ValueKey('pay-success')))).pop();
+        Navigator.of(tester.element(find.byKey(const ValueKey('pay-success'))))
+            .pop();
         await tester.pumpAndSettle();
         await tap(tester, 'mm-tab-payments');
         expect(text(tester, 'mm-pay-balance'), '₹2,000');

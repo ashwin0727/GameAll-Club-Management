@@ -3,15 +3,30 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// The kinds of sport the app draws its own icon for.
-enum SportKind { football, cricket, badminton, tennis, basketball, pickleball, padel, volleyball, tableTennis, squash, other }
+enum SportKind {
+  football,
+  cricket,
+  badminton,
+  tennis,
+  basketball,
+  pickleball,
+  padel,
+  volleyball,
+  tableTennis,
+  squash,
+  other,
+}
 
 /// The icon kind for a sport name as the database spells it ("Badminton", "Football (5v5)", "Box Cricket"...).
 SportKind sportKindOf(String? sport) {
   final s = (sport ?? '').toLowerCase();
-  if (s.contains('badminton') || s.contains('shuttle')) return SportKind.badminton;
-  if (s.contains('foot') || s.contains('soccer') || s.contains('futsal')) return SportKind.football;
+  if (s.contains('badminton') || s.contains('shuttle'))
+    return SportKind.badminton;
+  if (s.contains('foot') || s.contains('soccer') || s.contains('futsal'))
+    return SportKind.football;
   if (s.contains('cricket')) return SportKind.cricket;
-  if (s.contains('table tennis') || s.contains('ping')) return SportKind.tableTennis;
+  if (s.contains('table tennis') || s.contains('ping'))
+    return SportKind.tableTennis;
   if (s.contains('pickle')) return SportKind.pickleball;
   if (s.contains('padel')) return SportKind.padel;
   if (s.contains('squash')) return SportKind.squash;
@@ -39,7 +54,10 @@ class SportIcon extends StatelessWidget {
     if (kind == SportKind.badminton) return CorkIcon(size: size, color: color);
     if (kind == SportKind.padel) return PadelIcon(size: size, color: color);
     return ExcludeSemantics(
-      child: CustomPaint(size: Size.square(size), painter: SportIconPainter(kind, color)),
+      child: CustomPaint(
+        size: Size.square(size),
+        painter: SportIconPainter(kind, color),
+      ),
     );
   }
 }
@@ -47,7 +65,12 @@ class SportIcon extends StatelessWidget {
 /// An icon that is a picture (a white drawing on a clear background), coloured with [color] so it follows the Dark / Light theme and the
 /// selected state like every other icon.
 class SportPictureIcon extends StatelessWidget {
-  const SportPictureIcon(this.asset, {super.key, this.size = 20, required this.color});
+  const SportPictureIcon(
+    this.asset, {
+    super.key,
+    this.size = 20,
+    required this.color,
+  });
 
   final String asset;
   final double size;
@@ -142,9 +165,17 @@ class SportIconPainter extends CustomPainter {
 
   // ── helpers ───────────────────────────────────────────────────────────
 
-  static Offset _polar(Offset c, double r, double degrees) => Offset(c.dx + r * math.cos(degrees * math.pi / 180), c.dy + r * math.sin(degrees * math.pi / 180));
+  static Offset _polar(Offset c, double r, double degrees) => Offset(
+    c.dx + r * math.cos(degrees * math.pi / 180),
+    c.dy + r * math.sin(degrees * math.pi / 180),
+  );
 
-  void _rotated(Canvas canvas, Offset pivot, double degrees, void Function() draw) {
+  void _rotated(
+    Canvas canvas,
+    Offset pivot,
+    double degrees,
+    void Function() draw,
+  ) {
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
     canvas.rotate(degrees * math.pi / 180);
@@ -174,7 +205,11 @@ class SportIconPainter extends CustomPainter {
     canvas.drawPath(pent, line);
     for (var i = 0; i < 5; i++) {
       final a = -90 + i * 72;
-      canvas.drawLine(_polar(c, 3.4, a.toDouble()), _polar(c, 6.2, a.toDouble()), line);
+      canvas.drawLine(
+        _polar(c, 3.4, a.toDouble()),
+        _polar(c, 6.2, a.toDouble()),
+        line,
+      );
       // a short edge piece either side of the seam, so the outer panels read
       final tip = _polar(c, 6.2, a.toDouble());
       canvas.drawLine(tip, _polar(c, 9.4, a + 30.0), line);
@@ -188,18 +223,31 @@ class SportIconPainter extends CustomPainter {
       // handle
       canvas.drawLine(const Offset(10, 1.6), const Offset(10, 7), line);
       // blade
-      final blade = RRect.fromRectAndRadius(const Rect.fromLTWH(6.9, 7, 6.2, 14.6), const Radius.circular(1.8));
+      final blade = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(6.9, 7, 6.2, 14.6),
+        const Radius.circular(1.8),
+      );
       canvas.drawRRect(blade, soft);
       canvas.drawRRect(blade, line);
-      canvas.drawLine(const Offset(10, 9.5), const Offset(10, 18.5), line..strokeWidth = 1.1);
+      canvas.drawLine(
+        const Offset(10, 9.5),
+        const Offset(10, 18.5),
+        line..strokeWidth = 1.1,
+      );
       line.strokeWidth = 1.7;
     });
     canvas.drawCircle(const Offset(18.2, 17.8), 3.2, solid);
-    canvas.drawArc(Rect.fromCircle(center: const Offset(18.2, 17.8), radius: 1.9), 0.9, 2.2, false, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.75));
+    canvas.drawArc(
+      Rect.fromCircle(center: const Offset(18.2, 17.8), radius: 1.9),
+      0.9,
+      2.2,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9
+        ..strokeCap = StrokeCap.round
+        ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.75),
+    );
   }
 
   /// Badminton: a racket (oval head with strings, and a handle) at the lower left and a shuttlecock flying off to the upper right.
@@ -208,7 +256,11 @@ class SportIconPainter extends CustomPainter {
     canvas.save();
     canvas.translate(-2.4, 2.6);
     _rotated(canvas, const Offset(9, 12), 42, () {
-      final head = Rect.fromCenter(center: const Offset(9, 8.2), width: 7.4, height: 10.2);
+      final head = Rect.fromCenter(
+        center: const Offset(9, 8.2),
+        width: 7.4,
+        height: 10.2,
+      );
       canvas.drawOval(head, soft);
       canvas.drawOval(head, line);
       final strings = line..strokeWidth = 0.8;
@@ -223,7 +275,11 @@ class SportIconPainter extends CustomPainter {
       canvas.restore();
       line.strokeWidth = 1.7;
       // throat and handle
-      canvas.drawLine(const Offset(9, 13.3), const Offset(9, 21.2), line..strokeWidth = 1.9);
+      canvas.drawLine(
+        const Offset(9, 13.3),
+        const Offset(9, 21.2),
+        line..strokeWidth = 1.9,
+      );
       line.strokeWidth = 1.7;
     });
     canvas.restore();
@@ -240,9 +296,21 @@ class SportIconPainter extends CustomPainter {
       canvas.drawPath(skirt, soft);
       canvas.drawPath(skirt, line..strokeWidth = 1.3);
       final feather = line..strokeWidth = 0.9;
-      canvas.drawLine(const Offset(16.2, 8.0), const Offset(16.2, 1.4), feather);
-      canvas.drawLine(const Offset(15.7, 8.0), const Offset(14.9, 1.6), feather);
-      canvas.drawLine(const Offset(16.7, 8.0), const Offset(17.5, 1.6), feather);
+      canvas.drawLine(
+        const Offset(16.2, 8.0),
+        const Offset(16.2, 1.4),
+        feather,
+      );
+      canvas.drawLine(
+        const Offset(15.7, 8.0),
+        const Offset(14.9, 1.6),
+        feather,
+      );
+      canvas.drawLine(
+        const Offset(16.7, 8.0),
+        const Offset(17.5, 1.6),
+        feather,
+      );
       line.strokeWidth = 1.7;
       canvas.drawCircle(const Offset(16.2, 9.6), 1.7, solid);
     });
@@ -281,17 +349,28 @@ class SportIconPainter extends CustomPainter {
   /// Pickleball: a solid paddle with a handle, and a perforated ball.
   void _pickleball(Canvas canvas, Paint line, Paint soft, Paint solid) {
     _rotated(canvas, const Offset(10, 11), -35, () {
-      final face = RRect.fromRectAndRadius(const Rect.fromLTWH(4.6, 2.2, 10.8, 11.8), const Radius.circular(4.6));
+      final face = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(4.6, 2.2, 10.8, 11.8),
+        const Radius.circular(4.6),
+      );
       canvas.drawRRect(face, soft);
       canvas.drawRRect(face, line);
-      canvas.drawLine(const Offset(10, 14), const Offset(10, 19.6), line..strokeWidth = 2.6);
+      canvas.drawLine(
+        const Offset(10, 14),
+        const Offset(10, 19.6),
+        line..strokeWidth = 2.6,
+      );
       line.strokeWidth = 1.7;
     });
     const ball = Offset(18, 17.6);
     canvas.drawCircle(ball, 4, soft);
     canvas.drawCircle(ball, 4, line..strokeWidth = 1.4);
     line.strokeWidth = 1.7;
-    for (final d in const [Offset(-1.3, -1.2), Offset(1.4, -0.6), Offset(-0.2, 1.4)]) {
+    for (final d in const [
+      Offset(-1.3, -1.2),
+      Offset(1.4, -0.6),
+      Offset(-0.2, 1.4),
+    ]) {
       canvas.drawCircle(ball + d, 0.55, solid);
     }
   }
@@ -299,12 +378,25 @@ class SportIconPainter extends CustomPainter {
   /// Padel: a round-headed racket with holes, and a small ball.
   void _padel(Canvas canvas, Paint line, Paint soft, Paint solid) {
     _rotated(canvas, const Offset(10, 10), -35, () {
-      final head = RRect.fromRectAndRadius(const Rect.fromLTWH(4.2, 1.8, 11.6, 12.4), const Radius.circular(5.8));
+      final head = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(4.2, 1.8, 11.6, 12.4),
+        const Radius.circular(5.8),
+      );
       canvas.drawRRect(head, soft);
       canvas.drawRRect(head, line);
-      canvas.drawLine(const Offset(10, 14.2), const Offset(10, 20.4), line..strokeWidth = 2.6);
+      canvas.drawLine(
+        const Offset(10, 14.2),
+        const Offset(10, 20.4),
+        line..strokeWidth = 2.6,
+      );
       line.strokeWidth = 1.7;
-      for (final p in const [Offset(8, 5.2), Offset(12, 5.2), Offset(10, 8), Offset(7.4, 10.4), Offset(12.6, 10.4)]) {
+      for (final p in const [
+        Offset(8, 5.2),
+        Offset(12, 5.2),
+        Offset(10, 8),
+        Offset(7.4, 10.4),
+        Offset(12.6, 10.4),
+      ]) {
         canvas.drawCircle(p, 0.7, solid);
       }
     });
@@ -336,7 +428,11 @@ class SportIconPainter extends CustomPainter {
     _rotated(canvas, const Offset(10, 10), -35, () {
       canvas.drawCircle(const Offset(10, 8.4), 6.4, soft);
       canvas.drawCircle(const Offset(10, 8.4), 6.4, line);
-      canvas.drawLine(const Offset(10, 14.8), const Offset(10, 20.4), line..strokeWidth = 2.6);
+      canvas.drawLine(
+        const Offset(10, 14.8),
+        const Offset(10, 20.4),
+        line..strokeWidth = 2.6,
+      );
       line.strokeWidth = 1.7;
     });
     canvas.drawCircle(const Offset(19, 18.6), 2.4, solid);
@@ -345,7 +441,10 @@ class SportIconPainter extends CustomPainter {
   /// Squash: a small-headed racket with strings, and a ball.
   void _squash(Canvas canvas, Paint line, Paint soft, Paint solid) {
     _rotated(canvas, const Offset(10, 10), -35, () {
-      final head = RRect.fromRectAndRadius(const Rect.fromLTWH(5.2, 1.6, 9.6, 12.6), const Radius.circular(4.8));
+      final head = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(5.2, 1.6, 9.6, 12.6),
+        const Radius.circular(4.8),
+      );
       canvas.drawRRect(head, soft);
       canvas.drawRRect(head, line);
       final strings = line..strokeWidth = 0.9;
@@ -372,13 +471,26 @@ class SportIconPainter extends CustomPainter {
       ..close();
     canvas.drawPath(cup, soft);
     canvas.drawPath(cup, line);
-    canvas.drawPath(Path()..moveTo(7, 5.4)..quadraticBezierTo(3.4, 5.4, 3.8, 8.2)..quadraticBezierTo(4.2, 10.6, 7.4, 10.8), line);
-    canvas.drawPath(Path()..moveTo(17, 5.4)..quadraticBezierTo(20.6, 5.4, 20.2, 8.2)..quadraticBezierTo(19.8, 10.6, 16.6, 10.8), line);
+    canvas.drawPath(
+      Path()
+        ..moveTo(7, 5.4)
+        ..quadraticBezierTo(3.4, 5.4, 3.8, 8.2)
+        ..quadraticBezierTo(4.2, 10.6, 7.4, 10.8),
+      line,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(17, 5.4)
+        ..quadraticBezierTo(20.6, 5.4, 20.2, 8.2)
+        ..quadraticBezierTo(19.8, 10.6, 16.6, 10.8),
+      line,
+    );
     canvas.drawLine(const Offset(12, 14), const Offset(12, 18.2), line);
     canvas.drawLine(const Offset(8.4, 20.4), const Offset(15.6, 20.4), line);
     canvas.drawCircle(const Offset(12, 8.6), 1.3, solid);
   }
 
   @override
-  bool shouldRepaint(SportIconPainter old) => old.kind != kind || old.color != color;
+  bool shouldRepaint(SportIconPainter old) =>
+      old.kind != kind || old.color != color;
 }

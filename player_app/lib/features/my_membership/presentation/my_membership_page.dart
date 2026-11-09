@@ -64,7 +64,6 @@ class _MyMembershipPageState extends ConsumerState<MyMembershipPage>
     }
   }
 
-
   Future<void> _pay(MembershipDetail m) async {
     setState(() => _busy = true);
     try {
@@ -271,35 +270,42 @@ class _MyMembershipPageState extends ConsumerState<MyMembershipPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
+            () {
+              final title = Text(
+                'Membership Details',
+                key: const ValueKey('mm-title'),
+                style: AppTextStyles.desktopHeroHeading(p.primaryText)
+                    .copyWith(fontSize: wide ? 34 : 26),
+              );
+              final browse = Pressable(
+                key: const ValueKey('mm-browse'),
+                onTap: () => widget.onNavigate(AppRoutes.memberships),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: wide ? 8 : 0,
+                    vertical: 6,
+                  ),
                   child: Text(
-                    'Membership Details',
-                    key: const ValueKey('mm-title'),
-                    style: AppTextStyles.desktopHeroHeading(p.primaryText)
-                        .copyWith(fontSize: wide ? 34 : 26),
+                    'Browse memberships',
+                    style: AppTextStyles.meta(p.highlight)
+                        .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
                   ),
                 ),
-                Pressable(
-                  key: const ValueKey('mm-browse'),
-                  onTap: () => widget.onNavigate(AppRoutes.memberships),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      'Browse memberships',
-                      style: AppTextStyles.meta(
-                        p.highlight,
-                      ).copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              );
+              // a phone: the title has the whole line (it used to wrap beside the link), the link sits under it
+              return wide
+                  ? Row(
+                      children: [
+                        Expanded(child: title),
+                        browse,
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [title, browse],
+                    );
+            }(),
             const SizedBox(height: 18),
             body,
           ],
@@ -1432,7 +1438,10 @@ class _StatusCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        label('Activated', start == null ? null : fmtDate(start)),
+                        label(
+                          'Activated',
+                          start == null ? null : fmtDate(start),
+                        ),
                       ],
                     ),
                   ),

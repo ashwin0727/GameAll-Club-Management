@@ -1,13 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../core/config/app_config.dart';
 
 import '../../player_home/application/player_home_controller.dart';
 import '../data/player_auth_repository.dart';
 import '../domain/player_profile.dart';
 
 /// The sign-in backend. Tests override this with a fake.
-final playerAuthRepositoryProvider = Provider<PlayerAuthRepository>((ref) => SupabasePlayerAuthRepository());
+final playerAuthRepositoryProvider = Provider<PlayerAuthRepository>(
+  (ref) => SupabasePlayerAuthRepository(),
+);
 
 /// Where the visitor is: not signed in, signed in but no profile yet (still to give name and email), or a full player.
 sealed class AuthStatus {
@@ -47,15 +52,28 @@ class AuthController extends AsyncNotifier<AuthStatus> {
   }
 
   Future<void> refresh() async {
-    final next = await AsyncValue.guard(() => _read(ref.read(playerAuthRepositoryProvider)));
+    final next = await AsyncValue.guard(
+      () => _read(ref.read(playerAuthRepositoryProvider)),
+    );
     state = next;
     // Home shows a different page for a signed-in player: reload it.
     ref.invalidate(playerHomeProvider);
   }
 
   /// Creates the profile after the first sign-in.
-  Future<void> register({required String fullName, required String email}) async {
-    final profile = await ref.read(playerAuthRepositoryProvider).register(fullName: fullName, email: email);
+  Future<void> register({
+    required String fullName,
+    required String email,
+  }) async {
+    final profile = await ref
+        .read(playerAuthRepositoryProvider)
+        .register(fullName: fullName, email: email);
+    state = AsyncData(SignedIn(profile));
+    ref.invalidate(playerHomeProvider);
+  }
+
+  /// The profile was edited: show the new name and email everywhere without signing in again.
+  void updateProfile(PlayerProfile profile) {
     state = AsyncData(SignedIn(profile));
     ref.invalidate(playerHomeProvider);
   }
@@ -67,7 +85,19 @@ class AuthController extends AsyncNotifier<AuthStatus> {
   }
 }
 
-final authControllerProvider = AsyncNotifierProvider<AuthController, AuthStatus>(AuthController.new);
+final authControllerProvider =
+    AsyncNotifierProvider<AuthController, AuthStatus>(AuthController.new);
+
+/// The mobile number the visitor verified at sign-in (digits as stored, e.g. 919876543210), or null when it cannot be read.
+/// Tests do not configure Supabase, so this is null there.
+final signedInPhoneProvider = Provider<String?>((ref) {
+  if (!AppConfig.isConfigured) return null;
+  try {
+    return Supabase.instance.client.auth.currentUser?.phone;
+  } catch (_) {
+    return null;
+  }
+});
 
 /// The signed-in player's profile, or null.
 final currentPlayerProvider = Provider<PlayerProfile?>((ref) {

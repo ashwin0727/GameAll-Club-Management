@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../player_home/application/player_home_controller.dart';
+import '../../player_home/data/device_location.dart';
 import '../../auth/application/auth_providers.dart';
 import '../data/coaching_enroll_repository.dart';
 import '../data/membership_enroll_repository.dart';
@@ -98,3 +99,56 @@ final preferredSportProvider =
     NotifierProvider<PreferredSportController, String?>(
       PreferredSportController.new,
     );
+
+// ── Distance: "nearest first" ─────────────────────────────────────────────
+
+/// The device position, asked for once when a venue list opens. Null when the player says no, location is off, or it cannot be read;
+/// the lists then keep their usual order. Kept for the session so it is not asked again on every page.
+final devicePositionProvider = FutureProvider<(double, double)?>(
+  (ref) => ref.watch(deviceLocationProvider).currentPosition(),
+);
+
+/// How far each venue of the picked city is from the player, in km (venue id -> km). Empty until both the position and the venues'
+/// positions are known, and whenever either is missing, so a page can always sort by it without checking.
+final venueDistancesProvider = FutureProvider.autoDispose<Map<String, double>>((
+  ref,
+) async {
+  final here = await ref.watch(devicePositionProvider.future);
+  if (here == null) return const {};
+  final city = ref.watch(selectedCityProvider);
+  final coords = await ref.watch(venueRepositoryProvider).venueCoords(city);
+  return {
+    for (final e in coords.entries)
+      e.key: distanceKm(here.$1, here.$2, e.value.$1, e.value.$2),
+  };
+});
+
+/// [items] nearest first by [venueId]; the ones with no known distance keep their order after the rest. With no distances at all the
+/// list is returned as it is.
+List<T> sortNearestFirst<T>(
+  List<T> items,
+  String Function(T) venueId,
+  Map<String, double> km,
+) {
+  if (km.isEmpty) return items;
+  final indexed = [for (var i = 0; i < items.length; i++) (i, items[i])];
+  indexed.sort((a, b) {
+    final da = km[venueId(a.$2)];
+    final db = km[venueId(b.$2)];
+    if (da != null && db != null) {
+      final c = da.compareTo(db);
+      return c != 0 ? c : a.$1.compareTo(b.$1);
+    }
+    if (da != null) return -1;
+    if (db != null) return 1;
+    return a.$1.compareTo(b.$1);
+  });
+  return [for (final e in indexed) e.$2];
+}
+
+/// "850 m" under a kilometre, "2.4 km" up to 10, "37 km" beyond.
+String distanceLabel(double km) {
+  if (km < 1) return '${((km * 1000) / 50).round() * 50} m';
+  if (km < 10) return '${km.toStringAsFixed(1)} km';
+  return '${km.round()} km';
+}

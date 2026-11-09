@@ -90,6 +90,16 @@ class BookingRepository {
     }
   }
 
+  /// Records how the guest chose to pay online for a booking made at the club: 50% now ('ADVANCE') or the full amount ('FULL').
+  /// Migration 0188; the server charges what is recorded here.
+  Future<void> setBookingPaymentOption(String bookingId, String option) async {
+    try {
+      await _client.rpc('set_booking_payment_option', params: {'p_booking_id': bookingId, 'p_option': option});
+    } on PostgrestException catch (e) {
+      throw AppException(AppErrorCode.databaseError, e.message);
+    }
+  }
+
   Future<void> cancelBooking(String bookingId, {String? reason}) async {
     try {
       final row = await _client

@@ -313,7 +313,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
                     {b.coachName ? ` · ${b.coachName}` : ""}
                   </p>
                 </div>
-                <Badge variant={b.status === "ACTIVE" ? "success" : "secondary"}>{b.enrolledCount ?? 0} / {b.capacity}</Badge>
+                <Badge variant={b.status === "ACTIVE" ? "success" : "secondary"}>{b.enrolledCount ?? 0} / {Math.max(b.capacity, b.enrolledCount ?? 0)}</Badge>
               </li>
             ))}
           </ul>

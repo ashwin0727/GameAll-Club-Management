@@ -221,7 +221,7 @@ export function CoachingOverviewPage() {
                       </p>
                     </div>
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {s.enrolled}/{s.capacity}
+                      {s.enrolled}/{Math.max(s.capacity, s.enrolled)}
                     </span>
                   </li>
                 ))}

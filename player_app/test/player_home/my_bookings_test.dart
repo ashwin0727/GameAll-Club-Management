@@ -10,6 +10,7 @@ import 'package:gameall_player/features/auth/application/auth_providers.dart';
 import 'package:gameall_player/features/auth/domain/player_profile.dart';
 import 'package:gameall_player/features/my_bookings/application/guest_bookings_providers.dart';
 import 'package:gameall_player/features/my_bookings/data/guest_bookings_repository.dart';
+import 'package:gameall_player/features/my_bookings/domain/cancellation_quote.dart';
 import 'package:gameall_player/features/my_bookings/domain/guest_booking.dart';
 import 'package:gameall_player/features/my_bookings/presentation/my_bookings_page.dart';
 import 'package:gameall_player/features/payments/application/payment_flow.dart';
@@ -33,6 +34,32 @@ class _Repo implements GuestBookingsRepository {
   Future<GuestBookings> mine() async {
     if (fail) throw Exception('boom');
     return data;
+  }
+
+  /// What the database would answer for a fully paid booking cancelled with about 40 hours to go: 5% deducted.
+  static final cancelled = <String>[];
+  static CancellationQuote quoteFor(String id) => CancellationQuote(
+    bookingId: id,
+    totalMinor: 50000,
+    paidMinor: 50000,
+    hoursUntilStart: 40,
+    rule: 'FULL',
+    deductionPercent: 5,
+    refundPercent: 95,
+    deductionMinor: 2500,
+    refundMinor: 47500,
+    message:
+        'The game starts in 40 h. 5% is deducted, and 95% of what you paid is refunded.',
+  );
+
+  @override
+  Future<CancellationQuote?> cancellationQuote(String bookingId) async =>
+      quoteFor(bookingId);
+
+  @override
+  Future<CancellationOutcome> cancel(String bookingId) async {
+    cancelled.add(bookingId);
+    return CancellationOutcome(quote: quoteFor(bookingId), refundsSent: 1);
   }
 }
 
@@ -341,14 +368,42 @@ void main() {
       expect(find.text('Complete payment · ₹500'), findsOneWidget);
     });
 
-    testWidgets('Reschedule and Cancel Booking point the player to the club', (
-      tester,
-    ) async {
+    testWidgets('Reschedule points the player to the club', (tester) async {
       await pumpPage(tester, sample());
-      await tap(tester, 'gb-cancel');
+      await tap(tester, 'gb-reschedule');
       expect(find.text('Ask Champz Turf'), findsOneWidget);
-      expect(find.textContaining('cancel your booking'), findsOneWidget);
+      expect(find.textContaining('reschedule your booking'), findsOneWidget);
     });
+
+    testWidgets(
+      'Cancel Booking says the hours left, the % deducted and the refund, then cancels',
+      (tester) async {
+        _Repo.cancelled.clear();
+        await pumpPage(tester, sample());
+        await tap(tester, 'gb-cancel');
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('cancel-dialog')), findsOneWidget);
+        expect(
+          find.text(
+            'The game starts in 40 h. 5% is deducted, and 95% of what you paid is refunded.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Deduction (5%)'), findsOneWidget);
+        expect(find.text('− ₹25'), findsOneWidget);
+        expect(find.text('₹475'), findsOneWidget); // you get back
+        // keeping it changes nothing
+        await tester.tap(find.byKey(const ValueKey('cancel-keep')));
+        await tester.pumpAndSettle();
+        expect(_Repo.cancelled, isEmpty);
+        await tap(tester, 'gb-cancel');
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('cancel-confirm')));
+        await tester.pumpAndSettle();
+        expect(_Repo.cancelled, ['u1']);
+        expect(find.textContaining('₹475 will be refunded'), findsOneWidget);
+      },
+    );
 
     testWidgets('Book a Court opens the booking flow', (tester) async {
       final (routes, _, _, _) = await pumpPage(tester, sample());

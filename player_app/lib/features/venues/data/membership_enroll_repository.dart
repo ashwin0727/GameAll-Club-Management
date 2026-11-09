@@ -147,6 +147,8 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
       return 'That time slot is full. Pick another.';
     }
     if (e.code == '42501') return e.message;
+    // "Please choose another time: you already have a membership at this court at this time." (migration 0189)
+    if (e.code == '23505' && e.message.startsWith('Please')) return e.message;
     return "We couldn't start your membership. Please try again.";
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,14 +11,38 @@ import '../../../payments/application/payment_flow.dart';
 import '../../../payments/domain/payment_receipt.dart';
 import '../../application/player_home_controller.dart';
 import '../../domain/player_dashboard_models.dart';
+import 'payment_reminder.dart';
 
 /// "Complete your payment" prompts at the top of Home: one per membership, coaching enrolment or booking that is not fully paid.
 /// A failed or late payment is shown in red and spoken about more firmly; each has a button that opens the Razorpay page right here.
 /// Coming back from that page reloads Home, so a prompt disappears by itself once the payment has gone through.
 class PaymentPrompts extends ConsumerStatefulWidget {
-  const PaymentPrompts({super.key, required this.payments, this.onNavigate});
+  const PaymentPrompts({
+    super.key,
+    required this.payments,
+    this.onNavigate,
+    this.popup = false,
+    this.reminderEvery = const Duration(minutes: 5),
+  });
 
   final List<PendingPayment> payments;
+
+  /// Phone: no inline cards. A warning popup (with arrows when there are several) opens when Home opens and again every
+  /// [reminderEvery] while something is unpaid; a slim banner on Home reopens it.
+  final bool popup;
+  final Duration reminderEvery;
+
+  /// When the popup was last shown. Static, so Home being rebuilt does not reset the gap; a fresh app start does.
+  static DateTime? _lastShown;
+
+  /// Test hook: forget the last reminder (as after a fresh app start).
+  static void resetReminder() {
+    _lastShown = null;
+    clock = DateTime.now;
+  }
+
+  /// The time source (replaced in tests).
+  static DateTime Function() clock = DateTime.now;
 
   /// Opens a route from the "Payment Successful" page's buttons.
   final void Function(String route)? onNavigate;
@@ -28,27 +54,70 @@ class PaymentPrompts extends ConsumerStatefulWidget {
 class _PaymentPromptsState extends ConsumerState<PaymentPrompts>
     with WidgetsBindingObserver {
   String? _busy;
+  Timer? _timer;
+  bool _dialogOpen = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.popup) {
+      _timer = Timer.periodic(
+        const Duration(seconds: 20),
+        (_) => _maybeRemind(),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRemind());
+    }
+  }
+
+  @override
+  void didUpdateWidget(PaymentPrompts old) {
+    super.didUpdateWidget(old);
+    if (widget.popup && old.payments.isEmpty && widget.payments.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRemind());
+    }
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // Back from the payment page (or the browser tab): look again at what is paid.
+  // Back from the payment page (or the browser tab): look again at what is paid, and remind if the gap has passed.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.read(playerHomeProvider.notifier).refresh();
+      if (widget.popup) _maybeRemind();
     }
   }
 
+  /// Opens the popup when something is unpaid, no popup is open, Home is the page in front and the gap has passed.
+  void _maybeRemind({bool force = false}) {
+    if (!mounted || !widget.popup || _dialogOpen || _busy != null) return;
+    if (widget.payments.isEmpty) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
+    final last = PaymentPrompts._lastShown;
+    if (!force &&
+        last != null &&
+        PaymentPrompts.clock().difference(last) < widget.reminderEvery) {
+      return;
+    }
+    PaymentPrompts._lastShown = PaymentPrompts.clock();
+    _dialogOpen = true;
+    showDialog<PendingPayment>(
+      context: context,
+      builder: (_) => PaymentReminderDialog(payments: widget.payments),
+    ).then((chosen) {
+      _dialogOpen = false;
+      // the reminder gap counts from when it was closed
+      PaymentPrompts._lastShown = PaymentPrompts.clock();
+      if (chosen != null && mounted) _pay(chosen);
+    });
+  }
 
   Future<void> _pay(PendingPayment p) async {
     final key = '${p.kind.name}-${p.id}';
@@ -115,6 +184,12 @@ class _PaymentPromptsState extends ConsumerState<PaymentPrompts>
   Widget build(BuildContext context) {
     if (widget.payments.isEmpty) return const SizedBox.shrink();
     _syncPending();
+    if (widget.popup) {
+      return ReminderBanner(
+        payments: widget.payments,
+        onTap: () => _maybeRemind(force: true),
+      );
+    }
     return Column(
       key: const ValueKey('payment-prompts'),
       crossAxisAlignment: CrossAxisAlignment.stretch,

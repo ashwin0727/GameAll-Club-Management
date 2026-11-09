@@ -377,7 +377,7 @@ class _CoachingTabState extends State<_CoachingTab> {
                       icon: Icons.event_available_outlined,
                       color: tokens.primary,
                       title: s.programName,
-                      lines: ['${sessionDayLabel(s.startAt)} · ${_clock(s.startAt)} · ${s.courtName}', '${s.coachName} · ${s.enrolled}/${s.capacity} students'],
+                      lines: ['${sessionDayLabel(s.startAt)} · ${_clock(s.startAt)} · ${s.courtName}', '${s.coachName} · ${s.enrolled}/${s.enrolled > s.capacity ? s.enrolled : s.capacity} students'],
                       pill: s.status == SessionStatus.scheduled ? null : s.status.label,
                       onTap: () => widget.onOpen('${AppRoutes.coachingSessions}/${s.id}'),
                     ),

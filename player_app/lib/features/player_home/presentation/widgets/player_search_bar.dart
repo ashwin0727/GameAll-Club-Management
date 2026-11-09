@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/hover_scope.dart';
 import '../../application/player_home_controller.dart';
+import '../../data/device_location.dart';
 
 /// The search field with the location pin built into it. Tapping the field opens search; tapping the pin opens the city picker.
 class PlayerSearchBar extends ConsumerWidget {
@@ -138,7 +139,7 @@ Future<void> showCityPicker(BuildContext context, WidgetRef ref) {
   );
 }
 
-class _CityPicker extends ConsumerWidget {
+class _CityPicker extends ConsumerStatefulWidget {
   const _CityPicker({required this.onClose, required this.showClose});
 
   final VoidCallback onClose;
@@ -147,7 +148,49 @@ class _CityPicker extends ConsumerWidget {
   final bool showClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CityPicker> createState() => _CityPickerState();
+}
+
+class _CityPickerState extends ConsumerState<_CityPicker> {
+  bool _locating = false;
+  String? _note;
+  bool _blocked = false;
+
+  VoidCallback get onClose => widget.onClose;
+  bool get showClose => widget.showClose;
+
+  /// Reads the device position and picks the nearest supported city; says why when it cannot.
+  Future<void> _useMyLocation() async {
+    final loc = ref.read(deviceLocationProvider);
+    setState(() {
+      _locating = true;
+      _note = null;
+      _blocked = false;
+    });
+    final outcome = await loc.detectCity();
+    if (!mounted) return;
+    switch (outcome) {
+      case LocationFound(:final city):
+        ref.read(selectedCityProvider.notifier).select(city);
+        onClose();
+        return;
+      case LocationOutsideService():
+        _note = "We are not in your area yet. Please choose the nearest city below.";
+      case LocationDenied():
+        _note = "Location permission was not given. You can choose a city below instead.";
+      case LocationBlocked():
+        _note = "Location is blocked for this app. Turn it on in the settings, or choose a city below.";
+        _blocked = true;
+      case LocationServiceOff():
+        _note = "Your phone location is switched off. Turn it on, or choose a city below.";
+      case LocationFailed():
+        _note = "We could not read your location just now. Please try again or choose a city below.";
+    }
+    setState(() => _locating = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final p = context.palette;
     final current = ref.watch(selectedCityProvider);
     return Column(
@@ -187,6 +230,49 @@ class _CityPicker extends ConsumerWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: 12),
               children: [
+                ListTile(
+                  key: const ValueKey('city-use-location'),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                  enabled: !_locating,
+                  leading: _locating
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : Icon(Icons.my_location_rounded, color: p.highlight),
+                  title: Text(
+                    _locating
+                        ? 'Finding your location...'
+                        : 'Use my current location',
+                    style: AppTextStyles.body(
+                      p.highlight,
+                    ).copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  onTap: _locating ? null : _useMyLocation,
+                ),
+                if (_note != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _note!,
+                          key: const ValueKey('city-location-note'),
+                          style: AppTextStyles.support(AppColors.warning),
+                        ),
+                        if (_blocked)
+                          TextButton(
+                            key: const ValueKey('city-open-settings'),
+                            onPressed: () =>
+                                ref.read(deviceLocationProvider).openSettings(),
+                            child: const Text('Open settings'),
+                          ),
+                      ],
+                    ),
+                  ),
+                Divider(height: 1, color: p.border),
                 for (final city in playerCities)
                   HoverRegion(
                     key: ValueKey('city-$city'),

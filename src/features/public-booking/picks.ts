@@ -1,5 +1,8 @@
 import { advanceMinor, needsAdvance } from "@/features/bookings/advance-payment";
 
+/** How the guest chose to pay online: 50% now (the rest later) or the full amount. */
+export type PayOption = "ADVANCE" | "FULL";
+
 /** One hour a player ticked on one court. */
 export interface Pick {
   courtId: string;
@@ -37,7 +40,7 @@ const ms = (iso: string) => new Date(iso).getTime();
  * (6–7 + 7–8 on Court 1 is a single 6–8 booking; a gap, or another court, starts a new one). Courts keep the
  * order the player first picked them in.
  */
-export function buildRequests(picks: Pick[]): BookingRequest[] {
+export function buildRequests(picks: Pick[], option?: PayOption): BookingRequest[] {
   const courtOrder: string[] = [];
   for (const p of picks) if (!courtOrder.includes(p.courtId)) courtOrder.push(p.courtId);
 
@@ -57,8 +60,14 @@ export function buildRequests(picks: Pick[]): BookingRequest[] {
     if (current) out.push(current);
   }
   for (const r of out) {
-    r.needsAdvance = needsAdvance(r.startTime, r.endTime);
-    r.advanceMinor = r.needsAdvance ? advanceMinor(r.totalMinor) : 0;
+    if (option) {
+      // a booking made with the 50% / full choice is always paid online first (migration 0188)
+      r.needsAdvance = true;
+      r.advanceMinor = option === "FULL" ? r.totalMinor : advanceMinor(r.totalMinor);
+    } else {
+      r.needsAdvance = needsAdvance(r.startTime, r.endTime);
+      r.advanceMinor = r.needsAdvance ? advanceMinor(r.totalMinor) : 0;
+    }
   }
   return out;
 }
@@ -72,12 +81,14 @@ export interface PickSummary {
   /** Paid at the venue afterwards. */
   balanceMinor: number;
   advanceRequired: boolean;
+  /** What the guest chose, when they have. */
+  option?: PayOption;
 }
 
-export function summarise(picks: Pick[]): PickSummary {
-  const requests = buildRequests(picks);
+export function summarise(picks: Pick[], option?: PayOption): PickSummary {
+  const requests = buildRequests(picks, option);
   const totalMinor = requests.reduce((s, r) => s + r.totalMinor, 0);
   const advanceDueMinor = requests.reduce((s, r) => s + r.advanceMinor, 0);
   const hours = picks.reduce((s, p) => s + (ms(p.endTime) - ms(p.startTime)) / 3_600_000, 0);
-  return { requests, totalMinor, hours, advanceDueMinor, balanceMinor: totalMinor - advanceDueMinor, advanceRequired: advanceDueMinor > 0 };
+  return { requests, totalMinor, hours, advanceDueMinor, balanceMinor: totalMinor - advanceDueMinor, advanceRequired: advanceDueMinor > 0, option };
 }

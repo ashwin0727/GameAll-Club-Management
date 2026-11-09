@@ -968,6 +968,30 @@ void main() {
       },
     );
 
+    testWidgets(
+      'phone: no banner card; title line with the location icon, a sports row and a small search box',
+      (tester) async {
+        final (_, c) = await open(tester, size: const Size(390, 844));
+        expect(find.textContaining('Discover Sports'), findsNothing);
+        expect(find.text('Instant Booking'), findsNothing);
+        expect(find.byKey(const ValueKey('phone-title')), findsOneWidget);
+        expect(find.text('Book a Court'), findsWidgets);
+        final title = tester.getRect(find.byKey(const ValueKey('phone-title')));
+        final loc = tester.getRect(find.byKey(const ValueKey('discover-city')));
+        expect(loc.overlaps(title), isFalse);
+        expect(loc.right, greaterThan(title.right));
+        expect(find.byKey(const ValueKey('sport-chips')), findsOneWidget);
+        expect(find.byKey(const ValueKey('view-grid')), findsNothing);
+        final search = tester.getSize(find.byKey(const ValueKey('discover-search')));
+        expect(search.height, lessThan(44));
+        // a sport tapped in the row filters the list at once
+        await tester.tap(find.byKey(const ValueKey('sport-chip-Cricket')));
+        await tester.pumpAndSettle();
+        expect(c.read(venueFiltersProvider).sport, 'Cricket');
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('phone with large text does not overflow', (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = 1.4;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);

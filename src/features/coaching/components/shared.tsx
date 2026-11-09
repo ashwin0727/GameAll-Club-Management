@@ -61,8 +61,8 @@ export function coachStatusBadge(s: CoachStatus) {
 }
 
 export function enrollmentStatusBadge(s: EnrollmentStatus) {
-  const map = { ACTIVE: "success", PAUSED: "warning", COMPLETED: "secondary", CANCELLED: "destructive" } as const;
-  const label = { ACTIVE: "Active", PAUSED: "Paused", COMPLETED: "Completed", CANCELLED: "Cancelled" }[s];
+  const map = { ACTIVE: "success", PAUSED: "warning", COMPLETED: "secondary", CANCELLED: "destructive", PENDING_PAYMENT: "warning" } as const;
+  const label = { ACTIVE: "Active", PAUSED: "Paused", COMPLETED: "Completed", CANCELLED: "Cancelled", PENDING_PAYMENT: "Payment Incomplete" }[s];
   return <Badge variant={map[s]}>{label}</Badge>;
 }
 

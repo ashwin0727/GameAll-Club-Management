@@ -78,26 +78,41 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: message }, 400);
   }
 
-  // A refund row may or may not have been created (unpaid booking, or a
-  // policy percent of 0%) — look for one this cancellation could have made.
+  // What this cancellation decided (migration 0188): the % deducted, the refund, and any cash share the club owes back.
+  const { data: cancellation } = await supabase
+    .from("booking_cancellations")
+    .select("hours_until_start, rule, deduction_percent, refund_percent, is_override, total_minor, paid_minor, refund_minor, online_refund_minor, offline_refund_due_minor")
+    .eq("booking_id", body.bookingId)
+    .maybeSingle();
+
+  // A fully paid booking that was paid in two parts (advance + balance) has one refund row per payment: send every one.
   const { data: refunds } = await supabase
     .from("refunds")
     .select("id, status")
     .eq("source_id", body.bookingId)
     .in("status", ["REQUESTED"])
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .order("created_at", { ascending: true });
 
-  const pendingRefund = refunds?.[0];
-  if (!pendingRefund) {
-    return jsonResponse({ booking, refund: null }, 200);
+  const pending = refunds ?? [];
+  if (pending.length === 0) {
+    return jsonResponse({ booking, refund: null, refunds: [], cancellation }, 200);
   }
 
   if (!razorpayKeyId || !razorpayKeySecret) {
     console.error("[cancel-booking] refund created but Razorpay is not configured");
-    return jsonResponse({ booking, refund: { id: pendingRefund.id, status: pendingRefund.status } }, 200);
+    const waiting = pending.map((r) => ({ refundId: r.id, status: r.status }));
+    return jsonResponse({ booking, refund: waiting[0], refunds: waiting, cancellation }, 200);
   }
 
-  const submitted = await submitRequestedRefund(supabase, pendingRefund.id, razorpayKeyId, razorpayKeySecret);
-  return jsonResponse({ booking, refund: submitted }, 200);
+  const submitted = [];
+  for (const r of pending) {
+    try {
+      submitted.push(await submitRequestedRefund(supabase, r.id, razorpayKeyId, razorpayKeySecret));
+    } catch (err) {
+      // the refund row stays REQUESTED; the retry job / the refunds page picks it up
+      console.error("[cancel-booking] submitting a refund failed", { refundId: r.id, message: String(err) });
+      submitted.push({ refundId: r.id, status: "REQUESTED" });
+    }
+  }
+  return jsonResponse({ booking, refund: submitted[0], refunds: submitted, cancellation }, 200);
 });

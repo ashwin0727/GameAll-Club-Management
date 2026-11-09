@@ -115,6 +115,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
   final _notes = TextEditingController();
   String _paymentMethod = 'Cash';
   String _payMode = 'offline'; // offline | online
+  // Online, the player pays 50% now (the rest at the venue) or the full amount (migration 0188).
+  String _payOption = 'FULL'; // ADVANCE | FULL
 
   // Same-phone-number guest recognition: as soon as the number looks
   // complete, we check it against this facility's guest directory instead
@@ -390,6 +392,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         // The player is not here, so no checkout opens on this phone. A one-time payment link is made for the
         // booking (amount from the booking itself, server-side) and shared; the sheet watches for the payment.
         final booking = created.first;
+        // the server charges what the club chose: 50% now or the full amount
+        await ref.read(bookingRepositoryProvider).setBookingPaymentOption(booking.id, _payOption);
         if (!mounted) return;
         setState(() => _submitting = false);
         final courtName = _areas.where((a) => a.id == booking.courtId).map((a) => a.name).join();
@@ -1210,6 +1214,49 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
     );
   }
 
+  /// One of the two online amounts: "Pay 50% now" or "Pay full amount".
+  Widget _payChoice(String value, String title, String subtitle) {
+    final t = context.tokens;
+    final selected = _payOption == value;
+    return InkWell(
+      key: ValueKey('pay-option-${value.toLowerCase()}'),
+      onTap: () => setState(() => _payOption = value),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: selected ? t.accentSolid(t.violet) : t.borderColor, width: selected ? 1.5 : 1),
+          color: selected ? t.accentSolid(t.violet) : t.surface2,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                size: 18, color: selected ? t.onAccent(t.violet) : t.textSecondary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 14, color: selected ? t.onAccent(t.violet) : t.textPrimary)),
+                  const SizedBox(height: 1),
+                  Text(subtitle,
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: selected ? t.onAccent(t.violet).withValues(alpha: 0.8) : t.textSecondary)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _stepPayment() {
     final t = context.tokens;
     final amount = _grandTotalMinor == null
@@ -1293,6 +1340,24 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
               : 'Get a payment link for $amount to share with the player. They pay on their own phone (UPI / card / net banking) and the booking is confirmed as Paid once it goes through.',
           disabled: multiCourt,
         ),
+        if (_payMode == 'online' && !multiCourt) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Text('How much does the player pay online?',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: t.textPrimary)),
+          const SizedBox(height: AppSpacing.xs),
+          _payChoice(
+            'ADVANCE',
+            'Pay 50% now',
+            _grandTotalMinor == null
+                ? 'The balance is collected at the venue before the booking ends. The advance is not refundable if the booking is cancelled.'
+                : '${Formatters.currencyInr(((_grandTotalMinor! + 1) ~/ 2 / 100).ceil())} now. The balance is collected at the venue before the booking ends. The advance is not refundable if the booking is cancelled.',
+          ),
+          _payChoice(
+            'FULL',
+            'Pay full amount',
+            'Nothing left to pay. If the booking is cancelled early the player gets a refund (95% back with 12 hours or more to go).',
+          ),
+        ],
         if (_payMode == 'offline') ...[
           const SizedBox(height: AppSpacing.xs),
           AppDropdown<String>(

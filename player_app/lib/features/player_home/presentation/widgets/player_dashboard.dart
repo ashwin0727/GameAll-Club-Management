@@ -175,13 +175,19 @@ class DashboardSummaryCards extends StatelessWidget {
       (m) => m.paymentIncomplete,
     );
     final coachingIncomplete = data.coaching.any((c) => c.paymentIncomplete);
+    // Where each card goes: the player's own page once they have one, the search for it (the venues that offer it) until then.
+    final hasMembership =
+        data.hasActiveMembership || data.memberships.isNotEmpty;
+    final hasCoaching = data.hasActiveCoaching || data.coaching.isNotEmpty;
+    final hasGuest = data.hasBookingHistory || data.guestBookings.count > 0;
     final cards = [
       _SummaryCard(
+        compact: vertical,
         key: const ValueKey('summary-membership'),
         title: 'Membership',
         icon: Icons.workspace_premium_outlined,
         tint: AppColors.blue,
-        badge: data.memberships.isEmpty
+        badge: !hasMembership
             ? null
             : (membershipIncomplete ? 'Payment Incomplete' : 'Active'),
         badgeWarning: membershipIncomplete,
@@ -189,17 +195,16 @@ class DashboardSummaryCards extends StatelessWidget {
         emptyTitle: 'No active membership',
         emptyLine: 'Explore memberships near you',
         onTap: () => onNavigate(
-          data.memberships.isEmpty
-              ? AppRoutes.memberships
-              : AppRoutes.myMembership,
+          !hasMembership ? AppRoutes.memberships : AppRoutes.myMembership,
         ),
       ),
       _SummaryCard(
+        compact: vertical,
         key: const ValueKey('summary-coaching'),
         title: 'Coaching',
         icon: Icons.school_outlined,
         tint: AppColors.violet,
-        badge: data.coaching.isEmpty
+        badge: !hasCoaching
             ? null
             : (coachingIncomplete ? 'Payment Incomplete' : 'Enrolled'),
         badgeWarning: coachingIncomplete,
@@ -215,10 +220,11 @@ class DashboardSummaryCards extends StatelessWidget {
         emptyTitle: 'No active coaching',
         emptyLine: 'Find coaching near you',
         onTap: () => onNavigate(
-          data.coaching.isEmpty ? AppRoutes.coaching : AppRoutes.myCoaching,
+          !hasCoaching ? AppRoutes.coaching : AppRoutes.myCoaching,
         ),
       ),
       _SummaryCard(
+        compact: vertical,
         key: const ValueKey('summary-guest'),
         title: 'Guest Bookings',
         icon: Icons.calendar_month_outlined,
@@ -235,18 +241,15 @@ class DashboardSummaryCards extends StatelessWidget {
         ],
         emptyTitle: 'No guest bookings',
         emptyLine: 'Book a court in seconds',
-        onTap: () => onNavigate(
-          !data.hasBookingHistory && data.guestBookings.count == 0
-              ? AppRoutes.guestBooking
-              : AppRoutes.bookings,
-        ),
+        onTap: () =>
+            onNavigate(!hasGuest ? AppRoutes.guestBooking : AppRoutes.bookings),
       ),
     ];
     if (vertical) {
       return Column(
         children: [
           for (var i = 0; i < cards.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
+            if (i > 0) const SizedBox(height: 10),
             cards[i],
           ],
         ],
@@ -266,6 +269,9 @@ class DashboardSummaryCards extends StatelessWidget {
   }
 }
 
+/// One of the three service cards on Home (Membership, Coaching, Guest Bookings): a soft tinted panel with an icon tile, the title and
+/// its live status ("Active", "Payment Incomplete", a count), what the player has (or an invitation to start), and an arrow.
+/// There is no outline: depth comes from the tint, a faint top highlight and a soft shadow, so every card has the same quiet edge.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     super.key,
@@ -278,6 +284,7 @@ class _SummaryCard extends StatelessWidget {
     required this.emptyTitle,
     required this.emptyLine,
     required this.onTap,
+    this.compact = false,
   });
 
   final String title;
@@ -294,6 +301,9 @@ class _SummaryCard extends StatelessWidget {
   final String emptyLine;
   final VoidCallback onTap;
 
+  /// Phone: a tighter card (smaller icon, one item and its detail, less padding) so the three cards take little room.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -301,9 +311,29 @@ class _SummaryCard extends StatelessWidget {
     final toneText = badgeWarning
         ? (p.isDark ? AppColors.warning : const Color(0xFF9A5B00))
         : (p.isDark ? AppColors.success : const Color(0xFF138A5B));
-    final radius = BorderRadius.circular(AppDimensions.cardRadius);
-    final shown = lines.take(2).toList();
+    const radius = BorderRadius.all(Radius.circular(22));
+    final shown = lines.take(compact ? 1 : 2).toList();
     final more = lines.length - shown.length;
+
+    final chip = badge == null
+        ? null
+        : Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: tone.withValues(alpha: p.isDark ? 0.16 : 0.12),
+            ),
+            child: Text(
+              badge!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.meta(toneText).copyWith(
+                fontSize: 12,
+                fontWeight: badgeWarning ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          );
+
     return Semantics(
       button: true,
       label: title,
@@ -312,78 +342,105 @@ class _SummaryCard extends StatelessWidget {
           onTap: onTap,
           borderRadius: radius,
           child: Container(
-            padding: const EdgeInsets.all(18),
+            constraints: BoxConstraints(minHeight: compact ? 0 : 92),
+            padding: compact
+                ? const EdgeInsets.fromLTRB(14, 12, 8, 12)
+                : const EdgeInsets.fromLTRB(16, 16, 12, 16),
             decoration: BoxDecoration(
               borderRadius: radius,
-              border: Border.all(color: Color.lerp(p.border, tint, 0.45)!),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
                   Color.alphaBlend(
-                    tint.withValues(alpha: p.isDark ? 0.30 : 0.12),
+                    tint.withValues(alpha: p.isDark ? 0.20 : 0.10),
                     p.surface,
                   ),
                   Color.alphaBlend(
-                    tint.withValues(alpha: p.isDark ? 0.08 : 0.03),
+                    tint.withValues(alpha: p.isDark ? 0.05 : 0.02),
                     p.surface,
                   ),
                 ],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: p.isDark ? 0.32 : 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            // a 1 px light edge on the top only: it reads as a soft highlight, not an outline
+            foregroundDecoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: p.isDark ? 0.07 : 0.5),
+                ),
+              ),
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, size: 42, color: p.isDark ? Colors.white : tint),
-                const SizedBox(width: 16),
+                Container(
+                  width: compact ? 42 : 50,
+                  height: compact ? 42 : 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [tint, Color.lerp(tint, Colors.black, 0.25)!],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: tint.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, size: compact ? 22 : 26, color: Colors.white),
+                ),
+                SizedBox(width: compact ? 12 : 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Flexible(
-                            child: Text(
-                              title,
-                              style: AppTextStyles.cardHeading(p.primaryText)
-                                  .copyWith(fontSize: 17),
-                            ),
+                          Text(
+                            title,
+                            style: AppTextStyles.cardHeading(p.primaryText)
+                                .copyWith(fontSize: 17),
                           ),
-                          if (badge != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                color: tone.withValues(alpha: 0.18),
-                                border: Border.all(
-                                  color: tone.withValues(alpha: 0.6),
-                                ),
-                              ),
-                              child: Text(
-                                badge!,
-                                style: AppTextStyles.meta(toneText).copyWith(
-                                  fontWeight: badgeWarning
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                ),
-                              ),
+                          ?chip,
+                          if (compact && more > 0)
+                            Text(
+                              '+$more more',
+                              style: AppTextStyles.meta(p.highlight),
                             ),
-                          ],
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: compact ? 3 : 6),
                       if (shown.isEmpty) ...[
                         Text(
                           emptyTitle,
-                          style: AppTextStyles.body(p.primaryText)
-                              .copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.body(
+                            p.primaryText,
+                          ).copyWith(fontWeight: FontWeight.w600, fontSize: 14),
                         ),
+                        const SizedBox(height: 1),
                         Text(
                           emptyLine,
+                          maxLines: compact ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.support(p.secondaryText),
                         ),
                       ] else
@@ -393,18 +450,20 @@ class _SummaryCard extends StatelessWidget {
                             shown[i].$1,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.body(p.primaryText)
-                                .copyWith(fontWeight: FontWeight.w600),
+                            style: AppTextStyles.body(p.primaryText).copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
                           ),
                           Text(
                             shown[i].$2,
-                            maxLines: 2,
+                            maxLines: compact ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.support(p.secondaryText),
                           ),
                         ],
-                      if (more > 0) ...[
-                        const SizedBox(height: 8),
+                      if (more > 0 && !compact) ...[
+                        const SizedBox(height: 6),
                         Text(
                           '+$more more',
                           style: AppTextStyles.meta(p.highlight),
@@ -413,7 +472,7 @@ class _SummaryCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: p.secondaryText,
@@ -595,4 +654,3 @@ class _ScheduleRow extends StatelessWidget {
     );
   }
 }
-

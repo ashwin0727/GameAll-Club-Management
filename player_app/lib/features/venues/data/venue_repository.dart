@@ -21,6 +21,10 @@ abstract class VenueRepository {
     return fromVenueCards(venues);
   }
 
+  /// Where each venue is (venue id -> latitude, longitude), for "nearest first". Empty when the database does not give positions.
+  Future<Map<String, (double, double)>> venueCoords(String location) async =>
+      const {};
+
   /// One venue's full page, or null when it does not exist or is not open.
   Future<VenueDetail?> getVenue(String venueId) async => null;
 
@@ -196,6 +200,30 @@ class SupabaseVenueRepository implements VenueRepository {
       // migration 0174 is not installed yet: the venue page cannot open, which reads as "venue not found"
       if (e.code == 'PGRST202' || e.code == '42883') return null;
       rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, (double, double)>> venueCoords(String location) async {
+    final client = _client;
+    if (client == null) return const {};
+    final place = splitLocation(location);
+    try {
+      final result = await client.rpc(
+        'list_public_venue_coords',
+        params: {'p_city': place.city, 'p_state': place.state},
+      );
+      return {
+        for (final e in (result as List<dynamic>? ?? const []))
+          if (e is Map && e['id'] is String && e['lat'] is num && e['lng'] is num)
+            e['id'] as String: (
+              (e['lat'] as num).toDouble(),
+              (e['lng'] as num).toDouble(),
+            ),
+      };
+    } catch (_) {
+      // migration 0186 not applied, or offline: no distances, the usual order
+      return const {};
     }
   }
 

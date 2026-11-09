@@ -612,16 +612,16 @@ export function AddStudentWizardPage() {
               <Field label="Select Batch" required>
                 <div className="space-y-2">
                   {program.batches.map((b) => {
-                    const full = (b.enrolledCount ?? 0) >= b.capacity;
+                    // a batch never refuses a student: once it is past its capacity the count just grows (11/11)
+                    const shown = Math.max(b.capacity, b.enrolledCount ?? 0);
                     return (
                       <button
                         key={b.id}
                         type="button"
-                        disabled={full && b.id !== batchId}
                         onClick={() => setBatchId(b.id)}
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors",
-                          batchId === b.id ? "border-success bg-success/10" : full ? "cursor-not-allowed border-input opacity-50" : "border-input hover:bg-accent/50",
+                          batchId === b.id ? "border-success bg-success/10" : "border-input hover:bg-accent/50",
                         )}
                       >
                         <div>
@@ -631,9 +631,7 @@ export function AddStudentWizardPage() {
                             {b.coachName ? ` · ${b.coachName}` : ""}
                           </p>
                         </div>
-                        <Badge variant={full ? "destructive" : "outline"}>
-                          {full ? "Full" : `${b.enrolledCount ?? 0} / ${b.capacity}`}
-                        </Badge>
+                        <Badge variant="outline">{`${b.enrolledCount ?? 0} / ${shown}`}</Badge>
                       </button>
                     );
                   })}

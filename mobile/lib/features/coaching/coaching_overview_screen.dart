@@ -148,7 +148,7 @@ class _CoachingOverviewScreenState extends ConsumerState<CoachingOverviewScreen>
                               children: [
                                 Text(s.programName, style: AppTypography.rowTitle(context)),
                                 Text(
-                                  '${coachDateTime(s.startAt)} · ${s.coachName} · ${s.courtName} · ${s.enrolled}/${s.capacity}',
+                                  '${coachDateTime(s.startAt)} · ${s.coachName} · ${s.courtName} · ${s.enrolled}/${s.enrolled > s.capacity ? s.enrolled : s.capacity}',
                                   style: AppTypography.caption(context),
                                 ),
                               ],

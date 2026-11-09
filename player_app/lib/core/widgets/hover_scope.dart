@@ -9,7 +9,9 @@ class HoverScope extends InheritedWidget {
 
   final bool hovered;
 
-  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<HoverScope>()?.hovered ?? false;
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<HoverScope>()?.hovered ??
+      false;
 
   @override
   bool updateShouldNotify(HoverScope old) => old.hovered != hovered;
@@ -38,11 +40,11 @@ class _HoverRegionState extends State<HoverRegion> {
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-        cursor: widget.clickable ? SystemMouseCursors.click : MouseCursor.defer,
-        onEnter: (_) => _set(true),
-        onExit: (_) => _set(false),
-        child: HoverScope(hovered: _hovered, child: widget.child),
-      );
+    cursor: widget.clickable ? SystemMouseCursors.click : MouseCursor.defer,
+    onEnter: (_) => _set(true),
+    onExit: (_) => _set(false),
+    child: HoverScope(hovered: _hovered, child: widget.child),
+  );
 }
 
 /// Text that is a little lighter at rest and a little heavier while the mouse is over its button or link.
@@ -73,14 +75,21 @@ class HoverText extends StatelessWidget {
   final TextAlign? textAlign;
   final bool? softWrap;
 
-  static FontWeight _heavier(FontWeight w) => FontWeight.values[(w.value ~/ 100).clamp(0, FontWeight.values.length - 1)];
+  static FontWeight _heavier(FontWeight w) =>
+      FontWeight.values[(w.value ~/ 100).clamp(
+        0,
+        FontWeight.values.length - 1,
+      )];
 
   @override
   Widget build(BuildContext context) {
     final hovered = HoverScope.of(context);
     final resting = style.fontWeight ?? FontWeight.w400;
     final heavy = hoverWeight ?? _heavier(resting);
-    TextStyle at(FontWeight w) => style.copyWith(fontWeight: w, fontVariations: [FontVariation('wght', w.value.toDouble())]);
+    TextStyle at(FontWeight w) => style.copyWith(
+      fontWeight: w,
+      fontVariations: [FontVariation('wght', w.value.toDouble())],
+    );
 
     // The heavier lettering is a little wider. Reserve that width from the start, so thickening the text never nudges the
     // words next to it (it would otherwise shift a whole row of links by a pixel or two).
@@ -103,7 +112,13 @@ class HoverText extends StatelessWidget {
         overflow: overflow ?? TextOverflow.clip,
         textAlign: textAlign,
         softWrap: softWrap ?? true,
-        child: Text(text, maxLines: maxLines, overflow: overflow, textAlign: textAlign, softWrap: softWrap),
+        child: Text(
+          text,
+          maxLines: maxLines,
+          overflow: overflow,
+          textAlign: textAlign,
+          softWrap: softWrap,
+        ),
       ),
     );
   }

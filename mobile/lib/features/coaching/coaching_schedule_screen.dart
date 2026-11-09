@@ -162,7 +162,7 @@ class _CoachingScheduleScreenState extends ConsumerState<CoachingScheduleScreen>
                                                         Text('${coachTime(s.startAt)} · ${s.programName}',
                                                             style: AppTypography.rowTitle(context)),
                                                         Text(
-                                                          '${s.coachName} · ${s.courtName} · ${s.enrolledCount}/${s.capacity}',
+                                                          '${s.coachName} · ${s.courtName} · ${s.enrolledCount}/${s.enrolledCount > s.capacity ? s.enrolledCount : s.capacity}',
                                                           style: AppTypography.caption(context),
                                                         ),
                                                       ],

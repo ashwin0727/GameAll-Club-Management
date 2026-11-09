@@ -41,10 +41,14 @@ import {
   getPublicBookingReceipt,
   getPublicCourtAvailability,
   verifyPublicCheckout,
+  CANCELLATION_SCHEDULE,
+  cancelPublicBooking,
+  getPublicCancellationQuote,
   type PublicBookingReceipt,
+  type PublicCancellationQuote,
 } from "../public-booking";
 import { isCheckoutCancellation, isCheckoutFailure, openRazorpayCheckout } from "@/features/payments/razorpay-checkout";
-import { samePick, summarise, togglePick, type Pick, type PickSummary } from "../picks";
+import { samePick, summarise, togglePick, type PayOption, type Pick, type PickSummary } from "../picks";
 import { clearPending, loadPending, savePending } from "../pending";
 import {
   EMPTY_GUEST,
@@ -130,7 +134,9 @@ export function PublicBookingFlow({
   // Any number of courts, and any number of hours on each; every hour ticked is one entry in picks.
   const [picks, setPicks] = useState<Pick[]>([]);
   const [courtIds, setCourtIds] = useState<string[]>([]);
-  const summary = useMemo(() => (picks.length > 0 ? summarise(picks) : null), [picks]);
+  // 50% now or the full amount: asked before the booking is made (every booking is paid online first)
+  const [payOption, setPayOption] = useState<PayOption | null>(null);
+  const summary = useMemo(() => (picks.length > 0 ? summarise(picks, payOption ?? undefined) : null), [picks, payOption]);
   const [guest, setGuest] = useState<PublicGuestDetails>(EMPTY_GUEST);
   // Set once the guest has proven they own guest.phone by SMS; the booking function refuses to book without it.
   const [mobileProof, setMobileProof] = useState<{ proof: string; phone: string } | null>(null);
@@ -247,6 +253,7 @@ export function PublicBookingFlow({
             startTime: r.startTime,
             endTime: r.endTime,
             guest,
+            paymentOption: payOption ?? undefined,
             mobileProof: mobileProof?.proof,
           }),
         );
@@ -322,7 +329,7 @@ export function PublicBookingFlow({
           receipt: checkout.receipt ?? "",
         },
         {
-          description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName} — 50% advance`,
+          description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName} — ${first.paymentOption === "FULL" ? "payment" : "50% advance"}`,
           prefill: { name: first.guestName, contact: phone },
         },
       );
@@ -540,6 +547,8 @@ export function PublicBookingFlow({
                   error={formError}
                   agreed={agreed}
                   onAgreedChange={setAgreed}
+                  payOption={payOption}
+                  onPayOptionChange={setPayOption}
                 />
               )}
             </div>
@@ -1166,6 +1175,8 @@ function ReviewStep({
   error,
   agreed,
   onAgreedChange,
+  payOption,
+  onPayOptionChange,
 }: {
   facility: PublicBookingFacility;
   sportName: string;
@@ -1174,6 +1185,8 @@ function ReviewStep({
   error: string | null;
   agreed: boolean;
   onAgreedChange: (v: boolean) => void;
+  payOption: PayOption | null;
+  onPayOptionChange: (v: PayOption) => void;
 }) {
   const cur = facility.currency;
   const first = summary.requests[0]!;
@@ -1211,25 +1224,7 @@ function ReviewStep({
         </ReviewPanel>
 
         <ReviewPanel title="Payment Details">
-          {summary.advanceRequired ? (
-            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <WalletCards className="h-4 w-4 text-primary" aria-hidden />
-                50% Advance Online
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Bookings longer than 1 hour are held for 30 minutes and confirmed once the advance is paid online. The balance is paid at the venue.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <WalletCards className="h-4 w-4 text-primary" aria-hidden />
-                Payment at Venue
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Please pay directly at the venue.</p>
-            </div>
-          )}
+          <PayOptionPicker summary={summary} currency={cur} value={payOption} onChange={onPayOptionChange} />
 
           <div className="pt-1">
             <p className="text-xs font-semibold">Price Details</p>
@@ -1249,7 +1244,7 @@ function ReviewStep({
               {summary.advanceRequired && (
                 <>
                   <div className="flex items-baseline justify-between gap-3">
-                    <dt className="font-semibold">Advance Due Online (50%)</dt>
+                    <dt className="font-semibold">{summary.option === "FULL" ? "Amount Due Online" : "Advance Due Online (50%)"}</dt>
                     <dd className="font-semibold">{formatMoney(summary.advanceDueMinor, cur)}</dd>
                   </div>
                   <div className="flex items-baseline justify-between gap-3">
@@ -1351,7 +1346,7 @@ function SummaryPanel({
       {summary.advanceRequired ? (
         <>
           <div className="flex items-center justify-between font-semibold">
-            <span>Advance Online (50%)</span>
+            <span>{summary.option === "FULL" ? "Pay Online Now" : "Advance Online (50%)"}</span>
             <span>{formatMoney(summary.advanceDueMinor, cur)}</span>
           </div>
           <p className="pt-1 text-xs text-muted-foreground">Balance {formatMoney(summary.balanceMinor, cur)} at the venue</p>
@@ -1418,14 +1413,16 @@ function BookingActionBar({
 
   // Step 1 needs a slot; the last step needs the player to have ticked the
   // consent box beside the details it refers to.
-  const canContinue = step === "select" ? Boolean(summary) : step === "review" ? agreed : true;
+  const canContinue = step === "select" ? Boolean(summary) : step === "review" ? agreed && Boolean(summary?.option) : true;
   const advance = Boolean(summary?.advanceRequired);
   const label =
     step === "review"
       ? submitting
         ? "Confirming booking…"
         : advance
-          ? "Confirm & Pay Advance"
+          ? summary?.option === "FULL"
+            ? "Confirm & Pay"
+            : "Confirm & Pay Advance"
           : "Confirm Booking"
       : step === "details"
         ? "Review & Confirm"
@@ -1718,6 +1715,8 @@ function Confirmed({
                       {invoiceBusy === c.bookingId ? "Preparing invoice…" : "Download Invoice"}
                     </Button>
                   </div>
+
+                  <CancelBooking bookingId={c.bookingId} phone={phone} startTime={r.startTime} cancelled={r.cancelled} />
                 </section>
               );
             })}
@@ -1739,6 +1738,173 @@ function Confirmed({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** "Pay 50% now" or "Pay the full amount": asked on the review page, before the booking is made. */
+function PayOptionPicker({
+  summary,
+  currency,
+  value,
+  onChange,
+}: {
+  summary: PickSummary;
+  currency: string;
+  value: PayOption | null;
+  onChange: (v: PayOption) => void;
+}) {
+  const total = summary.totalMinor;
+  const half = summary.requests.reduce((s, r) => s + Math.ceil(r.totalMinor / 2), 0);
+  const options: { id: PayOption; title: string; amount: string; note: string }[] = [
+    {
+      id: "ADVANCE",
+      title: "Pay 50% now",
+      amount: `${formatMoney(half, currency)} now · ${formatMoney(total - half, currency)} at the venue`,
+      note: "Pay the balance at the venue before your booking ends. The 50% advance is not refundable if you cancel.",
+    },
+    {
+      id: "FULL",
+      title: "Pay full amount",
+      amount: `${formatMoney(total, currency)} now`,
+      note: "Nothing more to pay. Cancel early for a refund: 95% back with 12 hours or more to go.",
+    },
+  ];
+  return (
+    <div className="space-y-2">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <WalletCards className="h-4 w-4 text-primary" aria-hidden />
+        How would you like to pay?
+      </p>
+      <p className="text-xs text-muted-foreground">Your court is held for 30 minutes and confirmed once this payment is done.</p>
+      <div role="radiogroup" aria-label="Payment option" className="space-y-2">
+        {options.map((o) => (
+          <label
+            key={o.id}
+            className={cn(
+              "flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm",
+              value === o.id ? "border-primary bg-primary/10" : "border-border",
+            )}
+          >
+            <input type="radio" name="pay-option" className="mt-1" checked={value === o.id} onChange={() => onChange(o.id)} />
+            <span>
+              <span className="block font-semibold">{o.title}</span>
+              <span className="block font-medium">{o.amount}</span>
+              <span className="block text-xs text-muted-foreground">{o.note}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <details className="rounded-xl border border-border p-3 text-xs">
+        <summary className="cursor-pointer font-medium text-primary">See the refund rules</summary>
+        <ul className="mt-2 space-y-1">
+          {CANCELLATION_SCHEDULE.map(([label, pct]) => (
+            <li key={label} className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Cancel with {label} left</span>
+              <span>{pct}% deducted</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-muted-foreground">Applies when the booking is paid in full. If only the 50% advance is paid, the advance is not refunded.</p>
+      </details>
+      {!value && <p className="text-xs text-destructive">Choose how you would like to pay to continue.</p>}
+    </div>
+  );
+}
+
+/** "Cancel booking": shows how many hours are left, the % deducted and the refund first, then cancels. */
+function CancelBooking({ bookingId, phone, startTime, cancelled }: { bookingId: string; phone: string; startTime: string; cancelled: boolean }) {
+  const [state, setState] = useState<"idle" | "loading" | "confirm" | "working" | "done">("idle");
+  const [quote, setQuote] = useState<PublicCancellationQuote | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const started = new Date(startTime).getTime() <= Date.now();
+  if (cancelled && state !== "done") {
+    return <div className="border-t border-border bg-card p-3 text-sm font-medium text-destructive">This booking is cancelled.</div>;
+  }
+  if (started && state !== "done") return null;
+
+  async function open() {
+    setError(null);
+    setState("loading");
+    const q = await getPublicCancellationQuote(bookingId, phone);
+    if (!q) {
+      setError("We couldn't work out the refund just now. Please try again.");
+      setState("idle");
+      return;
+    }
+    setQuote(q);
+    setState("confirm");
+  }
+
+  async function confirmCancel() {
+    setError(null);
+    setState("working");
+    try {
+      setQuote(await cancelPublicBooking(bookingId, phone));
+      setState("done");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "We couldn't cancel this booking. Please try again.");
+      setState("confirm");
+    }
+  }
+
+  const money = (minor: number) => formatMoney(minor, "INR");
+
+  if (state === "done" && quote) {
+    return (
+      <div className="space-y-1 border-t border-border bg-card p-4 text-sm" role="status">
+        <p className="font-semibold text-destructive">Booking cancelled</p>
+        <p className="text-muted-foreground">
+          {quote.refundMinor > 0
+            ? `${money(quote.refundMinor)} will be refunded to your original payment method in 5–7 working days.`
+            : quote.paidMinor > 0
+              ? "As per the cancellation rules, no refund applies."
+              : "Nothing was paid, so there is nothing to refund."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-border bg-card p-3">
+      {state === "confirm" && quote ? (
+        <div className="space-y-3 text-sm">
+          <p className="font-semibold">Cancel this booking?</p>
+          <p className={cn("rounded-lg border p-3", quote.refundMinor > 0 || quote.paidMinor === 0 ? "border-primary/30 bg-primary/10" : "border-destructive/40 bg-destructive/10")}>{quote.message}</p>
+          {quote.paidMinor > 0 && (
+            <dl className="space-y-1">
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Amount paid</dt>
+                <dd>{money(quote.paidMinor)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-muted-foreground">Deduction ({quote.deductionPercent}%)</dt>
+                <dd className="text-destructive">{quote.deductionMinor > 0 ? `− ${money(quote.deductionMinor)}` : money(0)}</dd>
+              </div>
+              <div className="flex justify-between border-t border-border pt-1 font-semibold">
+                <dt>You get back</dt>
+                <dd>{money(quote.refundMinor)}</dd>
+              </div>
+            </dl>
+          )}
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setState("idle")}>
+              Keep booking
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void confirmCancel()}>
+              Yes, cancel booking
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Button type="button" variant="ghost" className="min-h-10 text-destructive" disabled={state === "loading" || state === "working"} onClick={() => void open()}>
+            {state === "loading" ? "Checking refund…" : state === "working" ? "Cancelling…" : "Cancel Booking"}
+          </Button>
+          {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+        </>
+      )}
     </div>
   );
 }
@@ -1791,13 +1957,16 @@ function PayStep({
   const dueNow = waiting.reduce((s, i) => s + (i.confirmation.advanceMinor ?? 0), 0);
   const paidSoFar = items.filter((i) => i.state === "confirmed").reduce((s, i) => s + (i.confirmation.advanceMinor ?? 0), 0);
   const paying = payingId !== null;
+  const full = items.length > 0 && items.every((i) => i.confirmation.paymentOption === "FULL");
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold">Pay Your Advance</h2>
+        <h2 className="text-base font-semibold">{full ? "Pay for Your Booking" : "Pay Your Advance"}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your court is held while you pay. Bookings longer than 1 hour are confirmed once 50% is paid online — the balance is paid at the venue.
+          {full
+            ? "Your court is held while you pay, and confirmed as soon as the payment is done."
+            : "Your court is held while you pay. It is confirmed once 50% is paid online — the balance is paid at the venue before your booking ends."}
         </p>
       </div>
 
@@ -1818,13 +1987,13 @@ function PayStep({
               <div className="text-right text-xs">
                 {item.state === "confirmed" ? (
                   <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
-                    <CircleCheck className="h-4 w-4" aria-hidden /> Advance paid
+                    <CircleCheck className="h-4 w-4" aria-hidden /> {full ? "Paid" : "Advance paid"}
                   </span>
                 ) : item.state === "expired" ? (
                   <span className="text-sm font-medium text-destructive">Expired — the court was released</span>
                 ) : (
                   <>
-                    <p className="text-sm font-semibold">{formatMoney(c.advanceMinor ?? 0, c.currency)} advance</p>
+                    <p className="text-sm font-semibold">{formatMoney(c.advanceMinor ?? 0, c.currency)} {full ? "to pay now" : "advance"}</p>
                     {c.holdExpiresAt && (
                       <p className="text-muted-foreground">
                         Held for <HoldCountdown until={c.holdExpiresAt} />
@@ -1851,7 +2020,7 @@ function PayStep({
             </div>
           )}
           <div className="flex justify-between border-t border-border pt-2">
-            <dt className="font-semibold">Advance to Pay Now (50%)</dt>
+            <dt className="font-semibold">{full ? "Amount to Pay Now" : "Advance to Pay Now (50%)"}</dt>
             <dd className="text-base font-semibold text-primary">{formatMoney(dueNow, cur)}</dd>
           </div>
           <div className="flex justify-between">

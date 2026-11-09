@@ -47,7 +47,10 @@ class PlayerDashboardDesktop extends StatelessWidget {
                 const SizedBox(height: 24),
                 // Anything not fully paid is a prompt with a way to pay, ahead of the cards (it is not "Active" until it is paid).
                 if (data.pendingPayments.isNotEmpty) ...[
-                  PaymentPrompts(payments: data.pendingPayments, onNavigate: onNavigate),
+                  PaymentPrompts(
+                    payments: data.pendingPayments,
+                    onNavigate: onNavigate,
+                  ),
                   const SizedBox(height: 10),
                 ],
                 Reveal(

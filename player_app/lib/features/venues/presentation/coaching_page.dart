@@ -19,6 +19,7 @@ import '../domain/coaching_listing.dart';
 import '../domain/venue.dart';
 import 'discover_venues_page.dart';
 import 'no_venues_state.dart';
+import 'phone_list_header.dart';
 
 /// The four promises under the Coaching banner.
 const coachingHighlights = [
@@ -48,7 +49,14 @@ const coachingHighlights = [
 /// panel on the left, results on the right) where every result is a coaching programme of a venue, with the coach who takes it, the
 /// programme's type, level and size, and its fee.
 class CoachingPage extends ConsumerStatefulWidget {
-  const CoachingPage({super.key, required this.onNavigate});
+  const CoachingPage({
+    super.key,
+    required this.onNavigate,
+    this.showTitle = false,
+  });
+
+  /// Phone: draw the title line (with the location icon) in the page itself; a pushed page has it in the app bar.
+  final bool showTitle;
 
   final void Function(String route) onNavigate;
 
@@ -101,6 +109,7 @@ class _CoachingPageState extends ConsumerState<CoachingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (wide) ...[
             Reveal(
               dy: 10,
               child: DiscoverBanner(
@@ -114,19 +123,6 @@ class _CoachingPageState extends ConsumerState<CoachingPage> {
                 imageSize: const Size(334, 118),
               ),
             ),
-            if (!wide) ...[
-              const SizedBox(height: 4),
-              inset(
-                Reveal(
-                  delay: const Duration(milliseconds: 20),
-                  child: DiscoverHighlights(
-                    room: width - side * 2,
-                    compact: true,
-                    items: coachingHighlights,
-                  ),
-                ),
-              ),
-            ],
             SizedBox(height: wide ? 6 : 16),
             inset(
               Reveal(
@@ -146,6 +142,32 @@ class _CoachingPageState extends ConsumerState<CoachingPage> {
                 ),
               ),
             ),
+            ] else ...[
+              if (widget.showTitle)
+                inset(
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 6),
+                    child: PhoneTitleRow(title: 'Find a Coach'),
+                  ),
+                ),
+              const SizedBox(height: 6),
+              inset(
+                SportChipsRow(
+                  sports: coachingSports(all),
+                  selected: filters.sport,
+                  onSelect: (s) => ctl.update((f) => f.copyWith(sport: s)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              inset(
+                CompactSearchField(
+                  controller: _search,
+                  hint: 'Search coaches, venues or programs...',
+                  onChanged: _setQuery,
+                  onSearch: () => _setQuery(_search.text),
+                ),
+              ),
+            ],
             SizedBox(height: wide ? 26 : 18),
             inset(
               _Results(
@@ -230,6 +252,7 @@ class _Results extends ConsumerWidget {
 
     final matching = applyCoachingFilters(all, filters);
     // one card per venue: its latest programme in each sport (the sport chips on the card switch between them)
+    final km = ref.watch(venueDistancesProvider).value ?? const <String, double>{};
     final shown = <List<CoachingListing>>[];
     final byVenue = <String, List<CoachingListing>>{};
     for (final l in matching) {
@@ -240,6 +263,12 @@ class _Results extends ConsumerWidget {
       } else {
         g.add(l);
       }
+    }
+    if (km.isNotEmpty) {
+      final nearest = sortNearestFirst(shown, (g) => g.first.venueId, km);
+      shown
+        ..clear()
+        ..addAll(nearest);
     }
     final panel = CoachingFiltersPanel(
       onApply: () {
@@ -1005,11 +1034,7 @@ class CoachingProgramCard extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        coach,
-                        const SizedBox(height: 12),
-                        program,
-                      ],
+                      children: [coach, const SizedBox(height: 12), program],
                     ),
                   ),
                 ),

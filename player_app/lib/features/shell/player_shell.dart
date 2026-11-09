@@ -20,11 +20,16 @@ import '../player_home/presentation/widgets/desktop_backdrop.dart';
 import '../player_home/presentation/widgets/player_bottom_nav.dart';
 import '../player_home/presentation/widgets/player_header.dart';
 import '../player_home/presentation/widgets/player_search_bar.dart';
+import '../profile/application/profile_providers.dart';
+import '../profile/presentation/profile_page.dart';
 import '../venues/presentation/discover_venues_page.dart';
 import '../venues/presentation/coaching_enroll_page.dart';
 import '../venues/presentation/enroll_membership_page.dart';
 import '../venues/presentation/guest_booking_page.dart';
 import '../venues/presentation/venue_detail_page.dart';
+import '../notifications/application/notification_providers.dart';
+import '../notifications/presentation/notifications_ui.dart';
+import '../notifications/push_service.dart';
 import 'coming_soon_page.dart';
 import 'player_pages.dart';
 
@@ -74,6 +79,8 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
   @override
   void initState() {
     super.initState();
+    // a tapped push notification opens the page it is about
+    if (widget.onNavigate == null) PushService.instance.setOpener(_go);
     final first = widget.initialRoute;
     if (first != null && first != AppRoutes.home) {
       // after the first frame, so a phone can push the page onto the navigator
@@ -81,6 +88,12 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
         if (mounted) _go(first);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    if (widget.onNavigate == null) PushService.instance.setOpener(null);
+    super.dispose();
   }
 
   /// The address of what the shell shows now. The wide shell switches pages without the navigator, so it keeps the address bar in
@@ -243,7 +256,15 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
       case AppRoutes.profile:
         return _select(PlayerTab.profile);
       default:
-        Navigator.of(context).pushNamed(route);
+        // A page of its own on top of the shell (a phone, or a narrow window). It is built here, not by name: on the web a name that is a
+        // shell route makes the app open a NEW shell for it, which on a narrow window would push the same page again, forever, and the
+        // card the player tapped would seem to do nothing.
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            settings: RouteSettings(name: route),
+            builder: (_) => playerPageForRoute(route, onNavigate: _go),
+          ),
+        );
     }
   }
 
@@ -321,8 +342,8 @@ class _PlayerShellState extends ConsumerState<PlayerShell> {
         PlayerHomePage(onNavigate: _go, desktopHeader: bar),
         withBar(MyBookingsPage(onNavigate: _go)),
         const SizedBox.shrink(),
-        withBar(DiscoverVenuesPage(onNavigate: _go)),
-        withBar(const _ProfileTab()),
+        withBar(DiscoverVenuesPage(onNavigate: _go, showTitle: true)),
+        withBar(ProfilePage(onNavigate: _go)),
       ],
     );
 
@@ -480,8 +501,10 @@ class _TopBar extends ConsumerWidget {
     }
 
     final city = ref.watch(selectedCityProvider);
-    final unread =
-        ref.watch(playerHomeProvider).value?.unreadNotifications ?? 0;
+    final unread = ref.watch(unreadNotificationCountProvider);
+    final signedIn = ref.watch(currentPlayerProvider) != null;
+    final auth = ref.watch(authControllerProvider);
+    final restoring = auth.isLoading && !auth.hasValue;
 
     return SizedBox(
       height: 84,
@@ -531,7 +554,9 @@ class _TopBar extends ConsumerWidget {
               link(
                 'Coaching',
                 route: hasCoaching ? AppRoutes.myCoaching : AppRoutes.coaching,
-                alsoRoute: hasCoaching ? AppRoutes.coaching : AppRoutes.myCoaching,
+                alsoRoute: hasCoaching
+                    ? AppRoutes.coaching
+                    : AppRoutes.myCoaching,
               ),
             ),
             land(110, link('Tournaments', route: AppRoutes.tournaments)),
@@ -587,17 +612,24 @@ class _TopBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 18),
-            land(
-              160,
-              NotificationBell(
-                unread: unread,
-                onPressed: () => onNavigate(AppRoutes.notifications),
+            // The bell is for a signed-in player: signed out there are no notifications to show.
+            if (signedIn) ...[
+              land(
+                160,
+                NotificationBell(
+                  unread: unread,
+                  onPressed: () => openNotifications(context, onNavigate: onNavigate),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
+              const SizedBox(width: 8),
+            ] else if (restoring)
+              const SizedBox(width: 56),
             land(
               180,
-              _AccountAvatar(onLogin: () => onNavigate(AppRoutes.login)),
+              _AccountAvatar(
+                onLogin: () => onNavigate(AppRoutes.login),
+                onProfile: () => onNavigate(AppRoutes.profile),
+              ),
             ),
           ],
         ),
@@ -609,9 +641,12 @@ class _TopBar extends ConsumerWidget {
 /// The round profile picture at the right of the brand bar. Signed out, it is a person icon that opens Login; signed in, it shows the
 /// player's initials and opens a menu to log out.
 class _AccountAvatar extends ConsumerWidget {
-  const _AccountAvatar({required this.onLogin});
+  const _AccountAvatar({required this.onLogin, required this.onProfile});
 
   final VoidCallback onLogin;
+
+  /// Opens My Profile.
+  final VoidCallback onProfile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -647,6 +682,7 @@ class _AccountAvatar extends ConsumerWidget {
         ),
       );
     }
+    final photo = ref.watch(profileDetailsProvider).value?.avatarUrl;
     return PopupMenuButton<String>(
       key: const ValueKey('account-menu'),
       tooltip: 'Account',
@@ -657,6 +693,7 @@ class _AccountAvatar extends ConsumerWidget {
         side: BorderSide(color: p.border),
       ),
       onSelected: (v) {
+        if (v == 'profile') onProfile();
         if (v == 'logout') ref.read(authControllerProvider.notifier).signOut();
       },
       itemBuilder: (context) => [
@@ -665,6 +702,17 @@ class _AccountAvatar extends ConsumerWidget {
           child: Text(
             player.phone.isEmpty ? player.fullName : '+91 ${player.phone}',
             style: AppTextStyles.support(p.secondaryText),
+          ),
+        ),
+        PopupMenuItem<String>(
+          key: const ValueKey('account-profile'),
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, size: 18, color: p.primaryText),
+              const SizedBox(width: 10),
+              Text('My Profile', style: AppTextStyles.body(p.primaryText)),
+            ],
           ),
         ),
         PopupMenuItem<String>(
@@ -679,170 +727,23 @@ class _AccountAvatar extends ConsumerWidget {
         ),
       ],
       child: circle(
-        Text(player.initials, style: AppTextStyles.cardHeading(Colors.white)),
-      ),
-    );
-  }
-}
-
-/// Profile tab: who is signed in (with Log out), or a Log in button.
-class _AccountCard extends ConsumerWidget {
-  const _AccountCard({required this.onLogin});
-
-  final VoidCallback onLogin;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.palette;
-    final player = ref.watch(currentPlayerProvider);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: AppDimensions.cardBorderRadius,
-        border: Border.all(color: p.border),
-      ),
-      child: player == null
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'You are not signed in',
-                  style: AppTextStyles.cardHeading(p.primaryText),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Log in with your phone number to see your memberships, coaching and bookings from every club.',
-                  style: AppTextStyles.support(p.secondaryText),
-                ),
-                const SizedBox(height: 14),
-                GameAllButton.gradient(
-                  key: const ValueKey('profile-login'),
-                  label: 'Log in',
-                  expand: true,
-                  onPressed: onLogin,
-                ),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppColors.brandGradient,
-                      ),
-                      child: Text(
-                        player.initials,
-                        style: AppTextStyles.cardHeading(Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            player.fullName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.cardHeading(p.primaryText),
-                          ),
-                          Text(
-                            '+91 ${player.phone}',
-                            style: AppTextStyles.support(p.secondaryText),
-                          ),
-                          if (player.email != null)
-                            Text(
-                              player.email!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.support(p.secondaryText),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                GameAllButton.secondary(
-                  key: const ValueKey('profile-logout'),
-                  label: 'Log out',
-                  icon: Icons.logout_rounded,
-                  expand: true,
-                  onPressed: () =>
-                      ref.read(authControllerProvider.notifier).signOut(),
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-/// Profile: appearance (Dark / Light) is all that exists so far.
-class _ProfileTab extends ConsumerWidget {
-  const _ProfileTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.palette;
-    final mode = ref.watch(themeModeProvider);
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppDimensions.phoneMaxWidth,
-          ),
-          child: ListView(
-            padding: const EdgeInsets.all(AppDimensions.screenPadding),
-            children: [
-              Text('Profile', style: AppTextStyles.greeting(p.primaryText)),
-              const SizedBox(height: 20),
-              _AccountCard(onLogin: () => showPlayerLogin(context)),
-              const SizedBox(height: 16),
-              Material(
-                color: p.surface,
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppDimensions.cardBorderRadius,
-                  side: BorderSide(color: p.border),
-                ),
-                child: SwitchListTile(
-                  key: const ValueKey('theme-switch'),
-                  value: mode == ThemeMode.dark,
-                  onChanged: (_) =>
-                      ref.read(themeModeProvider.notifier).toggle(),
-                  activeThumbColor: AppColors.cyan,
-                  secondary: Icon(
-                    mode == ThemeMode.dark
-                        ? Icons.dark_mode_rounded
-                        : Icons.light_mode_rounded,
-                    color: p.highlight,
-                  ),
-                  title: Text(
-                    'Dark mode',
-                    style: AppTextStyles.cardHeading(p.primaryText),
-                  ),
-                  subtitle: Text(
-                    mode == ThemeMode.dark ? 'On' : 'Off',
-                    style: AppTextStyles.support(p.secondaryText),
+        photo == null
+            ? Text(
+                player.initials,
+                style: AppTextStyles.cardHeading(Colors.white),
+              )
+            : ClipOval(
+                child: Image.network(
+                  photo,
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Text(
+                    player.initials,
+                    style: AppTextStyles.cardHeading(Colors.white),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Account, payments and settings are coming next.',
-                style: AppTextStyles.support(p.secondaryText),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

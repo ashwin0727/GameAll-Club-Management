@@ -487,7 +487,7 @@ void main() {
     });
 
     testWidgets(
-      'a full batch, a club-paid programme and a closed one cannot be enrolled',
+      'a club-paid programme and a closed one cannot be enrolled, but a batch at capacity can',
       (tester) async {
         final data = _info(
           programs: [
@@ -509,14 +509,13 @@ void main() {
             ], open: false),
           ],
         );
-        final (repo, _, _) = await _pump(tester, repo: _Coaching(data: data));
-        expect(find.text('Full'), findsOneWidget);
+        await _pump(tester, repo: _Coaching(data: data));
+        // a batch at its capacity is never turned away: no "Full" label, and it is the one most players joined
+        expect(find.text('Full'), findsNothing);
         expect(find.text('Pay at club'), findsOneWidget);
         expect(find.text('Closed'), findsOneWidget);
-        expect(find.byKey(const ValueKey('offer-blocked')), findsNWidgets(3));
-        expect(find.byKey(const ValueKey('offer-recommended')), findsNothing);
-        await _tapKey(tester, 'coaching-pay');
-        expect(repo.started, isEmpty);
+        expect(find.byKey(const ValueKey('offer-blocked')), findsNWidgets(2));
+        expect(find.byKey(const ValueKey('offer-recommended')), findsOneWidget);
       },
     );
 

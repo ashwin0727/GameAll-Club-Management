@@ -116,7 +116,9 @@ bool _matchesLevel(CoachingListing p, Set<CoachingLevel> levels) {
 
 bool _matchesTime(CoachingListing p, TimeSlot t) {
   if (t == TimeSlot.any) return true;
-  return p.batches.any((b) => b.startHour >= t.fromHour && b.startHour < t.toHour);
+  return p.batches.any(
+    (b) => b.startHour >= t.fromHour && b.startHour < t.toHour,
+  );
 }
 
 bool _matchesDays(CoachingListing p, DaysPick d) {

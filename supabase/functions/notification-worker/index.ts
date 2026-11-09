@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // notification-worker — runs every minute.
 //
+//   0. run_player_notification_jobs()  writes the players' timed messages (booking in 30 minutes, payment coming up).
 //   1. run_notification_jobs()  writes the timed notifications (guest slot starts / ends in 5 minutes, the monthly report
 //                               reminder, lapsed memberships and students). Event-driven ones are already written by
 //                               database triggers.
@@ -40,6 +41,10 @@ Deno.serve(async (req) => {
 
   const jobs = await admin.rpc("run_notification_jobs");
   if (jobs.error) console.error("[notification-worker] run_notification_jobs failed", jobs.error.message);
+
+  // The players' timed messages (a booking starts in 30 minutes, a membership / coaching payment is coming up). Migration 0194.
+  const playerJobs = await admin.rpc("run_player_notification_jobs");
+  if (playerJobs.error) console.error("[notification-worker] run_player_notification_jobs failed", playerJobs.error.message);
 
   // Closed accounts whose payments have all been settled since: finish deleting them.
   try {

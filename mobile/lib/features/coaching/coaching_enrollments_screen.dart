@@ -124,6 +124,7 @@ class _CoachingEnrollmentsScreenState extends ConsumerState<CoachingEnrollmentsS
         (value: 'ACTIVE', label: 'Active'),
         (value: 'PAUSED', label: 'Paused'),
         (value: 'COMPLETED', label: 'Completed'),
+        (value: 'PENDING_PAYMENT', label: 'Payment Incomplete'),
         (value: 'CANCELLED', label: 'Cancelled'),
       ],
     );

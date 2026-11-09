@@ -1,3 +1,4 @@
+import 'cancel_quote_dialog.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -647,84 +648,23 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   }
 
   Future<void> _cancel(GuestBookingRow r) async {
-    final reason = TextEditingController();
-    final amount = TextEditingController(
-      text: r.amountMinor != null ? '${(r.amountMinor! / 100)}' : '',
-    );
-    var refund = r.paymentStatus == 'PAID';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Cancel Booking'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: reason,
-                decoration: const InputDecoration(
-                  labelText: 'Reason (Optional)',
-                ),
-              ),
-              if (r.paymentStatus == 'PAID') ...[
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: refund,
-                  onChanged: (v) => setSt(() => refund = v ?? false),
-                  title: const Text('Issue a Refund'),
-                ),
-                if (refund)
-                  TextField(
-                    controller: amount,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Refund Amount (₹)',
-                    ),
-                  ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Keep'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Cancel Booking'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
+    // shows the hours left, the % deducted and the refund first (migration 0188); the club can change the refund for this one
+    final decision = await showCancelQuoteDialog(context, bookingId: r.bookingId);
+    if (decision == null) return;
     setState(() => _busyBookingIds.add(r.bookingId));
     try {
-      if (r.paymentStatus == 'PAID') {
-        final total = r.amountMinor ?? 0;
-        final pct = refund && total > 0
-            ? ((double.tryParse(amount.text.trim()) ?? 0) * 100 * 100 / total)
-                  .round()
-                  .clamp(0, 100)
-            : 0;
-        await ref
-            .read(refundRepositoryProvider)
-            .cancelBooking(
-              CancelBookingInput(
-                bookingId: r.bookingId,
-                reason: reason.text.trim().isEmpty ? null : reason.text.trim(),
-                refundOverridePercent: pct,
-              ),
-            );
-      } else {
-        await ref
-            .read(bookingRepositoryProvider)
-            .cancelBooking(
-              r.bookingId,
-              reason: reason.text.trim().isEmpty ? null : reason.text.trim(),
-            );
-      }
+      final result = await ref
+          .read(refundRepositoryProvider)
+          .cancelBooking(
+            CancelBookingInput(
+              bookingId: r.bookingId,
+              reason: decision.reason,
+              refundOverridePercent: decision.overridePercent,
+              overrideReason: decision.overrideReason,
+            ),
+          );
+      final paid = (result.cancellation?['paid_minor'] as num?)?.toInt() ?? 0;
+      if (paid > 0) _toast(cancelledNote(result.cancellation));
       _reload();
     } on AppException catch (e) {
       _toast(e.message);

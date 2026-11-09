@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/resilient.dart';
 import '../domain/payment_receipt.dart';
 
 /// Where the payment progress and success pages get their data. The Supabase version is the real one; tests supply a fake.
@@ -14,18 +15,27 @@ abstract class PaymentReceiptRepository {
 }
 
 class SupabasePaymentReceiptRepository implements PaymentReceiptRepository {
-  SupabasePaymentReceiptRepository([SupabaseClient? client]) : _injected = client;
+  SupabasePaymentReceiptRepository([SupabaseClient? client])
+    : _injected = client;
 
   final SupabaseClient? _injected;
 
-  SupabaseClient? get _client => _injected ?? (AppConfig.isConfigured ? Supabase.instance.client : null);
+  SupabaseClient? get _client =>
+      _injected ?? (AppConfig.isConfigured ? Supabase.instance.client : null);
 
   @override
   Future<PaymentReceipt?> receipt(PaymentKind kind, String id) async {
     final client = _client;
     if (client == null) return null;
-    final res = await client.rpc('get_my_payment_receipt', params: {'p_kind': kind.wire, 'p_id': id});
-    return res is Map ? PaymentReceipt.fromJson(res.cast<String, dynamic>()) : null;
+    final res = await retryTransient(
+      () => client.rpc(
+        'get_my_payment_receipt',
+        params: {'p_kind': kind.wire, 'p_id': id},
+      ),
+    );
+    return res is Map
+        ? PaymentReceipt.fromJson(res.cast<String, dynamic>())
+        : null;
   }
 
   @override
@@ -34,7 +44,10 @@ class SupabasePaymentReceiptRepository implements PaymentReceiptRepository {
     if (client == null) return null;
     // The webhook is the primary way a payment is recorded; this asks Razorpay directly in case it is late or not set up.
     try {
-      await client.functions.invoke('sync-player-payment', body: {'kind': kind.wire, 'id': id});
+      await client.functions.invoke(
+        'sync-player-payment',
+        body: {'kind': kind.wire, 'id': id},
+      );
     } catch (_) {
       // not deployed yet, offline or Razorpay slow: the database read below still tells the truth it has
     }

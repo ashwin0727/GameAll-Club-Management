@@ -17,8 +17,10 @@ class VenueScene extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
-        child: SizedBox.expand(child: CustomPaint(painter: VenueScenePainter(sportKindOf(sport)))),
-      );
+    child: SizedBox.expand(
+      child: CustomPaint(painter: VenueScenePainter(sportKindOf(sport))),
+    ),
+  );
 }
 
 class VenueScenePainter extends CustomPainter {
@@ -28,15 +30,53 @@ class VenueScenePainter extends CustomPainter {
 
   // ── the scene's look per sport ────────────────────────────────────────
   _Look get _look => switch (kind) {
-        SportKind.badminton => const _Look(floorNear: Color(0xFF1E8A57), floorFar: Color(0xFF0F5A3A), surround: Color(0xFF0C3B52), indoor: true),
-        SportKind.football => const _Look(floorNear: Color(0xFF2F9E44), floorFar: Color(0xFF1B6B2E), surround: Color(0xFF123524), indoor: false),
-        SportKind.cricket => const _Look(floorNear: Color(0xFF34A04A), floorFar: Color(0xFF1D6E31), surround: Color(0xFF123524), indoor: false),
-        SportKind.basketball => const _Look(floorNear: Color(0xFFC98A47), floorFar: Color(0xFF8E5A28), surround: Color(0xFF3A2A4E), indoor: true),
-        SportKind.volleyball => const _Look(floorNear: Color(0xFFD29A55), floorFar: Color(0xFF9A6630), surround: Color(0xFF1F3552), indoor: true),
-        SportKind.tennis || SportKind.pickleball || SportKind.padel || SportKind.squash || SportKind.tableTennis =>
-          const _Look(floorNear: Color(0xFF2F6FC4), floorFar: Color(0xFF1B4585), surround: Color(0xFF1B6B4E), indoor: false),
-        SportKind.other => const _Look(floorNear: Color(0xFF3A63B8), floorFar: Color(0xFF21408A), surround: Color(0xFF2B2150), indoor: true),
-      };
+    SportKind.badminton => const _Look(
+      floorNear: Color(0xFF1E8A57),
+      floorFar: Color(0xFF0F5A3A),
+      surround: Color(0xFF0C3B52),
+      indoor: true,
+    ),
+    SportKind.football => const _Look(
+      floorNear: Color(0xFF2F9E44),
+      floorFar: Color(0xFF1B6B2E),
+      surround: Color(0xFF123524),
+      indoor: false,
+    ),
+    SportKind.cricket => const _Look(
+      floorNear: Color(0xFF34A04A),
+      floorFar: Color(0xFF1D6E31),
+      surround: Color(0xFF123524),
+      indoor: false,
+    ),
+    SportKind.basketball => const _Look(
+      floorNear: Color(0xFFC98A47),
+      floorFar: Color(0xFF8E5A28),
+      surround: Color(0xFF3A2A4E),
+      indoor: true,
+    ),
+    SportKind.volleyball => const _Look(
+      floorNear: Color(0xFFD29A55),
+      floorFar: Color(0xFF9A6630),
+      surround: Color(0xFF1F3552),
+      indoor: true,
+    ),
+    SportKind.tennis ||
+    SportKind.pickleball ||
+    SportKind.padel ||
+    SportKind.squash ||
+    SportKind.tableTennis => const _Look(
+      floorNear: Color(0xFF2F6FC4),
+      floorFar: Color(0xFF1B4585),
+      surround: Color(0xFF1B6B4E),
+      indoor: false,
+    ),
+    SportKind.other => const _Look(
+      floorNear: Color(0xFF3A63B8),
+      floorFar: Color(0xFF21408A),
+      surround: Color(0xFF2B2150),
+      indoor: true,
+    ),
+  };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -50,13 +90,33 @@ class VenueScenePainter extends CustomPainter {
     canvas.drawRect(
       rect,
       Paint()
-        ..shader = ui.Gradient.linear(Offset.zero, Offset(0, hy), look.indoor ? [const Color(0xFF070D1A), Color.lerp(look.surround, const Color(0xFF16233B), 0.4)!] : [const Color(0xFF050B18), Color.lerp(look.surround, const Color(0xFF1A2A4A), 0.5)!]),
+        ..shader = ui.Gradient.linear(
+          Offset.zero,
+          Offset(0, hy),
+          look.indoor
+              ? [
+                  const Color(0xFF070D1A),
+                  Color.lerp(look.surround, const Color(0xFF16233B), 0.4)!,
+                ]
+              : [
+                  const Color(0xFF050B18),
+                  Color.lerp(look.surround, const Color(0xFF1A2A4A), 0.5)!,
+                ],
+        ),
     );
 
     // floodlights: soft glows along the top, with a bright core
     for (final x in const [0.16, 0.5, 0.84]) {
       final c = Offset(w * x, h * 0.06);
-      canvas.drawCircle(c, w * 0.34, Paint()..shader = ui.Gradient.radial(c, w * 0.34, [const Color(0x40BFE4FF), const Color(0x00BFE4FF)]));
+      canvas.drawCircle(
+        c,
+        w * 0.34,
+        Paint()
+          ..shader = ui.Gradient.radial(c, w * 0.34, [
+            const Color(0x40BFE4FF),
+            const Color(0x00BFE4FF),
+          ]),
+      );
       canvas.drawCircle(c, w * 0.018, Paint()..color = const Color(0xFFEAF6FF));
     }
 
@@ -77,27 +137,56 @@ class VenueScenePainter extends CustomPainter {
       ..close();
     canvas.save();
     canvas.clipRect(rect);
-    canvas.drawPath(floor, Paint()..shader = ui.Gradient.linear(Offset(0, hy), Offset(0, h), [look.floorFar, look.floorNear]));
+    canvas.drawPath(
+      floor,
+      Paint()
+        ..shader = ui.Gradient.linear(Offset(0, hy), Offset(0, h), [
+          look.floorFar,
+          look.floorNear,
+        ]),
+    );
 
     // the court / pitch markings, then the light on the floor
     _markings(canvas, map, w, h);
     canvas.drawPath(
       floor,
-      Paint()..shader = ui.Gradient.radial(Offset(cx, hy + (h - hy) * 0.35), w * 0.62, [const Color(0x30FFFFFF), const Color(0x00FFFFFF)]),
+      Paint()
+        ..shader = ui.Gradient.radial(
+          Offset(cx, hy + (h - hy) * 0.35),
+          w * 0.62,
+          [const Color(0x30FFFFFF), const Color(0x00FFFFFF)],
+        ),
     );
     canvas.restore();
 
     // the back wall's base line, and a darkening at the edges so the middle glows
-    canvas.drawLine(Offset(0, hy), Offset(w, hy), Paint()..color = const Color(0x33FFFFFF)..strokeWidth = 1);
+    canvas.drawLine(
+      Offset(0, hy),
+      Offset(w, hy),
+      Paint()
+        ..color = const Color(0x33FFFFFF)
+        ..strokeWidth = 1,
+    );
     canvas.drawRect(
       rect,
-      Paint()..shader = ui.Gradient.radial(Offset(cx, h * 0.55), w * 0.75, [const Color(0x00000000), const Color(0x66000000)], const [0.55, 1.0]),
+      Paint()
+        ..shader = ui.Gradient.radial(
+          Offset(cx, h * 0.55),
+          w * 0.75,
+          [const Color(0x00000000), const Color(0x66000000)],
+          const [0.55, 1.0],
+        ),
     );
   }
 
   // ── markings ──────────────────────────────────────────────────────────
 
-  void _markings(Canvas canvas, Offset Function(double, double) map, double w, double h) {
+  void _markings(
+    Canvas canvas,
+    Offset Function(double, double) map,
+    double w,
+    double h,
+  ) {
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.2, w * 0.0065)
@@ -105,7 +194,8 @@ class VenueScenePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..color = const Color(0xE6FFFFFF);
 
-    void seg(double u1, double v1, double u2, double v2) => canvas.drawLine(map(u1, v1), map(u2, v2), line);
+    void seg(double u1, double v1, double u2, double v2) =>
+        canvas.drawLine(map(u1, v1), map(u2, v2), line);
     void box(double u1, double v1, double u2, double v2) {
       final p = Path()
         ..moveTo(map(u1, v1).dx, map(u1, v1).dy)
@@ -117,7 +207,14 @@ class VenueScenePainter extends CustomPainter {
     }
 
     // an ellipse on the floor (a circle seen in perspective), from points mapped through the floor
-    void circle(double u, double v, double ru, double rv, {double from = 0, double to = math.pi * 2}) {
+    void circle(
+      double u,
+      double v,
+      double ru,
+      double rv, {
+      double from = 0,
+      double to = math.pi * 2,
+    }) {
       final path = Path();
       const steps = 48;
       for (var i = 0; i <= steps; i++) {
@@ -128,13 +225,28 @@ class VenueScenePainter extends CustomPainter {
       canvas.drawPath(path, line);
     }
 
-    void net(double u1, double u2, double v, double height, {Color color = const Color(0xFFF2F6FF)}) {
+    void net(
+      double u1,
+      double u2,
+      double v,
+      double height, {
+      Color color = const Color(0xFFF2F6FF),
+    }) {
       final a = map(u1, v);
       final b = map(u2, v);
-      final top = Paint()..color = color..strokeWidth = line.strokeWidth * 1.4..style = PaintingStyle.stroke;
-      final mesh = Paint()..color = color.withValues(alpha: 0.38)..strokeWidth = 0.8..style = PaintingStyle.stroke;
+      final top = Paint()
+        ..color = color
+        ..strokeWidth = line.strokeWidth * 1.4
+        ..style = PaintingStyle.stroke;
+      final mesh = Paint()
+        ..color = color.withValues(alpha: 0.38)
+        ..strokeWidth = 0.8
+        ..style = PaintingStyle.stroke;
       final lift = Offset(0, -h * height);
-      canvas.drawRect(Rect.fromPoints(a + lift, b), Paint()..color = const Color(0x22FFFFFF));
+      canvas.drawRect(
+        Rect.fromPoints(a + lift, b),
+        Paint()..color = const Color(0x22FFFFFF),
+      );
       const cols = 22;
       for (var i = 0; i <= cols; i++) {
         final x = ui.lerpDouble(a.dx, b.dx, i / cols)!;
@@ -185,12 +297,24 @@ class VenueScenePainter extends CustomPainter {
         // the far goal: frame and net
         final gl = map(0.40, 0.10), gr = map(0.60, 0.10);
         final gTop = Offset(0, -h * 0.085);
-        canvas.drawRect(Rect.fromPoints(gl + gTop, gr), Paint()..color = const Color(0x26FFFFFF));
+        canvas.drawRect(
+          Rect.fromPoints(gl + gTop, gr),
+          Paint()..color = const Color(0x26FFFFFF),
+        );
         for (var i = 0; i <= 12; i++) {
           final x = ui.lerpDouble(gl.dx, gr.dx, i / 12)!;
-          canvas.drawLine(Offset(x, gl.dy), Offset(x, gl.dy + gTop.dy), Paint()..color = const Color(0x55FFFFFF)..strokeWidth = 0.7);
+          canvas.drawLine(
+            Offset(x, gl.dy),
+            Offset(x, gl.dy + gTop.dy),
+            Paint()
+              ..color = const Color(0x55FFFFFF)
+              ..strokeWidth = 0.7,
+          );
         }
-        final post = Paint()..color = const Color(0xFFF4F8FF)..strokeWidth = line.strokeWidth * 1.5..strokeCap = StrokeCap.round;
+        final post = Paint()
+          ..color = const Color(0xFFF4F8FF)
+          ..strokeWidth = line.strokeWidth * 1.5
+          ..strokeCap = StrokeCap.round;
         canvas.drawLine(gl, gl + gTop, post);
         canvas.drawLine(gr, gr + gTop, post);
         canvas.drawLine(gl + gTop, gr + gTop, post);
@@ -202,7 +326,10 @@ class VenueScenePainter extends CustomPainter {
           ..lineTo(map(0.58, 0.95).dx, map(0.58, 0.95).dy)
           ..lineTo(map(0.42, 0.95).dx, map(0.42, 0.95).dy)
           ..close();
-        canvas.drawPath(strip, Paint()..color = const Color(0xFFC9B27C).withValues(alpha: 0.85));
+        canvas.drawPath(
+          strip,
+          Paint()..color = const Color(0xFFC9B27C).withValues(alpha: 0.85),
+        );
         seg(0.40, 0.20, 0.60, 0.20); // creases
         seg(0.40, 0.30, 0.60, 0.30);
         seg(0.40, 0.84, 0.60, 0.84);
@@ -212,7 +339,14 @@ class VenueScenePainter extends CustomPainter {
         for (final v in const [0.20, 0.94]) {
           for (final u in const [0.475, 0.5, 0.525]) {
             final base = map(u, v);
-            canvas.drawLine(base, base + Offset(0, -h * (v > 0.5 ? 0.075 : 0.045)), Paint()..color = const Color(0xFFF7F1DD)..strokeWidth = math.max(1.4, w * 0.007)..strokeCap = StrokeCap.round);
+            canvas.drawLine(
+              base,
+              base + Offset(0, -h * (v > 0.5 ? 0.075 : 0.045)),
+              Paint()
+                ..color = const Color(0xFFF7F1DD)
+                ..strokeWidth = math.max(1.4, w * 0.007)
+                ..strokeCap = StrokeCap.round,
+            );
           }
         }
       case SportKind.basketball:
@@ -225,10 +359,41 @@ class VenueScenePainter extends CustomPainter {
         circle(0.5, 0.78, 0.11, 0.09, from: math.pi, to: math.pi * 2);
         // the far hoop: backboard and rim
         final bb = map(0.5, 0.10);
-        canvas.drawRect(Rect.fromCenter(center: bb + Offset(0, -h * 0.10), width: w * 0.13, height: h * 0.075), Paint()..color = const Color(0x55FFFFFF));
-        canvas.drawRect(Rect.fromCenter(center: bb + Offset(0, -h * 0.10), width: w * 0.13, height: h * 0.075), Paint()..style = PaintingStyle.stroke..color = const Color(0xFFF4F8FF)..strokeWidth = 1.4);
-        canvas.drawOval(Rect.fromCenter(center: bb + Offset(0, -h * 0.07), width: w * 0.05, height: h * 0.014), Paint()..style = PaintingStyle.stroke..color = const Color(0xFFFF7A3C)..strokeWidth = math.max(1.6, w * 0.008));
-      case SportKind.tennis || SportKind.pickleball || SportKind.padel || SportKind.squash || SportKind.tableTennis:
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: bb + Offset(0, -h * 0.10),
+            width: w * 0.13,
+            height: h * 0.075,
+          ),
+          Paint()..color = const Color(0x55FFFFFF),
+        );
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: bb + Offset(0, -h * 0.10),
+            width: w * 0.13,
+            height: h * 0.075,
+          ),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = const Color(0xFFF4F8FF)
+            ..strokeWidth = 1.4,
+        );
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: bb + Offset(0, -h * 0.07),
+            width: w * 0.05,
+            height: h * 0.014,
+          ),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..color = const Color(0xFFFF7A3C)
+            ..strokeWidth = math.max(1.6, w * 0.008),
+        );
+      case SportKind.tennis ||
+          SportKind.pickleball ||
+          SportKind.padel ||
+          SportKind.squash ||
+          SportKind.tableTennis:
         box(0.12, 0.10, 0.88, 0.98);
         seg(0.20, 0.10, 0.20, 0.98); // singles sidelines
         seg(0.80, 0.10, 0.80, 0.98);
@@ -255,7 +420,12 @@ class VenueScenePainter extends CustomPainter {
 }
 
 class _Look {
-  const _Look({required this.floorNear, required this.floorFar, required this.surround, required this.indoor});
+  const _Look({
+    required this.floorNear,
+    required this.floorFar,
+    required this.surround,
+    required this.indoor,
+  });
 
   final Color floorNear;
   final Color floorFar;

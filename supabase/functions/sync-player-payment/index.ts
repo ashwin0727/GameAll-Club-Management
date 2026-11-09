@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { allowed } from "../_shared/rate-limit.ts";
 import { extractLinkPayment, mapPaymentLinkEventToStatus, razorpaySubscriptionStatusToCoaching } from "../_shared/coaching-billing.ts";
 import { unixToDateString } from "../_shared/razorpay.ts";
 
@@ -88,6 +89,12 @@ Deno.serve(async (req) => {
   }
   if (!receipt) return jsonResponse({ error: "Payment not found." }, 404);
   const admin = createClient(supabaseUrl, serviceKey);
+
+  // Razorpay is asked at most a handful of times a minute per item, however often the app polls: a throttled call just reports what the
+  // database already says (the webhook keeps that current), so a stuck client cannot turn into a Razorpay storm.
+  if (!(await allowed(admin, `sync:${kind}:${body.id}`, 12, 60))) {
+    return jsonResponse({ changed: false, state: (receipt as { state?: string }).state ?? null, throttled: true }, 200);
+  }
   let changed = false;
 
   try {

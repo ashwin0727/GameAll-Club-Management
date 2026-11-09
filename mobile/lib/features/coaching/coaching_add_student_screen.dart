@@ -492,7 +492,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
                     ],
                   ),
                 ),
-                Text(full ? 'Full' : '${b.enrolledCount ?? 0} / ${b.capacity}', style: AppTypography.caption(context)),
+                Text('${b.enrolledCount ?? 0} / ${b.shownCapacity}', style: AppTypography.caption(context)),
                 if (selected) ...[
                   const SizedBox(width: AppSpacing.sm),
                   Icon(Icons.check_circle, color: t.primary, size: 20),

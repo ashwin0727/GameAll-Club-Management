@@ -34,6 +34,8 @@ export interface Booking {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** "ADVANCE" (50% now) or "FULL": how the first online payment was chosen (migration 0188); null for an older booking. */
+  paymentOption?: "ADVANCE" | "FULL" | null;
 }
 
 export interface NewBookingInput {

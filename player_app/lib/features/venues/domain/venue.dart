@@ -200,41 +200,44 @@ class Venue {
   List<PlanPrice> plansFor(String? sport) {
     if (sport == null || sportPlans.isEmpty) return planPrices;
     for (final e in sportPlans.entries) {
-      if (e.key.trim().toLowerCase() == sport.trim().toLowerCase()) return e.value;
+      if (e.key.trim().toLowerCase() == sport.trim().toLowerCase())
+        return e.value;
     }
     return const [];
   }
 
   /// This venue with its membership prices filled in (used when they were read from the venue's own enrolment answer).
-  Venue withPlans(List<PlanPrice> prices, Map<String, List<PlanPrice>> bySport) =>
-      Venue(
-        id: id,
-        name: name,
-        city: city,
-        state: state,
-        area: area,
-        logoUrl: logoUrl,
-        heroImageUrl: heroImageUrl,
-        sports: sports,
-        surfaces: surfaces,
-        venueType: venueType,
-        amenities: amenities,
-        photos: photos,
-        courtCount: courtCount,
-        minCourtPriceInr: minCourtPriceInr,
-        planNames: planNames,
-        planCount: planCount,
-        minPlanPriceInr: minPlanPriceInr,
-        programNames: programNames,
-        programCount: programCount,
-        minProgramPriceInr: minProgramPriceInr,
-        planPrices: prices,
-        sportPlans: bySport,
-        membershipDays: membershipDays,
-        opens: opens,
-        closes: closes,
-        open24h: open24h,
-      );
+  Venue withPlans(
+    List<PlanPrice> prices,
+    Map<String, List<PlanPrice>> bySport,
+  ) => Venue(
+    id: id,
+    name: name,
+    city: city,
+    state: state,
+    area: area,
+    logoUrl: logoUrl,
+    heroImageUrl: heroImageUrl,
+    sports: sports,
+    surfaces: surfaces,
+    venueType: venueType,
+    amenities: amenities,
+    photos: photos,
+    courtCount: courtCount,
+    minCourtPriceInr: minCourtPriceInr,
+    planNames: planNames,
+    planCount: planCount,
+    minPlanPriceInr: minPlanPriceInr,
+    programNames: programNames,
+    programCount: programCount,
+    minProgramPriceInr: minProgramPriceInr,
+    planPrices: prices,
+    sportPlans: bySport,
+    membershipDays: membershipDays,
+    opens: opens,
+    closes: closes,
+    open24h: open24h,
+  );
 
   bool get hasTurf =>
       surfaces.any((s) => s.contains('turf') || s.contains('grass'));
@@ -335,6 +338,9 @@ class PlanPrice {
   static List<PlanPrice> listFrom(Object? raw) => [
     for (final e in (raw as List<dynamic>? ?? const []))
       if (e is Map && e['priceInr'] is num && e['durationDays'] is num)
-        PlanPrice((e['durationDays'] as num).toInt(), (e['priceInr'] as num).toInt()),
+        PlanPrice(
+          (e['durationDays'] as num).toInt(),
+          (e['priceInr'] as num).toInt(),
+        ),
   ];
 }

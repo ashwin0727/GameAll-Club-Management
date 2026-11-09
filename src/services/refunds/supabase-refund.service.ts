@@ -4,6 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { toBooking } from "@/services/bookings/supabase-booking.service";
 import type {
+  BookingCancellationQuote,
+  BookingCancellationSummary,
+  OfflineRefundDue,
   CancelBookingInput,
   CancelMembershipInput,
   CancelMembershipSlotInput,
@@ -95,11 +98,31 @@ export class SupabaseRefundService implements RefundService {
     this.supabase = client ?? createClient();
   }
 
-  async cancelBooking(input: CancelBookingInput): Promise<{ booking: import("@/features/bookings/types").Booking; refund: RefundSubmission | null }> {
-    const { data, error } = await this.supabase.functions.invoke<{ booking: Database["public"]["Tables"]["bookings"]["Row"]; refund: RefundSubmissionResponse | null } | EdgeFunctionError>(
-      "cancel-booking",
-      { body: { bookingId: input.bookingId, reason: input.reason, refundOverridePercent: input.refundOverridePercent, overrideReason: input.overrideReason } },
-    );
+  async cancelBooking(
+    input: CancelBookingInput,
+  ): Promise<{ booking: import("@/features/bookings/types").Booking; refund: RefundSubmission | null; refunds: RefundSubmission[]; cancellation: BookingCancellationSummary | null }> {
+    const { data, error } = await this.supabase.functions.invoke<
+      | {
+          booking: Database["public"]["Tables"]["bookings"]["Row"];
+          refund: RefundSubmissionResponse | null;
+          refunds?: RefundSubmissionResponse[];
+          cancellation?: {
+            hours_until_start: number;
+            rule: string;
+            deduction_percent: number;
+            refund_percent: number;
+            is_override: boolean;
+            total_minor: number;
+            paid_minor: number;
+            refund_minor: number;
+            online_refund_minor: number;
+            offline_refund_due_minor: number;
+          } | null;
+        }
+      | EdgeFunctionError
+    >("cancel-booking", {
+      body: { bookingId: input.bookingId, reason: input.reason, refundOverridePercent: input.refundOverridePercent, overrideReason: input.overrideReason },
+    });
     if (error) {
       console.error("[refund-service] cancel-booking failed", error);
       throw new ServiceError("PAYMENT_GATEWAY_ERROR");
@@ -107,7 +130,52 @@ export class SupabaseRefundService implements RefundService {
     if (!data || "error" in data) {
       throw new ServiceError("PAYMENT_ORDER_ERROR", data && "error" in data ? data.error : undefined);
     }
-    return { booking: toBooking(data.booking), refund: data.refund ? toSubmission(data.refund) : null };
+    const c = data.cancellation;
+    return {
+      booking: toBooking(data.booking),
+      refund: data.refund ? toSubmission(data.refund) : null,
+      refunds: (data.refunds ?? []).map(toSubmission),
+      cancellation: c
+        ? {
+            hoursUntilStart: Number(c.hours_until_start),
+            rule: c.rule,
+            deductionPercent: c.deduction_percent,
+            refundPercent: c.refund_percent,
+            isOverride: c.is_override,
+            totalMinor: c.total_minor,
+            paidMinor: c.paid_minor,
+            refundMinor: c.refund_minor,
+            onlineRefundMinor: c.online_refund_minor,
+            offlineRefundDueMinor: c.offline_refund_due_minor,
+          }
+        : null,
+    };
+  }
+
+  async listOfflineRefundsDue(facilityId: string): Promise<OfflineRefundDue[]> {
+    const { data, error } = await this.supabase.rpc("list_offline_refunds_due" as never, { p_facility_id: facilityId } as never);
+    if (error) {
+      console.error("[refund-service] list_offline_refunds_due failed", error);
+      return [];
+    }
+    return (data as unknown as OfflineRefundDue[] | null) ?? [];
+  }
+
+  async settleOfflineRefund(bookingId: string): Promise<void> {
+    const { error } = await this.supabase.rpc("settle_offline_refund" as never, { p_booking_id: bookingId } as never);
+    if (error) throw new ServiceError("DATABASE_ERROR", error.message);
+  }
+
+  async bookingCancellationQuote(bookingId: string, overridePercent?: number): Promise<BookingCancellationQuote | null> {
+    const { data, error } = await this.supabase.rpc("staff_booking_cancellation_quote" as never, {
+      p_booking_id: bookingId,
+      p_override_percent: overridePercent ?? null,
+    } as never);
+    if (error || !data) {
+      if (error) console.error("[refund-service] staff_booking_cancellation_quote failed", error);
+      return null;
+    }
+    return data as unknown as BookingCancellationQuote;
   }
 
   async cancelMembershipSlot(input: CancelMembershipSlotInput): Promise<{ refund: RefundSubmission | null }> {

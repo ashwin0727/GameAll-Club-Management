@@ -276,46 +276,53 @@ class _MyCoachingPageState extends ConsumerState<MyCoachingPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My Coaching',
-                        key: const ValueKey('mc-title'),
-                        style: AppTextStyles.desktopHeroHeading(p.primaryText)
-                            .copyWith(fontSize: wide ? 34 : 26),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'View your enrolled coaching program, schedule, attendance and progress.',
-                        style: AppTextStyles.body(p.secondaryText),
-                      ),
-                    ],
+            () {
+              final heading = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My Coaching',
+                    key: const ValueKey('mc-title'),
+                    style: AppTextStyles.desktopHeroHeading(p.primaryText)
+                        .copyWith(fontSize: wide ? 34 : 26),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'View your enrolled coaching program, schedule, attendance and progress.',
+                    style: AppTextStyles.body(p.secondaryText),
+                  ),
+                ],
+              );
+              final browse = Pressable(
+                key: const ValueKey('mc-browse'),
+                onTap: () => widget.onNavigate(AppRoutes.coaching),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: wide ? 8 : 0,
+                    vertical: 6,
+                  ),
+                  child: Text(
+                    'Browse coaching',
+                    style: AppTextStyles.meta(p.highlight)
+                        .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
                   ),
                 ),
-                Pressable(
-                  key: const ValueKey('mc-browse'),
-                  onTap: () => widget.onNavigate(AppRoutes.coaching),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      'Browse coaching',
-                      style: AppTextStyles.meta(
-                        p.highlight,
-                      ).copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              );
+              // a phone: the heading has the whole line, the link sits under it
+              return wide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(child: heading),
+                        browse,
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [heading, browse],
+                    );
+            }(),
             const SizedBox(height: 18),
             body,
           ],

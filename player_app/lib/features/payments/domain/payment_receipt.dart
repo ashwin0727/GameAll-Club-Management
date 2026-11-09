@@ -37,10 +37,13 @@ class PaymentReceipt {
   });
 
   factory PaymentReceipt.fromJson(Map<String, dynamic> j) {
-    final venue = j['venue'] is Map ? (j['venue'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    final venue = j['venue'] is Map
+        ? (j['venue'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
     final area = _clean(venue['area'] as String?);
     final city = _clean(venue['city'] as String?);
-    final showArea = area != null && area.toLowerCase() != (city ?? '').toLowerCase();
+    final showArea =
+        area != null && area.toLowerCase() != (city ?? '').toLowerCase();
     return PaymentReceipt(
       kind: switch (j['kind']) {
         'coaching' => PaymentKind.coaching,
@@ -64,9 +67,13 @@ class PaymentReceipt {
       receiptNo: (j['receiptNo'] as String?) ?? '',
       method: _clean(j['method'] as String?),
       reference: _clean(j['reference'] as String?),
-      paidAt: j['paidAt'] is String ? DateTime.tryParse(j['paidAt'] as String)?.toLocal() : null,
+      paidAt: j['paidAt'] is String
+          ? DateTime.tryParse(j['paidAt'] as String)?.toLocal()
+          : null,
       autopay: j['autopay'] == true,
-      details: j['details'] is Map ? (j['details'] as Map).cast<String, dynamic>() : const {},
+      details: j['details'] is Map
+          ? (j['details'] as Map).cast<String, dynamic>()
+          : const {},
     );
   }
 
@@ -105,7 +112,9 @@ class PaymentReceipt {
     return v is String ? DateTime.tryParse(v)?.toLocal() : null;
   }
 
-  Map<String, dynamic>? map(String key) => details[key] is Map ? (details[key] as Map).cast<String, dynamic>() : null;
+  Map<String, dynamic>? map(String key) => details[key] is Map
+      ? (details[key] as Map).cast<String, dynamic>()
+      : null;
 
   /// "Online (UPI)", "UPI AutoPay"… or null.
   String? get methodLabel {

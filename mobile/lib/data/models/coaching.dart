@@ -80,24 +80,30 @@ enum EnrollmentStatus {
   active,
   paused,
   completed,
-  cancelled;
+  cancelled,
+
+  /// A Player-app enrolment waiting for its payment: no seat, not on the roster ("Payment Incomplete").
+  pendingPayment;
 
   static EnrollmentStatus fromJson(String? v) => switch (v) {
         'PAUSED' => EnrollmentStatus.paused,
         'COMPLETED' => EnrollmentStatus.completed,
         'CANCELLED' => EnrollmentStatus.cancelled,
+        'PENDING_PAYMENT' => EnrollmentStatus.pendingPayment,
         _ => EnrollmentStatus.active,
       };
   String toJson() => switch (this) {
         EnrollmentStatus.paused => 'PAUSED',
         EnrollmentStatus.completed => 'COMPLETED',
         EnrollmentStatus.cancelled => 'CANCELLED',
+        EnrollmentStatus.pendingPayment => 'PENDING_PAYMENT',
         EnrollmentStatus.active => 'ACTIVE',
       };
   String get label => switch (this) {
         EnrollmentStatus.paused => 'Paused',
         EnrollmentStatus.completed => 'Completed',
         EnrollmentStatus.cancelled => 'Cancelled',
+        EnrollmentStatus.pendingPayment => 'Payment Incomplete',
         EnrollmentStatus.active => 'Active',
       };
 }
@@ -653,7 +659,11 @@ class ProgramBatch {
   /// Only present on list_coaching_program_batches, not on get_coaching_program's embedded batches.
   final int? enrolledCount;
 
-  bool get isFull => enrolledCount != null && enrolledCount! >= capacity;
+  /// A batch never refuses a student; the count just grows past the capacity.
+  bool get isFull => false;
+
+  /// "11/11": the capacity follows the count once more students than seats have joined.
+  int get shownCapacity => (enrolledCount ?? 0) > capacity ? enrolledCount! : capacity;
 
   static String _hhmm(dynamic v) {
     final t = (v as String?) ?? '';

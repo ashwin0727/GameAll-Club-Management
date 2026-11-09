@@ -9,6 +9,7 @@ import { formatClock } from "@/features/bookings/components/booking-event-style"
 import { formatCurrency, fromMinorUnits, toMinorUnits } from "@/features/pricing/money";
 import type { Booking } from "@/features/bookings/types";
 import { TYPE_LABEL, type BookingRow } from "@/features/bookings/list-utils";
+import { CancelQuotePanel, cancelledNote, type CancelDecision } from "@/features/bookings/components/cancel-quote-panel";
 import { getBookingService } from "@/services/bookings";
 import { getRefundService } from "@/services/refunds";
 import { ServiceError } from "@/services/shared/service-error";
@@ -78,22 +79,24 @@ export function CancelBookingDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const paid = booking.paymentStatus === "PAID";
+  const [decision, setDecision] = useState<CancelDecision>({ overridePercent: null, overrideReason: "", ready: false });
 
   async function confirm() {
     setBusy(true);
     setError(null);
     try {
-      const { refund } = await getRefundService().cancelBooking({
+      const { refund, cancellation } = await getRefundService().cancelBooking({
         bookingId: booking.id,
         reason: reason.trim() || "Owner Request",
+        refundOverridePercent: decision.overridePercent ?? undefined,
+        overrideReason: decision.overridePercent != null ? decision.overrideReason : undefined,
       });
       onDone();
-      if (refund) {
+      if (refund || (cancellation && cancellation.paidMinor > 0)) {
         setNote(
-          refund.status === "FAILED"
+          refund?.status === "FAILED"
             ? "The booking was cancelled, but the refund could not be submitted. Please retry from Refunds."
-            : "Booking cancelled. A refund was requested and will show as processed once it is confirmed.",
+            : cancelledNote(cancellation, booking.currency),
         );
         setBusy(false);
       } else {
@@ -108,11 +111,7 @@ export function CancelBookingDialog({
   return (
     <DialogShell
       title="Cancel Booking"
-      description={
-        paid
-          ? "This booking is paid. Cancelling it requests a refund according to your cancellation policy."
-          : "The court is released for other bookings. This can't be undone."
-      }
+      description="The court is released for other bookings. This can't be undone."
       onClose={onClose}
       footer={
         note ? (
@@ -124,7 +123,7 @@ export function CancelBookingDialog({
             <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
               Keep Booking
             </Button>
-            <Button type="button" variant="destructive" onClick={confirm} disabled={busy}>
+            <Button type="button" variant="destructive" onClick={confirm} disabled={busy || !decision.ready}>
               {busy ? "Cancelling…" : "Cancel booking"}
             </Button>
           </>
@@ -134,19 +133,22 @@ export function CancelBookingDialog({
       {note ? (
         <p className="text-sm text-muted-foreground">{note}</p>
       ) : (
-        <div className="space-y-2">
-          <label className="text-xs text-muted-foreground" htmlFor="cancel-reason">
-            Reason (optional)
-          </label>
-          <textarea
-            id="cancel-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            maxLength={300}
-            placeholder="e.g. Customer asked to cancel"
-            className="w-full rounded-[8px] border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-foreground/40"
-          />
+        <div className="space-y-3">
+          <CancelQuotePanel bookingId={booking.id} currency={booking.currency} onChange={setDecision} />
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground" htmlFor="cancel-reason">
+              Reason (optional)
+            </label>
+            <textarea
+              id="cancel-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              maxLength={300}
+              placeholder="e.g. Customer asked to cancel"
+              className="w-full rounded-[8px] border border-input bg-card px-3 py-2 text-sm outline-none focus-visible:border-foreground/40"
+            />
+          </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}

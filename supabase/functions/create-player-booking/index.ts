@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Bookings are temporarily unavailable. Please try again later." }, 500);
   }
 
-  let body: { facilityId?: string; courtId?: string; startTime?: string; endTime?: string; partySize?: number };
+  let body: { facilityId?: string; courtId?: string; startTime?: string; endTime?: string; partySize?: number; paymentOption?: string };
   try {
     body = await req.json();
   } catch {
@@ -96,11 +96,13 @@ Deno.serve(async (req) => {
     p_purpose: null,
     p_notes: null,
     p_party_size: Math.max(1, Math.min(body.partySize ?? 1, 50)),
+    // "ADVANCE" (pay 50% now) or "FULL"; the database refuses anything else (migration 0188)
+    p_payment_option: body.paymentOption ?? null,
   });
   if (error) {
     const message = error.message ?? "";
     if (message.toLowerCase().includes("no longer available")) return jsonResponse({ error: message, code: "SLOT_UNAVAILABLE" }, 409);
-    if (message.startsWith("Please ") || message.startsWith("We could not") || message.startsWith("You have unpaid") || message.startsWith("That time has")) {
+    if (message.startsWith("Choose ") || message.startsWith("Please ") || message.startsWith("We could not") || message.startsWith("You have unpaid") || message.startsWith("That time has")) {
       return jsonResponse({ error: message }, 400);
     }
     console.error("[create-player-booking] public_create_guest_booking failed", { code: error.code, message });

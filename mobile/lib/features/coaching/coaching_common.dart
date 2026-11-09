@@ -42,6 +42,7 @@ StatusTone enrollmentTone(EnrollmentStatus s) => switch (s) {
       EnrollmentStatus.paused => StatusTone.warning,
       EnrollmentStatus.completed => StatusTone.info,
       EnrollmentStatus.cancelled => StatusTone.danger,
+      EnrollmentStatus.pendingPayment => StatusTone.warning,
     };
 
 StatusTone paymentTone(EnrollmentPaymentStatus s) => switch (s) {

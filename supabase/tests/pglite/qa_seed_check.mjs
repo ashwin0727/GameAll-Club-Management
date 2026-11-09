@@ -256,6 +256,29 @@ try { const anon = (await q(`select get_my_coaching_details() j`))[0].j; check("
   try { const none = (await q(`select get_my_guest_bookings() j`))[0].j; check("guest bookings: nobody signed in sees none", none.upcoming.length === 0 && none.completed.length === 0 && none.cancelled.length === 0); } catch (e) { failed.push("guest anon: " + e.message.split("\n")[0]); }
 }
 
+// ── scale and protection (0185) ──
+{
+  const idx = (await q(`select indexname from pg_indexes where indexname in ('members_phone_norm_idx','guest_players_phone_norm_idx','bookings_guest_phone_norm_idx','bookings_guest_player_start_idx','coaching_sessions_batch_start_idx')`)).map((r) => r.indexname);
+  check("0185: the phone-lookup indexes exist", idx.length === 5, idx.join(","));
+  const cfg = await q(`select p.proname, p.proconfig from pg_proc p where p.proname in ('get_player_dashboard','get_my_membership_details','get_my_coaching_details','get_my_guest_bookings','get_my_payment_receipt','list_public_venue_cards')`);
+  const missing = cfg.filter((r) => !(r.proconfig ?? []).some((c) => c.startsWith("statement_timeout="))).map((r) => r.proname);
+  check("0185: player and public read functions have a statement_timeout", missing.length === 0, "missing: " + missing.join(","));
+  // the limiter: allows the limit, refuses the next, separate buckets are independent
+  const ok = [];
+  for (let i = 0; i < 4; i++) ok.push((await q(`select check_rate_limit('t:a', 3, 60) ok`))[0].ok);
+  check("0185: rate limiter allows 3 then refuses", JSON.stringify(ok) === "[true,true,true,false]", JSON.stringify(ok));
+  check("0185: another bucket is unaffected", (await q(`select check_rate_limit('t:b', 3, 60) ok`))[0].ok === true);
+  let bad = false;
+  try { await q(`select check_rate_limit('', 3, 60)`); } catch { bad = true; }
+  check("0185: an empty bucket is refused", bad);
+  // nobody but the service role may call it
+  const grants = await q(`select has_function_privilege('anon','check_rate_limit(text,integer,integer)','execute') a, has_function_privilege('authenticated','check_rate_limit(text,integer,integer)','execute') u, has_function_privilege('service_role','check_rate_limit(text,integer,integer)','execute') s`);
+  check("0185: check_rate_limit is for the service role only", grants[0].a === false && grants[0].u === false && grants[0].s === true, JSON.stringify(grants[0]));
+  // the player RPCs are not open to anonymous callers
+  const anonOpen = await q(`select p.oid::regprocedure::text sig from pg_proc p where p.proname in ('get_my_membership_details','get_my_coaching_details','get_my_guest_bookings','get_my_payment_receipt') and has_function_privilege('anon', p.oid, 'execute')`);
+  check("0185: player RPCs cannot be called by anon", anonOpen.length === 0, JSON.stringify(anonOpen));
+}
+
 // ── Payment receipt (get_my_payment_receipt): the payment progress → success page ──
 {
   await q(`select set_config('request.jwt.claim.sub', $1, false)`, [player]);

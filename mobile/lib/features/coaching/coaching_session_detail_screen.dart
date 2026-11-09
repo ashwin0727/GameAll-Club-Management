@@ -119,7 +119,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _kv('Program', '${s.programName} (${s.programLevel})'),
-                _kv('Capacity', '${s.enrolledCount} / ${s.capacity}'),
+                _kv('Capacity', '${s.enrolledCount} / ${s.enrolledCount > s.capacity ? s.enrolledCount : s.capacity}'),
                 if (s.objective != null && s.objective!.isNotEmpty) _kv('Objective', s.objective!),
               ],
             ),
@@ -166,7 +166,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
       Row(
         children: [
           Expanded(
-            child: Text('Students (${s.enrolledCount}/${s.capacity})', style: Theme.of(context).textTheme.titleSmall),
+            child: Text('Students (${s.enrolledCount}/${s.enrolledCount > s.capacity ? s.enrolledCount : s.capacity})', style: Theme.of(context).textTheme.titleSmall),
           ),
           if (canEdit && live && s.enrolledCount < s.capacity)
             TextButton(onPressed: () => _addStudent(s), child: const Text('Add')),

@@ -19,6 +19,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { allowed } from "../_shared/rate-limit.ts";
 import { toRazorpayContact } from "../_shared/coaching-billing.ts";
 import { linkDescription, linkExpiryUnix, reusableLink } from "../_shared/booking-payment-link.ts";
 
@@ -130,6 +131,11 @@ Deno.serve(async (req) => {
 
   // 2 · from here on the club's payment tables are used, with the service role
   const admin = createClient(supabaseUrl, serviceKey);
+
+  // a payment link is made once; asking for it again and again is a client stuck in a loop, not a player
+  if (!(await allowed(admin, `paylink:${ctx.bookingId}`, 8, 60))) {
+    return jsonResponse({ error: "Too many requests. Please wait a moment and try again." }, 429);
+  }
 
   // The advance of a confirmed booking is paid and part of the amount is still owed: this is the BALANCE (migration 0182), asked for
   // from the Home page as the booking runs out. Otherwise an advance (or the full amount) already received is never asked for twice.

@@ -80,7 +80,9 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   /// Whether the payment this page waits for is in: the whole amount for a balance payment, otherwise what the receipt says.
   bool _paidNow(PaymentReceipt? r) {
     if (r == null) return false;
-    return widget.job.balance ? (r.totalInr > 0 && r.paidInr >= r.totalInr) : r.isPaid;
+    return widget.job.balance
+        ? (r.totalInr > 0 && r.paidInr >= r.totalInr)
+        : r.isPaid;
   }
 
   Future<void> _run() async {
@@ -133,8 +135,28 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
       _waitingSince = DateTime.now();
       _message = null;
     });
+    _scheduleNext();
+  }
+
+  /// How long to wait before the next check. The first two minutes use [PaymentProgressPage.pollEvery]; after that the player has
+  /// plainly stepped away, so the checks thin out (3x, then 6x as slow) instead of asking the server every few seconds for ten minutes.
+  /// "I've paid — check now" and coming back to the app still check at once.
+  Duration _nextDelay() {
+    final since = _waitingSince;
+    final waited = since == null
+        ? Duration.zero
+        : DateTime.now().difference(since);
+    if (waited < const Duration(minutes: 2)) return widget.pollEvery;
+    if (waited < const Duration(minutes: 5)) return widget.pollEvery * 3;
+    return widget.pollEvery * 6;
+  }
+
+  void _scheduleNext() {
     _timer?.cancel();
-    _timer = Timer.periodic(widget.pollEvery, (_) => _check());
+    _timer = Timer(_nextDelay(), () async {
+      await _check();
+      if (mounted && !_done && _stage == _Stage.waiting) _scheduleNext();
+    });
   }
 
   Future<void> _check({bool manual = false}) async {
@@ -195,7 +217,11 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
     final p = context.palette;
     final failed = _stage == _Stage.error || _stage == _Stage.timedOut;
     final r = _receipt;
-    final amount = (r != null && r.totalInr > 0) ? (widget.job.balance ? (r.totalInr - r.paidInr).clamp(0, r.totalInr) : r.totalInr) : null;
+    final amount = (r != null && r.totalInr > 0)
+        ? (widget.job.balance
+              ? (r.totalInr - r.paidInr).clamp(0, r.totalInr)
+              : r.totalInr)
+        : null;
 
     Widget step(String label, _StepState s, {Key? key}) {
       final color = switch (s) {

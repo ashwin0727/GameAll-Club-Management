@@ -144,7 +144,7 @@ export function SchedulePage() {
                           </span>
                           <span className="mt-0.5 block font-medium">{s.programName}</span>
                           <span className="block text-muted-foreground">
-                            {s.coachName} · {s.courtName} · {s.enrolledCount}/{s.capacity}
+                            {s.coachName} · {s.courtName} · {s.enrolledCount}/{Math.max(s.capacity, s.enrolledCount)}
                           </span>
                         </Link>
                       </li>

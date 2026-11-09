@@ -16,7 +16,8 @@ export type ProgramPaymentMode = "OFFLINE" | "ONLINE" | "BOTH";
  *  For MONTHLY, the program's price is the fee PER MONTH. */
 export type ProgramFeeType = "ONE_TIME" | "MONTHLY";
 export type SessionStatus = "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-export type EnrollmentStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
+/** PENDING_PAYMENT = a Player-app enrolment waiting for its payment: no seat, not on the roster (shown as "Payment Incomplete"). */
+export type EnrollmentStatus = "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | "PENDING_PAYMENT";
 export type EnrollmentPaymentStatus = "INCLUDED" | "PAID" | "PARTIAL" | "PENDING";
 export type PricingType = "STANDARD" | "CUSTOM" | "MEMBERSHIP_INCLUDED";
 export type ProgressStatus = "ON_TRACK" | "NEEDS_WORK" | "EXCELLING" | "AT_RISK";

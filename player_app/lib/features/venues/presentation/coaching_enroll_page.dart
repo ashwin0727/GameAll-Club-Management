@@ -140,7 +140,6 @@ class _CoachingEnrollPageState extends ConsumerState<CoachingEnrollPage>
 
   void _choose(CoachingOffer o) => setState(() => _offerKey = o.key);
 
-
   Future<void> _pay(CoachingInfo info, CoachingOffer o) async {
     if (ref.read(currentPlayerProvider) == null) {
       widget.onNavigate(AppRoutes.login);
@@ -336,10 +335,11 @@ class _CoachingEnrollPageState extends ConsumerState<CoachingEnrollPage>
     if (_sportId == null && sports.isNotEmpty) {
       // the sport chosen on the venue's card, else the first
       final want = ref.read(preferredSportProvider)?.trim().toLowerCase();
-      _sportId = sports
-          .where((s) => s.name.trim().toLowerCase() == want)
-          .firstOrNull
-          ?.id ??
+      _sportId =
+          sports
+              .where((s) => s.name.trim().toLowerCase() == want)
+              .firstOrNull
+              ?.id ??
           sports.first.id;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.read(preferredSportProvider.notifier).set(null);
@@ -1171,7 +1171,7 @@ class _OfferCard extends StatelessWidget {
                 Icons.calendar_today_outlined,
                 '${b.daysLabel} · ${b.slot.label}',
               ),
-            if (b != null && !b.full && b.capacity > 0 && b.seatsLeft <= 3)
+            if (b != null && b.capacity > 0 && b.seatsLeft > 0 && b.seatsLeft <= 3)
               _Meta(
                 Icons.event_seat_outlined,
                 '${b.seatsLeft} ${b.seatsLeft == 1 ? 'seat' : 'seats'} left',
@@ -1607,30 +1607,35 @@ class _SummaryPanel extends StatelessWidget {
     final pr = offer?.program;
     final coach = offer?.batch?.coach;
 
-    Widget row(IconData icon, String label, String value, {Key? key, Widget? leading}) =>
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            children: [
-              leading ?? Icon(icon, size: 20, color: p.primaryText),
-              const SizedBox(width: 12),
-              Flexible(
-                flex: 0,
-                child: Text(label, style: AppTextStyles.body(p.primaryText)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  value,
-                  key: key,
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.body(p.primaryText)
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+    Widget row(
+      IconData icon,
+      String label,
+      String value, {
+      Key? key,
+      Widget? leading,
+    }) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        children: [
+          leading ?? Icon(icon, size: 20, color: p.primaryText),
+          const SizedBox(width: 12),
+          Flexible(
+            flex: 0,
+            child: Text(label, style: AppTextStyles.body(p.primaryText)),
           ),
-        );
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              key: key,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.body(p.primaryText)
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
     Widget money(
       String label,
       String value, {

@@ -148,67 +148,69 @@ class _HomePromoCarouselState extends State<HomePromoCarousel>
     return Semantics(
       container: true,
       label: 'Promotions',
-      child: ClipRRect(
-        borderRadius: AppDimensions.cardBorderRadius,
-        child: Container(
-          height: widget.height,
-          decoration: BoxDecoration(
-            border: Border.all(color: p.border),
-            borderRadius: AppDimensions.cardBorderRadius,
-            color: AppColors.darkSecondary,
-          ),
-          child: Stack(
-            children: [
-              // A finger on the card pauses the rotation; lifting it resumes.
-              Listener(
-                onPointerDown: (_) {
-                  _pointers++;
-                  _stopTimer();
+      // The card clips its own content to its rounded shape (inside the border) and the border is painted over the top, so the
+      // photo and the dark overlay reach every corner with no gap.
+      child: Container(
+        height: widget.height,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: AppDimensions.cardBorderRadius,
+          color: AppColors.darkSecondary,
+        ),
+        foregroundDecoration: BoxDecoration(
+          border: Border.all(color: p.border),
+          borderRadius: AppDimensions.cardBorderRadius,
+        ),
+        child: Stack(
+          children: [
+            // A finger on the card pauses the rotation; lifting it resumes.
+            Listener(
+              onPointerDown: (_) {
+                _pointers++;
+                _stopTimer();
+              },
+              onPointerUp: (_) => _released(),
+              onPointerCancel: (_) => _released(),
+              child: PageView.builder(
+                key: const ValueKey('promo-pages'),
+                controller: _controller,
+                onPageChanged: (i) => setState(() => _page = i % slides.length),
+                itemBuilder: (context, i) {
+                  final slide = slides[i % slides.length];
+                  return _PromoCard(
+                    slide: slide,
+                    onTap: () => widget.onNavigate(slide.route),
+                  );
                 },
-                onPointerUp: (_) => _released(),
-                onPointerCancel: (_) => _released(),
-                child: PageView.builder(
-                  key: const ValueKey('promo-pages'),
-                  controller: _controller,
-                  onPageChanged: (i) =>
-                      setState(() => _page = i % slides.length),
-                  itemBuilder: (context, i) {
-                    final slide = slides[i % slides.length];
-                    return _PromoCard(
-                      slide: slide,
-                      onTap: () => widget.onNavigate(slide.route),
-                    );
-                  },
-                ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 10,
-                child: IgnorePointer(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var i = 0; i < slides.length; i++)
-                        AnimatedContainer(
-                          key: ValueKey('promo-dot-$i'),
-                          duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: i == _page ? 18 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(3),
-                            color: i == _page
-                                ? AppColors.cyan
-                                : Colors.white.withValues(alpha: 0.35),
-                          ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 10,
+              child: IgnorePointer(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < slides.length; i++)
+                      AnimatedContainer(
+                        key: ValueKey('promo-dot-$i'),
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: i == _page ? 18 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3),
+                          color: i == _page
+                              ? AppColors.cyan
+                              : Colors.white.withValues(alpha: 0.35),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

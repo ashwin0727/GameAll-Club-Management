@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/resilient.dart';
 import '../domain/membership_detail.dart';
 
 /// Where the Membership Details page gets its data. The Supabase version is the real one; tests supply a fake.
@@ -23,7 +24,9 @@ class SupabaseMembershipDetailRepository implements MembershipDetailRepository {
     final client = _client;
     if (client == null) return const [];
     try {
-      final result = await client.rpc('get_my_membership_details');
+      final result = await retryTransient(
+        () => client.rpc('get_my_membership_details'),
+      );
       return [
         for (final e in (result as List<dynamic>? ?? const []))
           if (e is Map) MembershipDetail.fromJson(e.cast<String, dynamic>()),

@@ -8,6 +8,7 @@ import { getRefundService } from "@/services/refunds";
 import { getOperatingHoursService } from "@/services/operating-hours";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { formatCurrency } from "@/features/pricing/money";
+import { CancelQuotePanel, cancelledNote, type CancelDecision } from "@/features/bookings/components/cancel-quote-panel";
 import type { Booking, TimeSlot } from "@/features/bookings/types";
 import type { PlayingArea } from "@/features/courts-setup/types";
 import { ServiceError } from "@/services/shared/service-error";
@@ -38,9 +39,10 @@ export function BookingDetailsDialog({
   facilityId: string;
   onChanged: (booking: Booking) => void;
   /** Which screen to open on. The bookings list menu opens Reschedule directly. */
-  initialMode?: "view" | "reschedule";
+  initialMode?: "view" | "reschedule" | "cancel";
 }) {
-  const [mode, setMode] = useState<"view" | "reschedule">(initialMode);
+  const [mode, setMode] = useState<"view" | "reschedule" | "cancel">(initialMode);
+  const [decision, setDecision] = useState<CancelDecision>({ overridePercent: null, overrideReason: "", ready: false });
   useEffect(() => {
     if (open) setMode(initialMode);
   }, [open, initialMode]);
@@ -138,13 +140,19 @@ export function BookingDetailsDialog({
       // releases court availability, and — if the booking was paid — requests
       // and submits a cancellation-policy-derived refund, all in one call
       // (spec §8/§13). Never a plain client-side status update anymore.
-      const { booking: cancelled, refund } = await getRefundService().cancelBooking({ bookingId: booking!.id, reason: "Owner Request" });
+      const { booking: cancelled, refund, cancellation } = await getRefundService().cancelBooking({
+        bookingId: booking!.id,
+        reason: "Owner Request",
+        refundOverridePercent: decision.overridePercent ?? undefined,
+        overrideReason: decision.overridePercent != null ? decision.overrideReason : undefined,
+      });
       onChanged(cancelled);
-      if (refund) {
+      if (refund || (cancellation && cancellation.paidMinor > 0)) {
+        setMode("view");
         setCancelRefundNote(
-          refund.status === "FAILED"
+          refund?.status === "FAILED"
             ? "The booking was cancelled, but the refund could not be submitted. Please retry from Refunds."
-            : "Refund requested — it will show as processed once Razorpay confirms it.",
+            : cancelledNote(cancellation, booking!.currency),
         );
       } else {
         onOpenChange(false);
@@ -205,7 +213,7 @@ export function BookingDetailsDialog({
                 bookingId={booking.id}
                 guestName={booking.guestName ?? ""}
                 guestPhone={booking.guestPhone}
-                advance={needsAdvance(booking.startTime, booking.endTime)}
+                advance={booking.paymentOption ? booking.paymentOption === "ADVANCE" : needsAdvance(booking.startTime, booking.endTime)}
                 description={`${sportName} · ${court?.name ?? "Court"} · ${new Date(booking.startTime).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`}
                 onPaid={() => onChanged({ ...booking, status: "confirmed", paymentStatus: "PAID" })}
               />
@@ -225,6 +233,11 @@ export function BookingDetailsDialog({
               />
             )}
             {cancelRefundNote && <p className="text-muted-foreground">{cancelRefundNote}</p>}
+            {error && <p className="text-destructive">{error}</p>}
+          </div>
+        ) : mode === "cancel" ? (
+          <div className="space-y-3 text-sm">
+            <CancelQuotePanel bookingId={booking.id} currency={booking.currency} onChange={setDecision} />
             {error && <p className="text-destructive">{error}</p>}
           </div>
         ) : (
@@ -280,11 +293,20 @@ export function BookingDetailsDialog({
                 <Button type="button" variant="outline" onClick={() => setMode("reschedule")} disabled={isWorking || isPaying}>
                   Reschedule
                 </Button>
-                <Button type="button" variant="destructive" onClick={cancel} disabled={isWorking || isPaying}>
-                  {isWorking ? "Cancelling…" : "Cancel Booking"}
+                <Button type="button" variant="destructive" onClick={() => { setError(null); setMode("cancel"); }} disabled={isWorking || isPaying}>
+                  Cancel Booking
                 </Button>
               </>
             )
+          ) : mode === "cancel" ? (
+            <>
+              <Button type="button" variant="ghost" onClick={() => setMode("view")} disabled={isWorking}>
+                Keep Booking
+              </Button>
+              <Button type="button" variant="destructive" onClick={cancel} disabled={isWorking || !decision.ready}>
+                {isWorking ? "Cancelling…" : "Cancel Booking"}
+              </Button>
+            </>
           ) : (
             <>
               <Button type="button" variant="ghost" onClick={() => setMode("view")} disabled={isWorking}>

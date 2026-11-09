@@ -1364,7 +1364,6 @@ class _OfferList extends ConsumerWidget {
   }
 }
 
-
 /// The venue's own page content without its action buttons (Book a Court / Memberships / Coaching): the photos, name with the verified
 /// tick, place, sport chips, description, the courts / hours / players / facilities stats and (on a phone) the location card. The
 /// Guest Booking page shows it above the booking steps, so the player sees the same venue they just opened.
@@ -1429,9 +1428,8 @@ class VenueOverview extends ConsumerWidget {
                       Text(
                         venue.description!,
                         key: const ValueKey('venue-description'),
-                        style: AppTextStyles.body(
-                          p.secondaryText,
-                        ).copyWith(fontSize: 16, height: 1.5),
+                        style: AppTextStyles.body(p.secondaryText)
+                            .copyWith(fontSize: 16, height: 1.5),
                       ),
                     ],
                   ],
@@ -1505,9 +1503,8 @@ class VenueOverview extends ConsumerWidget {
                       ),
                       child: Text(
                         'View All',
-                        style: AppTextStyles.button(
-                          p.primaryText,
-                        ).copyWith(fontSize: 13),
+                        style: AppTextStyles.button(p.primaryText)
+                            .copyWith(fontSize: 13),
                       ),
                     ),
                   ),
@@ -1537,9 +1534,8 @@ class VenueOverview extends ConsumerWidget {
         Text(
           venue.name,
           key: const ValueKey('venue-title'),
-          style: AppTextStyles.desktopHeroHeading(
-            p.primaryText,
-          ).copyWith(fontSize: 30, height: 1.1),
+          style: AppTextStyles.desktopHeroHeading(p.primaryText)
+              .copyWith(fontSize: 30, height: 1.1),
         ),
         const SizedBox(height: 8),
         Align(alignment: Alignment.centerLeft, child: _Place(venue.place)),
@@ -1556,9 +1552,8 @@ class VenueOverview extends ConsumerWidget {
         const SizedBox(height: 22),
         Text(
           'At a Glance',
-          style: AppTextStyles.sectionHeading(
-            p.primaryText,
-          ).copyWith(fontSize: 18),
+          style: AppTextStyles.sectionHeading(p.primaryText)
+              .copyWith(fontSize: 18),
         ),
         const SizedBox(height: 14),
         Row(
@@ -1599,9 +1594,8 @@ class VenueOverview extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'Facilities',
-                  style: AppTextStyles.sectionHeading(
-                    p.primaryText,
-                  ).copyWith(fontSize: 18),
+                  style: AppTextStyles.sectionHeading(p.primaryText)
+                      .copyWith(fontSize: 18),
                 ),
               ),
               Pressable(
@@ -1632,9 +1626,8 @@ class VenueOverview extends ConsumerWidget {
                         a,
                         textAlign: TextAlign.center,
                         maxLines: 2,
-                        style: AppTextStyles.meta(
-                          p.secondaryText,
-                        ).copyWith(fontSize: 11.5),
+                        style: AppTextStyles.meta(p.secondaryText)
+                            .copyWith(fontSize: 11.5),
                       ),
                     ],
                   ),

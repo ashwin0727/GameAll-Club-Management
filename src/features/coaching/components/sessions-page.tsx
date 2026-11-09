@@ -143,7 +143,7 @@ export function SessionsPage() {
                     <TableCell className="text-muted-foreground">{s.coachName}</TableCell>
                     <TableCell className="text-muted-foreground">{s.courtName}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {s.enrolledCount} / {s.capacity}
+                      {s.enrolledCount} / {Math.max(s.capacity, s.enrolledCount)}
                     </TableCell>
                     <TableCell>{sessionStatusBadge(s.status)}</TableCell>
                   </TableRow>

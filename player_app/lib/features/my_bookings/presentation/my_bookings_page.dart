@@ -21,7 +21,10 @@ import '../../player_home/domain/player_dashboard_models.dart'
     show PendingPayment, PendingPaymentKind;
 import '../../venues/domain/venue.dart' show rupees;
 import '../application/guest_bookings_providers.dart';
+import '../domain/cancellation_quote.dart';
 import '../domain/guest_booking.dart';
+import '../data/guest_bookings_repository.dart' show CancelException;
+import 'cancel_booking_dialog.dart';
 
 enum _Tab { upcoming, completed, cancelled }
 
@@ -393,7 +396,7 @@ class _MyBookingsPageState extends ConsumerState<MyBookingsPage>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             header,
-            if (!wide) ...[const SizedBox(height: 14), bookButton],
+
             const SizedBox(height: 18),
             Reveal(child: body),
           ],
@@ -831,10 +834,14 @@ class BookingDetailsPanel extends ConsumerStatefulWidget {
     super.key,
     required this.booking,
     required this.onNavigate,
+    this.onCancelled,
   });
 
   final GuestBooking booking;
   final void Function(String route) onNavigate;
+
+  /// Called after the booking was cancelled (a phone page closes itself).
+  final VoidCallback? onCancelled;
 
   @override
   ConsumerState<BookingDetailsPanel> createState() =>
@@ -849,7 +856,41 @@ class _BookingDetailsPanelState extends ConsumerState<BookingDetailsPanel> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  /// Rescheduling and cancelling (and any refund) are the club's to decide, so the player is pointed to them.
+  /// Cancelling: shows the player what it would cost (hours left, % deducted, refund) first, then cancels and refunds through Razorpay.
+  Future<void> _cancel() async {
+    final b = widget.booking;
+    final repo = ref.read(guestBookingsRepositoryProvider);
+    setState(() => _busy = true);
+    CancellationQuote? quote;
+    try {
+      quote = await repo.cancellationQuote(b.id);
+    } on CancelException catch (e) {
+      _say(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    if (quote == null) {
+      _say("We couldn't work out the refund just now. Please try again.");
+      return;
+    }
+    final yes = await showCancelBookingDialog(context, booking: b, quote: quote);
+    if (!yes || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final done = await repo.cancel(b.id);
+      ref.invalidate(myGuestBookingsProvider);
+      ref.invalidate(playerHomeProvider);
+      _say(cancelledMessage(done.quote));
+      if (mounted) widget.onCancelled?.call();
+    } on CancelException catch (e) {
+      _say(e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Rescheduling is the club's to decide, so the player is pointed to them.
   void _askClub(String what) {
     final p = context.palette;
     final b = widget.booking;
@@ -1149,7 +1190,7 @@ class _BookingDetailsPanelState extends ConsumerState<BookingDetailsPanel> {
                     key: const ValueKey('gb-cancel'),
                     icon: Icons.cancel_outlined,
                     label: 'Cancel Booking',
-                    onTap: () => _askClub('cancel'),
+                    onTap: _busy ? null : _cancel,
                   ),
                 ),
               ],
@@ -1246,6 +1287,7 @@ class GuestBookingDetailsPage extends StatelessWidget {
           padding: const EdgeInsets.all(AppDimensions.screenPadding),
           child: BookingDetailsPanel(
             booking: booking,
+            onCancelled: () => Navigator.of(context).pop(),
             onNavigate: (r) {
               Navigator.of(context).popUntil((route) => route.isFirst);
               onNavigate(r);

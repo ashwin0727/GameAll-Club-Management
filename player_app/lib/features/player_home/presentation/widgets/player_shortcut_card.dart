@@ -52,7 +52,13 @@ class PlayerShortcutCard extends StatelessWidget {
             padding: EdgeInsets.all(wide ? 20 : 12),
             decoration: BoxDecoration(
               borderRadius: radius,
-              border: Border.all(color: Color.lerp(p.border, tint, 0.35)!),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: p.isDark ? 0.28 : 0.07),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

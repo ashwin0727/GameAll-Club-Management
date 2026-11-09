@@ -120,6 +120,7 @@ export function EnrollmentsPage({ initialProgramId }: { initialProgramId?: strin
               { value: "ACTIVE", label: "Active" },
               { value: "PAUSED", label: "Paused" },
               { value: "COMPLETED", label: "Completed" },
+              { value: "PENDING_PAYMENT", label: "Payment Incomplete" },
               { value: "CANCELLED", label: "Cancelled" },
             ]}
           />

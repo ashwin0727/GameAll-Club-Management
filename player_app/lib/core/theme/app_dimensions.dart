@@ -30,7 +30,10 @@ class AppDimensions {
 
   /// The side margin of the wide (web) layout, shared by the brand bar and the page body so they line up: about 5% of the
   /// window width, never less than 32 or more than 120.
-  static double desktopSidePadding(double width) => (width * 0.05).clamp(32.0, 120.0);
+  static double desktopSidePadding(double width) =>
+      (width * 0.05).clamp(32.0, 120.0);
 
-  static const BorderRadius cardBorderRadius = BorderRadius.all(Radius.circular(cardRadius));
+  static const BorderRadius cardBorderRadius = BorderRadius.all(
+    Radius.circular(cardRadius),
+  );
 }

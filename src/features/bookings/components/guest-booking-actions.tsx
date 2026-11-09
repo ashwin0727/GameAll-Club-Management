@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CancelQuotePanel, cancelledNote, type CancelDecision } from "@/features/bookings/components/cancel-quote-panel";
 import { getBookingService } from "@/services/bookings";
 import { getRefundService } from "@/services/refunds";
 import { ServiceError } from "@/services/shared/service-error";
@@ -481,21 +482,27 @@ function CancelDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const isPaid = row.paymentStatus === "PAID";
   const [reason, setReason] = useState("");
-  const [refund, setRefund] = useState(isPaid);
-  const [amount, setAmount] = useState(row.amountMinor != null ? String(row.amountMinor / 100) : "");
+  const [decision, setDecision] = useState<CancelDecision>({ overridePercent: null, overrideReason: "", ready: false });
+  const [note, setNote] = useState<string | null>(null);
 
   async function run() {
     setBusy(true);
     setError(null);
     try {
-      if (isPaid) {
-        const total = row.amountMinor ?? 0;
-        const pct = refund && total > 0 ? Math.max(0, Math.min(100, Math.round(((Number(amount) || 0) * 100 * 100) / total))) : 0;
-        await getRefundService().cancelBooking({ bookingId: row.bookingId, reason: reason.trim() || undefined, refundOverridePercent: pct });
-      } else {
-        await getBookingService().cancelBooking(row.bookingId, reason.trim() || undefined);
+      // One server-side cancel for every booking: it works out the refund (the schedule, or the club's own % with a reason),
+      // sends the online part back through Razorpay and records any cash that is owed back at the club.
+      const { cancellation } = await getRefundService().cancelBooking({
+        bookingId: row.bookingId,
+        reason: reason.trim() || undefined,
+        refundOverridePercent: decision.overridePercent ?? undefined,
+        overrideReason: decision.overridePercent != null ? decision.overrideReason : undefined,
+      });
+      if (cancellation && cancellation.paidMinor > 0) {
+        setNote(cancelledNote(cancellation, row.currency));
+        setBusy(false);
+        onDone();
+        return;
       }
       onDone();
     } catch (e) {
@@ -504,36 +511,41 @@ function CancelDialog({
     }
   }
 
+  if (note) {
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Booking Cancelled</DialogTitle>
+            <DialogDescription>{note}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" onClick={onClose}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <ConfirmDialog
       title="Cancel Booking"
       description="The court frees up immediately. This can't be undone."
       confirmLabel="Cancel Booking"
       danger
-      busy={busy}
+      busy={busy || !decision.ready}
       error={error}
       onCancel={onClose}
       onConfirm={run}
     >
       <div className="space-y-3">
+        <CancelQuotePanel bookingId={row.bookingId} currency={row.currency} onChange={setDecision} />
         <label className="block space-y-1 text-xs text-muted-foreground">
           Reason (optional)
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Guest no-show" />
         </label>
-        {isPaid && (
-          <>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} />
-              Issue a refund for this booking
-            </label>
-            {refund && (
-              <label className="block space-y-1 text-xs text-muted-foreground">
-                Refund amount (₹) — paid {money(row.amountMinor, row.currency)}
-                <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-              </label>
-            )}
-          </>
-        )}
       </div>
     </ConfirmDialog>
   );

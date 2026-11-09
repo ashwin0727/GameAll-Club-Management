@@ -21,15 +21,20 @@ abstract class PlayerBookingRepository {
     required DateTime start,
     required DateTime end,
     int partySize = 1,
+
+    /// 'ADVANCE' (pay 50% now) or 'FULL': how the player chose to pay.
+    String? paymentOption,
   });
 }
 
 class SupabasePlayerBookingRepository implements PlayerBookingRepository {
-  SupabasePlayerBookingRepository([SupabaseClient? client]) : _injected = client;
+  SupabasePlayerBookingRepository([SupabaseClient? client])
+    : _injected = client;
 
   final SupabaseClient? _injected;
 
-  SupabaseClient? get _client => _injected ?? (AppConfig.isConfigured ? Supabase.instance.client : null);
+  SupabaseClient? get _client =>
+      _injected ?? (AppConfig.isConfigured ? Supabase.instance.client : null);
 
   @override
   Future<String> create({
@@ -38,6 +43,7 @@ class SupabasePlayerBookingRepository implements PlayerBookingRepository {
     required DateTime start,
     required DateTime end,
     int partySize = 1,
+    String? paymentOption,
   }) async {
     final client = _client;
     if (client == null) throw const BookingException('Please sign in to book.');
@@ -50,18 +56,23 @@ class SupabasePlayerBookingRepository implements PlayerBookingRepository {
           'startTime': start.toUtc().toIso8601String(),
           'endTime': end.toUtc().toIso8601String(),
           'partySize': partySize,
+          if (paymentOption != null) 'paymentOption': paymentOption,
         },
       );
       final data = res.data;
       final id = data is Map ? data['bookingId'] as String? : null;
       if (id == null || id.isEmpty) {
-        throw const BookingException("We couldn't make your booking. Please try again.");
+        throw const BookingException(
+          "We couldn't make your booking. Please try again.",
+        );
       }
       return id;
     } on FunctionException catch (e) {
       final details = e.details;
       final msg = details is Map ? details['error'] as String? : null;
-      throw BookingException(msg ?? "We couldn't make your booking. Please try again.");
+      throw BookingException(
+        msg ?? "We couldn't make your booking. Please try again.",
+      );
     }
   }
 }

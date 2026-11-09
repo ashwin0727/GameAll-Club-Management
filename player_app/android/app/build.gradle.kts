@@ -12,6 +12,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications uses newer Java APIs that older Android versions lack.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -46,4 +48,14 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// Push notifications need this app registered in the Firebase project (package com.gameall.gameall_player) and its google-services.json
+// saved next to this file. Without the file the app still builds and runs; it just has no phone push.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }

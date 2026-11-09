@@ -100,59 +100,65 @@ class PlayerHeader extends StatelessWidget {
     required this.firstName,
     required this.unread,
     required this.onNotifications,
+    this.showBell = true,
   });
 
   final String firstName;
   final int unread;
   final VoidCallback onNotifications;
 
+  /// False when nobody is signed in: there are no notifications to show.
+  final bool showBell;
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return Column(
+    // No logo here: the greeting leads, with the bell at the right of it.
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 48,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const GameAllLogo(),
-              NotificationBell(unread: unread, onPressed: onNotifications),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        // The name arrives after the data: cross-fade it in place (same line, same height) instead of swapping the text abruptly.
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          layoutBuilder: (current, previous) => Stack(
-            alignment: Alignment.centerLeft,
-            children: [...previous, ?current],
-          ),
-          // An icon, not the 👋 emoji: the web emoji font loads late and showed an empty box on refresh.
-          child: Row(
-            key: ValueKey(firstName),
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  'Hi, $firstName',
-                  style: AppTextStyles.greeting(p.primaryText),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              // The name arrives after the data: cross-fade it in place (same line, same height) instead of swapping the text abruptly.
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [...previous, ?current],
+                ),
+                // An icon, not the 👋 emoji: the web emoji font loads late and showed an empty box on refresh.
+                child: Row(
+                  key: ValueKey(firstName),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Hi, $firstName',
+                        style: AppTextStyles.greeting(p.primaryText),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.waving_hand_rounded,
+                      size: 20,
+                      color: Color(0xFFFFC857),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.waving_hand_rounded, size: 20, color: Color(0xFFFFC857)),
+              const SizedBox(height: 2),
+              Text(
+                'Ready to play today?',
+                style: AppTextStyles.body(p.secondaryText),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          'Ready to play today?',
-          style: AppTextStyles.body(p.secondaryText),
-        ),
+        if (showBell) NotificationBell(unread: unread, onPressed: onNotifications),
       ],
     );
   }

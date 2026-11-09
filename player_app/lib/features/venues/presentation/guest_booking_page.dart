@@ -14,11 +14,14 @@ import '../../../core/widgets/venue_scene.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../payments/application/payment_flow.dart';
 import '../../payments/domain/payment_receipt.dart';
-import '../../player_home/application/player_home_controller.dart' show pendingPaymentRepositoryProvider;
-import '../../player_home/domain/player_dashboard_models.dart' show PendingPayment, PendingPaymentKind;
+import '../../player_home/application/player_home_controller.dart'
+    show pendingPaymentRepositoryProvider;
+import '../../player_home/domain/player_dashboard_models.dart'
+    show PendingPayment, PendingPaymentKind;
 import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import '../domain/venue_detail.dart';
+import 'payment_option_sheet.dart';
 
 /// "Book a Court" for one venue, on its own page: 1 Select Sport, 2 Select Date, 3 Select Court, 4 Select Time Slot, with a Booking
 /// Summary beside them (underneath on a phone). The slots are the venue's live availability; booking and payment finish on GameAll's
@@ -98,7 +101,8 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
   ) async {
     void say(String text) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(text)));
       }
     }
 
@@ -118,6 +122,18 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final start = sorted.first.start;
     final end = sorted.last.end;
     final title = '$sportName booking';
+    // 50% now or the full amount, asked once the court and time are chosen
+    int? totalMinor = 0;
+    for (final x in sorted) {
+      final price = x.priceMinor;
+      if (price == null || price <= 0) {
+        totalMinor = null;
+        break;
+      }
+      totalMinor = totalMinor! + price;
+    }
+    final option = await showPaymentOptionSheet(context, totalMinor: totalMinor);
+    if (option == null || !mounted) return;
     // read once, now: the page may be replaced while the payment is being prepared, and `ref` must not be used after that
     final bookings = ref.read(playerBookingRepositoryProvider);
     final links = ref.read(pendingPaymentRepositoryProvider);
@@ -134,6 +150,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
             courtId: court.courtId,
             start: start,
             end: end,
+            paymentOption: option,
           );
           final link = await links.paymentLink(
             PendingPayment(

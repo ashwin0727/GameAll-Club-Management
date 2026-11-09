@@ -38,10 +38,16 @@ class AppColors {
   static const Color danger = Color(0xFFFF6B82);
 
   /// The brand gradient: used only for the main calls to action, the selected sport and the centre navigation button.
-  static const LinearGradient brandGradient = LinearGradient(colors: [cyan, blue, violet]);
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [cyan, blue, violet],
+  );
 
   /// Blue to violet, for the selected sport chip and the quick-action button.
-  static const LinearGradient accentGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [blue, violet]);
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [blue, violet],
+  );
 }
 
 /// Everything that differs between the dark and the light theme.
@@ -150,7 +156,11 @@ class AppPalette extends ThemeExtension<AppPalette> {
     return AppPalette(
       brightness: t < 0.5 ? brightness : other.brightness,
       background: Color.lerp(background, other.background, t)!,
-      secondaryBackground: Color.lerp(secondaryBackground, other.secondaryBackground, t)!,
+      secondaryBackground: Color.lerp(
+        secondaryBackground,
+        other.secondaryBackground,
+        t,
+      )!,
       surface: Color.lerp(surface, other.surface, t)!,
       elevated: Color.lerp(elevated, other.elevated, t)!,
       primaryText: Color.lerp(primaryText, other.primaryText, t)!,
@@ -166,5 +176,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
 
 extension AppPaletteContext on BuildContext {
   /// The current theme's palette.
-  AppPalette get palette => Theme.of(this).extension<AppPalette>() ?? AppPalette.dark;
+  AppPalette get palette =>
+      Theme.of(this).extension<AppPalette>() ?? AppPalette.dark;
 }

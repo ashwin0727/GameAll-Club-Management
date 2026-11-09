@@ -1014,7 +1014,17 @@ await asUser(null);
   check("enroll: coming back resumes the same pending membership, no second one", r2.resumed === true && r2.membershipId === r1.membershipId && (await q("select count(*)::int c from memberships where facility_id=$1", [f]))[0].c === 1, JSON.stringify(r2));
   await asUser(null);
   i = await info();
-  check("enroll: the slot now shows one member playing", i.slots[0].membersNow === 1, JSON.stringify(i.slots[0]));
+  const stRow = (await q("select status::text s, pending_batch_id pb, total_amount_inr t, membership_fee_inr mf from memberships where id=$1", [r1.membershipId]))[0];
+  check("enroll: an unpaid membership is pending (Payment Incomplete), holds no slot and remembers the slot it wants", stRow.s === "pending" && stRow.pb === bm && i.slots[0].membersNow === 0, JSON.stringify(stRow));
+  check("enroll: the club's total for the membership includes the joining fee", stRow.t === 3499 && stRow.mf === 2999, JSON.stringify(stRow));
+  check("enroll: the club's list shows it as Payment Incomplete", (await q("select membership_display_status($1,'pending',current_date,current_date+30,30,3499) s", [r1.membershipId]))[0].s === "payment_incomplete");
+  await q("update payments set status='paid', paid_at=now(), payment_method='upi_autopay' where membership_id=$1", [r1.membershipId]);
+  const stPaid = (await q("select status::text s, pending_batch_id pb from memberships where id=$1", [r1.membershipId]))[0];
+  i = await info();
+  check("enroll: once the payment is paid the membership is active and takes its slot", stPaid.s === "active" && stPaid.pb === null && i.slots[0].membersNow === 1, JSON.stringify([stPaid, i.slots[0].membersNow]));
+  await asUser(pid);
+  await throws("enroll: the same person cannot join a second membership at the same court and time", () => q("select player_start_membership_enroll($1,$2,$3)", [f, quarterly, bq]), "already have a membership");
+  await asUser(null);
   // a signed-in player (not staff) can read the same page: the staff-only batch list is not used
   await asUser(pid);
   check("enroll: a signed-in player can load the enroll page", (await info()).slots.length === 1);
@@ -1022,10 +1032,447 @@ await asUser(null);
   await asUser(pid);
   const mine = (await q("select get_my_memberships_at($1) r", [f]))[0].r;
   check("enroll: the player's memberships here are listed with plan and time slot", mine.length === 1 && mine[0].planName === "Monthly" && mine[0].slots.length === 1 && mine[0].slots[0].startTime === "18:00:00", JSON.stringify(mine));
-  const r3 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, quarterly, bq]))[0].r;
-  check("enroll: a second, different membership can still be joined", r3.membershipId !== r1.membershipId && r3.amountInr === 7999 && r3.joiningFeeInr === 0, JSON.stringify(r3));
+  const bq2 = uuid();
+  await q("insert into membership_batches (id, facility_id, plan_id, facility_sport_id, court_id, name, days_of_week, start_time, end_time, capacity) values ($1,$2,$3,$4,$5,'Late Q','{1,2,3}','20:00','21:00',5)", [bq2, f, quarterly, fsid, court]);
+  const r3 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, quarterly, bq2]))[0].r;
+  check("enroll: a second membership at a different time can still be joined", r3.membershipId !== r1.membershipId && r3.amountInr === 7999 && r3.joiningFeeInr === 0, JSON.stringify(r3));
   await throws("enroll: a plan from another club is refused", () => q("select player_start_membership_enroll($1,$2,null)", [f, uuid()]), "not available");
+
+  // the same person is found by mobile number however it is typed: no second member record
+  await asUser(null);
+  await q("insert into members (facility_id, full_name, phone) values ($1,'Typed Differently','+91 94444-00002')", [f]);
+  const pid2 = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919444400002')", [pid2]);
+  await q("insert into players (id, full_name, phone) values ($1,'Other Name','9444400002')", [pid2]);
+  await asUser(pid2);
+  await q("select player_start_membership_enroll($1,$2,null)", [f, monthly]);
+  await asUser(null);
+  check("enroll: a number typed differently at the club is the same member, not a duplicate", (await q("select count(*)::int c from members where facility_id=$1 and normalize_phone(phone)='9444400002'", [f]))[0].c === 1);
+
+  // a guest booking inside the membership's court time is refused, and the slot is closed on the public page
+  const nextMon = (await q("select ((date_trunc('week', now() at time zone 'Asia/Kolkata') + interval '1 week' + time '18:00') at time zone 'Asia/Kolkata') s"))[0].s;
+  const nextMonEnd = new Date(new Date(nextMon).getTime() + 3600000);
+  await throws("guest booking: membership court time is not bookable", () => q("select public_create_guest_booking($1,$2,$3,$4,'Gus Guest','9777700001',null,null,null,1,'FULL')", [f, court, nextMon, nextMonEnd]), "reserved for members");
+  const day = (await q("select to_char(($1::timestamptz at time zone 'Asia/Kolkata')::date,'YYYY-MM-DD') d", [nextMon]))[0].d;
+  const av = (await q("select get_public_court_availability($1,$2,$3::date) r", [f, fsid, day]))[0].r;
+  const slot18 = av.flatMap((c) => c.slots).find((s) => new Date(s.startTime).getTime() === new Date(nextMon).getTime());
+  check("guest booking: the membership hour shows as taken on the public page (no released seats sold)", slot18 === undefined || slot18.available === false, JSON.stringify(slot18));
+
+  // the same person cannot book the same court at the same time twice (mobile number, not name)
+  const t19 = new Date(new Date(nextMon).getTime() + 5 * 86400000 + 2 * 3600000); // a day outside the batch days, 20:00
+  const g1 = uuid();
+  await q("insert into guest_players (id, facility_id, name, phone) values ($1,$2,'First Name','+91 97777-00009')", [g1, f]);
+  await q("insert into bookings (facility_id, court_id, start_time, end_time, status, customer_type, guest_name, guest_phone, guest_player_id, amount_minor) values ($1,$2,$3,$4,'confirmed','GUEST','First Name','+91 97777-00009',$5,35000)", [f, court, t19, new Date(t19.getTime() + 3600000), g1]);
+  await throws("guest booking: the same mobile number cannot book the same court and time twice, whatever the name", () => q("select public_create_guest_booking($1,$2,$3,$4,'Totally Different Name','9777700009',null,null,null,1,'FULL')", [f, court, t19, new Date(t19.getTime() + 3600000)]), "already have a booking");
+  // a real booking through the same routine the Player app and the public page use
+  const sch = (await q("insert into operating_schedules (facility_id, scope_type) values ($1,'FACILITY') returning id", [f]))[0].id;
+  for (const dow of [0, 1, 2, 3, 4, 5, 6]) {
+    const d = (await q("insert into operating_days (schedule_id, facility_id, day_of_week) values ($1,$2,$3) returning id", [sch, f, dow]))[0].id;
+    await q("insert into operating_time_slots (operating_day_id, facility_id, start_time, end_time) values ($1,$2,'06:00','23:00')", [d, f]);
+  }
+  const t22 = new Date(t19.getTime() + 2 * 3600000);
+  const bk1 = (await q("select public_create_guest_booking($1,$2,$3,$4,'Real Guest','+91 97777-00077',null,null,null,1,'ADVANCE') r", [f, court, t22, new Date(t22.getTime() + 3600000)]))[0].r;
+  check("guest booking: a real booking is made, held for its 50% advance", !!bk1.bookingId && bk1.advanceRequired === true && bk1.advanceMinor === Math.ceil(bk1.amountMinor / 2) && bk1.paymentOption === "ADVANCE", JSON.stringify(bk1));
+  await throws("guest booking: booking the same court and time again with the same number is refused", () => q("select public_create_guest_booking($1,$2,$3,$4,'Another Name','9777700077',null,null,null,1,'FULL')", [f, court, t22, new Date(t22.getTime() + 3600000)]), "already have a booking");
+  const t23 = new Date(t22.getTime() - 4 * 3600000);
+  const bk2 = (await q("select public_create_guest_booking($1,$2,$3,$4,'Real Guest','9777700077',null,null,null,1,'FULL') r", [f, court, t23, new Date(t23.getTime() + 3600000)]))[0].r;
+  check("guest booking: a different time for the same person is accepted", !!bk2.bookingId && bk2.advanceMinor === bk2.amountMinor, JSON.stringify(bk2));
+  check("guest booking: the number typed two ways is one guest record, not two", (await q("select count(*)::int c from guest_players where facility_id=$1 and normalize_phone(phone)='9777700077'", [f]))[0].c === 1);
+
+  // an unpaid membership for an overlapping slot is removed once its sibling is paid
+  await asUser(null);
+  const pid3 = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919444400003')", [pid3]);
+  await q("insert into players (id, full_name, phone) values ($1,'Two Plans','9444400003')", [pid3]);
+  await asUser(pid3);
+  const a1 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, monthly, bm]))[0].r;
+  const a2 = (await q("select player_start_membership_enroll($1,$2,$3) r", [f, quarterly, bq]))[0].r;
+  check("enroll: two unpaid memberships for the same slot can both wait for payment", a1.membershipId !== a2.membershipId);
+  const myMs = JSON.stringify((await q("select get_my_membership_details() r"))[0].r);
+  check("enroll: the player still sees both unpaid memberships (to pay them)", myMs.includes(a1.membershipId) && myMs.includes(a2.membershipId), myMs.slice(0, 200));
+  await asUser(null);
+  await q("update payments set status='paid', paid_at=now(), payment_method='cash' where membership_id=$1", [a1.membershipId]);
+  check("enroll: when one is paid the other unpaid membership for that slot is removed", (await q("select count(*)::int c from memberships where id=$1", [a2.membershipId]))[0].c === 0);
+  check("enroll: the paid one is active with its slot", (await q("select count(*)::int c from membership_batch_members where membership_id=$1", [a1.membershipId]))[0].c === 1);
+
+  // coaching: pending until paid, no seat or roster place, no overlapping coaching for the same mobile number
+  const prog = uuid(), cb1 = uuid(), cb2 = uuid(), cb3 = uuid();
+  await q("insert into coaching_programs (id, facility_id, name, status, default_price_minor, payment_mode) values ($1,$2,'Juniors Camp','ACTIVE',150000,'ONLINE')", [prog, f]);
+  await q("insert into coaching_program_batches (id, facility_id, program_id, court_id, name, days_of_week, start_time, end_time, capacity) values ($1,$4,$5,$6,'Morning','{1,2}','07:00','08:00',1), ($2,$4,$5,$6,'Morning B','{1}','07:30','08:30',5), ($3,$4,$5,$6,'Noon','{1,2}','12:00','13:00',5)", [cb1, cb2, cb3, f, prog, court]);
+  const pid4 = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919444400004')", [pid4]);
+  await q("insert into players (id, full_name, phone) values ($1,'Coach Seeker','9444400004')", [pid4]);
+  await asUser(pid4);
+  const c1 = (await q("select player_start_coaching_enroll($1,$2,$3) r", [f, prog, cb1]))[0].r;
+  await asUser(null);
+  const ce = (await q("select status, price_minor from coaching_enrollments where id=$1", [c1.enrollmentId]))[0];
+  check("coaching: a player's enrolment is payment-incomplete until it is paid", ce.status === "PENDING_PAYMENT" && ce.price_minor === 150000, JSON.stringify(ce));
+  const pid5 = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919444400005')", [pid5]);
+  await q("insert into players (id, full_name, phone) values ($1,'Other Seeker','9444400005')", [pid5]);
+  await asUser(pid5);
+  const c2 = (await q("select player_start_coaching_enroll($1,$2,$3) r", [f, prog, cb1]))[0].r;
+  check("coaching: an unpaid enrolment holds no seat, so a full-looking batch (capacity 1) is still open to others", c2.enrollmentId !== c1.enrollmentId);
+  await asUser(null);
+  await q("insert into payments (facility_id, coaching_enrollment_id, amount_inr, status, payment_method, paid_at) values ($1,$2,1500,'paid','Razorpay',now())", [f, c1.enrollmentId]);
+  check("coaching: the payment makes it active", (await q("select status from coaching_enrollments where id=$1", [c1.enrollmentId]))[0].status === "ACTIVE");
+  await asUser(pid5);
+  const c2again = (await q("select player_start_coaching_enroll($1,$2,$3) r", [f, prog, cb1]))[0].r;
+  check("coaching: a batch at capacity still lets the next player continue to pay", c2again.enrollmentId === c2.enrollmentId);
+  await asUser(null);
+  await q("insert into payments (facility_id, coaching_enrollment_id, amount_inr, status, payment_method, paid_at) values ($1,$2,1500,'paid','Razorpay',now())", [f, c2.enrollmentId]);
+  const cnt = (await q("select count(*)::int c from coaching_enrollments where batch_id=$1 and status='ACTIVE'", [cb1]))[0].c;
+  check("coaching: both paid players are enrolled, the batch simply shows 2 for a capacity of 1", cnt === 2 && (await q("select capacity from coaching_program_batches where id=$1", [cb1]))[0].capacity === 1);
+  await asUser(pid5);
+  const prog3 = uuid();
+  await q("insert into coaching_programs (id, facility_id, name, status, default_price_minor, payment_mode) values ($1,$2,'Half Camp','ACTIVE',50000,'ONLINE')", [prog3, f]);
+  await q("update coaching_program_batches set program_id=$1 where id=$2", [prog3, cb2]);
+  await asUser(pid4);
+  await throws("coaching: the same mobile number cannot take an overlapping batch on the same court", () => q("select player_start_coaching_enroll($1,$2,$3)", [f, prog3, cb2]), "already have coaching");
+  const prog2 = uuid();
+  await q("insert into coaching_programs (id, facility_id, name, status, default_price_minor, payment_mode) values ($1,$2,'Noon Camp','ACTIVE',90000,'ONLINE')", [prog2, f]);
+  await q("update coaching_program_batches set program_id=$1 where id=$2", [prog2, cb3]);
+  const c3 = (await q("select player_start_coaching_enroll($1,$2,$3) r", [f, prog2, cb3]))[0].r;
+  check("coaching: a different time is fine for the same mobile number", !!c3.enrollmentId);
+  const myCd = JSON.stringify((await q("select get_my_coaching_details() r"))[0].r);
+  check("coaching: My Coaching lists the unpaid enrolment as well", myCd.includes(c3.enrollmentId), myCd.slice(0, 200));
+  const myCo = (await q("select get_my_coaching_at($1) r", [f]))[0].r;
+  check("coaching: the player still sees the unpaid enrolment (to pay it)", myCo.some((x) => x.enrollmentId === c3.enrollmentId || x.id === c3.enrollmentId), JSON.stringify(myCo).slice(0, 200));
+  await asUser(null);
   await asUser(owner);
+}
+
+// ═══ player profile (0187): Player ID, edit, the four numbers, payment history ═══════════════════════════════════
+{
+  const ow = await mkUser("profile.owner@test.local", "Profile Owner");
+  const fx = await mkFacility(ow, "Profile Venue");
+  const pid = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919555500001')", [pid]);
+  await q("insert into players (id, full_name, phone) values ($1,'Pro File','9555500001')", [pid]);
+  const mem = await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Pro File','9555500001') returning id", [uuid(), fx]);
+  const msId = await mkMembership(fx, mem[0].id, "Gold");
+  await q("insert into payments (facility_id, member_id, membership_id, amount_inr, status, paid_at, payment_method) values ($1,$2,$3,2500,'paid',now(),'UPI')", [fx, mem[0].id, msId]);
+  await asUser(pid);
+  const prof = (await q("select get_my_player_profile() r"))[0].r;
+  check("profile: the player has a Player ID like GA10000001", /^GA\d{8}$/.test(prof.playerCode), JSON.stringify(prof));
+  const up = (await q("select update_my_player_profile('Pro File Two','pro@example.com','1995-04-12','MALE','Chennai, Tamil Nadu',null,false) r"))[0].r;
+  check("profile: edit saves name, email, date of birth, gender and city", up.fullName === "Pro File Two" && up.email === "pro@example.com" && up.dob === "1995-04-12" && up.gender === "MALE" && up.city === "Chennai, Tamil Nadu", JSON.stringify(up));
+  check("profile: the phone number cannot be edited here", up.phone === "9555500001");
+  const up2 = (await q("select update_my_player_profile(null,null,null,null,null,null,false) r"))[0].r;
+  check("profile: leaving everything null changes nothing", up2.fullName === "Pro File Two" && up2.dob === "1995-04-12", JSON.stringify(up2));
+  await throws("profile: a bad email is refused", () => q("select update_my_player_profile(null,'nope')"), "valid email");
+  await throws("profile: a future date of birth is refused", () => q("select update_my_player_profile(null,null,(current_date + 5))"));
+  await throws("profile: an unknown gender is refused", () => q("select update_my_player_profile(null,null,null,'X')"), "gender");
+  await throws("profile: a photo address must be https", () => q("select update_my_player_profile(null,null,null,null,null,'javascript:1')"), "photo");
+  const up3 = (await q("select update_my_player_profile(null,null,null,null,null,'https://x.test/a.jpg',false) r"))[0].r;
+  check("profile: the photo address is saved", up3.avatarUrl === "https://x.test/a.jpg");
+  const st = (await q("select get_my_profile_stats() r"))[0].r;
+  check("profile: the numbers count memberships and leave tournaments empty", st.memberships === 1 && st.bookings === 0 && st.coaching === 0 && st.tournaments === null, JSON.stringify(st));
+  const hist = (await q("select get_my_payment_history(50) r"))[0].r;
+  check("profile: payment history lists the paid membership payment", hist.length === 1 && hist[0].kind === "payment" && hist[0].status === "PAID" && hist[0].amountInr === 2500 && hist[0].source === "membership" && hist[0].venueName === "Profile Venue", JSON.stringify(hist));
+  await asUser(null);
+  check("profile: signed out there is no profile, no history", (await q("select get_my_player_profile() r"))[0].r === null && (await q("select get_my_payment_history(5) r"))[0].r.length === 0);
+  const pid2 = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919555500002')", [pid2]);
+  await q("insert into players (id, full_name, phone) values ($1,'Other Person','9555500002')", [pid2]);
+  await asUser(pid2);
+  check("profile: another player sees none of those payments", (await q("select get_my_payment_history(50) r"))[0].r.length === 0);
+  await asUser(null);
+}
+
+// ═══ booking payment choice and cancellation (0188) ═══════════════════════════════════════════════════════════════
+{
+  const ow = await mkUser("cancel.owner@test.local", "Cancel Owner");
+  const fx = await mkFacility(ow, "Cancel Venue");
+  const sport = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, fx, sport]);
+  const court = uuid();
+  await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,'Court 1',1000)", [court, fx, sport, fsid]);
+  const gphone = "9333300001";
+  const gp = uuid();
+  await q("insert into guest_players (id, facility_id, name, phone) values ($1,$2,'Cancel Guest',$3)", [gp, fx, gphone]);
+  let slot = 0;
+  const mkBk = async (hoursAhead, amountMinor = 100000, option = null) => {
+    const id = uuid();
+    slot++;
+    // its own court, so no two bookings clash
+    const cid = uuid();
+    await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,$5,1000)", [cid, fx, sport, fsid, "Court x" + slot]);
+    await q(`insert into bookings (id, facility_id, court_id, customer_type, guest_name, guest_phone, guest_player_id, start_time, end_time, status, amount_minor, payment_option)
+             values ($1,$2,$3,'GUEST','Cancel Guest',$4,$5, now() + ($6 || ' hours')::interval, now() + ($6 || ' hours')::interval + interval '1 hour', 'confirmed', $7, $8)`,
+      [id, fx, cid, gphone, gp, String(hoursAhead), amountMinor, option]);
+    return id;
+  };
+  let pn = 0;
+  const mkOrder = async (bk, minor, status = "COMPLETED") => {
+    const id = uuid();
+    pn++;
+    await q(`insert into payment_orders (id, facility_id, source_type, booking_id, amount_minor, status, razorpay_order_id, razorpay_payment_id, receipt, expires_at)
+             values ($1,$2,'GUEST_BOOKING',$3,$4,$5,$6,$7,$8, now() + interval '1 day')`, [id, fx, bk, minor, status, `order_c${pn}`, `pay_c${pn}`, `rcpt-c${pn}`]);
+    return id;
+  };
+  const quote = async (bk, pct = null) => (await q("select booking_cancellation_quote($1,$2) r", [bk, pct]))[0].r;
+
+  // the schedule itself, band by band
+  const sched = [[12, 5], [13, 5], [11.99, 10], [11, 10], [10.5, 15], [9.5, 20], [8.5, 30], [7.5, 40], [6.5, 45], [5.5, 50], [4.5, 70], [3.5, 75], [2.5, 80], [1.5, 90], [1, 90], [0.99, 100], [0.2, 100], [0, 100], [-3, 100]];
+  for (const [h, pct] of sched) check(`cancel schedule: ${h} h left deducts ${pct}%`, (await q("select cancellation_deduction_percent($1) p", [h]))[0].p === pct);
+
+  // a fully paid booking: each band refunds the rest
+  const bands = [[12.5, 5], [11.5, 10], [10.5, 15], [9.5, 20], [8.5, 30], [7.5, 40], [6.5, 45], [5.5, 50], [4.5, 70], [3.5, 75], [2.5, 80], [1.5, 90]];
+  for (const [h, d] of bands) {
+    const bk = await mkBk(h);
+    await mkOrder(bk, 100000);
+    const qq = await quote(bk);
+    check(`cancel quote: fully paid, ${h} h left -> ${d}% deducted, ${100000 * (100 - d) / 100} refunded`,
+      qq.rule === "FULL" && qq.deductionPercent === d && qq.refundMinor === 100000 * (100 - d) / 100 && qq.onlineRefundMinor === qq.refundMinor && qq.offlineRefundDueMinor === 0, JSON.stringify(qq));
+  }
+  {
+    const bk = await mkBk(0.4); await mkOrder(bk, 100000);
+    const qq = await quote(bk);
+    check("cancel quote: under an hour left -> nothing is refunded", qq.deductionPercent === 100 && qq.refundMinor === 0, JSON.stringify(qq));
+    check("cancel quote: the message says what happens", /deducted/.test(qq.message) && /starts in/.test(qq.message), qq.message);
+  }
+  {
+    const bk = await mkBk(30, 100000, "ADVANCE"); await mkOrder(bk, 50000);
+    const qq = await quote(bk);
+    check("cancel quote: only the 50% advance paid -> no refund", qq.rule === "ADVANCE_ONLY" && qq.refundMinor === 0 && qq.paidMinor === 50000 && /advance/i.test(qq.message), JSON.stringify(qq));
+    const ov = await quote(bk, 100);
+    check("cancel quote: an owner override of 100% refunds the advance", ov.refundMinor === 50000 && ov.isOverride === true && ov.onlineRefundMinor === 50000, JSON.stringify(ov));
+    const ov2 = await quote(bk, 40);
+    check("cancel quote: an override of 40% refunds 40% of what was paid", ov2.refundMinor === 20000, JSON.stringify(ov2));
+  }
+  {
+    const bk = await mkBk(30);
+    const qq = await quote(bk);
+    check("cancel quote: nothing paid -> nothing to refund", qq.rule === "UNPAID" && qq.refundMinor === 0 && qq.paidMinor === 0, JSON.stringify(qq));
+  }
+
+  // cancelling as the club: advance + balance (two payments), refund spread over both, the parts add up
+  {
+    const bk = await mkBk(20, 100000, "ADVANCE");
+    await mkOrder(bk, 50000);
+    await mkOrder(bk, 50000);
+    await asUser(ow);
+    const b = (await q("select status from cancel_booking($1,'changed plans')", [bk]))[0];
+    check("cancel as club: the booking is cancelled", b.status === "cancelled");
+    const rf = await q("select payment_order_id, amount_minor, status, reason from refunds where source_id=$1 order by amount_minor", [bk]);
+    check("cancel as club: paid in full 20 h ahead -> 95% refunded, split over both payments (47500 + 47500)", rf.length === 2 && rf.every((r) => r.amount_minor === 47500 && r.status === "REQUESTED" && r.reason === "CUSTOMER_CANCELLATION"), JSON.stringify(rf));
+    const log = (await q("select * from booking_cancellations where booking_id=$1", [bk]))[0];
+    check("cancel as club: one audit row with the % and the amounts", log.deduction_percent === 5 && log.refund_percent === 95 && log.refund_minor === 95000 && log.online_refund_minor === 95000 && log.offline_refund_due_minor === 0 && log.channel === "CLUB", JSON.stringify(log));
+    await throws("cancel as club: cancelling twice is refused", () => q("select cancel_booking($1)", [bk]), "cannot be cancelled");
+    await asUser(null);
+  }
+  // advance only, cancelled by the club: no refund row; with an override the advance goes back
+  {
+    const bk = await mkBk(20, 100000, "ADVANCE"); await mkOrder(bk, 50000);
+    await asUser(ow);
+    await q("select cancel_booking($1,'no show')", [bk]);
+    check("cancel as club: advance only -> no refund is created", (await q("select count(*)::int c from refunds where source_id=$1", [bk]))[0].c === 0);
+    const bk2 = await mkBk(20, 100000, "ADVANCE"); await mkOrder(bk2, 50000);
+    await q("select cancel_booking($1,'club error',100,'our mistake')", [bk2]);
+    const rf = await q("select amount_minor, reason, is_override, override_reason from refunds where source_id=$1", [bk2]);
+    check("cancel as club: the owner can refund the advance anyway (override, with a reason)", rf.length === 1 && rf[0].amount_minor === 50000 && rf[0].reason === "OWNER_OVERRIDE" && rf[0].is_override && rf[0].override_reason === "our mistake", JSON.stringify(rf));
+    await asUser(null);
+  }
+  // online + cash: Razorpay gives back its share, the cash share is owed at the club
+  {
+    const bk = await mkBk(20, 100000, "ADVANCE");
+    await mkOrder(bk, 50000);
+    await q("insert into payments (facility_id, booking_id, amount_inr, status, payment_method, paid_at) values ($1,$2,500,'paid','cash', now())", [fx, bk]);
+    const qq = await quote(bk);
+    check("cancel quote: half online and half cash, fully paid -> refund 95% with the cash share due at the club", qq.rule === "FULL" && qq.refundMinor === 95000 && qq.onlineRefundMinor === 47500 && qq.offlineRefundDueMinor === 47500, JSON.stringify(qq));
+    await asUser(ow);
+    await q("select cancel_booking($1)", [bk]);
+    check("cancel as club: only the online part becomes a Razorpay refund", (await q("select coalesce(sum(amount_minor),0)::int s from refunds where source_id=$1", [bk]))[0].s === 47500);
+    check("cancel as club: the cash part is recorded as due at the club", (await q("select offline_refund_due_minor d from booking_cancellations where booking_id=$1", [bk]))[0].d === 47500);
+    const due = (await q("select list_offline_refunds_due($1) r", [fx]))[0].r;
+    check("cash refunds due: the club sees the cash it still owes for the cancelled booking", due.some((d) => d.bookingId === bk && d.refundDueMinor === 47500 && d.guestName === "Cancel Guest"), JSON.stringify(due));
+    const s = (await q("select offline_refund_settled_at from settle_offline_refund($1)", [bk]))[0];
+    check("cancel as club: the club can mark the cash refund as handed back", s.offline_refund_settled_at !== null);
+    check("cash refunds due: once handed back it leaves the list", !(await q("select list_offline_refunds_due($1) r", [fx]))[0].r.some((d) => d.bookingId === bk));
+    await asUser(null);
+  }
+  // the payment choice sets the first payment
+  {
+    const b1 = await mkBk(30, 100000, "FULL");
+    const b2 = await mkBk(30, 100000, "ADVANCE");
+    const b3 = await mkBk(30, 100000, null);
+    const due = async (id) => (await q("select booking_due_now_minor(b) d from bookings b where b.id=$1", [id]))[0].d;
+    check("payment choice: full -> the whole amount", (await due(b1)) === 100000);
+    check("payment choice: 50% -> half, even for a one-hour booking", (await due(b2)) === 50000);
+    check("payment choice: no choice (an old booking) -> the old rule, a one-hour booking pays in full", (await due(b3)) === 100000);
+    await asUser(ow);
+    const o1 = (await q("select amount_minor from create_payment_order($1,'GUEST_BOOKING',$2,null,null,null,true)", [fx, b1]))[0];
+    const o2 = (await q("select amount_minor from create_payment_order($1,'GUEST_BOOKING',$2,null,null,null,true)", [fx, b2]))[0];
+    check("payment choice: the payment order is charged accordingly", o1.amount_minor === 100000 && o2.amount_minor === 50000, `${o1.amount_minor} ${o2.amount_minor}`);
+    const sb = (await q("select payment_option from set_booking_payment_option($1,'FULL')", [b3]))[0];
+    check("payment choice: staff can record the choice on a booking made at the club", sb.payment_option === "FULL");
+    await throws("payment choice: anything else is refused", () => q("select set_booking_payment_option($1,'HALF')", [b3]), "50%");
+    await asUser(null);
+  }
+  // the player and the public page cancel their own booking
+  {
+    const pid = uuid();
+    await q("insert into auth.users (id, phone) values ($1,$2)", [pid, "91" + gphone]);
+    await q("insert into players (id, full_name, phone) values ($1,'Cancel Guest',$2)", [pid, gphone]);
+    const bk = await mkBk(20, 100000, "FULL"); await mkOrder(bk, 100000);
+    await asUser(pid);
+    const mq = (await q("select get_my_booking_cancellation_quote($1) r", [bk]))[0].r;
+    check("player cancel: the player sees the quote for their own booking", mq.refundMinor === 95000 && mq.deductionPercent === 5, JSON.stringify(mq));
+    const other = uuid();
+    await q("insert into auth.users (id, phone) values ($1,'919333300099')", [other]);
+    await q("insert into players (id, full_name, phone) values ($1,'Someone Else','9333300099')", [other]);
+    await asUser(other);
+    check("player cancel: another player sees no quote for it", (await q("select get_my_booking_cancellation_quote($1) r", [bk]))[0].r === null);
+    await throws("player cancel: another player cannot cancel it", () => q("select player_cancel_booking($1)", [bk]), "could not find");
+    await asUser(pid);
+    const done = (await q("select player_cancel_booking($1) r", [bk]))[0].r;
+    check("player cancel: the player's cancellation refunds 95% and says so", done.refundMinor === 95000 && (await q("select status from bookings where id=$1", [bk]))[0].status === "cancelled");
+    check("player cancel: a refund row waits for the edge function to send it to Razorpay", (await q("select count(*)::int c from refunds where source_id=$1 and status='REQUESTED' and amount_minor=95000", [bk]))[0].c === 1);
+    check("player cancel: the audit row says it came from the player app", (await q("select channel c from booking_cancellations where booking_id=$1", [bk]))[0].c === "PLAYER_APP");
+    const started = await mkBk(-1, 100000, "FULL");
+    await throws("player cancel: a booking that has started cannot be cancelled online", () => q("select player_cancel_booking($1)", [started]), "already started");
+    await asUser(null);
+
+    const pub = await mkBk(14, 100000, "FULL"); await mkOrder(pub, 100000);
+    const pq = (await q("select public_booking_cancellation_quote($1,$2) r", [pub, "+91 " + gphone]))[0].r;
+    check("public cancel: the guest sees the quote with the phone number they booked with", pq !== null && pq.refundMinor === 95000, JSON.stringify(pq));
+    check("public cancel: a wrong phone number sees nothing", (await q("select public_booking_cancellation_quote($1,'9000000000') r", [pub]))[0].r === null);
+    await throws("public cancel: a wrong phone number cannot cancel", () => q("select public_cancel_booking($1,'9000000000')", [pub]), "could not find");
+    const pc = (await q("select public_cancel_booking($1,$2) r", [pub, gphone]))[0].r;
+    check("public cancel: the guest's cancellation refunds 95%", pc.refundMinor === 95000 && (await q("select channel c from booking_cancellations where booking_id=$1", [pub]))[0].c === "PUBLIC_PAGE");
+  }
+}
+
+// ═══ Personal Information page (0192) ═══════════════════════════════════════════════════════════════════════
+{
+  const pid = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919666600001')", [pid]);
+  await q("insert into players (id, full_name, phone) values ($1,'Uma Shankar','9666600001')", [pid]);
+  await asUser(pid);
+  const sportsList = (await q("select list_platform_sports() r"))[0].r;
+  check("personal info: the platform's sports list comes back", sportsList.length > 0 && !!sportsList[0].key && !!sportsList[0].name);
+  const k1 = sportsList[0].key, k2 = sportsList[1].key;
+  const saved = (await q("select update_my_player_info($1::jsonb) r", [JSON.stringify({
+    fullName: "Uma Shankar M", dob: "2001-09-15", gender: "MALE", bloodGroup: "O+", tshirtSize: "L", preferredSports: [k1, k2, k1],
+    playingLevel: "INTERMEDIATE", about: "Looking for regular games", altPhone: "9666600002", emergencyName: "Mohan", emergencyRelation: "Father",
+    emergencyPhone: "9666600003", addressLine1: "12 Lake Road", addressLine2: "Adyar", city: "Chennai", state: "Tamil Nadu", pincode: "600020" })]))[0].r;
+  check("personal info: every field is saved and returned", saved.fullName === "Uma Shankar M" && saved.bloodGroup === "O+" && saved.tshirtSize === "L" && saved.playingLevel === "INTERMEDIATE" && saved.emergencyName === "Mohan" && saved.pincode === "600020" && saved.city === "Chennai" && saved.dob === "2001-09-15", JSON.stringify(saved));
+  check("personal info: preferred sports are kept once each", saved.preferredSports.length === 2 && saved.preferredSports.includes(k1) && saved.preferredSports.includes(k2), JSON.stringify(saved.preferredSports));
+  const part = (await q("select update_my_player_info($1::jsonb) r", [JSON.stringify({ about: "" })]))[0].r;
+  check("personal info: clearing one field leaves the rest as they were", part.about === null && part.bloodGroup === "O+" && part.addressLine1 === "12 Lake Road");
+  await throws("personal info: an unknown sport is refused", () => q("select update_my_player_info($1::jsonb)", [JSON.stringify({ preferredSports: ["no-such-sport"] })]), "Unknown sport");
+  const bad = (label, patch, msg) => throws("personal info: " + label, () => q("select update_my_player_info($1::jsonb)", [JSON.stringify(patch)]), msg);
+  await bad("a bad PIN code is refused", { pincode: "12345" }, "PIN code must be 6 digits");
+  await bad("a PIN code cannot start with 0", { pincode: "012345" }, "PIN code must be 6 digits");
+  await bad("a name with digits is refused", { fullName: "Uma 2" }, "can only have letters");
+  await bad("a one-letter name is refused", { fullName: "U" }, "too short");
+  await bad("a 61-character name is refused", { fullName: "A".repeat(61) }, "too long");
+  await bad("a bad email is refused", { email: "uma@@gmail" }, "valid email");
+  await bad("an email with a double dot is refused", { email: "a..b@x.com" }, "valid email");
+  await bad("a future date of birth is refused", { dob: "2999-01-01" }, "future");
+  await bad("a date of birth before 1920 is refused", { dob: "1900-05-05" }, "valid date of birth");
+  await bad("a mobile number starting with 5 is refused", { altPhone: "5876543210" }, "starts with 6, 7, 8 or 9");
+  await bad("a short mobile number is refused", { altPhone: "98765" }, "10-digit");
+  await bad("letters in a mobile number are refused", { altPhone: "98765abcde" }, "10-digit");
+  await bad("the alternate number cannot be the sign-in number", { altPhone: "+91 96666-00001" }, "different one");
+  await bad("an emergency contact needs a number", { emergencyName: "Mohan", emergencyPhone: "" }, "contact mobile number");
+  await bad("an emergency contact needs a name", { emergencyName: "", emergencyPhone: "9666600003" }, "contact name");
+  await bad("a PIN code needs the first address line", { addressLine1: "", pincode: "600020" }, "enter the address");
+  await bad("an address needs its PIN code", { addressLine1: "12 Lake Road", pincode: "" }, "PIN code");
+  await bad("symbols in an address line are refused", { addressLine1: "Lake <Road>" }, "can only have");
+  await bad("a 201-character about is refused", { about: "x".repeat(201) }, "under 200");
+  const tidy = (await q("select update_my_player_info($1::jsonb) r", [JSON.stringify({ fullName: "  Uma   Shankar  ", email: " Uma@Gmail.COM ", altPhone: "+91 96666-00002", emergencyPhone: "0 9666600003" })]))[0].r;
+  check("personal info: values are tidied (spaces squashed, email lower-case, numbers stored as ten digits)", tidy.fullName === "Uma Shankar" && tidy.email === "uma@gmail.com" && tidy.altPhone === "9666600002" && tidy.emergencyPhone === "9666600003", JSON.stringify(tidy));
+  await throws("personal info: a name cannot be emptied", () => q("select update_my_player_info($1::jsonb)", [JSON.stringify({ fullName: "  " })]), "enter your name");
+  await throws("personal info: a document outside the player's own folder is refused", () => q("select update_my_player_info($1::jsonb)", [JSON.stringify({ idDocType: "AADHAAR", idDocPath: uuid() + "/x.pdf" })]), "Bad document");
+  const withDoc = (await q("select update_my_player_info($1::jsonb) r", [JSON.stringify({ idDocType: "AADHAAR", idDocPath: pid + "/id.pdf", idDocName: "id.pdf" })]))[0].r;
+  check("personal info: the ID proof is saved against the player", withDoc.idDocType === "AADHAAR" && withDoc.idDocPath === pid + "/id.pdf" && withDoc.idDocName === "id.pdf");
+  await asUser(null);
+}
+
+// ═══ Player notifications (0194) ════════════════════════════════════════════════════════════════════════════
+{
+  const ow = await mkUser("pn.owner@test.local", "PN Owner");
+  const fx = await mkFacility(ow, "Notify Arena");
+  const sp = (await q("select id from sports where key='badminton'"))[0].id;
+  const fsid = uuid();
+  await q("insert into facility_sports (id, facility_id, sport_id) values ($1,$2,$3)", [fsid, fx, sp]);
+  const mkCourt = async (name) => {
+    const id = uuid();
+    await q("insert into courts (id, facility_id, sport_id, facility_sport_id, name, hourly_rate_inr) values ($1,$2,$3,$4,$5,400)", [id, fx, sp, fsid, name]);
+    return id;
+  };
+  const pid = uuid(), other = uuid();
+  await q("insert into auth.users (id, phone) values ($1,'919888800001'), ($2,'919888800002')", [pid, other]);
+  await q("insert into players (id, full_name, phone) values ($1,'Notified Player','9888800001'), ($2,'Someone Else','9888800002')", [pid, other]);
+  const unread = async (uid) => { await asUser(uid); const r = (await q("select list_my_notifications(true, 50) r"))[0].r; await asUser(null); return r; };
+  const gp = uuid();
+  await q("insert into guest_players (id, facility_id, name, phone) values ($1,$2,'Notified Player','+91 98888-00001')", [gp, fx]);
+  const mkBooking = async (minutesAhead, createdMinutesAgo) => {
+    const id = uuid();
+    const court = await mkCourt("Court " + id.slice(0, 4));
+    await q(`insert into bookings (id, facility_id, court_id, customer_type, guest_name, guest_phone, guest_player_id, start_time, end_time, status, amount_minor, created_at)
+             values ($1,$2,$3,'GUEST','Notified Player','+91 98888-00001',$4, now() + ($5 || ' minutes')::interval, now() + ($5 || ' minutes')::interval + interval '1 hour', 'confirmed', 40000, now() - ($6 || ' minutes')::interval)`, [id, fx, court, gp, minutesAhead, createdMinutesAgo]);
+    return id;
+  };
+
+  // 1 · booking reminder
+  const soon = await mkBooking(20, 300);
+  const late = await mkBooking(20, 5);       // made 5 minutes ago for 20 minutes from now: no reminder
+  const far = await mkBooking(120, 300);     // two hours away: not yet
+  await q("select run_player_notification_jobs()");
+  let u1 = await unread(pid);
+  const rem = u1.filter((n) => n.kind === "player_booking_reminder");
+  check("notify: a booking starting within 30 minutes reminds the player (once)", rem.length === 1 && rem[0].data.bookingId === soon && /30 minutes/.test(rem[0].title) && rem[0].data.route === "/bookings", JSON.stringify(rem));
+  await q("select run_player_notification_jobs()");
+  check("notify: running the job again does not repeat it", (await unread(pid)).filter((n) => n.kind === "player_booking_reminder").length === 1);
+  check("notify: another player is not told", (await unread(other)).length === 0);
+
+  // 2 · payments: success and failure
+  await q("insert into payments (facility_id, booking_id, amount_inr, status, payment_method, paid_at) values ($1,$2,400,'paid','Razorpay',now())", [fx, soon]);
+  await q("insert into payments (facility_id, booking_id, amount_inr, status, payment_method) values ($1,$2,200,'failed','Razorpay')", [fx, far]);
+  u1 = await unread(pid);
+  const ok = u1.find((n) => n.kind === "player_payment_success");
+  const bad = u1.find((n) => n.kind === "player_payment_failed");
+  check("notify: a successful payment tells the player the amount", !!ok && ok.title === "Payment successful" && ok.body.includes("₹400") && ok.body.includes("Notify Arena"), JSON.stringify(ok));
+  check("notify: a failed payment says so and how to carry on", !!bad && bad.title === "Payment failed" && bad.body.includes("₹200") && bad.body.includes("did not go through"), JSON.stringify(bad));
+
+  // 3 · membership due
+  const mem = (await q("insert into members (id, facility_id, full_name, phone) values ($1,$2,'Notified Player','98888 00001') returning id", [uuid(), fx]))[0].id;
+  const ms = await mkMembership(fx, mem, "Gold");
+  await q("update memberships set end_date = current_date + 3, auto_renew = true where id=$1", [ms]);
+  await q("select run_player_notification_jobs()");
+  let due = (await unread(pid)).filter((n) => n.kind === "player_membership_due");
+  check("notify: 3 days before the next payment the player is told the amount and date (AutoPay)", due.length === 1 && due[0].body.includes("₹2500") && due[0].body.includes("auto-debited") && due[0].data.route === "/my-membership", JSON.stringify(due));
+  await q("select run_player_notification_jobs()");
+  check("notify: the same reminder is not repeated", (await unread(pid)).filter((n) => n.kind === "player_membership_due").length === 1);
+  await q("update memberships set end_date = current_date + 1 where id=$1", [ms]);
+  await q("select run_player_notification_jobs()");
+  check("notify: a second reminder follows the day before", (await unread(pid)).filter((n) => n.kind === "player_membership_due").length === 2);
+  await q("update memberships set end_date = current_date + 10 where id=$1", [ms]);
+
+  // 4 · coaching monthly fee
+  const prog = uuid(), enr = uuid();
+  await q("insert into coaching_programs (id, facility_id, name, status, default_price_minor) values ($1,$2,'Junior Coaching','ACTIVE',150000)", [prog, fx]);
+  await q("insert into coaching_enrollments (id, facility_id, member_id, program_id, start_date, price_minor, status) values ($1,$2,$3,$4,current_date,450000,'ACTIVE')", [enr, fx, mem, prog]);
+  await q("insert into coaching_enrollment_billing (enrollment_id, facility_id, kind, amount_minor, total_cycles, status, current_end) values ($1,$2,'SUBSCRIPTION',150000,3,'ACTIVE',current_date + 2)", [enr, fx]);
+  await q("select run_player_notification_jobs()");
+  const cdue = (await unread(pid)).filter((n) => n.kind === "player_coaching_due");
+  check("notify: a monthly coaching fee reminder names the programme, amount and date", cdue.length === 1 && cdue[0].body.includes("₹1500") && cdue[0].body.includes("Junior Coaching") && cdue[0].data.route === "/my-coaching", JSON.stringify(cdue));
+
+  // 5 · the list, the count and marking read
+  await asUser(pid);
+  const total = (await q("select count_my_unread_notifications() c"))[0].c;
+  const list = (await q("select list_my_notifications(true, 50) r"))[0].r;
+  check("notify: the unread count matches the list", total === list.length && total >= 5, total + " vs " + list.length);
+  await q("select mark_notifications_read($1::uuid[])", [[list[0].id]]);
+  check("notify: a read message leaves the unread list", (await q("select list_my_notifications(true, 50) r"))[0].r.every((n) => n.id !== list[0].id) && (await q("select count_my_unread_notifications() c"))[0].c === total - 1);
+  check("notify: the full list still has it (read ones of the last 30 days)", (await q("select list_my_notifications(false, 50) r"))[0].r.some((n) => n.id === list[0].id));
+  await asUser(other);
+  check("notify: nobody else can see them", (await q("select list_my_notifications(false, 50) r"))[0].r.length === 0);
+  await asUser(null);
 }
 
 process.on('uncaughtException', (e) => { console.log('FATAL:', String(e.message).split('\n')[0]); process.exit(2); });

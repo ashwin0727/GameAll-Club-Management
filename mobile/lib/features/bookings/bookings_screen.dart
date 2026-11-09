@@ -1,3 +1,4 @@
+import 'cancel_quote_dialog.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -26,7 +27,6 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../../shared/widgets/tab_pop_scope.dart';
 import '../../shared/widgets/app_button.dart';
-import '../../shared/widgets/app_dialog.dart';
 import '../../shared/widgets/booking_slot_chip.dart';
 import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
@@ -1995,15 +1995,9 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
   }
 
   Future<void> _cancel() async {
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: 'Cancel Booking?',
-      message: 'This booking will be cancelled. This cannot be undone.',
-      confirmLabel: 'Cancel Booking',
-      cancelLabel: 'Keep Booking',
-      destructive: true,
-    );
-    if (!confirmed) return;
+    // shows the hours left, the % deducted and the refund first (migration 0188); the club can change the refund for this one
+    final decision = await showCancelQuoteDialog(context, bookingId: _booking.id);
+    if (decision == null) return;
 
     setState(() {
       _isWorking = true;
@@ -2011,12 +2005,15 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
       _cancelRefundNote = null;
     });
     try {
-      // Server-side (cancel-booking Edge Function): cancels the booking,
-      // releases court availability, and — if the booking was paid —
-      // requests and submits a cancellation-policy-derived refund, all in
-      // one call (spec §8/§13). Never a plain client-side status update.
+      // Server-side (cancel-booking Edge Function): cancels the booking, releases court availability, works out the refund from
+      // the fixed schedule (or the club's own %), sends the online part back through Razorpay and records any cash owed back.
       final result = await ref.read(refundRepositoryProvider).cancelBooking(
-        CancelBookingInput(bookingId: _booking.id, reason: 'Owner Request'),
+        CancelBookingInput(
+          bookingId: _booking.id,
+          reason: decision.reason ?? 'Owner Request',
+          refundOverridePercent: decision.overridePercent,
+          overrideReason: decision.overrideReason,
+        ),
       );
       if (!mounted) return;
       setState(() {
@@ -2024,11 +2021,12 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
         _changed = true;
       });
       final refund = result.refund;
-      if (refund != null) {
+      final paid = (result.cancellation?['paid_minor'] as num?)?.toInt() ?? 0;
+      if (refund != null || paid > 0) {
         setState(() {
-          _cancelRefundNote = refund.status == RefundStatus.failed
+          _cancelRefundNote = refund?.status == RefundStatus.failed
               ? 'The booking was cancelled, but the refund could not be submitted. Please retry from Refunds.'
-              : 'Refund requested — it will show as processed once Razorpay confirms it.';
+              : cancelledNote(result.cancellation);
         });
       } else if (mounted) {
         Navigator.of(context).pop(true);

@@ -151,7 +151,7 @@ export function SessionDetailsPage({ sessionId }: { sessionId: string }) {
           <Row label="Coach" value={s.coachName} />
           <Row label="Court" value={s.courtName} />
           <Row label="Time" value={fmtDateTime(s.startAt)} />
-          <Row label="Capacity" value={`${s.enrolledCount} / ${s.capacity}`} />
+          <Row label="Capacity" value={`${s.enrolledCount} / ${Math.max(s.capacity, s.enrolledCount)}`} />
           {s.objective && <Row label="Objective" value={s.objective} />}
         </dl>
       </Card>
@@ -162,7 +162,7 @@ export function SessionDetailsPage({ sessionId }: { sessionId: string }) {
         <Card className="p-0">
           <div className="flex items-center justify-between p-4">
             <h3 className="text-sm font-semibold">
-              Students ({s.enrolledCount}/{s.capacity})
+              Students ({s.enrolledCount}/{Math.max(s.capacity, s.enrolledCount)})
             </h3>
             {canEdit && live && s.enrolledCount < s.capacity && (
               <Button size="sm" variant="outline" onClick={() => setDialog("add-student")}>

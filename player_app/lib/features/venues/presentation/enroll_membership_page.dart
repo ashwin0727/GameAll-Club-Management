@@ -218,10 +218,11 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
     if (_sportId == null && sports.isNotEmpty) {
       // the sport chosen on the venue's card, else the first
       final want = ref.read(preferredSportProvider)?.trim().toLowerCase();
-      _sportId = sports
-          .where((s) => s.name.trim().toLowerCase() == want)
-          .firstOrNull
-          ?.id ??
+      _sportId =
+          sports
+              .where((s) => s.name.trim().toLowerCase() == want)
+              .firstOrNull
+              ?.id ??
           sports.first.id;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.read(preferredSportProvider.notifier).set(null);
@@ -1043,30 +1044,35 @@ class _SummaryPanel extends StatelessWidget {
     final fee = pl?.joiningFeeInr ?? 0;
     final total = pl == null ? null : pl.priceInr + fee;
 
-    Widget row(IconData icon, String label, String value, {Key? key, Widget? leading}) =>
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            children: [
-              leading ?? Icon(icon, size: 20, color: p.primaryText),
-              const SizedBox(width: 12),
-              Flexible(
-                flex: 0,
-                child: Text(label, style: AppTextStyles.body(p.primaryText)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  value,
-                  key: key,
-                  textAlign: TextAlign.right,
-                  style: AppTextStyles.body(p.primaryText)
-                      .copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+    Widget row(
+      IconData icon,
+      String label,
+      String value, {
+      Key? key,
+      Widget? leading,
+    }) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          leading ?? Icon(icon, size: 20, color: p.primaryText),
+          const SizedBox(width: 12),
+          Flexible(
+            flex: 0,
+            child: Text(label, style: AppTextStyles.body(p.primaryText)),
           ),
-        );
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              key: key,
+              textAlign: TextAlign.right,
+              style: AppTextStyles.body(p.primaryText)
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
     // the label takes the room that is left; the amount ends exactly on the right edge, like the rows above
     Widget money(String label, String value, {Key? key, bool big = false}) =>
         Padding(

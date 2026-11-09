@@ -12,15 +12,17 @@ class AppTheme {
   static ThemeData light() => _build(AppPalette.light);
 
   static ThemeData _build(AppPalette p) {
-    final scheme = (p.isDark ? const ColorScheme.dark() : const ColorScheme.light()).copyWith(
-      primary: p.primary,
-      secondary: p.isDark ? p.highlight : p.accent,
-      surface: p.surface,
-      onSurface: p.primaryText,
-      onPrimary: Colors.white,
-      outline: p.border,
-      error: AppColors.danger,
-    );
+    final scheme =
+        (p.isDark ? const ColorScheme.dark() : const ColorScheme.light())
+            .copyWith(
+              primary: p.primary,
+              secondary: p.isDark ? p.highlight : p.accent,
+              surface: p.surface,
+              onSurface: p.primaryText,
+              onPrimary: Colors.white,
+              outline: p.border,
+              error: AppColors.danger,
+            );
     return ThemeData(
       useMaterial3: true,
       brightness: p.brightness,
@@ -33,7 +35,22 @@ class AppTheme {
       highlightColor: Colors.transparent,
       splashColor: Colors.transparent,
       splashFactory: NoSplash.splashFactory,
-      textButtonTheme: TextButtonThemeData(style: ButtonStyle(overlayColor: WidgetStateProperty.all(Colors.transparent))),
+      textButtonTheme: TextButtonThemeData(
+        style: ButtonStyle(
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+        ),
+      ),
+      // one soft fade-and-slide for every page push on every platform (the web build used to jump)
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.macOS: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
       listTileTheme: const ListTileThemeData(),
       dividerColor: p.border,
       textTheme: AppTextStyles.textTheme(p.primaryText, p.secondaryText),
@@ -42,7 +59,10 @@ class AppTheme {
         color: p.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: AppDimensions.cardBorderRadius, side: BorderSide(color: p.border)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppDimensions.cardBorderRadius,
+          side: BorderSide(color: p.border),
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: p.background,
@@ -55,7 +75,9 @@ class AppTheme {
         backgroundColor: p.secondaryBackground,
         modalBackgroundColor: p.secondaryBackground,
         showDragHandle: true,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: p.elevated,

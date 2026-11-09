@@ -87,55 +87,72 @@ class PillTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(
-            color: p.isDark ? const Color(0xFF2E3B63) : p.border,
-          ),
-          color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < labels.length; i++)
-              Semantics(
-                button: true,
-                selected: i == current,
-                label: labels[i],
-                child: Pressable(
-                  key: ValueKey(keyOf(i)),
-                  onTap: () => onTab(i),
-                  borderRadius: BorderRadius.circular(22),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 11,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: i == current
-                          ? const LinearGradient(
-                              colors: [Color(0xFF9B5CFF), Color(0xFF6A4BE0)],
-                            )
-                          : null,
-                    ),
-                    child: Text(
-                      labels[i],
-                      style: AppTextStyles.button(
-                        i == current ? Colors.white : p.primaryText,
-                      ).copyWith(fontSize: 14.5),
-                    ),
-                  ),
+    return LayoutBuilder(
+      builder: (context, c) {
+        // On a phone the tabs share the row equally (text shrinks if needed), so
+        // none is ever cut off; on a wide layout they keep their natural size.
+        final fit = c.maxWidth < 700;
+        Widget tab(int i) {
+          final label = Text(
+            labels[i],
+            maxLines: 1,
+            style: AppTextStyles.button(
+              i == current ? Colors.white : p.primaryText,
+            ).copyWith(fontSize: fit ? 13.5 : 14.5),
+          );
+          final pill = Semantics(
+            button: true,
+            selected: i == current,
+            label: labels[i],
+            child: Pressable(
+              key: ValueKey(keyOf(i)),
+              onTap: () => onTab(i),
+              borderRadius: BorderRadius.circular(22),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                alignment: fit ? Alignment.center : null,
+                padding: EdgeInsets.symmetric(
+                  horizontal: fit ? 6 : 26,
+                  vertical: 11,
                 ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  gradient: i == current
+                      ? const LinearGradient(
+                          colors: [Color(0xFF9B5CFF), Color(0xFF6A4BE0)],
+                        )
+                      : null,
+                ),
+                child: fit
+                    ? FittedBox(fit: BoxFit.scaleDown, child: label)
+                    : label,
               ),
-          ],
-        ),
-      ),
+            ),
+          );
+          return fit ? Expanded(child: pill) : pill;
+        }
+
+        final row = Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: p.isDark ? const Color(0xFF2E3B63) : p.border,
+            ),
+            color: p.surface.withValues(alpha: p.isDark ? 0.5 : 1),
+          ),
+          child: Row(
+            mainAxisSize: fit ? MainAxisSize.max : MainAxisSize.min,
+            children: [for (var i = 0; i < labels.length; i++) tab(i)],
+          ),
+        );
+        return fit
+            ? row
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: row,
+              );
+      },
     );
   }
 }

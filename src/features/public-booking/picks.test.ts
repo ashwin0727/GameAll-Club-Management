@@ -47,3 +47,21 @@ describe("summarise", () => {
     expect(summarise([pick("c1", 18), pick("c2", 18)]).advanceRequired).toBe(false);
   });
 });
+
+describe("the 50% / full payment choice", () => {
+  it("50% now: every booking, even a single hour, takes half online", () => {
+    const s = summarise([pick("c1", 18)], "ADVANCE");
+    expect(s).toMatchObject({ totalMinor: 30000, advanceDueMinor: 15000, balanceMinor: 15000, advanceRequired: true, option: "ADVANCE" });
+  });
+  it("full: the whole amount is paid online and nothing is left", () => {
+    const s = summarise([pick("c1", 18), pick("c1", 19), pick("c2", 7)], "FULL");
+    expect(s).toMatchObject({ totalMinor: 90000, advanceDueMinor: 90000, balanceMinor: 0, advanceRequired: true, option: "FULL" });
+  });
+  it("half is rounded up, and several bookings add up", () => {
+    const s = summarise([pick("c1", 18, 30001), pick("c2", 18, 30001)], "ADVANCE");
+    expect(s.advanceDueMinor).toBe(15001 + 15001);
+  });
+  it("no choice yet: the old rule (only a booking longer than an hour takes an advance)", () => {
+    expect(summarise([pick("c1", 18)]).advanceRequired).toBe(false);
+  });
+});

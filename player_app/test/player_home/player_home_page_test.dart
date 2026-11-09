@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gameall_player/core/routing/app_routes.dart';
 import 'package:gameall_player/core/theme/app_theme.dart';
+import 'package:gameall_player/features/auth/application/auth_providers.dart';
+import 'package:gameall_player/features/auth/domain/player_profile.dart';
+import 'package:gameall_player/features/notifications/application/notification_providers.dart';
+import '../support/fake_notifications.dart';
 import 'package:gameall_player/core/widgets/pressable.dart';
 import 'package:gameall_player/features/player_home/application/player_home_controller.dart';
 import 'package:gameall_player/features/player_home/data/player_home_repository.dart';
@@ -49,6 +54,7 @@ Future<Harness> pumpHome(
   PlayerHomeData? data,
   Size size = const Size(390, 844),
   ThemeMode mode = ThemeMode.dark,
+  List<Override> extra = const [],
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -59,6 +65,7 @@ Future<Harness> pumpHome(
       playerHomeRepositoryProvider.overrideWithValue(
         FakeRepository(data ?? playerData()),
       ),
+      ...extra,
     ],
   );
   addTearDown(container.dispose);
@@ -142,46 +149,74 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('membership card follows the enrolment', (tester) async {
-      final plain = await pumpHome(tester);
-      expect(find.text('Explore\nMemberships'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shortcut-membership')));
-      expect(plain.routes, [AppRoutes.memberships]);
+    testWidgets(
+      'the Membership card goes to the player\'s membership once they have one, else to the memberships search',
+      (tester) async {
+        final plain = await pumpHome(tester);
+        expect(find.text('No active membership'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('summary-membership')));
+        expect(plain.routes, [AppRoutes.memberships]);
 
-      final enrolled = await pumpHome(
-        tester,
-        data: playerData(membership: true),
-      );
-      expect(find.text('My\nMembership'), findsOneWidget);
-      expect(find.text('Explore\nMemberships'), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('shortcut-membership')));
-      expect(enrolled.routes, [AppRoutes.myMembership]);
-    });
+        final enrolled = await pumpHome(
+          tester,
+          data: playerData(membership: true),
+        );
+        expect(find.text('Active'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('summary-membership')));
+        expect(enrolled.routes, [AppRoutes.myMembership]);
+      },
+    );
 
-    testWidgets('coaching card follows the enrolment', (tester) async {
-      final plain = await pumpHome(tester);
-      expect(find.text('Explore\nCoaching'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shortcut-coaching')));
-      expect(plain.routes, [AppRoutes.coaching]);
+    testWidgets(
+      'the Coaching card goes to the player\'s coaching once they are enrolled, else to the coaching search',
+      (tester) async {
+        final plain = await pumpHome(tester);
+        await tester.tap(find.byKey(const ValueKey('summary-coaching')));
+        expect(plain.routes, [AppRoutes.coaching]);
 
-      final enrolled = await pumpHome(tester, data: playerData(coaching: true));
-      expect(find.text('My\nCoaching'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('shortcut-coaching')));
-      expect(enrolled.routes, [AppRoutes.myCoaching]);
-    });
+        final enrolled = await pumpHome(
+          tester,
+          data: playerData(coaching: true),
+        );
+        await tester.tap(find.byKey(const ValueKey('summary-coaching')));
+        expect(enrolled.routes, [AppRoutes.myCoaching]);
+      },
+    );
 
-    testWidgets('Guest Court Booking is always there', (tester) async {
-      for (final data in [
-        playerData(),
-        playerData(membership: true, coaching: true),
-        const PlayerHomeData.guest(),
-      ]) {
-        final h = await pumpHome(tester, data: data);
-        expect(find.text('Guest\nCourt\nBooking'), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('shortcut-guest')));
-        expect(h.routes, [AppRoutes.guestBooking]);
-      }
-    });
+    testWidgets(
+      'the Guest Bookings card goes to the player\'s bookings once they have booked, else to the venues to book',
+      (tester) async {
+        for (final data in [playerData(), const PlayerHomeData.guest()]) {
+          final h = await pumpHome(tester, data: data);
+          expect(find.text('No guest bookings'), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('summary-guest')));
+          expect(h.routes, [AppRoutes.guestBooking]);
+        }
+        final booked = await pumpHome(tester, data: playerData(history: true));
+        await tester.tap(find.byKey(const ValueKey('summary-guest')));
+        expect(booked.routes, [AppRoutes.bookings]);
+      },
+    );
+
+    testWidgets(
+      'the three cards are the same for a visitor and a player, and there is no sports row',
+      (tester) async {
+        await pumpHome(tester, data: const PlayerHomeData.guest());
+        for (final k in [
+          'summary-membership',
+          'summary-coaching',
+          'summary-guest',
+        ]) {
+          expect(find.byKey(ValueKey(k)), findsOneWidget, reason: k);
+        }
+        expect(find.byKey(const ValueKey('sport-football')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('shortcut-membership')),
+          findsNothing,
+          reason: 'one set of cards, not two',
+        );
+      },
+    );
 
     testWidgets(
       'a brand-new player sees "No bookings yet" and a Book a Court button',
@@ -239,7 +274,18 @@ void main() {
     testWidgets(
       'the unread count shows on the bell, and the bell opens notifications',
       (tester) async {
-        final h = await pumpHome(tester, data: playerData(unread: 4));
+        // the number comes from the player's own notifications (migration 0194), not from the Home data
+        final h = await pumpHome(
+          tester,
+          extra: [
+            currentPlayerProvider.overrideWithValue(
+              const PlayerProfile(id: 'u1', fullName: 'Alex Kumar', phone: '9876543210'),
+            ),
+            notificationRepositoryProvider.overrideWithValue(
+              FakeNotifications([for (var i = 0; i < 4; i++) notif('n$i')]),
+            ),
+          ],
+        );
         expect(
           find.bySemanticsLabel('Notifications, 4 unread'),
           findsOneWidget,
@@ -271,32 +317,30 @@ void main() {
         expect(h.container.read(selectedCityProvider), 'Chennai, Tamil Nadu');
       },
     );
+  });
 
-    testWidgets('choosing a sport selects it', (tester) async {
-      final h = await pumpHome(tester);
-      expect(h.container.read(selectedSportProvider), 'all');
-      await tester.tap(find.byKey(const ValueKey('sport-football')));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(h.container.read(selectedSportProvider), 'football');
-    });
-
-    testWidgets('the selected sport narrows "Your Next Game"', (tester) async {
-      final h = await pumpHome(
-        tester,
-        data: playerData(
-          history: true,
-          bookings: [upcoming(sport: 'Badminton')],
-        ),
-      );
-      expect(find.text('Confirmed'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('sport-football')));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Confirmed'), findsNothing);
-      expect(find.text('Ready for your next game?'), findsOneWidget);
-      h.container.read(selectedSportProvider.notifier).select('all');
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Confirmed'), findsOneWidget);
-    });
+  testWidgets('several refreshes at once share one reload of the Home data', (
+    tester,
+  ) async {
+    final repo = FakeRepository(playerData());
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final c = ProviderContainer(
+      overrides: [playerHomeRepositoryProvider.overrideWithValue(repo)],
+    );
+    addTearDown(c.dispose);
+    await c.read(playerHomeProvider.future);
+    final before = repo.loads;
+    final notifier = c.read(playerHomeProvider.notifier);
+    await Future.wait([
+      notifier.refresh(),
+      notifier.refresh(),
+      notifier.refresh(),
+    ]);
+    expect(repo.loads - before, 1, reason: 'three callers, one request');
+    await notifier.refresh();
+    expect(repo.loads - before, 2, reason: 'a later refresh is a new request');
   });
 
   group('Promotional carousel', () {
@@ -455,8 +499,6 @@ void main() {
       tester,
     ) async {
       final h = await pumpHome(tester);
-      await tester.tap(find.byKey(const ValueKey('sport-football')));
-      await tester.pump(const Duration(milliseconds: 300));
       await tester.fling(
         find.byKey(const ValueKey('promo-pages')),
         const Offset(-300, 0),
@@ -468,7 +510,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(h.container.read(themeModeProvider), ThemeMode.light);
-      expect(h.container.read(selectedSportProvider), 'football');
       expect(find.text('Play regularly.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -525,6 +566,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the bell is only there for a signed-in player; on the web it opens the unread messages as a popup', (tester) async {
+      final signedIn = [
+        currentPlayerProvider.overrideWithValue(
+          const PlayerProfile(id: 'u1', fullName: 'Alex Kumar', phone: '9876543210'),
+        ),
+        notificationRepositoryProvider.overrideWithValue(FakeNotifications([notif('a'), notif('b')])),
+      ];
+      final h = await pumpHome(tester, size: const Size(1280, 800), extra: signedIn);
+      expect(find.bySemanticsLabel('Notifications, 2 unread'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('Notifications, 2 unread'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('notif-popup')), findsOneWidget);
+      await tester.tapAt(const Offset(40, 500));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('notif-popup')), findsNothing);
+      expect(h.routes, isEmpty);
+    });
+
+    testWidgets('signed out, the phone Home has no bell either', (tester) async {
+      await pumpHome(tester);
+      expect(find.bySemanticsLabel(RegExp('Notifications')), findsNothing);
+    });
+
     testWidgets(
       'the web brand bar: Venues, Memberships, Coaching, Tournaments, the city, a bell and a profile circle (no Home link)',
       (tester) async {
@@ -551,18 +615,17 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.bySemanticsLabel(RegExp('Notifications')), findsOneWidget);
+        // signed out: no bell (there are no notifications to show), just the login circle
+        expect(find.bySemanticsLabel(RegExp('Notifications')), findsNothing);
         expect(find.byIcon(Icons.person_rounded), findsOneWidget);
 
         await tester.tap(find.byKey(const ValueKey('login-button')));
         await tester.tap(find.byKey(const ValueKey('nav-Coaching')));
         await tester.tap(find.byKey(const ValueKey('nav-Memberships')));
-        await tester.tap(find.bySemanticsLabel(RegExp('Notifications')));
         expect(h.routes, [
           AppRoutes.login,
           AppRoutes.coaching,
           AppRoutes.memberships,
-          AppRoutes.notifications,
         ]);
 
         // the logo goes to Home from any tab

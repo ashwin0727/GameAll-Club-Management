@@ -56,7 +56,10 @@ Future<void> openPaymentFlow(
 );
 
 /// The words of an exception the app threw for the player, or [fallback].
-String paymentErrorText(Object error, {String fallback = "We couldn't start your payment. Please try again."}) {
+String paymentErrorText(
+  Object error, {
+  String fallback = "We couldn't start your payment. Please try again.",
+}) {
   try {
     final m = (error as dynamic).message;
     if (m is String && m.trim().isNotEmpty) return m;

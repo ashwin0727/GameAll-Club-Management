@@ -80,5 +80,7 @@ export interface PublicBookingConfirmation {
   /** A booking longer than an hour is held until its 50% advance is paid online. */
   advanceRequired?: boolean;
   advanceMinor?: number;
+  /** "ADVANCE" (50% now) or "FULL": what the guest chose (migration 0188). */
+  paymentOption?: "ADVANCE" | "FULL" | null;
   holdExpiresAt?: string | null;
 }

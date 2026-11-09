@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/errors/app_exception.dart';
 import '../models/booking.dart';
+import '../models/booking_cancellation_quote.dart';
 import '../models/refund.dart';
 
 /// Cancellation, Refund & Payment Recovery — Phase 6 port. Mirrors
@@ -55,7 +56,7 @@ class RefundRepository {
   /// availability releases for free (0001's exclusion constraint); if the
   /// booking was paid, a policy-derived refund is requested and submitted to
   /// Razorpay in the same call.
-  Future<({Booking booking, RefundSubmission? refund})> cancelBooking(CancelBookingInput input) async {
+  Future<({Booking booking, RefundSubmission? refund, Map<String, dynamic>? cancellation})> cancelBooking(CancelBookingInput input) async {
     final data = await _invoke('cancel-booking', {
       'bookingId': input.bookingId,
       'reason': input.reason,
@@ -63,7 +64,23 @@ class RefundRepository {
       'overrideReason': input.overrideReason,
     });
     final booking = Booking.fromJson((data['booking'] as Map).cast<String, dynamic>());
-    return (booking: booking, refund: _refundOrNull(data));
+    final c = data['cancellation'];
+    return (booking: booking, refund: _refundOrNull(data), cancellation: c is Map ? c.cast<String, dynamic>() : null);
+  }
+
+  /// What cancelling this booking now would do (hours left, % deducted, refund, the sentence to show). With [overridePercent], what the
+  /// owner's own refund % would do. Null when it cannot be worked out. Migration 0188.
+  Future<BookingCancellationQuote?> bookingCancellationQuote(String bookingId, {int? overridePercent}) async {
+    try {
+      final data = await _client.rpc(
+        'staff_booking_cancellation_quote',
+        params: {'p_booking_id': bookingId, 'p_override_percent': overridePercent},
+      );
+      if (data is! Map) return null;
+      return BookingCancellationQuote.fromJson(data.cast<String, dynamic>());
+    } on PostgrestException {
+      return null;
+    }
   }
 
   /// Cancels a released-capacity guest booking (membership_session_bookings

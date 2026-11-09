@@ -208,6 +208,11 @@ export class SupabaseBookingService implements BookingService {
     if (!data) throw new ServiceError("BOOKING_NOT_FOUND");
   }
 
+  async setBookingPaymentOption(bookingId: string, option: "ADVANCE" | "FULL"): Promise<void> {
+    const { error } = await this.supabase.rpc("set_booking_payment_option" as never, { p_booking_id: bookingId, p_option: option } as never);
+    if (error) throw mapSupabaseError(error);
+  }
+
   async getGuestBookingsSummary(facilityId: string, from: string, to: string): Promise<GuestBookingsSummary> {
     const { data, error } = await this.supabase.rpc("get_guest_bookings_summary", {
       p_facility_id: facilityId,

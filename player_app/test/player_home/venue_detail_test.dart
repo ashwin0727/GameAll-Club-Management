@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../support/fake_payment_receipts.dart';
+
 import 'package:gameall_player/features/auth/application/auth_providers.dart';
 import 'package:gameall_player/features/auth/domain/player_profile.dart';
 import 'package:gameall_player/features/payments/application/payment_flow.dart';
 import 'package:gameall_player/features/payments/data/player_booking_repository.dart';
 import 'package:gameall_player/features/payments/domain/payment_receipt.dart';
 import 'package:gameall_player/features/player_home/data/pending_payment_repository.dart';
-import 'package:gameall_player/features/player_home/domain/player_dashboard_models.dart' show PendingPayment;
+import 'package:gameall_player/features/player_home/domain/player_dashboard_models.dart'
+    show PendingPayment;
 import 'package:gameall_player/core/routing/app_routes.dart';
 import 'package:gameall_player/core/theme/app_theme.dart';
 import 'package:gameall_player/core/widgets/pressable.dart';
@@ -142,6 +145,7 @@ List<CourtSlots> _slots() => [
 
 class _FakeBookings implements PlayerBookingRepository {
   final made = <(String, String, DateTime, DateTime)>[];
+  final options = <String?>[];
   String? fail;
 
   @override
@@ -151,11 +155,21 @@ class _FakeBookings implements PlayerBookingRepository {
     required DateTime start,
     required DateTime end,
     int partySize = 1,
+    String? paymentOption,
   }) async {
     if (fail != null) throw BookingException(fail!);
     made.add((facilityId, courtId, start, end));
+    options.add(paymentOption);
     return 'bk1';
   }
+}
+
+/// The "Pay 50% now / Pay full amount" sheet that Book Now opens: pick one and continue.
+Future<void> _choosePay(WidgetTester tester, {String option = 'pay-opt-full'}) async {
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(ValueKey(option)));
+  await tester.pump();
+  await tester.tap(find.byKey(const ValueKey('pay-opt-continue')));
 }
 
 class _FakeLinks implements PendingPaymentRepository {
@@ -190,8 +204,18 @@ Future<(_Repo, List<Uri>)> _pump(
       playerHomeRepositoryProvider.overrideWithValue(_Home()),
       playerBookingRepositoryProvider.overrideWithValue(_bookings),
       pendingPaymentRepositoryProvider.overrideWithValue(_links),
-      paymentReceiptRepositoryProvider.overrideWithValue(FakePaymentReceipts(kindOverride: PaymentKind.booking)),
-      currentPlayerProvider.overrideWithValue(_signedIn ? const PlayerProfile(id: 'p1', fullName: 'Arun', phone: '9000000001') : null),
+      paymentReceiptRepositoryProvider.overrideWithValue(
+        FakePaymentReceipts(kindOverride: PaymentKind.booking),
+      ),
+      currentPlayerProvider.overrideWithValue(
+        _signedIn
+            ? const PlayerProfile(
+                id: 'p1',
+                fullName: 'Arun',
+                phone: '9000000001',
+              )
+            : null,
+      ),
       linkOpenerProvider.overrideWithValue((uri) async {
         opened.add(uri);
         return true;
@@ -606,6 +630,7 @@ void main() {
 
         await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
         await tester.tap(find.byKey(const ValueKey('book-now')));
+        await _choosePay(tester);
         await tester.pump();
         // Book Now makes the booking and opens the payment progress page, then the success page
         await tester.pumpAndSettle(const Duration(milliseconds: 100));
@@ -615,42 +640,58 @@ void main() {
       },
     );
 
-    testWidgets('Book Now makes the booking for the chosen court and time, and pays through the progress page', (tester) async {
-      await _pump(tester, Scaffold(body: page()));
-      await tester.ensureVisible(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.pump();
-      await tester.ensureVisible(find.byKey(const ValueKey('book-slot-9:00 PM')));
-      await tester.tap(find.byKey(const ValueKey('book-slot-9:00 PM')));
-      await tester.pump();
-      await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
-      await tester.tap(find.byKey(const ValueKey('book-now')));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      final (venue, court, start, end) = _bookings.made.single;
-      expect(venue, 'v1');
-      expect(court, isNotEmpty);
-      expect(end.difference(start), const Duration(hours: 2));
-      expect(_links.asked.single.id, 'bk1');
-      expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
-      expect(find.text('Payment Successful'), findsOneWidget);
-      expect(find.byKey(const ValueKey('pay-download')), findsOneWidget);
-    });
+    testWidgets(
+      'Book Now makes the booking for the chosen court and time, and pays through the progress page',
+      (tester) async {
+        await _pump(tester, Scaffold(body: page()));
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('book-slot-8:00 PM')),
+        );
+        await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
+        await tester.pump();
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('book-slot-9:00 PM')),
+        );
+        await tester.tap(find.byKey(const ValueKey('book-slot-9:00 PM')));
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
+        await tester.tap(find.byKey(const ValueKey('book-now')));
+        await _choosePay(tester, option: 'pay-opt-advance');
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        final (venue, court, start, end) = _bookings.made.single;
+        expect(_bookings.options.single, 'ADVANCE');
+        expect(venue, 'v1');
+        expect(court, isNotEmpty);
+        expect(end.difference(start), const Duration(hours: 2));
+        expect(_links.asked.single.id, 'bk1');
+        expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
+        expect(find.text('Payment Successful'), findsOneWidget);
+        expect(find.byKey(const ValueKey('pay-download')), findsOneWidget);
+      },
+    );
 
-    testWidgets('Book Now asks a player who is not signed in to sign in, and books nothing', (tester) async {
-      _signedIn = false;
-      addTearDown(() => _signedIn = true);
-      await _pump(tester, Scaffold(body: page()));
-      await tester.ensureVisible(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.pump();
-      await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
-      await tester.tap(find.byKey(const ValueKey('book-now')));
-      await tester.pumpAndSettle();
-      expect(_bookings.made, isEmpty);
-      expect(routes, contains(AppRoutes.login));
-    });
+    testWidgets(
+      'Book Now asks a player who is not signed in to sign in, and books nothing',
+      (tester) async {
+        _signedIn = false;
+        addTearDown(() => _signedIn = true);
+        await _pump(tester, Scaffold(body: page()));
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('book-slot-8:00 PM')),
+        );
+        await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
+        await tester.tap(find.byKey(const ValueKey('book-now')));
+        await tester.pumpAndSettle();
+        expect(_bookings.made, isEmpty);
+        expect(routes, contains(AppRoutes.login));
+      },
+    );
 
-    testWidgets('hours that are not in a row are not booked together', (tester) async {
+    testWidgets('hours that are not in a row are not booked together', (
+      tester,
+    ) async {
       await _pump(tester, Scaffold(body: page()));
       for (final h in ['6:00 PM', '9:00 PM']) {
         await tester.ensureVisible(find.byKey(ValueKey('book-slot-$h')));
@@ -664,18 +705,27 @@ void main() {
       expect(find.textContaining('one continuous time'), findsOneWidget);
     });
 
-    testWidgets('a court that was just taken is reported on the progress page, with Try again', (tester) async {
-      await _pump(tester, Scaffold(body: page()));
-      _bookings.fail = 'Sorry, this court is no longer available.';
-      await tester.ensureVisible(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
-      await tester.pump();
-      await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
-      await tester.tap(find.byKey(const ValueKey('book-now')));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      expect(find.text('Sorry, this court is no longer available.'), findsOneWidget);
-      expect(find.byKey(const ValueKey('pay-retry')), findsOneWidget);
-    });
+    testWidgets(
+      'a court that was just taken is reported on the progress page, with Try again',
+      (tester) async {
+        await _pump(tester, Scaffold(body: page()));
+        _bookings.fail = 'Sorry, this court is no longer available.';
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('book-slot-8:00 PM')),
+        );
+        await tester.tap(find.byKey(const ValueKey('book-slot-8:00 PM')));
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
+        await tester.tap(find.byKey(const ValueKey('book-now')));
+        await _choosePay(tester);
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(
+          find.text('Sorry, this court is no longer available.'),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('pay-retry')), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'several hours can be chosen: hours in a row merge, separate ones are listed, the price adds up, and a second tap takes one off',
@@ -947,6 +997,7 @@ void main() {
         );
         await tester.ensureVisible(find.byKey(const ValueKey('book-now')));
         await tester.tap(find.byKey(const ValueKey('book-now')));
+        await _choosePay(tester);
         await tester.pump();
         // Book Now makes the booking and opens the payment progress page, then the success page
         await tester.pumpAndSettle(const Duration(milliseconds: 100));
@@ -954,7 +1005,8 @@ void main() {
         expect(opened.single.toString(), 'https://rzp.io/i/bk');
         expect(find.byKey(const ValueKey('pay-success')), findsOneWidget);
         // closing the success page leaves the steps again, with the hour that was booked no longer chosen
-        Navigator.of(tester.element(find.byKey(const ValueKey('pay-success')))).pop();
+        Navigator.of(tester.element(find.byKey(const ValueKey('pay-success'))))
+            .pop();
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('booking-scroll')), findsOneWidget);
         expect(find.byKey(const ValueKey('booking-summary')), findsNothing);

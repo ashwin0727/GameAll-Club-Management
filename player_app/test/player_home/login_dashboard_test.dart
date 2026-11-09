@@ -471,6 +471,9 @@ void main() {
         await tester.tap(find.text('Continue'));
         await tester.pumpAndSettle();
         expect(find.text('Tell us about you'), findsOneWidget);
+        // the number that was just verified is shown, so the player can see which one it is
+        expect(find.byKey(const ValueKey('login-verified-phone')), findsOneWidget);
+        expect(find.text('+91 98765 43210'), findsOneWidget);
 
         // name and a real email are both needed
         await tester.enterText(
@@ -532,6 +535,12 @@ void main() {
       expect(find.text('Tell us about you'), findsNothing);
       expect(find.byKey(const ValueKey('login-dialog')), findsNothing);
       expect(find.byKey(const ValueKey('account-menu')), findsOneWidget);
+      // the avatar menu has My Profile, which opens the profile page
+      await tester.tap(find.byKey(const ValueKey('account-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('account-profile')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('profile-title')), findsOneWidget);
     });
 
     testWidgets(
@@ -867,13 +876,16 @@ void main() {
           home: unpaidData(),
           size: const Size(390, 844),
         );
+        // phone: a warning popup (arrows between the payments) opens with Home, and a slim banner stays after it is closed
+        expect(find.text('Payment pending (1 of 3)'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('reminder-next')));
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('reminder-next')));
+        await tester.pump();
+        expect(find.text('Payment pending (3 of 3)'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('reminder-close')));
+        await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('payment-prompts')), findsOneWidget);
-        expect(
-          find.text('Payment pending for Guest Booking at Champz Turf'),
-          findsOneWidget,
-        );
-        expect(find.text('Coaching AutoPay not completed'), findsOneWidget);
-        expect(find.text('Membership AutoPay not completed'), findsOneWidget);
         expect(find.text('Payment Incomplete'), findsNWidgets(2));
         expect(find.text('Active'), findsNothing);
         expect(find.text('Enrolled'), findsNothing);

@@ -12,6 +12,7 @@ import type { Refund, RefundStatus, SettlementException } from "@/features/refun
 import type { PaymentSourceType } from "@/features/payments/types";
 import { ServiceError } from "@/services/shared/service-error";
 import { EditOnly } from "@/features/access/edit-only";
+import { CashRefundsDue } from "@/features/refunds/components/cash-refunds-due";
 
 function refundStatusTone(status: Refund["status"]): "success" | "warning" | "destructive" | "secondary" {
   switch (status) {
@@ -109,6 +110,8 @@ export function RefundsPanel() {
   return (
     <div className="space-y-6">
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {facilityId && <CashRefundsDue facilityId={facilityId} />}
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">

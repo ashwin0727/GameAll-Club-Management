@@ -17,6 +17,7 @@ import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import 'discover_venues_page.dart';
 import 'no_venues_state.dart';
+import 'phone_list_header.dart';
 import 'sport_picker.dart';
 
 /// The three promises under the Memberships banner.
@@ -42,7 +43,14 @@ const membershipHighlights = [
 /// panel on the left, results on the right), but every result is a venue that has membership plans, with the lowest price of each
 /// length (Monthly, 3 Months, 6 Months, Yearly) right on its card and a View Plans button.
 class MembershipsPage extends ConsumerStatefulWidget {
-  const MembershipsPage({super.key, required this.onNavigate});
+  const MembershipsPage({
+    super.key,
+    required this.onNavigate,
+    this.showTitle = false,
+  });
+
+  /// Phone: draw the title line (with the location icon) in the page itself; a pushed page has it in the app bar.
+  final bool showTitle;
 
   final void Function(String route) onNavigate;
 
@@ -93,6 +101,7 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (wide) ...[
             Reveal(
               dy: 10,
               child: DiscoverBanner(
@@ -106,19 +115,6 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
                 imageSize: const Size(440, 121),
               ),
             ),
-            if (!wide) ...[
-              const SizedBox(height: 4),
-              inset(
-                Reveal(
-                  delay: const Duration(milliseconds: 20),
-                  child: DiscoverHighlights(
-                    room: width - side * 2,
-                    compact: true,
-                    items: membershipHighlights,
-                  ),
-                ),
-              ),
-            ],
             SizedBox(height: wide ? 6 : 16),
             inset(
               Reveal(
@@ -138,6 +134,32 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
                 ),
               ),
             ),
+            ] else ...[
+              if (widget.showTitle)
+                inset(
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 6),
+                    child: PhoneTitleRow(title: 'Explore Memberships'),
+                  ),
+                ),
+              const SizedBox(height: 6),
+              inset(
+                SportChipsRow(
+                  sports: [...featuredSports, ...otherSports(all)],
+                  selected: filters.sport,
+                  onSelect: (s) => ctl.update((f) => f.copyWith(sport: s)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              inset(
+                CompactSearchField(
+                  controller: _search,
+                  hint: 'Search venues (e.g., \"Champz Turf\")',
+                  onChanged: _setQuery,
+                  onSearch: () => _setQuery(_search.text),
+                ),
+              ),
+            ],
             SizedBox(height: wide ? 26 : 18),
             inset(
               _Results(
@@ -222,7 +244,12 @@ class _Results extends ConsumerWidget {
       );
     }
 
-    final shown = applyMembershipFilters(all, filters);
+    final km = ref.watch(venueDistancesProvider).value ?? const <String, double>{};
+    final shown = sortNearestFirst(
+      applyMembershipFilters(all, filters),
+      (v) => v.id,
+      km,
+    );
     final panel = MembershipFiltersPanel(
       onApply: () {
         final target = resultsKey.currentContext;

@@ -146,7 +146,10 @@ class CoachingBatch {
   final CoachInfo? coach;
 
   int get seatsLeft => (capacity - enrolled).clamp(0, capacity);
-  bool get full => capacity > 0 && enrolled >= capacity;
+
+  /// A batch never turns a player away: past its capacity the count just grows (11/11).
+  bool get full => false;
+  int get shownCapacity => enrolled > capacity ? enrolled : capacity;
 
   CoachingSlot get slot => CoachingSlot(start: start, end: end);
 
@@ -348,7 +351,7 @@ class CoachingOffer {
   String get groupLabel {
     final b = batch;
     if (program.programType == 'GROUP' && b != null && b.capacity > 0) {
-      return 'Group (Max ${b.capacity})';
+      return 'Group (Max ${b.shownCapacity})';
     }
     return program.typeLabel;
   }
