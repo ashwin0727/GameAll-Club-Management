@@ -1,5 +1,5 @@
 name: gameall_player
-description: "GameAll Player - view registrations, start memberships, book courts and follow tournaments."
+description: "GameAll Play - view registrations, start memberships, book courts and follow tournaments."
 # Private package — never published to pub.dev.
 publish_to: 'none'
 
@@ -42,7 +42,10 @@ flutter_launcher_icons:
   android: "ic_launcher"
   image_path: "assets/images/app_icon.png"
   min_sdk_android: 21
+  # An adaptive icon (dark background + the GameAll / PLAY artwork): the phone's own mask (round, squircle...) is cut from it, so
+  # Android no longer puts the logo on a white backing shape.
   adaptive_icon_background: "#050C19"
+  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
 
 flutter:
   uses-material-design: true

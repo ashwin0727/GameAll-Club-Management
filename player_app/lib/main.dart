@@ -77,7 +77,7 @@ class GameAllPlayerApp extends ConsumerWidget {
       }
     });
     return MaterialApp(
-      title: 'GameAll',
+      title: 'GameAll Play',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

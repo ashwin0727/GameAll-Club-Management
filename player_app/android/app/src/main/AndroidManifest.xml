@@ -7,7 +7,7 @@
     <!-- Android 13+: the app must ask before it can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="GameAll Player"
+        android:label="GameAll Play"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Notifications that arrive while the app is closed use this channel (created in push_service.dart). -->

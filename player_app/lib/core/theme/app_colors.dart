@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The GameAll Player colour tokens. One palette, defined once; widgets read the theme-aware [AppPalette] (`context.palette`) and
+/// The GameAll Play colour tokens. One palette, defined once; widgets read the theme-aware [AppPalette] (`context.palette`) and
 /// never hard-code a colour, so Dark and Light share one set of widgets.
 class AppColors {
   const AppColors._();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Spacing, radii and sizes of the GameAll Player design (logical pixels). The mobile design is built on a 390dp-wide screen.
+/// Spacing, radii and sizes of the GameAll Play design (logical pixels). The mobile design is built on a 390dp-wide screen.
 class AppDimensions {
   const AppDimensions._();
 

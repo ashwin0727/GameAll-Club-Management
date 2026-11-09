@@ -224,7 +224,7 @@ class SupportLegalPage extends ConsumerWidget {
                           Uri(
                             scheme: 'mailto',
                             path: supportEmail,
-                            query: 'subject=GameAll Player support',
+                            query: 'subject=GameAll Play support',
                           ),
                         ),
                       ),
@@ -293,7 +293,7 @@ class SupportLegalPage extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: ProfileMenuRow(
                     icon: Icons.info_outline_rounded,
-                    title: 'GameAll Player',
+                    title: 'GameAll Play',
                     subtitle: 'Version $version',
                     onTap: null,
                     trailing: const SizedBox.shrink(),

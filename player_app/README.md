@@ -1,4 +1,4 @@
-# GameAll Player
+# GameAll Play
 
 The players' app: view registrations, start memberships, book courts (guest booking) and follow tournaments.
 It lives beside the club-management app (`../mobile`) in the same repo and talks to the same Supabase project.
@@ -8,7 +8,7 @@ One Flutter code base builds the **Android app** and the **web app**.
 |---|---|---|
 | Folder | `mobile/` | `player_app/` |
 | Package | `gameall_club_mobile` | `gameall_player` |
-| Android id | `gameall.venue` | `com.gameall.gameall_player` |
+| Android id | `gameall.venue` | `com.gameall.gameall_play` |
 
 ## Run / build
 

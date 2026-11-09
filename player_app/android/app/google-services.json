@@ -45,9 +45,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1086078962051:android:0b45813580306923a40eb6",
+        "mobilesdk_app_id": "1:1086078962051:android:331879cf07cd9faea40eb6",
         "android_client_info": {
-          "package_name": "com.gameall.gameall_player"
+          "package_name": "com.gameall.gameall_play"
         }
       },
       "oauth_client": [],

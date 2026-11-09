@@ -22,7 +22,7 @@ void main() {
     await pump(tester);
     expect(find.text('PLAY  ·  BOOK  ·  COMPETE'), findsOneWidget);
     expect(find.text('Your'), findsOneWidget);
-    expect(find.text('Badminton'), findsOneWidget);
+    expect(find.text('Sports'), findsOneWidget);
     expect(find.text('Playground'), findsOneWidget);
     expect(
       find.text('Book courts, manage memberships, join tournaments and more.'),

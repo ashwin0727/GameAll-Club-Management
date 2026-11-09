@@ -18,7 +18,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.gameall.gameall_player"
+        applicationId = "com.gameall.gameall_play"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -54,7 +54,7 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
-// Push notifications need this app registered in the Firebase project (package com.gameall.gameall_player) and its google-services.json
+// Push notifications need this app registered in the Firebase project (package com.gameall.gameall_play) and its google-services.json
 // saved next to this file. Without the file the app still builds and runs; it just has no phone push.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")

@@ -137,7 +137,7 @@ class _Brand extends StatelessWidget {
   }
 }
 
-/// "Your Badminton Playground" and its one-line promise, left aligned above the button.
+/// "Your Sports Playground" and its one-line promise, left aligned above the button.
 class _Headline extends StatelessWidget {
   const _Headline({required this.width});
   final double width;
@@ -164,7 +164,7 @@ class _Headline extends StatelessWidget {
           ),
           SizedBox(height: width * 0.05),
           Text('Your', style: line(Colors.white)),
-          Text('Badminton', style: line(WelcomeScreen._green)),
+          Text('Sports', style: line(WelcomeScreen._green)),
           Text('Playground', style: line(Colors.white)),
           SizedBox(height: width * 0.035),
           ConstrainedBox(
