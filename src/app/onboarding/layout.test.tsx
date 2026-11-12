@@ -23,22 +23,27 @@ describe("OnboardingLayout", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
   }
 
-  it("goes straight from Sports back to Facility Details, with no confirmation, even with sports selected", async () => {
-    useOnboardingStore.getState().setSelectedSportIds(["sport_badminton"]);
-    await clickBack("/onboarding/sports");
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
-    expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
-  });
-
-  it("goes straight to /dashboard from the first step, even with a draft", async () => {
-    useOnboardingStore.getState().setDraft({ facilityName: "GameAll Sports Arena" });
-    await clickBack("/onboarding/facility");
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/dashboard"));
-    expect(screen.queryByText("Your progress has been saved.")).not.toBeInTheDocument();
+  it("leaves the welcome, facility-information, sports & courts and operating-hours pages to their own shell (no header or Back button of its own)", () => {
+    for (const path of ["/onboarding/welcome", "/onboarding/facility", "/onboarding/sports", "/onboarding/operating-hours", "/onboarding/pricing", "/onboarding/payments"]) {
+      setPathname(path);
+      const { unmount } = renderWithProviders(
+        <OnboardingLayout>
+          <div>content</div>
+        </OnboardingLayout>,
+      );
+      expect(screen.getByText("content")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+      unmount();
+    }
   });
 
   it("goes from Courts back to Sports", async () => {
     await clickBack("/onboarding/courts");
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports"));
+  });
+
+  it("goes from the plan step back to Payout", async () => {
+    await clickBack("/onboarding/plan");
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/payments"));
   });
 });

@@ -238,14 +238,14 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
 
       <Card className="rounded-2xl p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-[#0B9B63]/15 text-[#0B7A55]">
+          <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-[#4817C2]/15 text-[#4817C2]">
             <Trophy className="h-12 w-12" aria-hidden />
           </span>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold text-black dark:text-foreground">{name.main}</h1>
               <StatusPill on={plan.isActive}>{plan.isActive ? "Active" : "Inactive"}</StatusPill>
-              {plan.badgeText && <span className="rounded-full bg-[#0B9B63]/15 px-2.5 py-0.5 text-xs font-semibold text-[#0B7A55]">{plan.badgeText}</span>}
+              {plan.badgeText && <span className="rounded-full bg-[#4817C2]/15 px-2.5 py-0.5 text-xs font-semibold text-[#4817C2]">{plan.badgeText}</span>}
             </div>
             {name.detail && <p className="text-sm text-muted-foreground">{name.detail}</p>}
             {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
@@ -261,7 +261,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               <button
                 type="button"
                 onClick={() => setDialog("plan")}
-                className="flex h-10 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                className="flex h-10 items-center gap-2 rounded-lg border border-[#4817C2] bg-card px-4 text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
               >
                 <Pencil className="h-4 w-4" aria-hidden />
                 Edit Plan
@@ -302,7 +302,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
             onClick={() => setTab(t.key)}
             className={cn(
               "-mb-px whitespace-nowrap border-b-2 px-1 pb-3 text-sm transition-colors",
-              tab === t.key ? "border-[#0B9B63] font-semibold text-[#0B7A55]" : "border-transparent text-muted-foreground hover:text-foreground",
+              tab === t.key ? "border-[#4817C2] font-semibold text-[#4817C2]" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             {t.label}
@@ -352,7 +352,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               <ul className="space-y-2.5">
                 {features.slice(0, 4).map((f) => (
                   <li key={f} className="flex items-center gap-2.5 text-sm">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B9B63]/20 text-[#0B7A55]">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#4817C2]/20 text-[#4817C2]">
                       <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                     </span>
                     {f}
@@ -377,7 +377,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               <button
                 type="button"
                 onClick={() => setDialog("benefits")}
-                className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-3 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                className="flex h-9 items-center gap-2 rounded-lg border border-[#4817C2] bg-card px-3 text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden />
                 Edit Benefits
@@ -387,7 +387,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
           <ul className="space-y-3">
             {features.map((f) => (
               <li key={f} className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0B9B63]/15 text-[#0B7A55]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#4817C2]/15 text-[#4817C2]">
                   <Check className="h-5 w-5" aria-hidden />
                 </span>
                 <span className="text-sm font-semibold text-foreground">{f}</span>
@@ -424,7 +424,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
                   <button
                     type="button"
                     onClick={() => setDialog("capacity")}
-                    className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                    className="flex h-9 items-center gap-2 rounded-lg border border-[#4817C2] bg-card px-4 text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
                     Edit
@@ -445,7 +445,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
                   <button
                     type="button"
                     onClick={() => setDialog("slots")}
-                    className="flex h-9 items-center gap-2 rounded-lg border border-[#0B9B63] bg-card px-4 text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+                    className="flex h-9 items-center gap-2 rounded-lg border border-[#4817C2] bg-card px-4 text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
                   >
                     <Pencil className="h-3.5 w-3.5" aria-hidden />
                     Edit Slots
@@ -616,7 +616,7 @@ function PlanMembersTab({
               aria-current={p === view.page}
               className={cn(
                 "h-8 w-8 rounded-lg text-sm",
-                p === view.page ? "bg-[#0B9B63] font-semibold text-white" : "border border-input hover:bg-accent",
+                p === view.page ? "bg-[#4817C2] font-semibold text-white" : "border border-input hover:bg-accent",
               )}
             >
               {p}

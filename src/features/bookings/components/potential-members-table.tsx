@@ -34,7 +34,7 @@ function Checkbox({
         if (el) el.indeterminate = Boolean(indeterminate) && !checked;
       }}
       onChange={(e) => onChange(e.target.checked)}
-      className="h-4 w-4 cursor-pointer rounded border-input accent-[#0B7A55]"
+      className="h-4 w-4 cursor-pointer rounded border-input accent-[#4817C2]"
     />
   );
 }
@@ -155,7 +155,7 @@ export function PotentialMembersTable({
                       <button
                         type="button"
                         onClick={() => onInvite(g)}
-                        className="flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-[#0B7A55] bg-card px-3 text-xs font-medium text-[#0B7A55] transition-colors hover:bg-[#0B7A55]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10"
+                        className="flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-[#4817C2] bg-card px-3 text-xs font-medium text-[#4817C2] transition-colors hover:bg-[#4817C2]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10"
                       >
                         {copiedKey === g.key ? (
                           <>

@@ -2,21 +2,113 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../core/routing/app_router.dart';
 
-/// The branded splash clip, created once and warmed from `main()` so it's
-/// ready to play the instant the splash appears.
-final VideoPlayerController splashVideo =
-    VideoPlayerController.asset('assets/splash.mp4');
-Future<void>? _warm;
-Future<void> warmSplashVideo() =>
-    _warm ??= splashVideo.initialize().catchError((_) {});
+/// How long the splash stays up in total, counted from the moment the app process started drawing it.
+const splashHold = Duration(milliseconds: 2400);
 
-/// Cold-start splash. Fades the branded clip in, plays it through full-frame
-/// on black, then lifts [splashGate] so the router (app_router.dart) moves on.
-/// A safety timeout covers a stuck clip.
+final Stopwatch _sinceLaunch = Stopwatch();
+bool _introPlayed = false;
+
+/// Called first thing in `main()`, so the hold time counts from launch and not from when the router first shows the splash.
+void markSplashStart() {
+  if (!_sinceLaunch.isRunning) _sinceLaunch.start();
+}
+
+/// The splash picture itself: the purple court, the white GameAll wordmark and "Manage · Book · Grow". It has no dependencies on
+/// Supabase or the router, so `main()` can show it in the very first frame while the backend starts up behind it. The fade-in plays
+/// once per launch: when the router later shows the same picture, it is already fully in.
+class SplashView extends StatefulWidget {
+  const SplashView({super.key});
+
+  @override
+  State<SplashView> createState() => _SplashViewState();
+}
+
+class _SplashViewState extends State<SplashView> with SingleTickerProviderStateMixin {
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+    value: _introPlayed ? 1 : 0,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_introPlayed) {
+      _introPlayed = true;
+      _intro.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _intro.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final fade = CurvedAnimation(parent: _intro, curve: Curves.easeOutCubic);
+    return Scaffold(
+      backgroundColor: const Color(0xFF2A0E6B),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // The court photo, tinted into the brand purple. Decoded at screen size, not full size, so it paints on the first frame.
+          Image.asset(
+            'assets/images/live_court_hero.png',
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+            cacheWidth: 1080,
+            gaplessPlayback: true,
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xE62A0E6B), Color(0xB84817C2), Color(0xF21B0B4B)],
+                stops: [0, 0.5, 1],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Center(
+              child: FadeTransition(
+                opacity: fade,
+                child: SlideTransition(
+                  position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(fade),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset('assets/images/gameall_logo_white.png', width: width * 0.62, gaplessPlayback: true),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Manage · Book · Grow',
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Your Sports Facility',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The router's splash route. Shows [SplashView] and lifts [splashGate] once the total hold time since launch has passed, so the
+/// router (app_router.dart) can move on.
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -25,83 +117,27 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
-  Timer? _timeout;
-  bool _done = false;
+  Timer? _hold;
 
   @override
   void initState() {
     super.initState();
-    _timeout = Timer(const Duration(seconds: 6), _finish);
-    _start();
-  }
-
-  Future<void> _start() async {
-    await warmSplashVideo();
-    if (_done || !mounted) return;
-    final c = splashVideo;
-    if (!c.value.isInitialized) {
-      _finish();
-      return;
+    markSplashStart();
+    final left = splashHold - _sinceLaunch.elapsed;
+    if (left <= Duration.zero) {
+      // Startup already took longer than the hold: go as soon as the first frame is up.
+      WidgetsBinding.instance.addPostFrameCallback((_) => splashGate.value = true);
+    } else {
+      _hold = Timer(left, () => splashGate.value = true);
     }
-    try {
-      c
-        ..setVolume(0)
-        ..addListener(_onTick);
-      await c.play();
-      if (mounted) setState(() {});
-    } catch (_) {
-      _finish();
-    }
-  }
-
-  void _onTick() {
-    final c = splashVideo;
-    if (!c.value.isInitialized) return;
-    final ended = c.value.duration > Duration.zero &&
-        c.value.position >= c.value.duration;
-    if (ended || c.value.hasError) _finish();
-  }
-
-  void _finish() {
-    if (_done) return;
-    _done = true;
-    _timeout?.cancel();
-    splashGate.value = true;
   }
 
   @override
   void dispose() {
-    splashVideo.removeListener(_onTick);
-    splashVideo.dispose();
-    _timeout?.cancel();
+    _hold?.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final c = splashVideo;
-    final ready = c.value.isInitialized;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: AnimatedOpacity(
-        opacity: ready ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeOut,
-        child: ready
-            ? Center(
-                // The corner watermark is cropped out of assets/splash.mp4
-                // itself (bottom ~110px of the source clip removed), so no
-                // extra runtime clipping is needed here.
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.shortestSide * 0.48,
-                  child: AspectRatio(
-                    aspectRatio: c.value.aspectRatio,
-                    child: VideoPlayer(c),
-                  ),
-                ),
-              )
-            : const SizedBox.expand(),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const SplashView();
 }

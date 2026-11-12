@@ -50,7 +50,7 @@ class AppTypography {
     );
   }
 
-  /// Builds the full Manrope-based [TextTheme] for one theme brightness.
+  /// Builds the full Inter-based [TextTheme] for one theme brightness.
   /// google_fonts fetches the font lazily and caches it after first use —
   /// production behavior is untouched here. Only when a caller has
   /// explicitly disabled runtime fetching (this app's own theme unit
@@ -62,7 +62,7 @@ class AppTypography {
     if (!GoogleFonts.config.allowRuntimeFetching) {
       return _scale(const TextTheme(), primaryText, secondaryText);
     }
-    return _scale(GoogleFonts.manropeTextTheme(), primaryText, secondaryText);
+    return _scale(GoogleFonts.interTextTheme(), primaryText, secondaryText);
   }
 
   // ── Legacy semantic helpers — kept so every screen written before this

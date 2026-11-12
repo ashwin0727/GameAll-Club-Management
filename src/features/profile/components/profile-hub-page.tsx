@@ -152,7 +152,7 @@ export function ProfileHubPage({ profile }: { profile: Profile }) {
               <StatTile icon={CalendarCheck} tint="bg-blue-500/15 text-blue-600 dark:text-blue-400" value={s.totalBookings.toLocaleString("en-IN")} label="Total Bookings" hint="This Month" />
               <StatTile icon={Users} tint="bg-blue-500/15 text-blue-600 dark:text-blue-400" value={s.activeMembers.toLocaleString("en-IN")} label="Active Members" />
               <StatTile icon={Grid2x2} tint="bg-amber-500/15 text-amber-600 dark:text-amber-400" value={s.courts.toLocaleString("en-IN")} label="Courts / Turfs" />
-              <StatTile icon={IndianRupee} round tint="bg-emerald-500 text-white" value={formatCurrency(s.totalRevenueMinor, "INR")} label="Total Revenue" hint="This Month" />
+              <StatTile icon={IndianRupee} round tint="bg-violet-500 text-white" value={formatCurrency(s.totalRevenueMinor, "INR")} label="Total Revenue" hint="This Month" />
             </div>
           ) : (
             <p className="flex h-full items-center justify-center py-8 text-center text-sm text-muted-foreground">

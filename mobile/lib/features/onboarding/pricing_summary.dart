@@ -55,7 +55,7 @@ String _hour12(String hhmm) {
 }
 
 String periodLabel(SummaryPeriod p) {
-  const day = {'ALL_DAYS': 'All days', 'WEEKDAYS': 'Weekdays', 'WEEKENDS': 'Weekends'};
+  const day = {'ALL_DAYS': 'All days', 'WEEKDAYS': 'Weekdays', 'WEEKENDS': 'Weekends', 'SPECIFIC_DAYS': 'Specific days'};
   final window = p.coversFullDay ? 'Full day' : '${_hour12(p.startTime ?? '06:00')} – ${_hour12(p.endTime ?? '23:00')}';
   return '${day[p.dayType] ?? p.dayType} · $window';
 }

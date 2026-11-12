@@ -388,13 +388,13 @@ class _VerifiedBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(color: const Color(0xFF0E9384).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.verified_rounded, size: 15, color: Color(0xFF047857)),
+          Icon(Icons.verified_rounded, size: 15, color: Color(0xFF0B6F64)),
           SizedBox(width: 4),
-          Text('Verified User', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF047857))),
+          Text('Verified User', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0B6F64))),
         ],
       ),
     );

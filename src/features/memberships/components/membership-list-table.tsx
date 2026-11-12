@@ -227,7 +227,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
               className={cn(
                 "flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-sm transition-colors",
                 tab === t.key
-                  ? "border-[#0B7A55] bg-success/10 font-semibold text-[#0B7A55]"
+                  ? "border-[#4817C2] bg-primary/10 font-semibold text-[#4817C2]"
                   : "border-input bg-card text-muted-foreground hover:bg-accent",
               )}
             >
@@ -235,7 +235,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
-                  tab === t.key ? "bg-success/20 text-[#0B7A55]" : "bg-muted text-muted-foreground",
+                  tab === t.key ? "bg-primary/20 text-[#4817C2]" : "bg-muted text-muted-foreground",
                 )}
               >
                 {t.count}
@@ -347,7 +347,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
                       return next;
                     })
                   }
-                  className="h-4 w-4 cursor-pointer rounded border-input accent-[#0B7A55]"
+                  className="h-4 w-4 cursor-pointer rounded border-input accent-[#4817C2]"
                 />
               </th>
               <th className="px-4 py-3 font-medium">Member</th>
@@ -383,7 +383,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
                         aria-label={`Select ${row.memberName}`}
                         checked={isSelected}
                         onChange={() => toggle(row.membershipId)}
-                        className="h-4 w-4 cursor-pointer rounded border-input accent-[#0B7A55]"
+                        className="h-4 w-4 cursor-pointer rounded border-input accent-[#4817C2]"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -495,7 +495,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
               aria-current={p === safePage ? "page" : undefined}
               className={cn(
                 "flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-sm tabular-nums transition-colors",
-                p === safePage ? "border-[#0B7A55] bg-[#0B7A55] text-white" : "border-input hover:bg-accent",
+                p === safePage ? "border-[#4817C2] bg-[#4817C2] text-white" : "border-input hover:bg-accent",
               )}
             >
               {p}

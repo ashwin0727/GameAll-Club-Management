@@ -46,7 +46,7 @@ class _Metric {
 const _financeGroup = ['REVENUE', 'EXPENSES', 'NET'];
 
 final _metrics = <_Metric>[
-  _Metric(key: 'REVENUE', title: 'Total Revenue', kind: _Kind.money, color: const Color(0xFF00D084), icon: Icons.payments_outlined, heading: 'Revenue Trend', read: (m) => m.totalRevenueMinor),
+  _Metric(key: 'REVENUE', title: 'Total Revenue', kind: _Kind.money, color: const Color(0xFF4817C2), icon: Icons.payments_outlined, heading: 'Revenue Trend', read: (m) => m.totalRevenueMinor),
   _Metric(key: 'EXPENSES', title: 'Total Expenses', kind: _Kind.money, color: const Color(0xFFFF4D67), icon: Icons.receipt_long_outlined, heading: 'Expenses Trend', read: (m) => m.totalExpensesMinor),
   _Metric(key: 'NET', title: 'Net Revenue', kind: _Kind.money, color: const Color(0xFF6366F1), icon: Icons.account_balance_wallet_outlined, heading: 'Net Revenue Trend', read: (m) => m.netRevenueMinor),
   _Metric(key: 'GUEST_BOOKINGS', title: 'Total Guest Booking', kind: _Kind.count, color: const Color(0xFF0EA5E9), icon: Icons.event_available_outlined, heading: 'Guest Bookings', read: (m) => m.guestBookings),
@@ -54,7 +54,7 @@ final _metrics = <_Metric>[
   _Metric(key: 'PROGRAMS', title: 'Total Program', kind: _Kind.count, color: const Color(0xFFF59E0B), icon: Icons.school_outlined, heading: 'Programs Started', read: (m) => m.programs),
   _Metric(key: 'COACHES', title: 'Total Coach', kind: _Kind.count, color: const Color(0xFF14B8A6), icon: Icons.sports_outlined, heading: 'Coaches Joined', read: (m) => m.coaches),
   _Metric(key: 'STUDENTS', title: 'Total Students', kind: _Kind.count, color: const Color(0xFFEC4899), icon: Icons.groups_outlined, heading: 'Students Enrolled', read: (m) => m.students),
-  _Metric(key: 'GUEST_BOOKING_REVENUE', title: 'Guest Booking Revenue', kind: _Kind.money, color: const Color(0xFF00D084), icon: Icons.confirmation_number_outlined, heading: 'Guest Booking Revenue Trend', read: (m) => m.guestBookingRevenueMinor),
+  _Metric(key: 'GUEST_BOOKING_REVENUE', title: 'Guest Booking Revenue', kind: _Kind.money, color: const Color(0xFF4817C2), icon: Icons.confirmation_number_outlined, heading: 'Guest Booking Revenue Trend', read: (m) => m.guestBookingRevenueMinor),
   _Metric(key: 'MEMBERSHIP_REVENUE', title: 'Membership Revenue', kind: _Kind.money, color: const Color(0xFF8B5CF6), icon: Icons.card_membership_outlined, heading: 'Membership Revenue Trend', read: (m) => m.membershipRevenueMinor),
   _Metric(key: 'COACHING_REVENUE', title: 'Coaching Revenue', kind: _Kind.money, color: const Color(0xFFF59E0B), icon: Icons.sports_score_outlined, heading: 'Coaching Revenue Trend', read: (m) => m.coachingRevenueMinor),
   _Metric(key: 'COACHING_EXPENSES', title: 'Coaching Expenses', kind: _Kind.money, color: const Color(0xFFFF4D67), icon: Icons.money_off_csred_outlined, heading: 'Coaching Expenses Trend', read: (m) => m.coachingExpensesMinor),

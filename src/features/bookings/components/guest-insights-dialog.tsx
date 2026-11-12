@@ -204,7 +204,7 @@ export function GuestInsightsDialog({
               <button
                 type="button"
                 onClick={onViewPotentialMembers}
-                className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0B7A55] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0B7A55]/90"
+                className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#4817C2] px-4 text-sm font-medium text-white transition-colors hover:bg-[#4817C2]/90"
               >
                 View Potential Members
                 <ArrowRight className="h-4 w-4" aria-hidden />

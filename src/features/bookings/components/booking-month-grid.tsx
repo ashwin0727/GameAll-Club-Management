@@ -68,7 +68,7 @@ export function BookingMonthGrid({
                 <span
                   className={cn(
                     "flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm font-medium",
-                    today ? "bg-[#0B7A55] text-white dark:bg-primary dark:text-primary-foreground" : "text-foreground",
+                    today ? "bg-[#4817C2] text-white dark:bg-primary dark:text-primary-foreground" : "text-foreground",
                   )}
                 >
                   {day.getDate()}

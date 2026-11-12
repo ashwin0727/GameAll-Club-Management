@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 
 const GLASS =
   "border-0 bg-card/70 shadow-[0_6px_24px_rgba(16,40,34,0.07)] ring-1 ring-white/60 backdrop-blur-md dark:bg-card/50 dark:ring-white/10";
-const PANEL_TINT = "#EAF9F1";
+const PANEL_TINT = "#F1EBFF";
 
 const GENDERS = [
   { value: "", label: "Select" },
@@ -170,7 +170,7 @@ function SelectablePlanCard({
       className={cn(
         "relative flex h-full flex-col rounded-2xl p-4 text-left transition-colors",
         theme.surface,
-        chosen ? "ring-2 ring-[#0B9B63]" : "border border-border/60 hover:brightness-[0.98]",
+        chosen ? "ring-2 ring-[#4817C2]" : "border border-border/60 hover:brightness-[0.98]",
       )}
     >
       {badge && (
@@ -181,7 +181,7 @@ function SelectablePlanCard({
       <span
         className={cn(
           "absolute right-3 top-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-          chosen ? "border-[#0B9B63] bg-[#0B9B63]" : "border-input bg-card",
+          chosen ? "border-[#4817C2] bg-[#4817C2]" : "border-input bg-card",
         )}
         aria-hidden
       >
@@ -839,7 +839,7 @@ export function AddMemberWizardPage() {
                 aria-label="Send Welcome Message to Member"
                 checked={draft.sendWelcome}
                 onChange={(e) => set("sendWelcome", e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-[#0B7A55]"
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-[#4817C2]"
               />
               <div>
                 <p className="text-sm font-medium text-foreground">Send welcome message to member</p>
@@ -1045,7 +1045,7 @@ export function AddMemberWizardPage() {
             <button
               type="button"
               onClick={next}
-              className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+              className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
             >
               Next
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -1058,7 +1058,7 @@ export function AddMemberWizardPage() {
               <button
                 type="button"
                 onClick={() => router.push("/memberships/v1")}
-                className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+                className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
               >
                 <Check className="h-4 w-4" aria-hidden />
                 Done
@@ -1069,7 +1069,7 @@ export function AddMemberWizardPage() {
               type="button"
               disabled={saving}
               onClick={submit}
-              className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground"
+              className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground"
             >
               <Check className="h-4 w-4" aria-hidden />
               {saving ? "Saving…" : linkResult ? "Mark as Paid & Cancel Link" : "Create Member"}

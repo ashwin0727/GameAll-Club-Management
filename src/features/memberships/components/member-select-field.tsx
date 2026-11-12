@@ -167,7 +167,7 @@ export function MemberSelectField({
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-sm",
                   o.value === value ? "bg-[var(--light-page-bg)] dark:bg-accent/60" : "bg-white dark:bg-transparent",
-                  i === active && o.value !== value && "bg-[#E9F9F3] dark:bg-accent",
+                  i === active && o.value !== value && "bg-[#F1EBFF] dark:bg-accent",
                 )}
               >
                 <Avatar name={o.label} value={o.value} />

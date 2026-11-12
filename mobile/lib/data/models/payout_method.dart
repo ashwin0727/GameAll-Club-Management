@@ -3,6 +3,8 @@ enum PayoutMethodType { bank, upi }
 /// GameAll checks every payout method by hand before sending money to it.
 enum PayoutVerification { pending, verified, rejected }
 
+enum PayoutAccountType { savings, current }
+
 /// Where the facility's money is paid out — a bank account or a UPI ID
 /// (`facility_payout_methods`, migration 0148).
 class PayoutMethod {
@@ -11,7 +13,8 @@ class PayoutMethod {
     required this.type,
     required this.accountHolderName,
     this.bankName,
-    this.accountNumber,
+    this.accountLast4,
+    this.accountType,
     this.ifsc,
     this.upiId,
     required this.isPrimary,
@@ -23,7 +26,9 @@ class PayoutMethod {
   final PayoutMethodType type;
   final String accountHolderName;
   final String? bankName;
-  final String? accountNumber;
+  /// Only the last four digits ever reach the app: the full number is readable by GameAll alone (migration 0200).
+  final String? accountLast4;
+  final PayoutAccountType? accountType;
   final String? ifsc;
   final String? upiId;
   final bool isPrimary;
@@ -37,7 +42,12 @@ class PayoutMethod {
         type: json['method_type'] == 'UPI' ? PayoutMethodType.upi : PayoutMethodType.bank,
         accountHolderName: json['account_holder_name'] as String,
         bankName: json['bank_name'] as String?,
-        accountNumber: json['account_number'] as String?,
+        accountLast4: json['account_last4'] as String?,
+        accountType: switch (json['account_type']) {
+          'SAVINGS' => PayoutAccountType.savings,
+          'CURRENT' => PayoutAccountType.current,
+          _ => null,
+        },
         ifsc: json['ifsc'] as String?,
         upiId: json['upi_id'] as String?,
         isPrimary: json['is_primary'] == true,

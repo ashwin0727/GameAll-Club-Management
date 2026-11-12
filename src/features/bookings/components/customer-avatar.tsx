@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 
 const TONES = [
-  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  "bg-teal-500/15 text-teal-700 dark:text-teal-300",
   "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   "bg-purple-500/15 text-purple-700 dark:text-purple-300",
   "bg-amber-500/15 text-amber-700 dark:text-amber-300",

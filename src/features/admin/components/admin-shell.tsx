@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Banknote, Building2, LogOut, MapPinCheck, ReceiptText } from "lucide-react";
+import { Banknote, Building2, ClipboardCheck, LogOut, MapPinCheck, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/features/auth/components/brand-mark";
 import { useLogout } from "@/features/auth/hooks/use-auth";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/admin", label: "Home", icon: Building2, match: (p: string) => p === "/admin" || p.startsWith("/admin/facilities") },
+  { href: "/admin/reviews", label: "Approvals", icon: ClipboardCheck, match: (p: string) => p.startsWith("/admin/reviews") },
   { href: "/admin/venues", label: "Venues", icon: MapPinCheck, match: (p: string) => p.startsWith("/admin/venues") },
   { href: "/admin/payouts", label: "Payouts", icon: Banknote, match: (p: string) => p.startsWith("/admin/payouts") },
   { href: "/admin/transactions", label: "Transactions", icon: ReceiptText, match: (p: string) => p.startsWith("/admin/transactions") },

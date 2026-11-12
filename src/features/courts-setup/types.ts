@@ -1,3 +1,6 @@
+export type LightingType = "LED" | "FLOODLIGHT" | "NATURAL" | "NONE";
+export type CourtAmenity = "ac" | "shower" | "locker";
+
 export interface PlayingArea {
   id: string;
   facilityId: string;
@@ -5,6 +8,10 @@ export interface PlayingArea {
   sportId: string;
   name: string;
   type: "INDOOR" | "OUTDOOR";
+  /** The playing surface ("Wooden", "Artificial Turf", ...). Empty for a court saved before this was asked. */
+  surface?: string;
+  lighting?: LightingType;
+  amenities?: CourtAmenity[];
   status: "ACTIVE" | "INACTIVE";
   bookingEnabled: boolean;
   /**

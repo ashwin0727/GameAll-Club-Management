@@ -93,7 +93,7 @@ const TYPE_LABEL: Record<ScheduleBlockType, string> = {
 };
 
 const TYPE_TAG: Record<ScheduleBlockType, string> = {
-  MEMBER: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  MEMBER: "bg-primary/10 text-primary",
   GUEST: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   SESSION: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
 };
@@ -220,7 +220,7 @@ const STATUS_TEXT: Record<ActivityStatus, { label: string; cls: string }> = {
 function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
   return (
     <DashCard
-      title="Today's Court Activity"
+      title="Today's Facility Activities"
       delay={delay}
       action={<CardLink href="/calendar">View Calendar</CardLink>}
     >
@@ -231,10 +231,10 @@ function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number })
           {rows.slice(0, 6).map(({ court, block, status }) => (
             <li
               key={court.courtId}
-              className="grid min-h-[2.5rem] grid-cols-[4rem_4.5rem_minmax(0,1fr)_4.5rem_4.5rem] items-center gap-2 py-2 text-xs"
+              className="grid min-h-[2.5rem] grid-cols-[3.25rem_minmax(0,1.6fr)_minmax(0,1fr)_auto_auto] items-center gap-2 py-2 text-xs"
             >
               <span className="tabular-nums text-muted-foreground">{block ? formatMinute(block.startMinute) : "—"}</span>
-              <span className="truncate rounded-md bg-secondary px-1.5 py-0.5 text-center text-[11px] font-medium">
+              <span title={court.courtName} className="truncate text-xs font-medium">
                 {court.courtName}
               </span>
               <span className="truncate text-foreground">{block?.label ?? "—"}</span>
@@ -259,7 +259,7 @@ function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number })
 
 function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
   return (
-    <DashCard title="Court Status" delay={delay} action={<CardLink href="/maintenance/court-schedule">View All</CardLink>}>
+    <DashCard title="Current Facility Status" delay={delay} action={<CardLink href="/maintenance/court-schedule">View All</CardLink>}>
       {rows.length === 0 ? (
         <EmptyNote>No courts configured yet.</EmptyNote>
       ) : (
@@ -269,9 +269,9 @@ function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
             return (
               <li
                 key={court.courtId}
-                className="grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_5.5rem_6rem] items-center gap-2 py-2 text-xs"
+                className="grid min-h-[2.5rem] grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 py-2 text-xs"
               >
-                <span className="truncate font-medium">{court.courtName}</span>
+                <span title={court.courtName} className="truncate font-medium">{court.courtName}</span>
                 <span className="flex items-center gap-1.5">
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", busy ? "bg-destructive" : "bg-success")} />
                   <span className={busy ? "text-destructive" : "text-success"}>{busy ? "Busy" : "Available"}</span>
@@ -612,14 +612,6 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
           aria-hidden
           className="absolute inset-0 overflow-hidden bg-[linear-gradient(to_right,var(--light-page-bg)_0%,var(--light-page-bg)_45%,var(--hero-gradient-start)_72%,var(--hero-gradient-end)_100%)] [mask-image:linear-gradient(to_bottom,black_62%,transparent)] dark:bg-[linear-gradient(to_right,#020b1f,#020b1f,#031a1a)]"
         >
-          <div
-            className="pointer-events-none absolute -top-12 hidden h-36 aspect-[3/1] bg-cover bg-center bg-no-repeat [mask-image:linear-gradient(to_right,transparent,black_30%,black_80%,transparent)] md:block dark:md:hidden"
-            style={{ backgroundImage: "url(/assets/Dashboard_Hero_Light_Mode.png)", left: "calc(65% - 324px)" }}
-          />
-          <div
-            className="pointer-events-none absolute -top-12 hidden h-36 aspect-[3/1] bg-cover bg-center bg-no-repeat [mask-image:linear-gradient(to_right,transparent,black_30%,black_80%,transparent)] dark:md:block"
-            style={{ backgroundImage: "url(/assets/Dashboard-Hero.png)", left: "calc(65% - 324px)" }}
-          />
         </div>
         <div className="relative flex items-start justify-between gap-4 px-4 pt-5 lg:px-6">
           <div className="min-w-0">
@@ -923,7 +915,7 @@ function RevenueOverviewPanel({ overview }: { overview: RevenueOverviewData }) {
 }
 
 const BREAKDOWN_COLORS: Record<string, string> = {
-  bookings: "#00D084",
+  bookings: "#4817C2",
   memberships: "#5B6CFF",
   coaching: "#FFB020",
   other: "#8B5CF6",

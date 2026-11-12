@@ -3,6 +3,6 @@
      native pre-engine launch background matches the Flutter splash screen
      exactly — no white flash between OS launch and the first Flutter frame. -->
 <resources>
-    <color name="launch_background">#FF000000</color>
-	<color name="ic_launcher_background">#FFFFFF</color>
+    <color name="launch_background">#FF2A0E6B</color>
+	<color name="ic_launcher_background">#4817C2</color>
 </resources>

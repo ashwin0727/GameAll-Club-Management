@@ -15,38 +15,64 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
 import 'features/authentication/session_controller.dart';
-import 'features/authentication/splash_screen.dart' show warmSplashVideo;
+import 'features/authentication/splash_screen.dart' show SplashView, markSplashStart;
 import 'features/notifications/notification_providers.dart';
 import 'features/notifications/push_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  markSplashStart();
 
-  // Start decoding the splash clip now so it plays instantly, in parallel
-  // with Supabase init and the first session resolution.
-  warmSplashVideo();
+  // The splash goes up in the very first frame. Everything slow (orientation lock, Supabase, crash reporting) runs behind it in
+  // [_Boot], so the person never waits on a black or blank screen.
+  runApp(const _Boot());
+}
 
-  // Lock to portrait — the app's layouts are designed portrait-only and the
-  // rotation on device tilt was more disorienting than useful.
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+/// Shows the splash straight away, starts the backend in the background, and swaps in the real app once it is ready.
+class _Boot extends StatefulWidget {
+  const _Boot();
 
-  if (!AppConfig.isConfigured) {
-    runApp(const _MissingConfigApp());
-    return;
+  @override
+  State<_Boot> createState() => _BootState();
+}
+
+class _BootState extends State<_Boot> {
+  late final Future<bool> _ready = _initialise();
+
+  /// True when the app is configured and started; false when the build has no Supabase settings.
+  Future<bool> _initialise() async {
+    // Lock to portrait — the app's layouts are designed portrait-only and the
+    // rotation on device tilt was more disorienting than useful.
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+    if (!AppConfig.isConfigured) return false;
+
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      // Same anon/publishable key the web app uses — public, RLS-protected.
+      publishableKey: AppConfig.supabaseAnonKey,
+      // Retries safe reads on a dropped connection or a busy server, and gives every request a timeout (never repeats a write).
+      // Also renews the sign-in and tries again when the server says it has expired (a phone with a wrong clock never renews it itself).
+      httpClient: ResilientHttpClient(refreshAccessToken: _renewAccessToken),
+    );
+
+    await _startCrashReporting();
+    return true;
   }
 
-  await Supabase.initialize(
-    url: AppConfig.supabaseUrl,
-    // Same anon/publishable key the web app uses — public, RLS-protected.
-    publishableKey: AppConfig.supabaseAnonKey,
-    // Retries safe reads on a dropped connection or a busy server, and gives every request a timeout (never repeats a write).
-    // Also renews the sign-in and tries again when the server says it has expired (a phone with a wrong clock never renews it itself).
-    httpClient: ResilientHttpClient(refreshAccessToken: _renewAccessToken),
-  );
-
-  await _startCrashReporting();
-
-  runApp(const ProviderScope(child: GameAllClubApp()));
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _ready,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) throw snapshot.error!;
+        if (!snapshot.hasData) {
+          return const MaterialApp(debugShowCheckedModeBanner: false, home: SplashView());
+        }
+        return snapshot.data! ? const ProviderScope(child: GameAllClubApp()) : const _MissingConfigApp();
+      },
+    );
+  }
 }
 
 /// A fresh access token from the stored refresh token, or null if the person has to sign in again.

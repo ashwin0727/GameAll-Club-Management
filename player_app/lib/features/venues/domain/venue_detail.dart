@@ -15,6 +15,8 @@ class VenueDetail {
     this.photos = const [],
     this.venueType,
     this.amenities = const Amenities(),
+    this.amenityKeys = const [],
+    this.customAmenities = const [],
     this.locationVerified = false,
     this.locationUrl,
     this.courtCount = 0,
@@ -62,6 +64,11 @@ class VenueDetail {
         _ => null,
       },
       amenities: Amenities.fromJson(json['amenities']),
+      amenityKeys: [for (final k in (json['amenityKeys'] as List<dynamic>? ?? const [])) k.toString()],
+      customAmenities: [
+        for (final n in (json['customAmenities'] as List<dynamic>? ?? const []))
+          if (n.toString().trim().isNotEmpty) n.toString().trim(),
+      ],
       locationVerified: json['locationVerified'] == true,
       locationUrl: clean(json['locationUrl']),
       courtCount: (json['courtCount'] as num?)?.toInt() ?? 0,
@@ -82,6 +89,14 @@ class VenueDetail {
             id: c['id'] as String,
             name: (c['name'] as String?) ?? '',
             sportId: c['facilitySportId'] as String?,
+            type: switch (c['type']) {
+              'INDOOR' => VenueType.indoor,
+              'OUTDOOR' => VenueType.outdoor,
+              _ => null,
+            },
+            surface: clean(c['surface']),
+            lighting: clean(c['lighting']),
+            amenities: [for (final a in (c['amenities'] as List<dynamic>? ?? const [])) a.toString()],
           ),
       ],
       opens: clean(hours['opens']),
@@ -119,6 +134,29 @@ class VenueDetail {
   final List<String> photos;
   final VenueType? venueType;
   final Amenities amenities;
+
+  /// The amenities the owner ticked (keys such as `car_parking`, `wifi`) and any they typed in. Empty for a venue set up before
+  /// the 12-item list, which falls back to the five legacy [amenities].
+  final List<String> amenityKeys;
+  final List<String> customAmenities;
+
+  /// What the venue offers, for the "Facilities" row: the owner's own list when there is one, else the five legacy ones.
+  List<String> get facilityLabels {
+    if (amenityKeys.isEmpty && customAmenities.isEmpty) return amenities.labels;
+    return [
+      for (final a in kFacilityAmenityOptions)
+        if (amenityKeys.contains(a.key)) a.label,
+      ...customAmenities,
+    ];
+  }
+
+  /// Everything shown in the "View All" list (on or off): the full 12-item list plus custom ones, or the five legacy ones.
+  List<String> get facilityCatalogue {
+    if (amenityKeys.isEmpty && customAmenities.isEmpty) {
+      return const ['Free Parking', 'Changing Rooms', 'Toilets / Rest Room', 'Cafeteria', 'Equipment Rental'];
+    }
+    return [for (final a in kFacilityAmenityOptions) a.label, ...customAmenities];
+  }
 
   /// True once GameAll's admin has verified the venue's Google Maps location: the "Verified Venue" badge.
   final bool locationVerified;
@@ -200,11 +238,75 @@ class VenueSport {
   final String name;
 }
 
+/// One of the 12 amenities an owner can tick (`facilities.amenity_keys`).
+class FacilityAmenityOption {
+  const FacilityAmenityOption(this.key, this.label);
+  final String key;
+  final String label;
+}
+
+const List<FacilityAmenityOption> kFacilityAmenityOptions = [
+  FacilityAmenityOption('car_parking', 'Car Parking'),
+  FacilityAmenityOption('two_wheeler_parking', 'Two-Wheeler Parking'),
+  FacilityAmenityOption('restroom', 'Restroom'),
+  FacilityAmenityOption('changing_room', 'Changing Room'),
+  FacilityAmenityOption('shower', 'Shower'),
+  FacilityAmenityOption('drinking_water', 'Drinking Water'),
+  FacilityAmenityOption('seating_area', 'Seating Area'),
+  FacilityAmenityOption('cafeteria', 'Cafeteria / Food'),
+  FacilityAmenityOption('wifi', 'Wi-Fi'),
+  FacilityAmenityOption('lockers', 'Lockers'),
+  FacilityAmenityOption('equipment_rental', 'Equipment Rental'),
+  FacilityAmenityOption('first_aid', 'First Aid'),
+];
+
 class VenueCourt {
-  const VenueCourt({required this.id, required this.name, this.sportId});
+  const VenueCourt({
+    required this.id,
+    required this.name,
+    this.sportId,
+    this.type,
+    this.surface,
+    this.lighting,
+    this.amenities = const [],
+  });
   final String id;
   final String name;
   final String? sportId;
+
+  /// Indoor or outdoor: each court says what it is (null for a court saved before the owner was asked).
+  final VenueType? type;
+
+  /// "Wooden", "Artificial Turf", ...
+  final String? surface;
+
+  /// LED | FLOODLIGHT | NATURAL | NONE
+  final String? lighting;
+
+  /// ac | shower | locker
+  final List<String> amenities;
+
+  /// "LED", "Floodlight", "Natural Light", "No Lighting"
+  String? get lightingLabel => switch (lighting) {
+    'LED' => 'LED',
+    'FLOODLIGHT' => 'Floodlight',
+    'NATURAL' => 'Natural Light',
+    'NONE' => 'No Lighting',
+    _ => null,
+  };
+
+  /// "AC", "Shower", "Locker"
+  List<String> get amenityLabels => [
+    for (final a in amenities)
+      switch (a) {
+        'ac' => 'AC',
+        'shower' => 'Shower',
+        'locker' => 'Locker',
+        _ => a,
+      },
+  ];
+
+  bool get hasDetails => type != null || (surface != null) || lighting != null || amenities.isNotEmpty;
 }
 
 class VenuePlan {

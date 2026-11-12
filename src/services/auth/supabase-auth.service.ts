@@ -199,13 +199,15 @@ export class SupabaseAuthService implements AuthService {
     );
 
     let mobileVerificationPending = false;
+    let verifiedMobile: string | undefined;
     if (user.user_metadata?.require_mobile === true) {
       const { data: verified } = await this.supabase
         .from("user_verified_phones" as never)
-        .select("user_id")
+        .select("user_id, phone")
         .eq("user_id", user.id)
         .maybeSingle();
       mobileVerificationPending = !verified;
+      verifiedMobile = (verified as { phone?: string } | null)?.phone?.replace(/^\+?91(?=\d{10}$)/, "") || undefined;
     }
 
     return {
@@ -217,6 +219,7 @@ export class SupabaseAuthService implements AuthService {
       emailVerified: Boolean(user.email_confirmed_at),
       onboardingCompleted: (profile?.onboarding_completed ?? false) || facilityCompleted,
       mobileVerificationPending,
+      verifiedMobile,
       isPlatformAdmin: adminFlag === true,
     };
   }

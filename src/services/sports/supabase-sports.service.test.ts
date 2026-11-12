@@ -28,19 +28,20 @@ describe("SupabaseSportsService", () => {
     expect(sports.every((s) => s.icon.length > 0)).toBe(true);
   });
 
-  it("saveFacilitySports calls sync_facility_sports with the selected sport ids and the Other custom name", async () => {
+  it("saveFacilitySports sends the catalogue sports and every custom sport name", async () => {
     const rpc = vi.fn(async () => ({ data: [FACILITY_SPORT_ROW], error: null }));
     const service = new SupabaseSportsService({ rpc } as never);
 
     await service.saveFacilitySports("facility-1", [
       { facilityId: "facility-1", sportId: "s-badminton", enabled: true },
       { facilityId: "facility-1", sportId: "s-other", enabled: true, customSportName: "Kabaddi" },
+      { facilityId: "facility-1", sportId: "s-other", enabled: true, customSportName: "  Table Tennis " },
     ]);
 
-    expect(rpc).toHaveBeenCalledWith("sync_facility_sports", {
+    expect(rpc).toHaveBeenCalledWith("sync_facility_sports_multi", {
       p_facility_id: "facility-1",
-      p_sport_ids: ["s-badminton", "s-other"],
-      p_custom_sport_name: "Kabaddi",
+      p_sport_ids: ["s-badminton"],
+      p_custom_sport_names: ["Kabaddi", "Table Tennis"],
     });
   });
 

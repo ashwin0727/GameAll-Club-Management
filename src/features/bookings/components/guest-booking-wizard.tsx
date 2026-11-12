@@ -742,7 +742,7 @@ export function GuestBookingWizard() {
         {/* Summary sidebar */}
         <aside className="stat-enter h-fit rounded-xl border border-border p-4" style={{ "--stat-delay": "90ms" } as React.CSSProperties}>
           <p className="text-sm font-semibold">Booking Summary</p>
-          <div className="mt-3 flex h-28 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-900 to-emerald-700 text-xs text-emerald-200">
+          <div className="mt-3 flex h-28 items-center justify-center rounded-lg bg-gradient-to-br from-violet-900 to-violet-700 text-xs text-violet-200">
             {courtsLabel ?? "Select a court"}
           </div>
           <dl className="mt-4 space-y-2.5 text-sm">

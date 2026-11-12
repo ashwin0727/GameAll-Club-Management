@@ -1,4 +1,4 @@
-import type { OperatingDay, OperatingSchedule } from "@/features/operating-hours/types";
+import type { FacilityClosure, OperatingDay, OperatingSchedule } from "@/features/operating-hours/types";
 import type { ScheduleValidationResult } from "@/features/operating-hours/validation";
 
 /**
@@ -17,4 +17,8 @@ export interface OperatingHoursService {
   ): Promise<OperatingSchedule>;
   deletePlayingAreaOverride(playingAreaId: string): Promise<void>;
   validateSchedule(days: OperatingDay[]): ScheduleValidationResult;
+  /** The dates the venue is closed, earliest first. */
+  getClosures(facilityId: string): Promise<FacilityClosure[]>;
+  /** Makes the venue's closures exactly this list (adds, renames and removes as needed). */
+  replaceClosures(facilityId: string, closures: FacilityClosure[]): Promise<FacilityClosure[]>;
 }

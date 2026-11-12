@@ -49,7 +49,8 @@ const toMethod = (r: Row): PayoutMethod => ({
   type: r.method_type as PayoutMethod["type"],
   accountHolderName: r.account_holder_name as string,
   bankName: (r.bank_name as string | null) ?? null,
-  accountNumber: (r.account_number as string | null) ?? null,
+  accountLast4: (r.account_last4 as string | null) ?? null,
+  accountType: (r.account_type as PayoutMethod["accountType"]) ?? null,
   ifsc: (r.ifsc as string | null) ?? null,
   upiId: (r.upi_id as string | null) ?? null,
   isPrimary: Boolean(r.is_primary),
@@ -58,6 +59,10 @@ const toMethod = (r: Row): PayoutMethod => ({
   verificationNote: (r.verification_note as string | null) ?? null,
   createdAt: r.created_at as string,
 });
+
+/** Never `select *`: the account_number column is not readable by the signed-in owner (migration 0200). */
+const PAYOUT_COLUMNS =
+  "id, facility_id, method_type, account_holder_name, bank_name, ifsc, upi_id, is_primary, verification_status, verified_at, verification_note, created_at, account_type, account_last4";
 
 const toTicket = (r: Row): SupportTicket => ({
   id: r.id as string,
@@ -144,7 +149,7 @@ export class SupabaseProfileService implements ProfileService {
   async listPayoutMethods(facilityId: string): Promise<PayoutMethod[]> {
     const { data, error } = await this.supabase
       .from("facility_payout_methods")
-      .select("*")
+      .select(PAYOUT_COLUMNS)
       .eq("facility_id", facilityId)
       .order("is_primary", { ascending: false })
       .order("created_at", { ascending: true });
@@ -164,10 +169,10 @@ export class SupabaseProfileService implements ProfileService {
       // The first method added becomes the one payouts go to.
       is_primary: (existing.count ?? 0) === 0,
       ...(input.type === "BANK"
-        ? { bank_name: input.bankName, account_number: input.accountNumber, ifsc: input.ifsc }
+        ? { bank_name: input.bankName, account_number: input.accountNumber, ifsc: input.ifsc, account_type: input.accountType }
         : { upi_id: input.upiId }),
     };
-    const { data, error } = await this.supabase.from("facility_payout_methods").insert(row).select("*").single();
+    const { data, error } = await this.supabase.from("facility_payout_methods").insert(row).select(PAYOUT_COLUMNS).single();
     if (error) throw fail(error, "Could not save this payment method. Please try again.");
     return toMethod(data as Row);
   }
@@ -180,12 +185,12 @@ export class SupabaseProfileService implements ProfileService {
         method_type: input.type,
         account_holder_name: input.accountHolderName,
         ...(input.type === "BANK"
-          ? { bank_name: input.bankName, account_number: input.accountNumber, ifsc: input.ifsc, upi_id: null }
-          : { upi_id: input.upiId, bank_name: null, account_number: null, ifsc: null }),
+          ? { bank_name: input.bankName, account_number: input.accountNumber, ifsc: input.ifsc, account_type: input.accountType, upi_id: null }
+          : { upi_id: input.upiId, bank_name: null, account_number: null, ifsc: null, account_type: null }),
         updated_at: new Date().toISOString(),
       })
       .eq("id", methodId)
-      .select("*")
+      .select(PAYOUT_COLUMNS)
       .single();
     if (error) throw fail(error, "Could not save this payment method. Please try again.");
     return toMethod(data as Row);

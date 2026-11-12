@@ -41,8 +41,8 @@ import { useCanEditHere } from "@/features/auth/context/permission-provider";
 const INR = "INR";
 
 /** Semantic colours from the design system, used for the two donuts. */
-const REVENUE_COLOURS = ["#00D084", "#8B5CF6", "#5B6CFF", "#FFB020"];
-const METHOD_COLOURS = ["#5B6CFF", "#00D084", "#8B5CF6", "#FFB020", "#FF4D67"];
+const REVENUE_COLOURS = ["#4817C2", "#8B5CF6", "#5B6CFF", "#FFB020"];
+const METHOD_COLOURS = ["#5B6CFF", "#4817C2", "#8B5CF6", "#FFB020", "#FF4D67"];
 
 function statusTone(status: FinanceTransaction["status"]): "success" | "warning" | "destructive" | "secondary" {
   switch (status) {

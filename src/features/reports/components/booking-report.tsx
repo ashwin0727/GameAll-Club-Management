@@ -93,14 +93,14 @@ export function BookingReport() {
           key: "totalBookings",
           label: "Total Bookings",
           value: analytics.total.toLocaleString("en-IN"),
-          accent: "#00F08A",
+          accent: "#4817C2",
           hint: <KpiDelta pct={changePct(analytics.total, previous?.total ?? null)} />,
         },
         {
           key: "completedBookings",
           label: "Completed",
           value: analytics.completed.toLocaleString("en-IN"),
-          accent: "#00D084",
+          accent: "#4817C2",
           hint: <KpiDelta pct={changePct(analytics.completed, previous?.completed ?? null)} />,
         },
         {
@@ -131,7 +131,7 @@ export function BookingReport() {
       ]
     : [];
 
-  const sportBars = bySport.map((r) => ({ label: r.sportName, value: r.bookingCount, color: "#00F08A" }));
+  const sportBars = bySport.map((r) => ({ label: r.sportName, value: r.bookingCount, color: "#4817C2" }));
   const sourceBars = sourceSplit.map((r) => ({
     label: r.source === "GUEST" ? "Guest" : "Member",
     value: r.bookingCount,

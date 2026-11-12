@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 
 /** Sampled from the artwork's own pale-mint backdrop, so the panel and the image read as one surface. */
-const PANEL_TINT = "#EAF9F1";
+const PANEL_TINT = "#F1EBFF";
 
 /** Clearance reserved at the right edge for the Add New Member button, so the artwork never sits under it. */
 const BUTTON_LANE = 210;
@@ -79,7 +79,7 @@ export function MembershipDashboardHero({
           <button
             type="button"
             onClick={onAddMember}
-            className="relative z-10 flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#0B7A55] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            className="relative z-10 flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-[#4817C2] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
           >
             <Plus className="h-4 w-4" aria-hidden />
             {buttonLabel}
@@ -92,7 +92,7 @@ export function MembershipDashboardHero({
           <button
             type="button"
             onClick={onAddMember}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#0B7A55] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-[10px] bg-[#4817C2] px-4 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
           >
             <Plus className="h-4 w-4" aria-hidden />
             {buttonLabel}

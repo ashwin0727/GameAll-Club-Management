@@ -11,17 +11,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrentUser } from "@/features/auth/hooks/use-auth";
-import { AmenitiesSection } from "@/features/facility-profile/components/amenities-section";
 import { FacilityPhotosField } from "@/features/facility-profile/components/facility-photos-field";
 import { VenueTypeField } from "@/features/facility-profile/components/venue-type-field";
 import { isGoogleMapsLink } from "@/features/facility-profile/maps-link";
 import { FacilityPhotos } from "@/features/facility-profile/photos";
-import { NO_AMENITIES, type FacilityImage } from "@/features/facility-profile/types";
+import { DEFAULT_POLICIES, type FacilityImage } from "@/features/facility-profile/types";
+import { SetupAmenities } from "@/features/onboarding/components/setup-amenities";
 import { FacilityLocationSection } from "@/features/onboarding/components/facility-location-section";
 import { FACILITY_TYPE_OPTIONS } from "@/features/onboarding/constants";
 import type { Facility } from "@/features/onboarding/types";
-import { facilityDetailsSchema, type FacilityDetailsInput } from "@/features/onboarding/validation";
+import { customAmenityProblem, facilityDetailsObject, type FacilityDetailsInput } from "@/features/onboarding/validation";
 import { getFacilityService } from "@/services/facility";
+
+/** The dialog edits the setup fields plus the (now optional) indoor / outdoor choice, which the setup form no longer asks for. */
+type EditInput = FacilityDetailsInput & { venueType?: "INDOOR" | "OUTDOOR" };
 
 /**
  * What the dialog checks. A facility set up before the map link, venue type and photos existed ("older") may keep them empty; once
@@ -31,8 +34,11 @@ function editSchema(older: boolean) {
   const link = older
     ? z.string().trim().refine((v) => v === "" || isGoogleMapsLink(v), "Paste a Google Maps link, e.g. https://maps.app.goo.gl/...")
     : z.string().trim().min(1, "Google Maps location link is required").refine(isGoogleMapsLink, "Paste a Google Maps link, e.g. https://maps.app.goo.gl/...");
-  const venueType = older ? z.enum(["INDOOR", "OUTDOOR"]).optional() : z.enum(["INDOOR", "OUTDOOR"], { message: "Choose indoor or outdoor" });
-  return facilityDetailsSchema.innerType().extend({ locationUrl: link, venueType }).refine((v) => v.facilityType !== "OTHER" || v.customFacilityType.trim().length > 0, {
+  // Indoor / outdoor is no longer asked during setup (it moves to the Sports step), so a facility may have none.
+  const venueType = z.enum(["INDOOR", "OUTDOOR"]).optional();
+  // The contact person was given at set-up and is not editable here, so an older facility without one must still save.
+  return facilityDetailsObject
+    .extend({ locationUrl: link, venueType, contactPersonName: z.string().trim().default(""), contactPersonRole: z.string().default("") }).refine((v) => v.facilityType !== "OTHER" || v.customFacilityType.trim().length > 0, {
     path: ["customFacilityType"],
     message: "Specify your facility type",
   });
@@ -67,8 +73,8 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FacilityDetailsInput>({
-    resolver: zodResolver(schema) as unknown as Resolver<FacilityDetailsInput>,
+  } = useForm<EditInput>({
+    resolver: zodResolver(schema) as unknown as Resolver<EditInput>,
     mode: "onTouched",
     defaultValues: {
       facilityName: facility.name,
@@ -82,13 +88,22 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
       pinCode: facility.address.pinCode,
       locationUrl: facility.locationUrl ?? "",
       venueType: facility.venueType,
-      amenities: facility.amenities ?? NO_AMENITIES,
+      ownershipType: facility.ownershipType ?? "OWNED",
+      whatsappNumber: facility.whatsappNumber ?? "",
+      description: facility.description ?? "",
+      contactPersonName: facility.contactPerson?.name ?? "",
+      contactPersonRole: (facility.contactPerson?.role ?? "Other") as FacilityDetailsInput["contactPersonRole"],
+      contactAlternatePhone: facility.contactPerson?.alternatePhone ?? "",
+      policies: facility.policies ?? DEFAULT_POLICIES,
+      amenityKeys: (facility.amenityKeys ?? []) as FacilityDetailsInput["amenityKeys"],
+      customAmenities: facility.customAmenities ?? [],
     },
   });
 
   const state = watch("state");
   const venueType = watch("venueType");
-  const amenities = watch("amenities") ?? NO_AMENITIES;
+  const amenityKeys = watch("amenityKeys") ?? [];
+  const customAmenities = watch("customAmenities") ?? [];
   const locationUrl = watch("locationUrl");
   const linkChanged = locationUrl.trim() !== (facility.locationUrl ?? "");
 
@@ -109,7 +124,7 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
     }
   }
 
-  async function onSubmit(input: FacilityDetailsInput) {
+  async function onSubmit(input: EditInput) {
     setSaveError(null);
     if (!older && saved.length + newPhotos.length === 0) {
       setPhotoError("Add at least one photo of your facility.");
@@ -128,7 +143,8 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
         },
         locationUrl: input.locationUrl.trim(),
         ...(input.venueType ? { venueType: input.venueType } : {}),
-        amenities: input.amenities,
+        amenityKeys: input.amenityKeys,
+        customAmenities: input.customAmenities,
       });
       if (newPhotos.length > 0 && user) await photoService.addAll(facility.id, user.id, newPhotos);
       // The facility's name and address show on many pages; refresh everything that read them.
@@ -178,7 +194,13 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
 
           <div className="space-y-2">
             <Label>Amenities</Label>
-            <AmenitiesSection value={amenities} onChange={(next) => setValue("amenities", next, { shouldDirty: true })} />
+            <SetupAmenities
+              keys={amenityKeys}
+              onKeysChange={(next) => setValue("amenityKeys", next as FacilityDetailsInput["amenityKeys"], { shouldDirty: true })}
+              custom={customAmenities}
+              onCustomChange={(next) => setValue("customAmenities", next, { shouldDirty: true })}
+              validateCustom={customAmenityProblem}
+            />
           </div>
 
           <FacilityPhotosField saved={saved} files={newPhotos} onFilesChange={setNewPhotos} onRemoveSaved={removeSaved} busy={removing} error={photoError} />

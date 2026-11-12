@@ -18,6 +18,9 @@ function toPlayingArea(row: CourtRow): PlayingArea {
     sportId: row.sport_id,
     name: row.name,
     type: row.area_type,
+    surface: row.surface ?? undefined,
+    lighting: row.lighting_type ?? undefined,
+    amenities: (row.court_amenities ?? []) as PlayingArea["amenities"],
     status: row.status,
     bookingEnabled: row.booking_enabled,
     archived: row.archived,
@@ -79,6 +82,9 @@ export class SupabasePlayingAreasService implements PlayingAreasService {
         sport_id: input.sportId,
         name: input.name,
         area_type: input.type,
+        surface: input.surface ?? null,
+        lighting_type: input.lighting ?? null,
+        court_amenities: input.amenities ?? [],
         status: input.status,
         booking_enabled: input.bookingEnabled,
         archived: input.archived,
@@ -101,6 +107,9 @@ export class SupabasePlayingAreasService implements PlayingAreasService {
     const update: Database["public"]["Tables"]["courts"]["Update"] = {};
     if (patch.name !== undefined) update.name = patch.name;
     if (patch.type !== undefined) update.area_type = patch.type;
+    if (patch.surface !== undefined) update.surface = patch.surface || null;
+    if (patch.lighting !== undefined) update.lighting_type = patch.lighting;
+    if (patch.amenities !== undefined) update.court_amenities = patch.amenities;
     if (patch.status !== undefined) update.status = patch.status;
     if (patch.bookingEnabled !== undefined) update.booking_enabled = patch.bookingEnabled;
     if (patch.displayOrder !== undefined) update.display_order = patch.displayOrder;

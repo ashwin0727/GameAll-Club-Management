@@ -16,7 +16,7 @@ export function CourtImage({ src, alt = "", className }: { src?: string | null; 
   return (
     <div
       className={cn(
-        "flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-900 to-emerald-700 text-[10px] font-medium tracking-wide text-emerald-200",
+        "flex h-full w-full items-center justify-center bg-gradient-to-br from-[#2A1070] to-[#4817C2] text-[10px] font-medium tracking-wide text-violet-200",
         className,
       )}
     >

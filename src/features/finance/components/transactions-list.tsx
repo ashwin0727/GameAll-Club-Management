@@ -56,13 +56,13 @@ function categoryClass(entry: LedgerEntry): string {
   if (entry.txnType === "EXPENSE") return "bg-[#8B5CF6]/15 text-[#8B5CF6]";
   if (entry.txnType === "REFUND") return "bg-[#FF4D67]/15 text-[#FF4D67]";
   if (entry.category === "Membership Revenue") return "bg-[#8B5CF6]/15 text-[#8B5CF6]";
-  return "bg-[#00D084]/15 text-[#00D084]";
+  return "bg-success/15 text-success";
 }
 
 function typeClass(type: LedgerTxnType): string {
   if (type === "EXPENSE") return "bg-[#FFB020]/15 text-[#FFB020]";
   if (type === "REFUND") return "bg-[#FF4D67]/15 text-[#FF4D67]";
-  return "bg-[#00D084]/15 text-[#00D084]";
+  return "bg-success/15 text-success";
 }
 
 /**

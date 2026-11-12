@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BrandLogo } from "@/features/auth/components/brand-mark";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 import { resolveEntryRoute } from "@/features/auth/entry-route";
 import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/constants";
 import { hasDeviceOnboarded } from "@/lib/storage/onboarding";
@@ -49,10 +49,10 @@ export function SplashScreen({
     <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6">
       <div className="flex flex-col items-center text-center">
         <div className="animate-in fade-in zoom-in-95 duration-500">
-          <BrandLogo className="h-16 w-16" />
+          <BrandWordmark className="h-14 sm:h-14" />
         </div>
 
-        <h1 className="mt-6 animate-in fade-in text-2xl font-semibold tracking-tight duration-500 delay-100 fill-mode-backwards">
+        <h1 className="sr-only">
           {PRODUCT_NAME}
         </h1>
 

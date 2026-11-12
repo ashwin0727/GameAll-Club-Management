@@ -12,8 +12,8 @@ const VALID = {
   state: "Tamil Nadu",
   pinCode: "600053",
   locationUrl: "https://maps.app.goo.gl/AbCdEf123",
-  venueType: "INDOOR" as const,
-  amenities: { parking: false, changingRooms: false, toilets: false, cafeteria: false, equipmentRental: false },
+  contactPersonName: "Uma Shankar M",
+  contactPersonRole: "Facility Owner" as const,
 };
 
 describe("facilityDetailsSchema", () => {
@@ -81,19 +81,16 @@ describe("facilityDetailsSchema", () => {
     expect(facilityDetailsSchema.safeParse({ ...VALID, locationUrl: "https://www.google.com/maps/place/Arena" }).success).toBe(true);
   });
 
-  it("requires indoor or outdoor, and nothing else", () => {
-    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: undefined }).success).toBe(false);
-    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: "COVERED" }).success).toBe(false);
-    expect(facilityDetailsSchema.safeParse({ ...VALID, venueType: "OUTDOOR" }).success).toBe(true);
-  });
-
-  it("amenities default to all off, and each is a plain on/off", () => {
-    const without: Partial<typeof VALID> = { ...VALID };
-    delete without.amenities;
-    const parsed = facilityDetailsSchema.safeParse(without);
+  it("amenities default to none, accept only the 12 known keys, and custom ones are checked", () => {
+    const parsed = facilityDetailsSchema.safeParse(VALID);
     expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.amenities).toEqual({ parking: false, changingRooms: false, toilets: false, cafeteria: false, equipmentRental: false });
-    expect(facilityDetailsSchema.safeParse({ ...VALID, amenities: { ...VALID.amenities, parking: "yes" } }).success).toBe(false);
+    if (parsed.success) expect(parsed.data.amenityKeys).toEqual([]);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, amenityKeys: ["wifi", "shower"] }).success).toBe(true);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, amenityKeys: ["jacuzzi"] }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, customAmenities: ["Physio room"] }).success).toBe(true);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, customAmenities: ["x"] }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, customAmenities: ["Wi-Fi"] }).success).toBe(false);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, customAmenities: ["Spa", "spa"] }).success).toBe(false);
   });
 
   it("requires address line, area, city, and state", () => {
@@ -105,14 +102,60 @@ describe("facilityDetailsSchema", () => {
 });
 
 describe("businessPhone", () => {
-  const base = { facilityName: "Arena", facilityType: "BADMINTON", addressLine: "1 Main St", area: "Adyar", city: "Chennai", state: "Tamil Nadu", pinCode: "600020", locationUrl: "https://maps.app.goo.gl/AbCdEf123", venueType: "OUTDOOR" };
+  const base = { facilityName: "Arena", facilityType: "BADMINTON", addressLine: "1 Main St", area: "Adyar", city: "Chennai", state: "Tamil Nadu", pinCode: "600020", locationUrl: "https://maps.app.goo.gl/AbCdEf123", contactPersonName: "Uma Shankar M", contactPersonRole: "Facility Owner" };
   const msg = (phone: string) => facilityDetailsSchema.safeParse({ ...base, businessPhone: phone }).error?.issues[0]?.message;
 
-  it("is required", () => expect(msg("")).toBe("Phone number is required"));
+  it("is required", () => expect(msg("")).toBe("Contact number is required"));
   it("needs exactly 10 digits", () => expect(msg("98765")).toBe("Enter a valid 10-digit mobile number"));
   it("must start with 6, 7, 8 or 9", () => expect(msg("1234567890")).toBe("Mobile number must start with 6, 7, 8 or 9"));
   it("accepts a valid mobile, with or without +91", () => {
     expect(msg("9876543210")).toBeUndefined();
     expect(msg("+919876543210")).toBeUndefined();
+  });
+});
+
+describe("contact person, whatsapp, ownership and description", () => {
+  const msg = (patch: Record<string, unknown>) => facilityDetailsSchema.safeParse({ ...VALID, ...patch }).error?.issues[0]?.message;
+
+  it("defaults ownership to owned and accepts leased, but nothing else", () => {
+    const parsed = facilityDetailsSchema.safeParse(VALID);
+    expect(parsed.success && parsed.data.ownershipType).toBe("OWNED");
+    expect(facilityDetailsSchema.safeParse({ ...VALID, ownershipType: "LEASED" }).success).toBe(true);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, ownershipType: "RENTED" }).success).toBe(false);
+  });
+
+  it("whatsapp is optional but, when given, must be a valid mobile number", () => {
+    expect(facilityDetailsSchema.safeParse({ ...VALID, whatsappNumber: "" }).success).toBe(true);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, whatsappNumber: "9123456780" }).success).toBe(true);
+    expect(msg({ whatsappNumber: "91234" })).toBe("Enter a valid 10-digit mobile number");
+    expect(msg({ whatsappNumber: "5123456789" })).toBe("Mobile number must start with 6, 7, 8 or 9");
+  });
+
+  it("requires the contact person name (letters only) and a role from the list", () => {
+    expect(msg({ contactPersonName: "" })).toBe("Enter the contact person's name");
+    expect(msg({ contactPersonName: "U" })).toBe("Enter the contact person's name");
+    expect(msg({ contactPersonName: "Uma123" })).toBe("Name can contain letters, spaces and . ' - only");
+    expect(facilityDetailsSchema.safeParse({ ...VALID, contactPersonName: "Mary-Ann O'Neil Jr." }).success).toBe(true);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, contactPersonRole: "Janitor" }).success).toBe(false);
+    for (const role of ["Facility Owner", "Manager", "Receptionist", "Coach", "Other"]) {
+      expect(facilityDetailsSchema.safeParse({ ...VALID, contactPersonRole: role }).success).toBe(true);
+    }
+  });
+
+  it("the alternate number is optional, valid when given, and different from the contact number", () => {
+    expect(facilityDetailsSchema.safeParse({ ...VALID, contactAlternatePhone: "9123456780" }).success).toBe(true);
+    expect(msg({ contactAlternatePhone: "123" })).toBe("Enter a valid 10-digit mobile number");
+    expect(msg({ contactAlternatePhone: VALID.businessPhone })).toBe("Use a different number from the contact number");
+  });
+
+  it("limits the description to 500 characters", () => {
+    expect(facilityDetailsSchema.safeParse({ ...VALID, description: "a".repeat(500) }).success).toBe(true);
+    expect(msg({ description: "a".repeat(501) })).toBe("Description can be up to 500 characters");
+  });
+
+  it("limits custom amenities to 10", () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => `Extra ${String.fromCharCode(97 + i)}`);
+    expect(facilityDetailsSchema.safeParse({ ...VALID, customAmenities: eleven.slice(0, 10) }).success).toBe(true);
+    expect(msg({ customAmenities: eleven })).toBe("Add up to 10 custom amenities");
   });
 });

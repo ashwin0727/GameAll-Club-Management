@@ -86,6 +86,108 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.initState();
     _init();
     _autoRefresh = Timer.periodic(_autoRefreshEvery, (_) => _silentRefresh());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowReviewPopup());
+  }
+
+  /// Once per app run: while GameAll has not approved the setup yet, a closable reminder that the owner can explore meanwhile.
+  static bool _reviewPopupShown = false;
+
+  void _maybeShowReviewPopup() {
+    final facility = ref.read(sessionControllerProvider).facility;
+    if (!mounted || _reviewPopupShown || facility == null || !facility.awaitingApproval) return;
+    _reviewPopupShown = true;
+    final rejected = facility.setupReviewStatus == 'REJECTED';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        key: const ValueKey('review-popup'),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkResponse(
+                  onTap: () => Navigator.of(ctx).pop(),
+                  radius: 20,
+                  child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.close_rounded, size: 22)),
+                ),
+              ),
+              Container(
+                height: 72,
+                width: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: rejected ? const Color(0xFFFDECEC) : const Color(0xFFF1EBFF),
+                ),
+                child: Icon(rejected ? Icons.shield_outlined : Icons.fact_check_outlined,
+                    size: 34, color: rejected ? const Color(0xFFC62828) : AppColors.primary),
+              ),
+              const SizedBox(height: 14),
+              Text.rich(
+                TextSpan(
+                  text: 'Your Facility Setup ',
+                  children: [
+                    TextSpan(
+                      text: rejected ? 'Needs Changes' : 'is Under Review',
+                      style: TextStyle(color: rejected ? const Color(0xFFC62828) : const Color(0xFF5B1FE8)),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.25),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                rejected
+                    ? (facility.setupReviewNote ?? 'GameAll needs something fixed before your facility can go live.')
+                    : 'Our team is reviewing your details and documents. You can explore GameAll in the meantime. We’ll notify you as soon as it’s approved.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, height: 1.4),
+              ),
+              if (!rejected) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(color: const Color(0xFFEFE8FF), borderRadius: BorderRadius.circular(999)),
+                  child: const Text.rich(
+                    TextSpan(
+                      text: 'Approval usually takes up to ',
+                      children: [TextSpan(text: '24 hours.', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF5B1FE8)))],
+                    ),
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: Color(0xFF2A1070)),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text(rejected ? 'Close' : 'Explore GameAll'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        context.push(AppRoutes.setupReview);
+                      },
+                      child: Text(rejected ? 'See what to fix' : 'View status', textAlign: TextAlign.center),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -243,10 +345,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset('assets/images/logo-icon.png', width: 24, height: 24),
-            const SizedBox(width: 6),
-            const Text('GameAll',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            Image.asset('assets/images/gameall_logo_light.png', height: 26),
           ],
         ),
         actions: [

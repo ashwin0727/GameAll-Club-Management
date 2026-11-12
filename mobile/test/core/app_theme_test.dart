@@ -24,12 +24,12 @@ void main() {
     });
 
     test('seeds the color scheme from the GameAll brand primary, not a default Material color', () {
-      expect(theme.colorScheme.primary, AppColors.primary);
+      expect(theme.colorScheme.primary, AppColorTokens.dark.primary);
     });
 
     test('registers AppColorTokens.dark as a theme extension', () {
       expect(tokens.surface0, AppColorTokens.dark.surface0);
-      expect(tokens.primary, AppColors.primary);
+      expect(tokens.primary, AppColorTokens.dark.primary);
     });
 
     test('scaffold background is Surface 0, not a bare black/white default', () {
@@ -79,13 +79,13 @@ void main() {
     final theme = AppTheme.light();
     final tokens = theme.extension<AppColorTokens>()!;
 
-    test('uses the brand green, deepened on the light ground so text and controls keep their contrast', () {
-      // One brand colour, one hue: the light theme's own primary token drives the colour scheme, and it is the same
-      // green as dark's — only darker, because the bright dark-ground green is unreadable on white.
+    test('uses the brand purple #4817C2, with white on top of it', () {
       expect(theme.colorScheme.primary, tokens.primary);
-      expect(tokens.primary, isNot(AppColors.primary));
-      expect(HSLColor.fromColor(tokens.primary).hue, closeTo(HSLColor.fromColor(AppColors.primary).hue, 12));
-      expect(tokens.primary.computeLuminance(), lessThan(AppColors.primary.computeLuminance()));
+      expect(tokens.primary, const Color(0xFF4817C2));
+      expect(tokens.onPrimary, const Color(0xFFFFFFFF));
+      // The dark ground gets a lighter purple of the same hue so it stays legible there.
+      expect(HSLColor.fromColor(AppColorTokens.dark.primary).hue, closeTo(HSLColor.fromColor(tokens.primary).hue, 12));
+      expect(AppColorTokens.dark.primary.computeLuminance(), greaterThan(tokens.primary.computeLuminance()));
     });
 
     test('is a genuinely independent palette, not dark values inverted', () {

@@ -31,7 +31,7 @@ export function KpiCard({
       value={format(kpi.value)}
       countTo={kpi.value}
       format={format}
-      accent={accentColor ?? "#00D084"}
+      accent={accentColor ?? "#4817C2"}
       index={index}
       hint={
         kpi.changePercent === null

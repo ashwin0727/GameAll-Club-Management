@@ -29,6 +29,8 @@ export interface AuthUser {
   onboardingCompleted: boolean;
   /** A new owner who still has to verify a mobile number (SMS OTP) before onboarding. */
   mobileVerificationPending?: boolean;
+  /** The 10-digit mobile the owner verified by OTP at signup (user_verified_phones), when there is one. */
+  verifiedMobile?: string;
   /** GameAll's own back-office account (admin@gameall.co): goes to /admin, never to a facility dashboard. */
   isPlatformAdmin?: boolean;
 }

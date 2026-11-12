@@ -96,11 +96,11 @@ void main() {
       expect(find.text('Create & Manage Tournaments'), findsOneWidget);
     });
 
-    testWidgets('with no config → shows the not-configured note, no Open button', (tester) async {
+    testWidgets('with no config → shows the Google Play button, no Open button', (tester) async {
       await tester.pumpWidget(wrap(const TournamentManagementScreen()));
       await tester.pump();
 
-      expect(find.textContaining("aren't configured yet"), findsOneWidget);
+      expect(find.text('Google Play'), findsOneWidget);
       expect(find.widgetWithText(ElevatedButton, 'Open Tournament App'), findsNothing);
     });
 

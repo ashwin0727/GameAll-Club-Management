@@ -16,14 +16,14 @@ class AppColors {
   const AppColors._();
 
   // ── Brand ──────────────────────────────────────────────────────────────
-  static const Color primary = Color(0xFF00F08A); // GameAll Green (dark ground)
-  static const Color primaryDark = Color(0xFF00C77A);
-  static const Color onPrimary = Color(0xFF06110B); // near-black green — dark text/icons on green fills
+  static const Color primary = Color(0xFF4817C2); // GameAll purple
+  static const Color primaryDark = Color(0xFF39109F);
+  static const Color onPrimary = Color(0xFFFFFFFF); // white on the purple fill
   static const Color electricBlue = Color(0xFF7E93FF);
   static const Color violet = Color(0xFFA98CFF);
 
   // ── Status ─────────────────────────────────────────────────────────────
-  static const Color success = Color(0xFF2ED993);
+  static const Color success = Color(0xFF0E9384); // teal
   static const Color warning = Color(0xFFFFC061);
   static const Color destructive = Color(0xFFFF6B82);
   static const Color info = Color(0xFF7E93FF);
@@ -174,9 +174,9 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
     textPrimary: Color(0xFFF4F7FA),
     textSecondary: Color(0xFF93A1B3),
     borderColor: Color(0xFF2E2E33),
-    primary: Color(0xFF00F08A),
-    onPrimary: Color(0xFF06110B),
-    success: Color(0xFF2ED993),
+    primary: Color(0xFF9C7BFF),
+    onPrimary: Color(0xFF1B0B4B),
+    success: Color(0xFF2DD4BF),
     warning: Color(0xFFFFC061),
     destructive: Color(0xFFFF6B82),
     info: Color(0xFF7E93FF),
@@ -192,17 +192,17 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
   /// green button reads identically light or dark.
   static const light = AppColorTokens(
     brightness: Brightness.light,
-    surface0: Color(0xFFF1F4F8),
+    surface0: Color(0xFFFAF8FF),
     surface1: Color(0xFFFFFFFF),
-    surface2: Color(0xFFE9EDF3),
+    surface2: Color(0xFFF1EBFF),
     surface3: Color(0xFFFFFFFF),
     surface4: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF111A28),
-    textSecondary: Color(0xFF5A6A7E),
-    borderColor: Color(0xFFDDE3EB),
-    primary: Color(0xFF00A15C),
-    onPrimary: Color(0xFF06110B),
-    success: Color(0xFF0A8F55),
+    textPrimary: Color(0xFF171717),
+    textSecondary: Color(0xFF666666),
+    borderColor: Color(0xFFE5E1EF),
+    primary: Color(0xFF4817C2),
+    onPrimary: Color(0xFFFFFFFF),
+    success: Color(0xFF0E9384),
     warning: Color(0xFF9A5B00),
     destructive: Color(0xFFD01A3D),
     info: Color(0xFF3B4ED6),

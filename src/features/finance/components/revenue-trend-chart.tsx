@@ -40,8 +40,8 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>
             <linearGradient id="financeGrossGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00D084" stopOpacity={0.45} />
-              <stop offset="100%" stopColor="#00D084" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#4817C2" stopOpacity={0.45} />
+              <stop offset="100%" stopColor="#4817C2" stopOpacity={0.02} />
             </linearGradient>
           </defs>
 
@@ -67,7 +67,7 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
           />
 
           <Tooltip
-            cursor={{ stroke: "#00D084", strokeWidth: 1, strokeDasharray: "3 3" }}
+            cursor={{ stroke: "#4817C2", strokeWidth: 1, strokeDasharray: "3 3" }}
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
@@ -82,14 +82,14 @@ export function RevenueTrendChart({ points }: { points: RevenueTrendPoint[] }) {
           <Area
             type="monotone"
             dataKey="grossMinor"
-            stroke="#00D084"
+            stroke="#4817C2"
             strokeWidth={2.5}
             fill="url(#financeGrossGradient)"
             name="grossMinor"
             // A dot per reading, so a flat stretch still shows where the
             // readings actually are rather than reading as one long segment.
-            dot={{ r: 3, fill: "#00D084", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#00D084", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+            dot={{ r: 3, fill: "#4817C2", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#4817C2", stroke: "hsl(var(--background))", strokeWidth: 2 }}
             isAnimationActive
             animationDuration={700}
             animationEasing="ease-out"

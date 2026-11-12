@@ -10,7 +10,7 @@ import type { GuestBookingRow } from "@/features/bookings/types";
 import { cn } from "@/lib/utils";
 
 const OUTLINE_BTN =
-  "flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#0B7A55] bg-card px-4 text-sm font-medium text-[#0B7A55] transition-colors hover:bg-[#0B7A55]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10";
+  "flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#4817C2] bg-card px-4 text-sm font-medium text-[#4817C2] transition-colors hover:bg-[#4817C2]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10";
 
 function IconTile({ icon: Icon, tone }: { icon: LucideIcon; tone: string }) {
   return (

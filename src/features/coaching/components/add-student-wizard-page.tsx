@@ -832,7 +832,7 @@ export function AddStudentWizardPage() {
                           <button
                             type="button"
                             onClick={() => void copyLink()}
-                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0B7A55] px-3 text-xs font-semibold text-white"
+                            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#4817C2] px-3 text-xs font-semibold text-white"
                           >
                             <Copy className="h-3.5 w-3.5" aria-hidden />
                             {linkCopied ? "Copied" : "Copy"}
@@ -847,7 +847,7 @@ export function AddStudentWizardPage() {
                         type="button"
                         disabled={generatingLink}
                         onClick={() => void generateLink()}
-                        className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-4 text-sm font-semibold text-white disabled:opacity-50"
+                        className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-4 text-sm font-semibold text-white disabled:opacity-50"
                       >
                         <Link2 className="h-4 w-4" aria-hidden />
                         {generatingLink ? "Generating…" : isMonthly ? "Generate Auto-Pay Link" : "Generate Payment Link"}
@@ -907,7 +907,7 @@ export function AddStudentWizardPage() {
                       >
                         Record Payment
                       </button>
-                      <button type="button" disabled={busy} onClick={() => void recordPayment(true)} className="h-9 rounded-lg bg-[#0B7A55] px-3 text-sm font-semibold text-white disabled:opacity-50">
+                      <button type="button" disabled={busy} onClick={() => void recordPayment(true)} className="h-9 rounded-lg bg-[#4817C2] px-3 text-sm font-semibold text-white disabled:opacity-50">
                         Mark as Paid in Full
                       </button>
                     </div>
@@ -917,7 +917,7 @@ export function AddStudentWizardPage() {
                   <button
                     type="button"
                     onClick={() => setStep("Success")}
-                    className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-4 text-sm font-semibold text-white"
+                    className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-4 text-sm font-semibold text-white"
                   >
                     Continue — Collect Payment Later
                   </button>
@@ -962,7 +962,7 @@ export function AddStudentWizardPage() {
                   View Program
                 </Link>
               )}
-              <Link href="/coaching/students" className="h-10 rounded-lg bg-[#0B7A55] px-4 py-2 text-sm font-semibold text-white">
+              <Link href="/coaching/students" className="h-10 rounded-lg bg-[#4817C2] px-4 py-2 text-sm font-semibold text-white">
                 Back to Students
               </Link>
             </div>
@@ -988,17 +988,17 @@ export function AddStudentWizardPage() {
               </button>
             )}
             {step === "Student Details" && (
-              <button type="button" disabled={busy || !step1Valid} onClick={() => void goNextFromStep1()} className="h-10 rounded-lg bg-[#0B7A55] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" disabled={busy || !step1Valid} onClick={() => void goNextFromStep1()} className="h-10 rounded-lg bg-[#4817C2] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 {busy ? "Saving…" : "Next Step"}
               </button>
             )}
             {step === "Program & Enrollment" && (
-              <button type="button" disabled={!step2Valid} onClick={() => setStep("Review & Confirm")} className="h-10 rounded-lg bg-[#0B7A55] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" disabled={!step2Valid} onClick={() => setStep("Review & Confirm")} className="h-10 rounded-lg bg-[#4817C2] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 Next Step
               </button>
             )}
             {step === "Review & Confirm" && (
-              <button type="button" disabled={busy} onClick={() => void confirmEnrollment()} className="h-10 rounded-lg bg-[#0B7A55] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="button" disabled={busy} onClick={() => void confirmEnrollment()} className="h-10 rounded-lg bg-[#4817C2] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
                 {busy ? "Enrolling…" : "Continue to Payment"}
               </button>
             )}

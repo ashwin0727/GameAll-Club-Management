@@ -24,8 +24,8 @@ import type {
 } from "../types";
 
 const INR = "INR";
-const REVENUE_COLOURS = ["#FFB020", "#8B5CF6", "#00D084", "#5B6CFF", "#F97316"];
-const METHOD_COLOURS = ["#5B6CFF", "#00D084", "#8B5CF6", "#FFB020", "#FF4D67"];
+const REVENUE_COLOURS = ["#FFB020", "#8B5CF6", "#4817C2", "#5B6CFF", "#F97316"];
+const METHOD_COLOURS = ["#5B6CFF", "#4817C2", "#8B5CF6", "#FFB020", "#FF4D67"];
 
 /** Drops zero slices and assigns a colour + formatted caption (from finance-dashboard.tsx). */
 function segmentsFrom(rows: { label: string; value: number }[], colours: string[]): DonutSegment[] {
@@ -97,10 +97,10 @@ export function RevenueReport() {
 
   const sportBars = sportRows
     .filter((r) => r.revenueMinor > 0)
-    .map((r) => ({ label: r.sportName, value: r.revenueMinor, color: "#00D084", caption: formatCurrency(r.revenueMinor, INR) }));
+    .map((r) => ({ label: r.sportName, value: r.revenueMinor, color: "#4817C2", caption: formatCurrency(r.revenueMinor, INR) }));
   const courtBars = byCourt
     .filter((r) => r.revenueMinor > 0)
-    .map((r) => ({ label: r.courtName, value: r.revenueMinor, color: "#00D084", caption: formatCurrency(r.revenueMinor, INR) }));
+    .map((r) => ({ label: r.courtName, value: r.revenueMinor, color: "#4817C2", caption: formatCurrency(r.revenueMinor, INR) }));
 
   const revenueSegments = breakdown
     ? segmentsFrom(

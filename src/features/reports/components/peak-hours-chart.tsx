@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import type { PeakHourRow } from "@/features/reports/types";
 
 const BASE = "#5B6CFF";
-const PEAK = "#00D084";
+const PEAK = "#4817C2";
 
 function hourLabel(h: number): string {
   const hour12 = h % 12 === 0 ? 12 : h % 12;

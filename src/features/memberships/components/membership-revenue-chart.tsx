@@ -8,7 +8,7 @@ import { useMembershipRevenue } from "@/features/memberships/hooks/use-membershi
 import { cn } from "@/lib/utils";
 import { monthStartIso, revenueOverMonths, todayIso } from "@/features/memberships/revenue-window";
 
-const LINE = "#00A86B";
+const LINE = "#4817C2";
 /** Room on the left for the y-axis figures. */
 const AXIS_GUTTER = "2.75rem";
 /** How many dates to caption along the bottom. */

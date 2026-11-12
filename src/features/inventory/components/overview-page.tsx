@@ -87,7 +87,7 @@ export function InventoryOverviewPage() {
         <Card className="p-4">
           <h2 className="text-sm font-semibold">Stock Status</h2>
           <ul className="mt-3 space-y-2 text-sm">
-            <StatusRow label="In Stock" count={data.stockStatus.inStock} total={total} tone="bg-emerald-500" />
+            <StatusRow label="In Stock" count={data.stockStatus.inStock} total={total} tone="bg-success" />
             <StatusRow label="Low Stock" count={data.stockStatus.lowStock} total={total} tone="bg-amber-500" />
             <StatusRow label="Out of Stock" count={data.stockStatus.outOfStock} total={total} tone="bg-destructive" />
           </ul>

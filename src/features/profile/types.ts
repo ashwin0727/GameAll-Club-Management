@@ -19,6 +19,7 @@ export interface FacilityPlan {
 }
 
 export type PayoutMethodType = "BANK" | "UPI";
+export type PayoutAccountType = "SAVINGS" | "CURRENT";
 
 /** GameAll checks every payout method by hand before sending money to it. */
 export type PayoutVerification = "PENDING" | "VERIFIED" | "REJECTED";
@@ -28,7 +29,9 @@ export interface PayoutMethod {
   type: PayoutMethodType;
   accountHolderName: string;
   bankName: string | null;
-  accountNumber: string | null;
+  /** Only the last four digits ever reach the browser; the full number is readable by GameAll alone. */
+  accountLast4: string | null;
+  accountType: PayoutAccountType | null;
   ifsc: string | null;
   upiId: string | null;
   isPrimary: boolean;
@@ -41,7 +44,7 @@ export interface PayoutMethod {
 }
 
 export type PayoutMethodInput =
-  | { type: "BANK"; accountHolderName: string; bankName: string; accountNumber: string; ifsc: string }
+  | { type: "BANK"; accountHolderName: string; bankName: string; accountNumber: string; ifsc: string; accountType: PayoutAccountType }
   | { type: "UPI"; accountHolderName: string; upiId: string };
 
 export type SupportCategory = "GENERAL" | "BILLING" | "BOOKINGS" | "PAYMENTS" | "TECHNICAL" | "OTHER";

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CourtsSetupForm } from "@/features/courts-setup/components/courts-setup-form";
 import { OperatingHoursForm } from "@/features/operating-hours/components/operating-hours-form";
-import { PricingForm } from "@/features/pricing/components/pricing-form";
+import { PricingSetupForm } from "@/features/pricing/setup/pricing-setup-form";
 import { SportsSetupForm } from "@/features/sports-setup/components/sports-setup-form";
 
 export type SetupSection = "sports" | "courts" | "hours" | "pricing";
@@ -53,7 +53,7 @@ export function EditSetupDialog({ section, onClose }: { section: SetupSection; o
         {section === "sports" && <SportsSetupForm onDone={saved} />}
         {section === "courts" && <CourtsSetupForm onDone={saved} />}
         {section === "hours" && <OperatingHoursForm onDone={saved} />}
-        {section === "pricing" && <PricingForm onDone={saved} />}
+        {section === "pricing" && <PricingSetupForm onDone={saved} />}
       </DialogContent>
     </Dialog>
   );

@@ -37,7 +37,7 @@ export function useSignup() {
       markDeviceOnboarded();
       if (result.sessionActive) {
         // A brand-new account can never have completed onboarding yet.
-        router.replace("/onboarding/facility");
+        router.replace("/onboarding/welcome");
         router.refresh();
         return;
       }
@@ -75,7 +75,7 @@ export function useVerifySignup() {
             ? "/verify-mobile"
             : user.onboardingCompleted
               ? "/dashboard"
-              : "/onboarding/facility",
+              : "/onboarding/welcome",
       );
       router.refresh();
     },

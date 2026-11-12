@@ -72,7 +72,7 @@ class PayoutMethodCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       isBank
-                          ? '${PayoutValidators.maskAccountNumber(method.accountNumber)} · ${method.ifsc ?? ''}'
+                          ? '${method.accountType == PayoutAccountType.current ? 'Current' : 'Savings'} · ${PayoutValidators.maskAccountNumber(method.accountLast4)} · ${method.ifsc ?? ''}'
                           : PayoutValidators.maskUpi(method.upiId),
                       style: TextStyle(fontSize: 13, color: tokens.textSecondary),
                     ),
@@ -178,7 +178,9 @@ class _PayoutMethodSheetState extends ConsumerState<PayoutMethodSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _holder = TextEditingController(text: widget.method?.accountHolderName ?? '');
   late final _bank = TextEditingController(text: widget.method?.bankName ?? '');
-  late final _account = TextEditingController(text: widget.method?.accountNumber ?? '');
+  // The full number is never sent to the app (migration 0200), so changing the account means typing it again.
+  late final _account = TextEditingController();
+  late PayoutAccountType _accountType = widget.method?.accountType ?? PayoutAccountType.savings;
   late final _ifsc = TextEditingController(text: widget.method?.ifsc ?? '');
   late final _upi = TextEditingController(text: widget.method?.upiId ?? '');
   late PayoutMethodType _type = widget.method?.type ?? PayoutMethodType.bank;
@@ -210,13 +212,13 @@ class _PayoutMethodSheetState extends ConsumerState<PayoutMethodSheet> {
         final id = widget.method!.id;
         if (isBank) {
           await repo.updateBank(id,
-              accountHolderName: _holder.text, bankName: _bank.text, accountNumber: _account.text, ifsc: _ifsc.text);
+              accountHolderName: _holder.text, bankName: _bank.text, accountNumber: _account.text, ifsc: _ifsc.text, accountType: _accountType);
         } else {
           await repo.updateUpi(id, accountHolderName: _holder.text, upiId: _upi.text);
         }
       } else if (isBank) {
         await repo.addBank(widget.facilityId,
-            accountHolderName: _holder.text, bankName: _bank.text, accountNumber: _account.text, ifsc: _ifsc.text);
+            accountHolderName: _holder.text, bankName: _bank.text, accountNumber: _account.text, ifsc: _ifsc.text, accountType: _accountType);
       } else {
         await repo.addUpi(widget.facilityId, accountHolderName: _holder.text, upiId: _upi.text);
       }
@@ -291,7 +293,7 @@ class _PayoutMethodSheetState extends ConsumerState<PayoutMethodSheet> {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(18)],
                       validator: PayoutValidators.accountNumber,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: const InputDecoration(labelText: 'Account number'),
+                      decoration: InputDecoration(labelText: _editing ? 'Account number (enter it again to save changes)' : 'Account number'),
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     TextFormField(
@@ -302,6 +304,15 @@ class _PayoutMethodSheetState extends ConsumerState<PayoutMethodSheet> {
                       validator: PayoutValidators.ifsc,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(labelText: 'IFSC code'),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    SegmentedButton<PayoutAccountType>(
+                      segments: const [
+                        ButtonSegment(value: PayoutAccountType.savings, label: Text('Savings')),
+                        ButtonSegment(value: PayoutAccountType.current, label: Text('Current')),
+                      ],
+                      selected: {_accountType},
+                      onSelectionChanged: (s) => setState(() => _accountType = s.first),
                     ),
                   ] else
                     AppTextField(

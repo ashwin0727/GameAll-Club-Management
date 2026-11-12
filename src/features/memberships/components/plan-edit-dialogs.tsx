@@ -18,7 +18,7 @@ import type { MembershipPlan } from "@/features/memberships/types";
 import { cn } from "@/lib/utils";
 
 const BTN_PRIMARY =
-  "flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground";
+  "flex h-10 items-center justify-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground";
 const BTN_OUTLINE = "flex h-10 items-center justify-center rounded-lg border border-input bg-card px-4 text-sm font-medium transition-colors hover:bg-accent";
 
 function Field({ label, error, children }: { label: string; error?: string | null; children: React.ReactNode }) {
@@ -142,7 +142,7 @@ export function EditPlanDialog({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={showBadge} onChange={(e) => setShowBadge(e.target.checked)} className="h-4 w-4 accent-[#0B7A55]" />
+            <input type="checkbox" checked={showBadge} onChange={(e) => setShowBadge(e.target.checked)} className="h-4 w-4 accent-[#4817C2]" />
             Show a badge on this plan
           </label>
           {showBadge && <Input value={badge} onChange={(e) => setBadge(e.target.value.slice(0, 20))} className="h-9 w-40" aria-label="Badge Text" />}
@@ -373,7 +373,7 @@ export function EditSlotsDialog({
                             onClick={() => update(i, { days: on ? d.days.filter((x) => x !== o.value) : [...d.days, o.value] })}
                             className={cn(
                               "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                              on ? "bg-[#0B9B63] text-white" : "bg-muted text-muted-foreground hover:bg-accent",
+                              on ? "bg-[#4817C2] text-white" : "bg-muted text-muted-foreground hover:bg-accent",
                             )}
                           >
                             {o.label}

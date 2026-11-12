@@ -13,12 +13,15 @@ class PricingRule {
     required this.currency,
     required this.pricingUnit,
     required this.priority,
+    this.daysOfWeek = const [],
+    this.rateTier,
+    this.audience = 'GENERAL',
   });
 
   final String? id;
   final String facilitySportId;
   final String? playingAreaId;
-  final String dayType; // ALL_DAYS | WEEKDAYS | WEEKENDS
+  final String dayType; // ALL_DAYS | WEEKDAYS | WEEKENDS | SPECIFIC_DAYS
   final bool coversFullDay;
   final String? startTime;
   final String? endTime;
@@ -26,6 +29,15 @@ class PricingRule {
   final String currency;
   final String pricingUnit; // PER_HOUR | PER_30_MINUTES | PER_SESSION | PER_MATCH
   final int priority;
+
+  /// Days a SPECIFIC_DAYS rule covers (0 = Sun .. 6 = Sat).
+  final List<int> daysOfWeek;
+
+  /// PEAK | OFF_PEAK (a label only), null for none.
+  final String? rateTier;
+
+  /// GENERAL (what a booking pays) | MEMBER | COACHING (collected and stored only).
+  final String audience;
 
   factory PricingRule.fromJson(Map<String, dynamic> json) {
     return PricingRule(
@@ -40,6 +52,9 @@ class PricingRule {
       currency: json['currency'] as String? ?? 'INR',
       pricingUnit: json['pricing_unit'] as String? ?? 'PER_HOUR',
       priority: json['priority'] as int? ?? 0,
+      daysOfWeek: ((json['days_of_week'] as List<dynamic>?) ?? const []).map((d) => (d as num).toInt()).toList(),
+      rateTier: json['rate_tier'] as String?,
+      audience: json['audience'] as String? ?? 'GENERAL',
     );
   }
 
@@ -54,6 +69,9 @@ class PricingRule {
     'currency': currency,
     'pricingUnit': pricingUnit,
     'priority': priority,
+    'daysOfWeek': dayType == 'SPECIFIC_DAYS' ? daysOfWeek : <int>[],
+    'rateTier': rateTier ?? '',
+    'audience': audience,
   };
 
   /// 40000 (paise) -> 400 (rupees, matching how the amount is entered/shown).

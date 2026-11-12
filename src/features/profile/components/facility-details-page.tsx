@@ -23,7 +23,7 @@ import { EditOnly } from "@/features/access/edit-only";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const TILE_TINTS = [
-  "bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-200",
+  "bg-violet-50 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200",
   "bg-blue-50 text-blue-900 dark:bg-blue-500/10 dark:text-blue-200",
   "bg-orange-50 text-orange-900 dark:bg-orange-500/10 dark:text-orange-200",
   "bg-lime-50 text-lime-900 dark:bg-lime-500/10 dark:text-lime-200",
@@ -70,7 +70,7 @@ function CourtsAndSportsCard({
       </div>
 
       <div className="grid grid-cols-3 divide-x divide-border rounded-xl bg-muted/40">
-        <CountStat icon={LayoutGrid} tint="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400" value={totalCourts} label="Total Courts" />
+        <CountStat icon={LayoutGrid} tint="bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400" value={totalCourts} label="Total Courts" />
         <CountStat icon={Grid2x2} tint="bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400" value={activeCourts} label="Active Courts" />
         <CountStat icon={Trophy} tint="bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400" value={sports.length} label="Sports" />
       </div>
@@ -166,7 +166,7 @@ export function FacilityDetailsPage() {
     enabled: !!facility,
     staleTime: 60_000,
   });
-  const pricingRules = plan.data?.rules ?? [];
+  const pricingRules = (plan.data?.rules ?? []).filter((r) => (r.audience ?? "GENERAL") === "GENERAL");
   const isOwner = !!facility && facility.ownerId === user?.id;
   const router = useRouter();
   const [editing, setEditing] = useState<SetupSection | null>(null);

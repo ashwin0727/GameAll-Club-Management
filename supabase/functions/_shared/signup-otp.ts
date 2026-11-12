@@ -50,21 +50,20 @@ export function buildOtpEmail(opts: { name: string; code: string; logoUrl: strin
   const subject = `${opts.code} is your GameAll verification code`;
   const html = `<!doctype html>
 <html lang="en">
-<body style="margin:0;padding:0;background:#f3f5f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+<body style="margin:0;padding:0;background:#f3f5f8;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#171717;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your GameAll one time password is ${opts.code}. It expires in ${OTP_TTL_MINUTES} minutes.</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f5f8;padding:32px 16px;">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e9f0;">
         <tr><td align="center" style="padding:32px 24px 8px;">
-          <img src="${escapeHtml(opts.logoUrl)}" alt="GameAll" width="56" height="56" style="display:block;border:0;border-radius:12px;">
-          <div style="margin-top:12px;font-size:22px;font-weight:800;letter-spacing:.2px;color:#0f172a;">GameAll</div>
+          <img src="${escapeHtml(opts.logoUrl)}" alt="GameAll" height="40" style="display:block;border:0;height:40px;width:auto;">
         </td></tr>
         <tr><td style="padding:16px 32px 8px;">
           <h1 style="margin:0 0 8px;font-size:20px;line-height:28px;">One Time Password</h1>
           <p style="margin:0;font-size:15px;line-height:24px;color:#475569;">Hi ${name}, use the code below to verify your email address and finish creating your GameAll account.</p>
         </td></tr>
         <tr><td align="center" style="padding:20px 32px;">
-          <div style="display:inline-block;padding:16px 28px;border-radius:12px;background:#ecfdf5;border:1px solid #a7f3d0;font-size:34px;font-weight:800;letter-spacing:6px;color:#047857;font-family:'SF Mono',Menlo,Consolas,monospace;">${spaced}</div>
+          <div style="display:inline-block;padding:16px 28px;border-radius:12px;background:#F1EBFF;border:1px solid #E5E1EF;font-size:34px;font-weight:800;letter-spacing:6px;color:#4817C2;font-family:'SF Mono',Menlo,Consolas,monospace;">${spaced}</div>
         </td></tr>
         <tr><td style="padding:0 32px 28px;">
           <p style="margin:0 0 12px;font-size:14px;line-height:22px;color:#475569;">This code expires in <strong>${OTP_TTL_MINUTES} minutes</strong> and can be used once.</p>

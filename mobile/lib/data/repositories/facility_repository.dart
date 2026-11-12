@@ -8,6 +8,43 @@ import '../models/facility_image.dart';
 /// Mirrors src/services/facility/supabase-facility.service.ts — same RPC
 /// (`create_facility_with_owner`) and table, so a facility created on
 /// mobile is immediately visible on web and vice versa.
+/// The facility-setup fields added with the redesigned Facility Information step (migration 0195). The database derives the
+/// five legacy amenity flags from [amenityKeys] (trigger), so only the list is written.
+class FacilitySetupExtras {
+  const FacilitySetupExtras({
+    this.ownership = OwnershipType.owned,
+    this.whatsappNumber,
+    this.description,
+    this.contactPerson,
+    this.policies = const FacilityPolicies(),
+    this.amenityKeys = const [],
+    this.customAmenities = const [],
+  });
+
+  final OwnershipType ownership;
+  final String? whatsappNumber;
+  final String? description;
+  final FacilityContactPerson? contactPerson;
+  final FacilityPolicies policies;
+  final List<String> amenityKeys;
+  final List<String> customAmenities;
+
+  Map<String, dynamic> toDb() {
+    String? blankToNull(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
+    return {
+      'ownership_type': ownership.toDb(),
+      'whatsapp_number': blankToNull(whatsappNumber),
+      'description': blankToNull(description),
+      'contact_person_name': blankToNull(contactPerson?.name),
+      'contact_person_role': blankToNull(contactPerson?.role),
+      'contact_person_alt_phone': blankToNull(contactPerson?.alternatePhone),
+      ...policies.toDb(),
+      'amenity_keys': amenityKeys,
+      'custom_amenities': customAmenities,
+    };
+  }
+}
+
 class FacilityRepository {
   FacilityRepository(this._client);
 
@@ -24,6 +61,7 @@ class FacilityRepository {
     String? locationUrl,
     VenueType? venueType,
     FacilityAmenities amenities = const FacilityAmenities(),
+    FacilitySetupExtras? extras,
   }) async {
     try {
       final row = await _client.rpc(
@@ -58,7 +96,8 @@ class FacilityRepository {
           .update({
             if (link != null && link.isNotEmpty) 'location_url': link,
             if (venueType != null) 'venue_type': venueType.toDb(),
-            ...amenities.toDb(),
+            // The new 12-item list drives the legacy flags in the database; only fall back to the old flags without it.
+            if (extras == null) ...amenities.toDb() else ...extras.toDb(),
           })
           .eq('id', facility.id)
           .select()
@@ -108,6 +147,7 @@ class FacilityRepository {
     String? locationUrl,
     VenueType? venueType,
     FacilityAmenities amenities = const FacilityAmenities(),
+    FacilitySetupExtras? extras,
   }) async {
     try {
       final row = await _client
@@ -125,7 +165,7 @@ class FacilityRepository {
             'logo_url': logoUrl,
             'location_url': locationUrl,
             if (venueType != null) 'venue_type': venueType.toDb(),
-            ...amenities.toDb(),
+            if (extras == null) ...amenities.toDb() else ...extras.toDb(),
           })
           .eq('id', id)
           .select()
@@ -208,6 +248,46 @@ class FacilityRepository {
       final owned = list.where((f) => f['owner_id'] == userId);
       final row = owned.isNotEmpty ? owned.first : list.first;
       return Facility.fromJson(row);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// The extras on the Operating Hours step (migration 0198).
+  Future<void> updateHoursSettings(
+    String facilityId, {
+    required bool allowBookingsOutsideHours,
+    String? breakStart,
+    String? breakEnd,
+    required bool sportWiseHours,
+  }) async {
+    try {
+      await _client.from('facilities').update({
+        'allow_bookings_outside_hours': allowBookingsOutsideHours,
+        'operating_break_start': breakStart,
+        'operating_break_end': breakEnd,
+        'sport_wise_hours': sportWiseHours,
+      }).eq('id', facilityId);
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
+  /// The settings on the Pricing step (migration 0199).
+  Future<void> updatePricingSettings(
+    String facilityId, {
+    required String mode,
+    required bool differentWeekendPricing,
+    required bool memberPricingEnabled,
+    required bool coachingPricingEnabled,
+  }) async {
+    try {
+      await _client.from('facilities').update({
+        'pricing_mode': mode,
+        'different_weekend_pricing': differentWeekendPricing,
+        'member_pricing_enabled': memberPricingEnabled,
+        'coaching_pricing_enabled': coachingPricingEnabled,
+      }).eq('id', facilityId);
     } on PostgrestException catch (e) {
       throw mapSupabaseError(e);
     }

@@ -9,6 +9,7 @@ const CATALOG = [
   { id: "sport-cricket", key: "cricket", name: "Cricket", is_active: true },
   { id: "sport-football", key: "football", name: "Football", is_active: true },
   { id: "sport-tennis", key: "tennis", name: "Tennis", is_active: true },
+  { id: "sport-basketball", key: "basketball", name: "Basketball", is_active: true },
   { id: "sport-other", key: "other", name: "Other", is_active: true },
 ];
 
@@ -32,16 +33,19 @@ export class FakeSportsService implements SportsService {
     const existingForFacility = this.rows.filter((row) => row.facilityId === facilityId);
 
     const nextRows: FacilitySport[] = inputs.map((input) => {
-      const existing = existingForFacility.find((row) => row.sportId === input.sportId);
+      // a venue can have several custom sports: they are told apart by name (case-insensitive)
+      const sameName = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+      const existing = existingForFacility.find((row) => row.sportId === input.sportId && sameName(row.customSportName, input.customSportName));
       if (existing) {
         return { ...existing, ...input, id: existing.id, createdAt: existing.createdAt, updatedAt: now, enabled: true };
       }
       return { ...input, id: crypto.randomUUID(), createdAt: now, updatedAt: now, enabled: true };
     });
 
-    const selectedSportIds = new Set(inputs.map((i) => i.sportId));
+    const stillWanted = (row: FacilitySport) =>
+      inputs.some((i) => i.sportId === row.sportId && (i.customSportName ?? "").trim().toLowerCase() === (row.customSportName ?? "").trim().toLowerCase());
     const deactivated = existingForFacility
-      .filter((row) => !selectedSportIds.has(row.sportId))
+      .filter((row) => !stillWanted(row))
       .map((row) => ({ ...row, enabled: false, updatedAt: now }));
 
     const others = this.rows.filter((row) => row.facilityId !== facilityId);

@@ -257,7 +257,7 @@ export function ChangeCourtDialog({
                     disabled={!isFree}
                     checked={picked === c.id}
                     onChange={() => setPicked(c.id)}
-                    className="accent-[#0B7A55]"
+                    className="accent-[#4817C2]"
                   />
                   {c.name}
                 </span>

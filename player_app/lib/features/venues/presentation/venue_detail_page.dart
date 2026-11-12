@@ -135,12 +135,129 @@ class _Message extends StatelessWidget {
 // ── shared pieces ──────────────────────────────────────────────────────────
 
 IconData _amenityIcon(String label) => switch (label) {
-  'Free Parking' => Icons.local_parking_rounded,
-  'Changing Rooms' => Icons.checkroom_outlined,
-  'Toilets / Rest Room' => Icons.wc_rounded,
-  'Cafeteria' => Icons.local_cafe_outlined,
-  _ => Icons.inventory_2_outlined,
+  'Free Parking' || 'Car Parking' => Icons.local_parking_rounded,
+  'Two-Wheeler Parking' => Icons.two_wheeler_rounded,
+  'Changing Rooms' || 'Changing Room' => Icons.checkroom_outlined,
+  'Toilets / Rest Room' || 'Restroom' => Icons.wc_rounded,
+  'Cafeteria' || 'Cafeteria / Food' => Icons.local_cafe_outlined,
+  'Shower' => Icons.shower_outlined,
+  'Drinking Water' => Icons.water_drop_outlined,
+  'Seating Area' => Icons.event_seat_outlined,
+  'Wi-Fi' => Icons.wifi_rounded,
+  'Lockers' => Icons.lock_outline_rounded,
+  'First Aid' => Icons.medical_services_outlined,
+  'Equipment Rental' => Icons.sports_tennis_rounded,
+  _ => Icons.check_circle_outline_rounded,
 };
+
+IconData _courtAmenityIcon(String label) => switch (label) {
+  'AC' => Icons.ac_unit_rounded,
+  'Shower' => Icons.shower_outlined,
+  'Locker' => Icons.lock_outline_rounded,
+  _ => Icons.check_circle_outline_rounded,
+};
+
+/// "Courts": for each sport, every court with its type, surface, lighting and amenities, as the owner set them up.
+class _CourtsSection extends StatelessWidget {
+  const _CourtsSection({required this.venue});
+
+  final VenueDetail venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final detailed = [for (final c in venue.courts) if (c.hasDetails) c];
+    if (detailed.isEmpty) return const SizedBox.shrink();
+
+    Widget chip(String label, {Color? color}) {
+      final c = color ?? p.secondaryText;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: c.withValues(alpha: p.isDark ? 0.18 : 0.10),
+          border: Border.all(color: c.withValues(alpha: 0.45)),
+        ),
+        child: Text(
+          label,
+          style: AppTextStyles.meta(p.isDark ? Colors.white : c)
+              .copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    final groups = <VenueSport, List<VenueCourt>>{};
+    for (final s in venue.sports) {
+      final courts = [for (final c in venue.courts) if (c.sportId == s.id) c];
+      if (courts.isNotEmpty) groups[s] = courts;
+    }
+
+    return Column(
+      key: const ValueKey('venue-courts'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Courts',
+          style: AppTextStyles.sectionHeading(p.primaryText).copyWith(fontSize: 18),
+        ),
+        const SizedBox(height: 12),
+        for (final entry in groups.entries) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, top: 4),
+            child: Row(
+              children: [
+                SportIcon(entry.key.name, size: 18, color: p.primaryText),
+                const SizedBox(width: 8),
+                Text(
+                  '${entry.key.name} (${entry.value.length})',
+                  style: AppTextStyles.body(p.primaryText).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          for (final court in entry.value)
+            Container(
+              key: ValueKey('court-${court.id}'),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: p.border),
+                color: p.surface.withValues(alpha: p.isDark ? 0.6 : 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(court.name, style: AppTextStyles.body(p.primaryText).copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (court.type != null)
+                        chip(court.type == VenueType.indoor ? 'Indoor' : 'Outdoor', color: AppColors.violet),
+                      if (court.surface != null) chip(court.surface!),
+                      if (court.lightingLabel != null) chip(court.lightingLabel!),
+                      for (final a in court.amenityLabels)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_courtAmenityIcon(a), size: 15, color: p.secondaryText),
+                            const SizedBox(width: 4),
+                            Text(a, style: AppTextStyles.meta(p.secondaryText).copyWith(fontSize: 12)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
 
 /// "Badminton", "Football", ... then Indoor / Outdoor as chips under the title.
 class _Chips extends StatelessWidget {
@@ -240,14 +357,8 @@ class _Place extends StatelessWidget {
 /// A short list of everything the venue offers, opened from "View All".
 void _showFacilities(BuildContext context, VenueDetail venue) {
   final p = context.palette;
-  final all = const [
-    'Free Parking',
-    'Changing Rooms',
-    'Toilets / Rest Room',
-    'Cafeteria',
-    'Equipment Rental',
-  ];
-  final on = venue.amenities.labels.toSet();
+  final all = venue.facilityCatalogue;
+  final on = {...venue.facilityLabels};
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -314,7 +425,7 @@ class _WideBody extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
     final side = AppDimensions.desktopSidePadding(width);
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
-    final amenities = venue.amenities.labels;
+    final amenities = venue.facilityLabels;
 
     Widget action(
       String label,
@@ -522,6 +633,10 @@ class _WideBody extends ConsumerWidget {
               ),
             ),
           ),
+          if (venue.courts.any((c) => c.hasDetails)) ...[
+            const SizedBox(height: 30),
+            _CourtsSection(venue: venue),
+          ],
           if (venue.hasMemberships || venue.hasCoaching) ...[
             const SizedBox(height: 34),
             Reveal(
@@ -829,7 +944,7 @@ class _PhoneBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
-    final amenities = venue.amenities.labels;
+    final amenities = venue.facilityLabels;
 
     Widget tile(
       String label,
@@ -1066,6 +1181,10 @@ class _PhoneBody extends ConsumerWidget {
                   ),
               ],
             ),
+          ],
+          if (venue.courts.any((c) => c.hasDetails)) ...[
+            const SizedBox(height: 26),
+            _CourtsSection(venue: venue),
           ],
           if (venue.address != null) ...[
             const SizedBox(height: 26),
@@ -1379,7 +1498,7 @@ class VenueOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final mainSport = venue.sports.isEmpty ? null : venue.sports.first.name;
-    final amenities = venue.amenities.labels;
+    final amenities = venue.facilityLabels;
 
     if (wide) {
       return Column(
@@ -1512,6 +1631,10 @@ class VenueOverview extends ConsumerWidget {
               ],
             ),
           ),
+          if (venue.courts.any((c) => c.hasDetails)) ...[
+            const SizedBox(height: 26),
+            _CourtsSection(venue: venue),
+          ],
         ],
       );
     }
@@ -1634,6 +1757,10 @@ class VenueOverview extends ConsumerWidget {
                 ),
             ],
           ),
+        ],
+        if (venue.courts.any((c) => c.hasDetails)) ...[
+          const SizedBox(height: 22),
+          _CourtsSection(venue: venue),
         ],
         if (venue.address != null) ...[
           const SizedBox(height: 22),

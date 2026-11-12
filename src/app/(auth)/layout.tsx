@@ -1,5 +1,5 @@
 import { CalendarCheck, IndianRupee, LayoutGrid, Users } from "lucide-react";
-import { BrandMark } from "@/features/auth/components/brand-mark";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 import { PendingSignupProvider } from "@/features/auth/context/pending-signup";
 import { PRODUCT_TAGLINE, SUPPORTED_SPORTS } from "@/lib/constants";
 
@@ -28,11 +28,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-primary/10 blur-3xl"
           />
 
-          <BrandMark size="lg" className="relative" />
+          <BrandWordmark className="relative h-11 self-start sm:h-11" />
 
           <div className="relative space-y-8">
-            <h2 className="max-w-md text-3xl font-semibold leading-tight tracking-tight">
-              Your facility. Your courts. Your business — all in one place.
+            <h2
+              className="font-semibold leading-tight tracking-tight"
+              // Sized from the panel width (46%, max 620px, minus its 3rem padding each side) so line one never wraps.
+              style={{ fontSize: "clamp(1rem, calc((min(46vw, 620px) - 6rem) / 23), 1.75rem)" }}
+            >
+              <span className="block whitespace-nowrap">Your Facility. Your Courts. Your Business.</span>
+              <span className="block whitespace-nowrap">All in One Place</span>
             </h2>
             <ul className="space-y-4">
               {HIGHLIGHTS.map(({ Icon, label }) => (

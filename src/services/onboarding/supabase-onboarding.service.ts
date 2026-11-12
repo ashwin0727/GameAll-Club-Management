@@ -44,7 +44,7 @@ export class SupabaseOnboardingService implements OnboardingService {
       getPricingService().getPricingPlan(facilityId),
     ]);
 
-    const pricingRules = plan?.rules ?? [];
+    const pricingRules = (plan?.rules ?? []).filter((r) => (r.audience ?? "GENERAL") === "GENERAL");
     const missingSports = detectMissingSports(facilitySports);
     const missingPlayingAreas = detectMissingPlayingAreas(playingAreas);
     const missingOperatingHours = detectMissingOperatingHours(schedule);

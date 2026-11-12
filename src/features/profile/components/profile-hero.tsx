@@ -188,12 +188,12 @@ export function ProfileHero({ profile }: { profile: Profile }) {
         <div aria-hidden className="absolute inset-y-0 right-0 hidden w-[44%] sm:block">
           {/* Outer, pale chevron */}
           <div
-            className="absolute inset-0 bg-gradient-to-b from-white/70 via-sky-100/60 to-emerald-100/70"
+            className="absolute inset-0 bg-gradient-to-b from-white/70 via-sky-100/60 to-violet-100/70"
             style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 26% 50%)" }}
           />
           {/* Green chevron band */}
           <div
-            className="absolute inset-0 bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-600"
+            className="absolute inset-0 bg-gradient-to-b from-violet-300 via-violet-500 to-violet-600"
             style={{ clipPath: "polygon(12% 0, 100% 0, 100% 100%, 12% 100%, 38% 50%)" }}
           />
           {/* The photo */}
@@ -214,7 +214,7 @@ export function ProfileHero({ profile }: { profile: Profile }) {
           <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <h2 className="truncate text-xl font-semibold sm:text-2xl">{profile.full_name}</h2>
             {verified ? (
-              <Badge className="gap-1 border-transparent bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15">
+              <Badge className="gap-1 border-transparent bg-violet-500/15 text-violet-700 hover:bg-violet-500/15">
                 <BadgeCheck className="h-3.5 w-3.5" aria-hidden /> Verified User
               </Badge>
             ) : (

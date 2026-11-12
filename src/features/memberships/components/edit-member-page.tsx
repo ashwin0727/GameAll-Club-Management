@@ -345,7 +345,7 @@ export function EditMemberPage({ membershipId }: { membershipId: string }) {
           type="button"
           disabled={saving}
           onClick={save}
-          className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground"
+          className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 dark:bg-primary dark:text-primary-foreground"
         >
           <Check className="h-4 w-4" aria-hidden />
           {saving ? "Saving…" : "Save Changes"}

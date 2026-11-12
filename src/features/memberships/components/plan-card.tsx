@@ -28,10 +28,10 @@ export interface PlanCardTheme {
 /** Exported so any other plan listing (the Add Member wizard's picker) uses these same colours. */
 export const PLAN_CARD_THEMES: PlanCardTheme[] = [
   {
-    surface: "bg-[#EFFBF4] dark:bg-success/10",
+    surface: "bg-[#F1EBFF] dark:bg-success/10",
     chip: "bg-success/20 text-success",
     tick: "bg-success",
-    button: "bg-[#0B9B63]",
+    button: "bg-[#4817C2]",
     badge: "bg-success/20 text-success",
     rule: "bg-success/20",
   },

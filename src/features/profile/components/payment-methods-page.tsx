@@ -27,7 +27,7 @@ const VERIFICATION: Record<PayoutVerification, { label: string; icon: React.Comp
   REJECTED: { label: "Couldn't verify", icon: XCircle, className: "bg-destructive/15 text-destructive" },
 };
 
-function VerificationBadge({ status }: { status: PayoutVerification }) {
+export function VerificationBadge({ status }: { status: PayoutVerification }) {
   const v = VERIFICATION[status];
   const Icon = v.icon;
   return (
@@ -72,7 +72,7 @@ export function MethodCard({
         </p>
         <p className="truncate text-sm text-muted-foreground">
           {method.type === "BANK"
-            ? `${maskAccountNumber(method.accountNumber)} · ${method.ifsc}`
+            ? `${method.accountType === "CURRENT" ? "Current" : "Savings"} · ${maskAccountNumber(method.accountLast4)} · ${method.ifsc}`
             : maskUpi(method.upiId)}
         </p>
         <p className="truncate text-xs text-muted-foreground">{method.accountHolderName}</p>
@@ -132,12 +132,14 @@ export function MethodDialog({ facilityId, method, onClose }: { facilityId: stri
       ? {
           accountHolderName: method.accountHolderName,
           bankName: method.bankName ?? "",
-          accountNumber: method.accountNumber ?? "",
+          // The full number is never sent to the browser (migration 0200), so changing the account means typing it again.
+          accountNumber: "",
           ifsc: method.ifsc ?? "",
           upiId: method.upiId ?? "",
         }
       : EMPTY,
   );
+  const [accountType, setAccountType] = useState<"SAVINGS" | "CURRENT">(method?.accountType ?? "SAVINGS");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const add = useMutation({
@@ -158,7 +160,7 @@ export function MethodDialog({ facilityId, method, onClose }: { facilityId: stri
     e.preventDefault();
     const parsed = payoutSchema.safeParse(
       type === "BANK"
-        ? { type, accountHolderName: f.accountHolderName, bankName: f.bankName, accountNumber: f.accountNumber, ifsc: f.ifsc }
+        ? { type, accountHolderName: f.accountHolderName, bankName: f.bankName, accountNumber: f.accountNumber, ifsc: f.ifsc, accountType }
         : { type, accountHolderName: f.accountHolderName, upiId: f.upiId },
     );
     if (!parsed.success) {
@@ -216,8 +218,25 @@ export function MethodDialog({ facilityId, method, onClose }: { facilityId: stri
           {type === "BANK" ? (
             <>
               {field("bankName", "Bank name", "e.g. HDFC Bank")}
-              {field("accountNumber", "Account number", "9 to 18 digits", { inputMode: "numeric", autoComplete: "off" })}
+              {field("accountNumber", method ? "Account number (enter it again to save changes)" : "Account number", "9 to 18 digits", { inputMode: "numeric", autoComplete: "off" })}
               {field("ifsc", "IFSC code", "e.g. HDFC0001234", { autoCapitalize: "characters", autoComplete: "off" })}
+              <div className="space-y-1.5">
+                <Label>Account type</Label>
+                <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm" role="radiogroup" aria-label="Account type">
+                  {(["SAVINGS", "CURRENT"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={accountType === t}
+                      onClick={() => setAccountType(t)}
+                      className={cn("rounded-md py-1.5 font-medium transition-colors", accountType === t ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                    >
+                      {t === "SAVINGS" ? "Savings" : "Current"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </>
           ) : (
             field("upiId", "UPI ID", "name@bank", { autoCapitalize: "none", autoComplete: "off" })

@@ -119,13 +119,13 @@ export function CourtUtilizationReport() {
   const courtBars = sortedCourts.map((c) => ({
     label: c.courtName,
     value: c.utilizationPct,
-    color: "#00F08A",
+    color: "#4817C2",
     caption: `${c.utilizationPct}% · ${formatHours(c.bookedMinutes)}/${formatHours(c.openMinutes)}`,
   }));
   const sportBars = sports.map((s) => ({
     label: s.sportName,
     value: s.utilizationPct,
-    color: "#00F08A",
+    color: "#4817C2",
     caption: `${s.utilizationPct}% · ${formatHours(s.bookedMinutes)}/${formatHours(s.openMinutes)}`,
   }));
 

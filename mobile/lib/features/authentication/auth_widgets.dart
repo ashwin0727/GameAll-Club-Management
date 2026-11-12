@@ -361,22 +361,13 @@ class PasswordStrengthMeter extends StatelessWidget {
   }
 }
 
-/// A branded rounded app-mark, shown at the top of the Log in screen.
+/// The GameAll wordmark, shown at the top of the Log in screen.
 class AuthBrandMark extends StatelessWidget {
   const AuthBrandMark({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      height: 56,
-      width: 56,
-      decoration: BoxDecoration(
-        color: tokens.primary,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Icon(Icons.schedule, color: tokens.onPrimary, size: 30),
-    );
+    return Image.asset('assets/images/gameall_logo_light.png', height: 36, alignment: Alignment.centerLeft);
   }
 }
 

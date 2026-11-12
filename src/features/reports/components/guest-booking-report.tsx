@@ -86,7 +86,7 @@ export function GuestBookingReport() {
           key: "completedBookings",
           label: "Completed",
           value: analytics.completed.toLocaleString("en-IN"),
-          accent: "#00D084",
+          accent: "#4817C2",
         },
         {
           key: "cancelledBookings",
@@ -98,7 +98,7 @@ export function GuestBookingReport() {
           key: "guestBookingRevenue",
           label: "Guest Revenue",
           value: formatCurrency(analytics.revenueMinor, INR),
-          accent: "#00D084",
+          accent: "#4817C2",
         },
         {
           key: "averageBookingValue",

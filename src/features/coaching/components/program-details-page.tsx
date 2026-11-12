@@ -756,7 +756,7 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
           </div>
           <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2.5">
             <span className="text-sm">Apply Tax (GST)</span>
-            <ToggleSwitch checked={taxApplicable} onChange={setTaxApplicable} label="Apply Tax" onClass="bg-[#0B9B63]" />
+            <ToggleSwitch checked={taxApplicable} onChange={setTaxApplicable} label="Apply Tax" onClass="bg-[#4817C2]" />
           </div>
           {taxApplicable && (
             <Field label="Tax Percent">
@@ -778,12 +778,12 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
             ].map((s) => (
               <div key={s.label} className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2.5">
                 <span className="text-sm">{s.label}</span>
-                <ToggleSwitch checked={s.checked} onChange={s.onChange} label={s.label} onClass="bg-[#0B9B63]" />
+                <ToggleSwitch checked={s.checked} onChange={s.onChange} label={s.label} onClass="bg-[#4817C2]" />
               </div>
             ))}
             <div className="flex items-center justify-between gap-3 rounded-lg border border-input px-3 py-2.5">
               <span className="text-sm">Enrollment Deadline</span>
-              <ToggleSwitch checked={enrollmentDeadlineEnabled} onChange={setEnrollmentDeadlineEnabled} label="Enrollment Deadline" onClass="bg-[#0B9B63]" />
+              <ToggleSwitch checked={enrollmentDeadlineEnabled} onChange={setEnrollmentDeadlineEnabled} label="Enrollment Deadline" onClass="bg-[#4817C2]" />
             </div>
             {enrollmentDeadlineEnabled && <Input type="date" value={enrollmentDeadline} onChange={(e) => setEnrollmentDeadline(e.target.value)} />}
           </div>

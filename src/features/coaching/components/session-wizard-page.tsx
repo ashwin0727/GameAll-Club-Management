@@ -405,21 +405,21 @@ export function SessionWizardPage() {
                   <p className="text-sm font-medium">Make Visible for Booking</p>
                   <p className="text-xs text-muted-foreground">Members can book this session</p>
                 </div>
-                <ToggleSwitch checked={visibleForBooking} onChange={setVisibleForBooking} label="Make Visible for Booking" onClass="bg-[#0B9B63]" />
+                <ToggleSwitch checked={visibleForBooking} onChange={setVisibleForBooking} label="Make Visible for Booking" onClass="bg-[#4817C2]" />
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg border border-input p-3">
                 <div>
                   <p className="text-sm font-medium">Send Notification</p>
                   <p className="text-xs text-muted-foreground">Notify members about this session</p>
                 </div>
-                <ToggleSwitch checked={sendNotification} onChange={setSendNotification} label="Send Notification" onClass="bg-[#0B9B63]" />
+                <ToggleSwitch checked={sendNotification} onChange={setSendNotification} label="Send Notification" onClass="bg-[#4817C2]" />
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg border border-input p-3">
                 <div>
                   <p className="text-sm font-medium">Allow Waitlist</p>
                   <p className="text-xs text-muted-foreground">Allow members to join waitlist if full</p>
                 </div>
-                <ToggleSwitch checked={allowWaitlist} onChange={setAllowWaitlist} label="Allow Waitlist" onClass="bg-[#0B9B63]" />
+                <ToggleSwitch checked={allowWaitlist} onChange={setAllowWaitlist} label="Allow Waitlist" onClass="bg-[#4817C2]" />
               </div>
             </div>
           </section>
@@ -434,7 +434,7 @@ export function SessionWizardPage() {
               type="button"
               onClick={() => void submit()}
               disabled={busy}
-              className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               <CalendarPlus className="h-4 w-4" aria-hidden />
               {busy ? "Scheduling…" : "Schedule Session"}

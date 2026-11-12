@@ -65,7 +65,7 @@ function Checkbox({
       }}
       onChange={(e) => onChange(e.target.checked)}
       onClick={(e) => e.stopPropagation()}
-      className="h-4 w-4 cursor-pointer rounded border-input accent-[#0B7A55]"
+      className="h-4 w-4 cursor-pointer rounded border-input accent-[#4817C2]"
     />
   );
 }

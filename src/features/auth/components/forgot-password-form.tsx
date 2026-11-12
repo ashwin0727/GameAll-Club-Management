@@ -68,7 +68,7 @@ export function ForgotPasswordForm() {
         Send Reset Link
       </SubmitButton>
 
-      <Button asChild variant="ghost" className="h-11 w-full">
+      <Button asChild variant="ghost" className="mx-auto flex h-9 w-fit px-4 text-primary hover:bg-accent">
         <Link href="/login">Back to Sign In</Link>
       </Button>
     </form>

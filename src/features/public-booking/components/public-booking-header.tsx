@@ -1,6 +1,5 @@
 import { MapPin, Phone } from "lucide-react";
-import { BrandLogo } from "@/features/auth/components/brand-mark";
-import { APP_NAME } from "@/lib/constants";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 
 /**
  * The bar across the top of every public booking screen — the landing page
@@ -26,11 +25,8 @@ export function PublicBookingHeader({
   return (
     <header className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-border px-4 py-4 sm:px-8">
       <div className="flex items-center gap-2.5">
-        <BrandLogo className="h-8 w-8" />
-        <span className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold">{APP_NAME}</span>
-          <span className="hidden text-[11px] text-muted-foreground sm:block">Book. Play. Enjoy.</span>
-        </span>
+        <BrandWordmark className="h-8 sm:h-8" />
+        <span className="hidden text-[11px] text-muted-foreground sm:block">Book. Play. Enjoy.</span>
       </div>
 
       {/* Hidden on phones, where the logo and the help number already fill

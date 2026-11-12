@@ -124,7 +124,7 @@ describe("SignupForm", () => {
     await user.click(await screen.findByRole("button", { name: "Create Account" }));
 
     await waitFor(() => expect(service.register).toHaveBeenCalled());
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/welcome"));
   });
 
   it("surfaces an already-registered email inline", async () => {

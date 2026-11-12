@@ -155,3 +155,14 @@ class OperatingSchedule {
     );
   }
 }
+
+/// A date the venue is closed (a holiday, maintenance, an event). [date] is "yyyy-MM-dd".
+class ClosureEntry {
+  const ClosureEntry({this.id, required this.date, required this.name});
+
+  final String? id;
+  final String date;
+  final String name;
+
+  ClosureEntry copyWith({String? date, String? name}) => ClosureEntry(id: id, date: date ?? this.date, name: name ?? this.name);
+}

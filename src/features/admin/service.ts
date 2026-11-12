@@ -187,7 +187,89 @@ export interface AdminVenueVerification {
   payoutMethods: { id: string; type: "BANK" | "UPI"; verification: PayoutVerification; primary: boolean }[];
 }
 
+export type SetupReviewStatus = "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+
+/** One facility in the setup-approval queue. */
+export interface AdminSetupReviewRow {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  status: SetupReviewStatus;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  payoutVerified: number;
+  payoutTotal: number;
+}
+
+export interface AdminSetupReview {
+  review: { status: SetupReviewStatus; note: string | null; submittedAt: string | null; reviewedAt: string | null };
+  facility: {
+    id: string;
+    name: string;
+    type: string | null;
+    description: string | null;
+    ownership: string | null;
+    businessEmail: string | null;
+    businessPhone: string | null;
+    whatsapp: string | null;
+    contactPerson: string | null;
+    contactRole: string | null;
+    contactAltPhone: string | null;
+    address: string;
+    timezone: string | null;
+    venueType: "INDOOR" | "OUTDOOR" | null;
+    amenities: string[];
+    customAmenities: string[];
+    location: { url: string | null; status: PayoutVerification };
+    allowOnlineBooking: boolean;
+    allowWalkIn: boolean;
+    advancePaymentRequired: boolean;
+    allowCancellations: boolean;
+  };
+  owner: { name: string | null; email: string | null; phone: string | null };
+  images: { id: string; url: string; status: PayoutVerification }[];
+  sports: { name: string; active: boolean }[];
+  courts: { name: string; sport: string | null; surface: string | null; hourlyRateInr: number; status: string }[];
+  hours: { sportWise: boolean; days: { day: number; closed: boolean; is24: boolean; slots: { start: string; end: string }[] }[] };
+  pricing: {
+    mode: string;
+    differentWeekend: boolean;
+    rules: { sport: string | null; court: string | null; dayType: string; fullDay: boolean; start: string | null; end: string | null; amountMinor: number; unit: string }[];
+  };
+  payoutMethods: {
+    id: string;
+    type: "BANK" | "UPI";
+    accountHolderName: string;
+    bankName: string | null;
+    accountNumber: string | null;
+    accountType: "SAVINGS" | "CURRENT" | null;
+    ifsc: string | null;
+    upiId: string | null;
+    primary: boolean;
+    verification: PayoutVerification;
+    note: string | null;
+  }[];
+  payoutSettings: {
+    settlement_frequency: string;
+    minimum_payout_inr: number;
+    include_bookings: boolean;
+    include_memberships: boolean;
+    include_coaching: boolean;
+    auto_payout: boolean;
+    hold_for_review: boolean;
+  } | null;
+  events: { action: string; note: string | null; at: string }[];
+}
+
 export const adminApi = {
+  setupReviews: (status: SetupReviewStatus | null) => call<AdminSetupReviewRow[]>("admin_list_setup_reviews", { p_status: status }),
+  setupReview: (facilityId: string) => call<AdminSetupReview>("admin_get_setup_review", { p_facility_id: facilityId }),
+  decideSetup: (facilityId: string, decision: "APPROVED" | "REJECTED", note: string | null) =>
+    call<void>("admin_review_facility_setup", { p_facility_id: facilityId, p_decision: decision, p_note: note }),
   overview: () => call<AdminOverview>("admin_overview"),
   facilities: (search: string, limit: number, offset: number) =>
     call<{ total: number; rows: AdminFacilityRow[] }>("admin_list_facilities", { p_search: search || null, p_limit: limit, p_offset: offset }),

@@ -26,37 +26,38 @@ export function validatePricingRule(rule: Pick<PricingRule, "coversFullDay" | "s
   return null;
 }
 
-/** Scope key: rules only need to avoid overlapping other rules in the same sport/area + day-type bucket. */
-function scopeKey(rule: Pick<PricingRule, "facilitySportId" | "playingAreaId" | "dayType">): string {
-  return `${rule.facilitySportId}|${rule.playingAreaId ?? ""}|${rule.dayType}`;
+type OverlapRule = Pick<PricingRule, "facilitySportId" | "playingAreaId" | "dayType" | "daysOfWeek" | "audience" | "coversFullDay" | "startTime" | "endTime">;
+
+/** Two rules can clash when they are for the same sport / court, the same audience and the same day group. */
+function sameBucket(a: OverlapRule, b: OverlapRule): boolean {
+  if (a.facilitySportId !== b.facilitySportId) return false;
+  if ((a.playingAreaId ?? "") !== (b.playingAreaId ?? "")) return false;
+  if ((a.audience ?? "GENERAL") !== (b.audience ?? "GENERAL")) return false;
+  if (a.dayType !== b.dayType) return false;
+  if (a.dayType === "SPECIFIC_DAYS") return (a.daysOfWeek ?? []).some((d) => (b.daysOfWeek ?? []).includes(d));
+  return true;
 }
 
-export function hasOverlappingPricingPeriods(
-  rules: Pick<PricingRule, "facilitySportId" | "playingAreaId" | "dayType" | "coversFullDay" | "startTime" | "endTime">[],
-): boolean {
-  const byScope = new Map<string, { start: number; end: number }[]>();
-  for (const rule of rules) {
-    if (rule.coversFullDay || !rule.startTime || !rule.endTime) continue;
-    const key = scopeKey(rule);
-    const list = byScope.get(key) ?? [];
-    list.push({ start: toMinutes(rule.startTime), end: toMinutes(rule.endTime) });
-    byScope.set(key, list);
-  }
-
-  for (const intervals of byScope.values()) {
-    for (let i = 0; i < intervals.length; i++) {
-      for (let j = i + 1; j < intervals.length; j++) {
-        const a = intervals[i]!;
-        const b = intervals[j]!;
-        if (a.start < b.end && b.start < a.end) return true;
-      }
+export function hasOverlappingPricingPeriods(rules: OverlapRule[]): boolean {
+  const timed = rules.filter((r) => !r.coversFullDay && r.startTime && r.endTime);
+  for (let i = 0; i < timed.length; i++) {
+    for (let j = i + 1; j < timed.length; j++) {
+      const a = timed[i]!;
+      const b = timed[j]!;
+      if (!sameBucket(a, b)) continue;
+      const aStart = toMinutes(a.startTime!);
+      const aEnd = toMinutes(a.endTime!);
+      const bStart = toMinutes(b.startTime!);
+      const bEnd = toMinutes(b.endTime!);
+      if (aStart < bEnd && bStart < aEnd) return true;
     }
   }
   return false;
 }
 
 /** Which days of week a PricingDayType covers, for the operating-hours compatibility check. */
-function dayNumbersFor(dayType: PricingRule["dayType"]): DayOfWeek[] {
+function dayNumbersFor(dayType: PricingRule["dayType"], days?: number[]): DayOfWeek[] {
+  if (dayType === "SPECIFIC_DAYS") return (days ?? []) as DayOfWeek[];
   if (dayType === "WEEKDAYS") return [1, 2, 3, 4, 5];
   if (dayType === "WEEKENDS") return [0, 6];
   return [0, 1, 2, 3, 4, 5, 6];
@@ -83,10 +84,10 @@ function windowFitsSlot(
  * open at all that day). Returns a friendly message, or null if compatible.
  */
 export function validatePricingAgainstOperatingHours(
-  rule: Pick<PricingRule, "dayType" | "coversFullDay" | "startTime" | "endTime">,
+  rule: Pick<PricingRule, "dayType" | "daysOfWeek" | "coversFullDay" | "startTime" | "endTime">,
   operatingDays: OperatingDay[],
 ): string | null {
-  const days = dayNumbersFor(rule.dayType);
+  const days = dayNumbersFor(rule.dayType, rule.daysOfWeek);
 
   for (const dow of days) {
     const day = operatingDays.find((d) => d.dayOfWeek === dow);
@@ -98,7 +99,12 @@ export function validatePricingAgainstOperatingHours(
       if (day.slots.length === 0) return "This pricing period falls on a day the facility is closed.";
       continue;
     }
-    const fits = day.slots.some((slot) => windowFitsSlot(rule, slot));
+    // a day with a daily break has two slots; a price window may run across the break (nothing can be booked in it), so compare with
+    // the whole span from the first opening to the last closing
+    const first = day.slots[0];
+    const last = day.slots[day.slots.length - 1];
+    const span = first && last && day.slots.length > 1 ? { startTime: first.startTime, endTime: last.endTime } : null;
+    const fits = day.slots.some((slot) => windowFitsSlot(rule, slot)) || (span !== null && windowFitsSlot(rule, span));
     if (!fits) return "Pricing hours must fall within your facility's operating hours.";
   }
   return null;
@@ -111,7 +117,7 @@ export interface PricingValidationResult {
 }
 
 export function validatePricingRules(
-  rules: (Pick<PricingRule, "facilitySportId" | "playingAreaId" | "dayType" | "coversFullDay" | "startTime" | "endTime" | "amountMinor">)[],
+  rules: (Pick<PricingRule, "facilitySportId" | "playingAreaId" | "dayType" | "daysOfWeek" | "audience" | "coversFullDay" | "startTime" | "endTime" | "amountMinor">)[],
   operatingDays?: OperatingDay[],
 ): PricingValidationResult {
   const ruleErrors: string[] = [];
@@ -148,6 +154,9 @@ export function resolvePrice(
 
   function matches(rule: PricingRule): boolean {
     if (rule.facilitySportId !== facilitySportId) return false;
+    // only general rates set a booking price; member / coaching rates are stored for later
+    if ((rule.audience ?? "GENERAL") !== "GENERAL") return false;
+    if (rule.dayType === "SPECIFIC_DAYS" && !(rule.daysOfWeek ?? []).includes(dow)) return false;
     if (rule.dayType === "WEEKDAYS" && isWeekend) return false;
     if (rule.dayType === "WEEKENDS" && !isWeekend) return false;
     if (rule.coversFullDay) return true;
@@ -164,7 +173,7 @@ export function resolvePrice(
   // day-scoped rule (WEEKDAYS/WEEKENDS) beats ALL_DAYS, and a time-windowed
   // rule beats a full-day one. So an "all days ₹300" base with a "weekends
   // 6-9pm ₹350" override resolves to ₹350 inside that window.
-  const specificity = (r: PricingRule) => (r.coversFullDay ? 0 : 2) + (r.dayType === "ALL_DAYS" ? 0 : 1);
+  const specificity = (r: PricingRule) => (r.coversFullDay ? 0 : 3) + (r.dayType === "ALL_DAYS" ? 0 : r.dayType === "SPECIFIC_DAYS" ? 2 : 1);
   const pick = (a: PricingRule, b: PricingRule) => b.priority - a.priority || specificity(b) - specificity(a);
 
   const areaRules = playingAreaId ? rules.filter((r) => r.playingAreaId === playingAreaId && matches(r)) : [];

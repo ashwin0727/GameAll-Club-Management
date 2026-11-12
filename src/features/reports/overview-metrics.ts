@@ -29,7 +29,7 @@ export function scopeWord(sportsSelected: boolean): "Overall" | "Selected" {
 
 /** In the order the cards are shown: three rows of four. */
 export const OVERVIEW_METRICS: OverviewMetricDef[] = [
-  { key: "REVENUE", title: "Total Revenue", kind: "money", color: "#00D084", describe: (s) => `${s} revenue`, heading: (s) => `${s} Revenue Trend`, read: (m) => m.totalRevenueMinor },
+  { key: "REVENUE", title: "Total Revenue", kind: "money", color: "#4817C2", describe: (s) => `${s} revenue`, heading: (s) => `${s} Revenue Trend`, read: (m) => m.totalRevenueMinor },
   { key: "EXPENSES", title: "Total Expenses", kind: "money", color: "#FF4D67", facilityWide: true, describe: (s) => `${s} expenses`, heading: (s) => `${s} Expenses Trend`, read: (m) => m.totalExpensesMinor },
   { key: "NET", title: "Net Revenue", kind: "money", color: "#6366F1", describe: (s) => `${s} revenue less expenses`, heading: (s) => `${s} Net Revenue Trend`, read: (m) => m.netRevenueMinor },
   { key: "GUEST_BOOKINGS", title: "Total Guest Booking", kind: "count", color: "#0EA5E9", describe: (s) => `${s} guest bookings`, heading: (s) => `${s} Guest Bookings`, read: (m) => m.guestBookings },
@@ -37,7 +37,7 @@ export const OVERVIEW_METRICS: OverviewMetricDef[] = [
   { key: "PROGRAMS", title: "Total Program", kind: "count", color: "#F59E0B", snapshot: true, describe: (s) => `${s} active programs`, heading: () => "Programs Started", read: (m) => m.programs },
   { key: "COACHES", title: "Total Coach", kind: "count", color: "#14B8A6", snapshot: true, describe: (s) => `${s} active coaches`, heading: () => "Coaches Joined", read: (m) => m.coaches },
   { key: "STUDENTS", title: "Total Students", kind: "count", color: "#EC4899", snapshot: true, describe: (s) => `${s} enrolled students`, heading: () => "Students Enrolled", read: (m) => m.students },
-  { key: "GUEST_BOOKING_REVENUE", title: "Guest Booking Revenue", kind: "money", color: "#00D084", describe: (s) => `${s} guest booking revenue`, heading: (s) => `${s} Guest Booking Revenue Trend`, read: (m) => m.guestBookingRevenueMinor },
+  { key: "GUEST_BOOKING_REVENUE", title: "Guest Booking Revenue", kind: "money", color: "#4817C2", describe: (s) => `${s} guest booking revenue`, heading: (s) => `${s} Guest Booking Revenue Trend`, read: (m) => m.guestBookingRevenueMinor },
   { key: "MEMBERSHIP_REVENUE", title: "Membership Revenue", kind: "money", color: "#8B5CF6", describe: (s) => `${s} members revenue`, heading: (s) => `${s} Membership Revenue Trend`, read: (m) => m.membershipRevenueMinor },
   { key: "COACHING_REVENUE", title: "Coaching Revenue", kind: "money", color: "#F59E0B", describe: (s) => `${s} students revenue`, heading: (s) => `${s} Coaching Revenue Trend`, read: (m) => m.coachingRevenueMinor },
   { key: "COACHING_EXPENSES", title: "Coaching Expenses", kind: "money", color: "#FF4D67", facilityWide: true, describe: (s) => `${s} coaching expenses`, heading: (s) => `${s} Coaching Expenses Trend`, read: (m) => m.coachingExpensesMinor },

@@ -52,12 +52,14 @@ export class SupabaseSportsService implements SportsService {
   }
 
   async saveFacilitySports(facilityId: string, sports: FacilitySportInput[]): Promise<FacilitySport[]> {
-    const customSportName = sports.find((s) => s.customSportName)?.customSportName ?? null;
+    // A venue can have any number of its own sports: each is an input with a custom name (its sport is "Other"); the rest are catalogue sports.
+    const customNames = sports.map((s) => s.customSportName?.trim()).filter((n): n is string => !!n);
+    const catalogueIds = sports.filter((s) => !s.customSportName?.trim()).map((s) => s.sportId);
 
-    const { data, error } = await this.supabase.rpc("sync_facility_sports", {
+    const { data, error } = await this.supabase.rpc("sync_facility_sports_multi", {
       p_facility_id: facilityId,
-      p_sport_ids: sports.map((s) => s.sportId),
-      p_custom_sport_name: customSportName,
+      p_sport_ids: catalogueIds,
+      p_custom_sport_names: customNames,
     });
 
     // Removing a sport that still has upcoming work is refused with a message written for the owner (0150).

@@ -38,13 +38,13 @@ describe("plan status", () => {
 
 describe("payout validation", () => {
   it("accepts a bank account and normalises the IFSC", () => {
-    const r = payoutSchema.safeParse({ type: "BANK", accountHolderName: "Champz Turf", bankName: "HDFC Bank", accountNumber: "123456789012", ifsc: "hdfc0001234" });
+    const r = payoutSchema.safeParse({ type: "BANK", accountHolderName: "Champz Turf", bankName: "HDFC Bank", accountNumber: "123456789012", ifsc: "hdfc0001234", accountType: "SAVINGS" });
     expect(r.success).toBe(true);
     if (r.success && r.data.type === "BANK") expect(r.data.ifsc).toBe("HDFC0001234");
   });
 
   it("rejects short account numbers and malformed IFSC codes", () => {
-    const bad = payoutSchema.safeParse({ type: "BANK", accountHolderName: "A B", bankName: "HDFC", accountNumber: "1234", ifsc: "HDFC123" });
+    const bad = payoutSchema.safeParse({ type: "BANK", accountHolderName: "A B", bankName: "HDFC", accountNumber: "1234", ifsc: "HDFC123", accountType: "SAVINGS" });
     expect(bad.success).toBe(false);
   });
 
@@ -55,7 +55,7 @@ describe("payout validation", () => {
   });
 
   it("masks account numbers and UPI handles", () => {
-    expect(maskAccountNumber("123456789012")).toBe("XXXXXXXX9012");
+    expect(maskAccountNumber("9012")).toBe("•••• 9012");
     expect(maskUpi("champz@okhdfc")).toBe("ch••••@okhdfc");
   });
 });

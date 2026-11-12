@@ -32,7 +32,7 @@ export function PlanSlotsList({ slots, className }: { slots: PlanSlot[]; classNa
                   key={d.value}
                   className={cn(
                     "rounded-md px-2 py-0.5 text-[11px] font-medium",
-                    s.daysOfWeek.includes(d.value) ? "bg-[#0B9B63] text-white" : "bg-muted text-muted-foreground",
+                    s.daysOfWeek.includes(d.value) ? "bg-[#4817C2] text-white" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {d.label}

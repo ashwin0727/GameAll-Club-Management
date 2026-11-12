@@ -177,7 +177,7 @@ export function MembershipDashboardPage() {
       <div className="space-y-4">
         <MembershipListTable rows={rows} />
 
-        <div className="stat-enter flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#06301F] to-[#0B7A55] p-6 sm:flex-row sm:items-center" style={{ "--stat-delay": "460ms" } as React.CSSProperties}>
+        <div className="stat-enter flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl bg-gradient-to-r from-[#2A1070] to-[#4817C2] p-6 sm:flex-row sm:items-center" style={{ "--stat-delay": "460ms" } as React.CSSProperties}>
           <div>
             <p className="text-lg font-semibold text-white">Build a Healthier, Happier Community</p>
             <p className="mt-1 text-sm text-white/80">Memberships bring people together.</p>
@@ -185,7 +185,7 @@ export function MembershipDashboardPage() {
           <button
             type="button"
             onClick={() => setPlansOpen(true)}
-            className="flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-white px-4 text-sm font-semibold text-[#06301F] transition-opacity hover:opacity-90"
+            className="flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] bg-white px-4 text-sm font-semibold text-[#2A1070] transition-opacity hover:opacity-90"
           >
             Grow Your Club →
           </button>

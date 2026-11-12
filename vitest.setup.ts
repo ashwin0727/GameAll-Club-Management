@@ -28,6 +28,9 @@ if (!URL.revokeObjectURL) {
   URL.revokeObjectURL = () => {};
 }
 
+// next/font only works inside the Next compiler; in tests every font is just a class name.
+vi.mock("next/font/google", () => ({ Inter: () => ({ className: "font-inter" }), Figtree: () => ({ className: "font-figtree", variable: "--font-figtree" }) }));
+
 // Applied to every suite: the auth screens all read the router and query string.
 vi.mock("next/navigation", async () => {
   const { routerMock, getSearchParams, getPathname } = await import("@/test/router-mock");

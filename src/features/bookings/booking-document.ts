@@ -29,14 +29,14 @@ export function buildBookingDocument(kind: "invoice" | "receipt", row: GuestBook
   const heading = kind === "invoice" ? "Invoice" : "Booking Receipt";
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(row.code)} ${esc(heading)}</title>
 <style>
-  *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
-  body{margin:0;padding:40px;color:#1f2937}
-  .brand{font-size:22px;font-weight:700;color:#00834f}
+  *{box-sizing:border-box;font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif}
+  body{margin:0;padding:40px;color:#171717}
+  .brand{font-size:22px;font-weight:700;color:#4817C2}
   .facility{font-size:14px;font-weight:600;margin-top:2px}
   h1{font-size:16px;margin:28px 0 12px}
   table{width:100%;border-collapse:collapse;font-size:13px}
   td{padding:8px 0;border-bottom:1px solid #eee}
-  td:first-child{color:#6b7280;width:180px}
+  td:first-child{color:#666666;width:180px}
   td:last-child{font-weight:600;text-align:right}
   .foot{margin-top:28px;font-size:11px;color:#9ca3af}
   @media print{body{padding:24px}}

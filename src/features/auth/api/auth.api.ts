@@ -50,6 +50,16 @@ const getSessionBundle = cache(async (): Promise<SessionBundle | null> => {
   return data;
 });
 
+/**
+ * GameAll's verdict on the facility's setup (migration 0200): the dashboard stays closed until it is APPROVED. null = nothing to
+ * enforce (no facility, or the migration is not applied yet), so an older database never locks anyone out.
+ */
+export const getSetupReview = cache(async (): Promise<{ status: string; note: string | null; facilityId: string; ownerId: string } | null> => {
+  const bundle = (await getSessionBundle()) as (SessionBundle & { approvalStatus?: string | null; approvalNote?: string | null }) | null;
+  if (!bundle || !bundle.facility || !bundle.approvalStatus) return null;
+  return { status: bundle.approvalStatus, note: bundle.approvalNote ?? null, facilityId: bundle.facility.id, ownerId: bundle.facility.owner_id };
+});
+
 export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   const { supabase, user } = await getAuthenticatedUser();
   if (!user) return null;
@@ -125,9 +135,11 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
   const isPlatformAdmin = await getIsPlatformAdmin();
 
   let mobileVerificationPending = false;
+  let verifiedMobile: string | undefined;
   if (user.user_metadata?.require_mobile === true) {
-    const { data: verified } = await supabase.from("user_verified_phones" as never).select("user_id").eq("user_id", user.id).maybeSingle();
+    const { data: verified } = await supabase.from("user_verified_phones" as never).select("user_id, phone").eq("user_id", user.id).maybeSingle();
     mobileVerificationPending = !verified;
+    verifiedMobile = (verified as { phone?: string } | null)?.phone?.replace(/^\+?91(?=\d{10}$)/, "") || undefined;
   }
 
   return {
@@ -137,6 +149,7 @@ export const getCurrentAuthUser = cache(async (): Promise<AuthUser | null> => {
     emailVerified: Boolean(user.email_confirmed_at),
     onboardingCompleted,
     mobileVerificationPending,
+    verifiedMobile,
     isPlatformAdmin,
   };
 });

@@ -14,7 +14,7 @@ class ThemeModeController extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     _restore();
-    return ThemeMode.system;
+    return ThemeMode.light; // the refreshed brand is light-first; Appearance can still switch it
   }
 
   Future<void> _restore() async {
@@ -24,7 +24,8 @@ class ThemeModeController extends Notifier<ThemeMode> {
       state = switch (saved) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
+        'system' => ThemeMode.system,
+        _ => ThemeMode.light,
       };
     } catch (_) {
       // No persisted preference yet, or the platform storage is

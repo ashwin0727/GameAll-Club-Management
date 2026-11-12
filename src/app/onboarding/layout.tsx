@@ -10,7 +10,7 @@ import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store
 const PREVIOUS_STEP_PATH: Record<string, string> = {
   "/onboarding/sports": "/onboarding/facility",
   "/onboarding/courts": "/onboarding/sports",
-  "/onboarding/operating-hours": "/onboarding/courts",
+  "/onboarding/operating-hours": "/onboarding/sports",
   "/onboarding/pricing": "/onboarding/operating-hours",
   "/onboarding/payments": "/onboarding/pricing",
   "/onboarding/plan": "/onboarding/payments",
@@ -36,6 +36,9 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   function handleBack() {
     router.replace(previousStepPath);
   }
+
+  // The welcome and facility-information pages bring their own full-page shell (logo header + step sidebar).
+  if (pathname === "/onboarding/welcome" || pathname === "/onboarding/facility" || pathname === "/onboarding/sports" || pathname === "/onboarding/operating-hours" || pathname === "/onboarding/pricing" || pathname === "/onboarding/payments" || pathname === "/onboarding/review") return <>{children}</>;
 
   return (
     <div className="min-h-[100dvh] bg-background">

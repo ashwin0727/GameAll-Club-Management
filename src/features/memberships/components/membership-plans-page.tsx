@@ -121,7 +121,7 @@ export function MembershipPlansPage() {
         <div
           className="relative hidden flex-1 items-center px-6 lg:flex"
           style={{
-            backgroundImage: `url(/assets/Membership_Dashboard.png), linear-gradient(to right, hsl(var(--card)) 0%, #EAF9F1 22%, #EAF9F1 100%)`,
+            backgroundImage: `url(/assets/Membership_Dashboard.png), linear-gradient(to right, hsl(var(--card)) 0%, #F1EBFF 22%, #F1EBFF 100%)`,
             backgroundSize: "60%, 100% 100%",
             backgroundPosition: "right 12px center, left center",
             backgroundRepeat: "no-repeat, no-repeat",
@@ -130,7 +130,7 @@ export function MembershipPlansPage() {
           <div
             aria-hidden
             className="pointer-events-none absolute inset-y-0 left-0 w-[62%]"
-            style={{ backgroundImage: "linear-gradient(to right, transparent 0%, #EAF9F1 14%, #EAF9F1 40%, transparent 100%)" }}
+            style={{ backgroundImage: "linear-gradient(to right, transparent 0%, #F1EBFF 14%, #F1EBFF 40%, transparent 100%)" }}
           />
           <div className="relative z-10 min-w-0">
             <p className="text-[15px] font-bold leading-snug text-black">Build a Stronger Community</p>
@@ -221,7 +221,7 @@ export function MembershipPlansPage() {
             <button
               type="button"
               onClick={() => router.push("/memberships/v1/plans/new")}
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#0B7A55] text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#4817C2] text-sm font-semibold text-white transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
             >
               <Plus className="h-4 w-4" aria-hidden />
               Create New Plan

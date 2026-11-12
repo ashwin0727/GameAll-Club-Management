@@ -112,13 +112,16 @@ class AuthRepository {
 
     // New owners (signup-otp sets require_mobile) must verify a mobile number before onboarding.
     var pending = false;
+    String? verifiedMobile;
     if (authUser.userMetadata?['require_mobile'] == true) {
       final verified = await _client
           .from('user_verified_phones')
-          .select('user_id')
+          .select('user_id, phone')
           .eq('user_id', authUser.id)
           .maybeSingle();
       pending = verified == null;
+      final phone = (verified?['phone'] as String?)?.replaceFirst(RegExp(r'^\+?91(?=\d{10}$)'), '');
+      verifiedMobile = (phone == null || phone.isEmpty) ? null : phone;
     }
 
     if (profile == null) {
@@ -129,8 +132,9 @@ class AuthRepository {
         role: 'member',
         onboardingCompleted: false,
         mobileVerificationPending: pending,
+        verifiedMobile: verifiedMobile,
       );
     }
-    return AppUser.fromJson(profile).withMobileVerificationPending(pending);
+    return AppUser.fromJson(profile).withMobileVerificationPending(pending).withVerifiedMobile(verifiedMobile);
   }
 }

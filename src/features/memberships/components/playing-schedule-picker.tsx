@@ -123,7 +123,7 @@ export function PlayingSchedulePicker({
               className={cn(
                 "h-10 rounded-lg border text-sm font-medium transition-colors",
                 preset === p.key
-                  ? "border-[#0B9B63] bg-[#0B9B63] text-white"
+                  ? "border-[#4817C2] bg-[#4817C2] text-white"
                   : "border-input bg-card text-foreground hover:bg-accent",
               )}
             >
@@ -142,13 +142,13 @@ export function PlayingSchedulePicker({
                 onClick={() => toggleDay(d.value)}
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition-colors",
-                  on ? "border-[#0B9B63] bg-success/10 text-[#0B7A55]" : "border-input bg-card text-foreground hover:bg-accent",
+                  on ? "border-[#4817C2] bg-primary/10 text-[#4817C2]" : "border-input bg-card text-foreground hover:bg-accent",
                 )}
               >
                 <span
                   className={cn(
                     "flex h-4 w-4 items-center justify-center rounded border-2",
-                    on ? "border-[#0B9B63] bg-[#0B9B63]" : "border-input",
+                    on ? "border-[#4817C2] bg-[#4817C2]" : "border-input",
                   )}
                 >
                   {on && <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} aria-hidden />}
@@ -193,14 +193,14 @@ export function PlayingSchedulePicker({
                 aria-pressed={on}
                 className={cn(
                   "flex h-11 items-center justify-between gap-2 rounded-lg border px-3 text-sm transition-colors",
-                  on ? "border-[#0B9B63] bg-success/10 font-medium text-[#0B7A55]" : "border-input bg-card hover:bg-accent",
+                  on ? "border-[#4817C2] bg-primary/10 font-medium text-[#4817C2]" : "border-input bg-card hover:bg-accent",
                 )}
               >
                 {b.label}
                 <span
                   className={cn(
                     "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                    on ? "border-[#0B9B63] bg-[#0B9B63]" : "border-input",
+                    on ? "border-[#4817C2] bg-[#4817C2]" : "border-input",
                   )}
                 >
                   {on && <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} aria-hidden />}
@@ -213,13 +213,13 @@ export function PlayingSchedulePicker({
 
       <div className="rounded-xl bg-success/10 p-4">
         <div className="flex items-center gap-2">
-          <Info className="h-4 w-4 text-[#0B7A55]" aria-hidden />
-          <p className="text-sm font-semibold text-[#0B7A55]">Important Note</p>
+          <Info className="h-4 w-4 text-[#4817C2]" aria-hidden />
+          <p className="text-sm font-semibold text-[#4817C2]">Important Note</p>
         </div>
         <ul className="mt-2 space-y-1 pl-1 text-xs text-foreground/80">
           {NOTES.map((n) => (
             <li key={n} className="flex items-start gap-2">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#0B7A55]" aria-hidden />
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#4817C2]" aria-hidden />
               {n}
             </li>
           ))}

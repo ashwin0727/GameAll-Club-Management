@@ -65,7 +65,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DropdownSelect } from "@/components/shared/dropdown-select";
 
-const PANEL_TINT = "#EAF9F1";
+const PANEL_TINT = "#F1EBFF";
 
 function Field({
   label,
@@ -644,7 +644,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                     checked={draft.showBadge}
                     onChange={(v) => set("showBadge", v)}
                     label="Show a Badge on This Plan"
-                    onClass="bg-[#0B9B63]"
+                    onClass="bg-[#4817C2]"
                   />
                 </div>
                 {draft.showBadge && (
@@ -1379,7 +1379,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
           <button
             type="button"
             onClick={next}
-            className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
           >
             {/* The full "Next: <step title>" reads fine once there's room for it; on a phone-width
              *  screen it's just "Next" so this row never forces horizontal scroll next to Back. */}
@@ -1392,7 +1392,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
             type="button"
             disabled={saving}
             onClick={submit}
-            className="flex h-10 items-center gap-2 rounded-lg bg-[#0B7A55] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {saving ? "Creating…" : "Create Plan"}
           </button>

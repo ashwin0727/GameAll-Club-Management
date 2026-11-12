@@ -21,7 +21,7 @@ const CONFETTI = [
   "left-[12%] top-[10%] bg-pink-400",
   "left-[22%] top-[4%] bg-blue-400",
   "left-[34%] top-[14%] bg-yellow-400",
-  "right-[30%] top-[8%] bg-green-400",
+  "right-[30%] top-[8%] bg-violet-400",
   "right-[18%] top-[14%] bg-pink-400",
   "right-[10%] top-[6%] bg-orange-400",
   "left-[8%] top-[34%] bg-yellow-400",
@@ -59,9 +59,9 @@ export function PlanCreatedSuccess({
         {CONFETTI.map((c) => (
           <span key={c} aria-hidden className={`absolute h-2 w-1 rotate-45 rounded-sm ${c}`} />
         ))}
-        <span className="flex h-28 w-28 items-center justify-center rounded-full bg-[#0B9B63]/10">
-          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#0B9B63]/20">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#0B9B63]">
+        <span className="flex h-28 w-28 items-center justify-center rounded-full bg-[#4817C2]/10">
+          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#4817C2]/20">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4817C2]">
               <Check className="h-8 w-8 text-white" strokeWidth={3} aria-hidden />
             </span>
           </span>
@@ -72,13 +72,13 @@ export function PlanCreatedSuccess({
 
       <Card className="space-y-4 rounded-2xl p-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#0B9B63]/15 text-[#0B7A55]">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#4817C2]/15 text-[#4817C2]">
             <Trophy className="h-7 w-7" aria-hidden />
           </span>
           <div className="min-w-0">
             <p className="break-words text-base font-bold text-black dark:text-foreground">{plan.name}</p>
             <p className="text-xs text-muted-foreground">{planSubtitle(plan.category, sportLabel)}</p>
-            <span className="mt-1.5 inline-block rounded-full bg-[#0B9B63]/15 px-3 py-0.5 text-xs font-semibold text-[#0B7A55]">
+            <span className="mt-1.5 inline-block rounded-full bg-[#4817C2]/15 px-3 py-0.5 text-xs font-semibold text-[#4817C2]">
               Active
             </span>
           </div>
@@ -97,21 +97,21 @@ export function PlanCreatedSuccess({
         <button
           type="button"
           onClick={onViewPlan}
-          className="h-12 w-full rounded-xl bg-[#0B9B63] text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="h-12 w-full rounded-xl bg-[#4817C2] text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           View Plan
         </button>
         <button
           type="button"
           onClick={onCreateAnother}
-          className="h-12 w-full rounded-xl border border-[#0B9B63] bg-card text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+          className="h-12 w-full rounded-xl border border-[#4817C2] bg-card text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
         >
           Create Another Plan
         </button>
         <button
           type="button"
           onClick={onGoToPlans}
-          className="h-12 w-full rounded-xl border border-[#0B9B63] bg-card text-sm font-semibold text-[#0B7A55] transition-colors hover:bg-[#0B9B63]/5"
+          className="h-12 w-full rounded-xl border border-[#4817C2] bg-card text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#4817C2]/5"
         >
           Go to Membership Plans
         </button>

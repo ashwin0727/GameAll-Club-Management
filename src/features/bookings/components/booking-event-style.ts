@@ -4,7 +4,7 @@ import type { CalEventKind } from "@/features/bookings/calendar-events";
 export const EVENT_BLOCK_STYLE: Record<CalEventKind, string> = {
   GUEST: "border-blue-500 bg-blue-500/15 text-blue-900 dark:text-blue-100",
   COACHING: "border-purple-500 bg-purple-500/15 text-purple-900 dark:text-purple-100",
-  SESSION: "border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-100",
+  SESSION: "border-teal-500 bg-teal-500/15 text-teal-900 dark:text-teal-100",
   // Diagonal stripes: the court is out of use for this time.
   MAINTENANCE:
     "border-red-500 bg-[repeating-linear-gradient(135deg,rgb(239_68_68/0.18)_0,rgb(239_68_68/0.18)_6px,rgb(239_68_68/0.08)_6px,rgb(239_68_68/0.08)_12px)] text-red-900 dark:text-red-100",
@@ -14,20 +14,20 @@ export const EVENT_BLOCK_STYLE: Record<CalEventKind, string> = {
 export const EVENT_CHIP_STYLE: Record<CalEventKind, string> = {
   GUEST: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   COACHING: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
-  SESSION: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  SESSION: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
   MAINTENANCE: "bg-red-500/15 text-red-700 dark:text-red-300",
 };
 
 export const EVENT_DOT_STYLE: Record<CalEventKind, string> = {
   GUEST: "bg-blue-500",
   COACHING: "bg-purple-500",
-  SESSION: "bg-emerald-500",
+  SESSION: "bg-teal-500",
   MAINTENANCE: "bg-red-500",
 };
 
 /** The "on" colour of each kind's switch in the legend bar. */
 export const EVENT_TOGGLE_STYLE: Record<CalEventKind, string> = {
-  SESSION: "bg-emerald-500",
+  SESSION: "bg-teal-500",
   GUEST: "bg-blue-500",
   COACHING: "bg-purple-500",
   MAINTENANCE: "bg-red-500",

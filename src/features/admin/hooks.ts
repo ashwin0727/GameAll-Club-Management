@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { adminApi, type PayoutVerification, type TransactionView } from "@/features/admin/service";
+import { adminApi, type PayoutVerification, type SetupReviewStatus, type TransactionView } from "@/features/admin/service";
 
 export const adminKeys = {
   all: ["admin"] as const,
@@ -12,6 +12,8 @@ export const adminKeys = {
   payoutMethods: (id: string) => [...adminKeys.all, "payout-methods", id] as const,
   venueVerifications: () => [...adminKeys.all, "venue-verifications"] as const,
   venueVerification: (id: string) => [...adminKeys.all, "venue-verification", id] as const,
+  setupReviews: (status: SetupReviewStatus | null) => [...adminKeys.all, "setup-reviews", status] as const,
+  setupReview: (id: string) => [...adminKeys.all, "setup-review", id] as const,
   txFacilities: () => [...adminKeys.all, "tx-facilities"] as const,
   transactions: (id: string, view: TransactionView, offset: number) => [...adminKeys.all, "transactions", id, view, offset] as const,
 };
@@ -59,6 +61,18 @@ export function useReviewImage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { imageId: string; status: PayoutVerification; note: string | null }) => adminApi.reviewImage(v.imageId, v.status, v.note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.all }),
+  });
+}
+
+export const useSetupReviews = (status: SetupReviewStatus | null) => useQuery({ queryKey: adminKeys.setupReviews(status), queryFn: () => adminApi.setupReviews(status) });
+
+export const useSetupReview = (facilityId: string) => useQuery({ queryKey: adminKeys.setupReview(facilityId), queryFn: () => adminApi.setupReview(facilityId) });
+
+export function useDecideSetup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { facilityId: string; decision: "APPROVED" | "REJECTED"; note: string | null }) => adminApi.decideSetup(v.facilityId, v.decision, v.note),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.all }),
   });
 }

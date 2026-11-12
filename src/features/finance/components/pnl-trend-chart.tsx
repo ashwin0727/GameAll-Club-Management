@@ -7,7 +7,7 @@ import { formatCurrency } from "@/features/pricing/money";
 import type { PnlTrendPoint } from "@/features/finance/types";
 
 const SERIES = [
-  { key: "revenueMinor", label: "Revenue", color: "#00D084" },
+  { key: "revenueMinor", label: "Revenue", color: "#4817C2" },
   { key: "expenseMinor", label: "Expenses", color: "#FF4D67" },
   { key: "netMinor", label: "Net profit", color: "#6366F1" },
 ] as const;

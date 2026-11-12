@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarCheck2, CircleAlert, ShieldCheck, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BrandLogo } from "@/features/auth/components/brand-mark";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 import { PublicBookingHeader } from "./public-booking-header";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -158,7 +158,7 @@ function FacilityHeroImage({
 function FacilityImageFallback({ facility }: { facility: PublicBookingFacility }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-primary/15 via-muted to-background px-6 text-center">
-      <BrandLogo className="h-10 w-10" />
+      <BrandWordmark className="h-8 sm:h-8" />
       <p className="text-base font-semibold sm:text-lg">{facility.facilityName}</p>
       <p className="text-xs text-muted-foreground">Your game starts here.</p>
     </div>

@@ -88,7 +88,7 @@ export const MOVEMENT_LABEL: Record<MovementType, string> = {
 export function movementQty(qty: number) {
   const positive = qty > 0;
   return (
-    <span className={cn("font-medium tabular-nums", positive ? "text-emerald-600" : "text-destructive")}>
+    <span className={cn("font-medium tabular-nums", positive ? "text-success" : "text-destructive")}>
       {positive ? "+" : ""}
       {qty}
     </span>

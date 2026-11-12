@@ -84,7 +84,7 @@ export function GuestBookingsFilterCard({
             className={cn(
               "-mb-px border-b-2 px-1 pb-3 pt-1 text-sm font-medium transition-colors",
               tab === t.key
-                ? "border-[#0B7A55] text-[#0B7A55] dark:border-primary dark:text-primary"
+                ? "border-[#4817C2] text-[#4817C2] dark:border-primary dark:text-primary"
                 : "border-transparent text-foreground/80 hover:text-foreground",
             )}
           >

@@ -11,11 +11,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('defaults to ThemeMode.system before any preference is saved', () async {
+  test('defaults to ThemeMode.light before any preference is saved', () async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    expect(container.read(themeModeControllerProvider), ThemeMode.system);
+    expect(container.read(themeModeControllerProvider), ThemeMode.light);
   });
 
   test('setMode updates state immediately, without waiting on storage to persist', () async {
@@ -29,7 +29,7 @@ void main() {
 
   test('a persisted preference is restored on the next controller instance — the Appearance setting survives a restart', () async {
     final first = ProviderContainer();
-    await first.read(themeModeControllerProvider.notifier).setMode(ThemeMode.light);
+    await first.read(themeModeControllerProvider.notifier).setMode(ThemeMode.dark);
     first.dispose();
 
     final second = ProviderContainer();
@@ -43,10 +43,10 @@ void main() {
     // loop turns to actually complete before asserting.
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    expect(second.read(themeModeControllerProvider), ThemeMode.light);
+    expect(second.read(themeModeControllerProvider), ThemeMode.dark);
   });
 
-  test('never crashes if the platform storage is unavailable — falls back to System', () async {
+  test('never crashes if the platform storage is unavailable — falls back to Light', () async {
     // No SharedPreferences.setMockInitialValues call in this test at all —
     // simulates a platform where the channel genuinely isn't wired up.
     // (setUp above already ran though, so this mostly documents the
@@ -54,6 +54,6 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    expect(container.read(themeModeControllerProvider), ThemeMode.system);
+    expect(container.read(themeModeControllerProvider), ThemeMode.light);
   });
 }

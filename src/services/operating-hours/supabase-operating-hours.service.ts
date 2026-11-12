@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { sortTimeSlots, validateSchedule } from "@/features/operating-hours/validation";
-import type { OperatingDay, OperatingSchedule } from "@/features/operating-hours/types";
+import type { FacilityClosure, OperatingDay, OperatingSchedule } from "@/features/operating-hours/types";
 import type { OperatingHoursService } from "@/services/operating-hours/operating-hours.service";
 import { ServiceError, mapSupabaseError } from "@/services/shared/service-error";
 import type { Database } from "@/types/database.types";
@@ -140,5 +140,34 @@ export class SupabaseOperatingHoursService implements OperatingHoursService {
 
   validateSchedule(days: OperatingDay[]) {
     return validateSchedule(days);
+  }
+
+  async getClosures(facilityId: string): Promise<FacilityClosure[]> {
+    const { data, error } = await this.supabase
+      .from("facility_closures")
+      .select("id, closure_date, name")
+      .eq("facility_id", facilityId)
+      .order("closure_date", { ascending: true });
+    if (error) throw mapSupabaseError(error);
+    return (data ?? []).map((row) => ({ id: row.id, date: row.closure_date, name: row.name }));
+  }
+
+  async replaceClosures(facilityId: string, closures: FacilityClosure[]): Promise<FacilityClosure[]> {
+    // one row per date: if the same date is listed twice the last one wins
+    const byDate = new Map(closures.map((c) => [c.date, { facility_id: facilityId, closure_date: c.date, name: c.name.trim() }]));
+    const rows = [...byDate.values()];
+
+    // remove the dates that are no longer listed
+    const existing = await this.getClosures(facilityId);
+    const stale = existing.filter((c) => !byDate.has(c.date)).map((c) => c.id).filter((id): id is string => !!id);
+    if (stale.length > 0) {
+      const { error } = await this.supabase.from("facility_closures").delete().in("id", stale);
+      if (error) throw mapSupabaseError(error);
+    }
+    if (rows.length > 0) {
+      const { error } = await this.supabase.from("facility_closures").upsert(rows, { onConflict: "facility_id,closure_date" });
+      if (error) throw mapSupabaseError(error);
+    }
+    return this.getClosures(facilityId);
   }
 }

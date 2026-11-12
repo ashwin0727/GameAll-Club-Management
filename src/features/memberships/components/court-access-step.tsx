@@ -358,7 +358,7 @@ export function CourtAccessStep({
                 checked={draft.allowAdvanceBooking}
                 onChange={(v) => set("allowAdvanceBooking", v)}
                 label="Allow Advance Booking"
-                onClass="bg-[#0B9B63]"
+                onClass="bg-[#4817C2]"
               />
             </div>
 
@@ -376,7 +376,7 @@ export function CourtAccessStep({
                 checked={draft.limitConsecutiveSlots}
                 onChange={(v) => set("limitConsecutiveSlots", v)}
                 label="Limit Consecutive Slots"
-                onClass="bg-[#0B9B63]"
+                onClass="bg-[#4817C2]"
               />
             </div>
           </div>

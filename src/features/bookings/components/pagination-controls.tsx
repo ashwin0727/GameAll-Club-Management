@@ -49,7 +49,7 @@ export function PaginationControls({
             className={cn(
               "h-9 min-w-9 rounded-[8px] border px-2 text-sm font-medium transition-colors",
               p === page
-                ? "border-[#0B7A55] text-[#0B7A55] dark:border-primary dark:text-primary"
+                ? "border-[#4817C2] text-[#4817C2] dark:border-primary dark:text-primary"
                 : "border-input bg-card text-foreground hover:bg-accent",
             )}
           >

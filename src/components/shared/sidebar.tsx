@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -38,8 +37,9 @@ import {
   Undo2,
   Wallet,
 } from "lucide-react";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 import { cn } from "@/lib/utils";
-import { APP_LOGO_SRC, APP_NAME, APP_SUBTITLE, NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, type NavItem } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
@@ -110,6 +110,16 @@ export function Sidebar({ role }: { role: Role }) {
     items.flatMap((item) => [item.href, ...(item.children ?? []).map((c) => c.href)]),
   );
 
+  // Accordion: one management open at a time. Opening one closes the rest, and moving to a page in another management opens that one.
+  const activeGroup =
+    NAV_GROUP_ORDER.find((group) =>
+      items.some((item) => item.group === group && (item.href === activeHref || item.children?.some((c) => c.href === activeHref))),
+    ) ?? null;
+  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
+  useEffect(() => {
+    if (activeGroup) setOpenGroup(activeGroup);
+  }, [activeGroup]);
+
   return (
     <>
       {sidebarOpen && (
@@ -121,54 +131,41 @@ export function Sidebar({ role }: { role: Role }) {
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-16 items-center gap-2.5 border-b border-border/40 px-4">
-          <Image
-            src={APP_LOGO_SRC}
-            alt=""
-            aria-hidden
-            width={512}
-            height={512}
-            priority
-            className="h-9 w-9 object-contain"
-          />
-          <span className="flex flex-col leading-tight">
-            <span className="font-semibold">{APP_NAME}</span>
-            <span className="text-[11px] text-muted-foreground">{APP_SUBTITLE}</span>
-          </span>
+        <div className="flex h-16 items-center border-b border-border/40 px-4">
+          <BrandWordmark className="h-8 sm:h-8" />
         </div>
 
-        <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto p-3">
           {NAV_GROUP_ORDER.map((group) => {
             const groupItems = items.filter((item) => item.group === group);
             if (groupItems.length === 0) return null;
             const heading = NAV_GROUP_LABELS[group];
+            const nodes = groupItems.map((item) =>
+              item.children?.length ? (
+                <NavSection key={item.href} item={item} activeHref={activeHref} onNavigate={() => setSidebarOpen(false)} />
+              ) : (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={ICONS[item.href] ?? LayoutDashboard}
+                  active={activeHref === item.href}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              ),
+            );
+            // Home, Calendar and Tournaments have no heading and stay as plain links; every management collapses.
+            if (!heading) return <div key={group} className="space-y-1">{nodes}</div>;
             return (
-              <div key={group} className="space-y-1">
-                {heading && (
-                  <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                    {heading}
-                  </p>
-                )}
-                {groupItems.map((item) =>
-                  item.children?.length ? (
-                    <NavSection
-                      key={item.href}
-                      item={item}
-                      activeHref={activeHref}
-                      onNavigate={() => setSidebarOpen(false)}
-                    />
-                  ) : (
-                    <NavLink
-                      key={item.href}
-                      href={item.href}
-                      label={item.label}
-                      icon={ICONS[item.href] ?? LayoutDashboard}
-                      active={activeHref === item.href}
-                      onNavigate={() => setSidebarOpen(false)}
-                    />
-                  ),
-                )}
-              </div>
+              <CollapsibleGroup
+                key={group}
+                label={heading}
+                containsActive={group === activeGroup}
+                open={openGroup === group}
+                onToggle={() => setOpenGroup((cur) => (cur === group ? null : group))}
+              >
+                {nodes}
+              </CollapsibleGroup>
             );
           })}
         </nav>
@@ -189,6 +186,39 @@ export function Sidebar({ role }: { role: Role }) {
         </div>
       </aside>
     </>
+  );
+}
+
+/** A management heading that collapses its pages. Open/closed is owned by the sidebar so only one management stays open at a time. */
+function CollapsibleGroup({
+  label,
+  containsActive,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  containsActive: boolean;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider transition-colors hover:bg-accent",
+          containsActive ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        <span>{label}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && <div className="mt-1 space-y-1">{children}</div>}
+    </div>
   );
 }
 

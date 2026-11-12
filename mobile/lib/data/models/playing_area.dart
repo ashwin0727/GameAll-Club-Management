@@ -23,6 +23,9 @@ class PlayingArea {
     required this.sportId,
     required this.name,
     required this.areaType,
+    this.surface,
+    this.lightingType,
+    this.courtAmenities = const [],
     required this.status,
     required this.bookingEnabled,
     required this.archived,
@@ -35,6 +38,15 @@ class PlayingArea {
   final String sportId;
   final String name;
   final String areaType; // INDOOR | OUTDOOR
+
+  /// The playing surface ("Wooden", "Artificial Turf", ...); null for a court saved before it was asked.
+  final String? surface;
+
+  /// LED | FLOODLIGHT | NATURAL | NONE; null for a court saved before it was asked.
+  final String? lightingType;
+
+  /// Any of ac | shower | locker.
+  final List<String> courtAmenities;
   final String status; // ACTIVE | INACTIVE
   final bool bookingEnabled;
   final bool archived;
@@ -48,6 +60,9 @@ class PlayingArea {
       sportId: json['sport_id'] as String,
       name: json['name'] as String,
       areaType: json['area_type'] as String? ?? 'INDOOR',
+      surface: json['surface'] as String?,
+      lightingType: json['lighting_type'] as String?,
+      courtAmenities: ((json['court_amenities'] as List<dynamic>?) ?? const []).map((e) => e as String).toList(),
       status: json['status'] as String? ?? 'ACTIVE',
       bookingEnabled: json['booking_enabled'] as bool? ?? true,
       archived: json['archived'] as bool? ?? false,
@@ -63,6 +78,9 @@ class PlayingArea {
       'sport_id': sportId,
       'name': name,
       'area_type': areaType,
+      'surface': surface,
+      'lighting_type': lightingType,
+      'court_amenities': courtAmenities,
       'status': status,
       'booking_enabled': bookingEnabled,
       'archived': archived,

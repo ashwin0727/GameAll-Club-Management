@@ -28,7 +28,7 @@ export const TOTAL_SPENT_OPTIONS = [
 ];
 
 const OUTLINE_BTN =
-  "flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-[#0B7A55] bg-card px-4 text-sm font-medium text-[#0B7A55] transition-colors hover:bg-[#0B7A55]/10 disabled:opacity-50 dark:border-primary dark:text-primary dark:hover:bg-primary/10";
+  "flex h-10 w-full items-center justify-center gap-2 rounded-[10px] border border-[#4817C2] bg-card px-4 text-sm font-medium text-[#4817C2] transition-colors hover:bg-[#4817C2]/10 disabled:opacity-50 dark:border-primary dark:text-primary dark:hover:bg-primary/10";
 
 const FIELD = cn(SELECT, "transition-colors hover:border-foreground/30");
 

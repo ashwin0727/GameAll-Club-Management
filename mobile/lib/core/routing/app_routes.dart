@@ -11,6 +11,7 @@ class AppRoutes {
   static const emailVerification = '/email-verification';
   static const forgotPassword = '/forgot-password';
   static const verifyMobile = '/verify-mobile';
+  static const setupReview = '/setup-review';
 
   static const onboardingWelcome = '/onboarding/welcome';
   static const onboardingFacility = '/onboarding/facility';

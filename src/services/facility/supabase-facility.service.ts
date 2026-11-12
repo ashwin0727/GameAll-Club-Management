@@ -38,6 +38,32 @@ function toFacility(row: FacilityRow): Facility {
       cafeteria: row.has_cafeteria ?? false,
       equipmentRental: row.has_equipment_rental ?? false,
     },
+    ownershipType: row.ownership_type ?? "OWNED",
+    whatsappNumber: row.whatsapp_number ?? undefined,
+    contactPerson: row.contact_person_name
+      ? { name: row.contact_person_name, role: row.contact_person_role ?? "", alternatePhone: row.contact_person_alt_phone ?? undefined }
+      : undefined,
+    policies: {
+      allowOnlineBooking: row.allow_online_booking ?? true,
+      allowWalkIn: row.allow_walk_in_booking ?? true,
+      advancePaymentRequired: row.advance_payment_required ?? false,
+      allowCancellations: row.allow_cancellations ?? true,
+      requirePlayerDetails: row.require_player_details ?? true,
+    },
+    amenityKeys: row.amenity_keys ?? [],
+    customAmenities: row.custom_amenities ?? [],
+    hoursSettings: {
+      allowBookingsOutsideHours: row.allow_bookings_outside_hours ?? false,
+      breakStart: row.operating_break_start?.slice(0, 5) ?? undefined,
+      breakEnd: row.operating_break_end?.slice(0, 5) ?? undefined,
+      sportWiseHours: row.sport_wise_hours ?? false,
+    },
+    pricingSettings: {
+      mode: row.pricing_mode ?? "BY_SPORT",
+      differentWeekendPricing: row.different_weekend_pricing ?? true,
+      memberPricingEnabled: row.member_pricing_enabled ?? false,
+      coachingPricingEnabled: row.coaching_pricing_enabled ?? false,
+    },
     status: row.status,
     onboardingStep: row.onboarding_step,
     onboardingCompletedAt: row.onboarding_completed_at ?? undefined,
@@ -134,6 +160,35 @@ export class SupabaseFacilityService implements FacilityService {
     if (patch.description !== undefined) update.description = patch.description ?? null;
     if (patch.locationUrl !== undefined) update.location_url = patch.locationUrl.trim() || null;
     if (patch.venueType !== undefined) update.venue_type = patch.venueType;
+    if (patch.ownershipType !== undefined) update.ownership_type = patch.ownershipType;
+    if (patch.whatsappNumber !== undefined) update.whatsapp_number = patch.whatsappNumber.trim() || null;
+    if (patch.contactPerson !== undefined) {
+      update.contact_person_name = patch.contactPerson.name.trim() || null;
+      update.contact_person_role = patch.contactPerson.role.trim() || null;
+      update.contact_person_alt_phone = patch.contactPerson.alternatePhone?.trim() || null;
+    }
+    if (patch.policies !== undefined) {
+      update.allow_online_booking = patch.policies.allowOnlineBooking;
+      update.allow_walk_in_booking = patch.policies.allowWalkIn;
+      update.advance_payment_required = patch.policies.advancePaymentRequired;
+      update.allow_cancellations = patch.policies.allowCancellations;
+      update.require_player_details = patch.policies.requirePlayerDetails;
+    }
+    // The database derives the five legacy amenity flags from the list (trigger sync_facility_amenity_flags).
+    if (patch.amenityKeys !== undefined) update.amenity_keys = patch.amenityKeys;
+    if (patch.customAmenities !== undefined) update.custom_amenities = patch.customAmenities;
+    if (patch.pricingSettings !== undefined) {
+      update.pricing_mode = patch.pricingSettings.mode;
+      update.different_weekend_pricing = patch.pricingSettings.differentWeekendPricing;
+      update.member_pricing_enabled = patch.pricingSettings.memberPricingEnabled;
+      update.coaching_pricing_enabled = patch.pricingSettings.coachingPricingEnabled;
+    }
+    if (patch.hoursSettings !== undefined) {
+      update.allow_bookings_outside_hours = patch.hoursSettings.allowBookingsOutsideHours;
+      update.operating_break_start = patch.hoursSettings.breakStart ?? null;
+      update.operating_break_end = patch.hoursSettings.breakEnd ?? null;
+      update.sport_wise_hours = patch.hoursSettings.sportWiseHours;
+    }
     if (patch.amenities !== undefined) {
       update.has_parking = patch.amenities.parking;
       update.has_changing_rooms = patch.amenities.changingRooms;

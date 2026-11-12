@@ -945,32 +945,83 @@ class _SignOutButton extends StatelessWidget {
 }
 
 /// One titled group of menu rows. Rows whose page the person's role doesn't include are dropped, and a group left with
-/// no rows disappears entirely (title and spacing too).
-class _Section extends ConsumerWidget {
+/// no rows disappears entirely (title and spacing too). Each management (and Finance) collapses under its heading,
+/// starting closed, so the menu opens short and shows a section's pages only when asked.
+class _Section extends ConsumerStatefulWidget {
   const _Section({required this.label, required this.children});
 
   final String label;
   final List<Widget> children;
 
+  bool get collapsible => label.endsWith('Management') || label == 'Finance';
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Section> createState() => _SectionState();
+}
+
+class _SectionState extends ConsumerState<_Section> {
+  /// Accordion: the label of the one management that is open (null = all closed). Shared by every section on the screen, so
+  /// opening one closes the others.
+  static final ValueNotifier<String?> _openLabel = ValueNotifier<String?>(null);
+
+  bool get _open => _openLabel.value == widget.label;
+
+  @override
+  void initState() {
+    super.initState();
+    _openLabel.addListener(_onOpenChanged);
+  }
+
+  @override
+  void dispose() {
+    _openLabel.removeListener(_onOpenChanged);
+    super.dispose();
+  }
+
+  void _onOpenChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
-    final visible = children.where((c) {
+    final visible = widget.children.where((c) {
       if (c is _NavRow && c.pages.isNotEmpty) return c.pages.any(session.canViewPage);
       return true;
     }).toList();
     if (visible.isEmpty) return const SizedBox.shrink();
     final t = context.tokens;
+    final label = Text(widget.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary));
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
-            child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary)),
-          ),
-          _GroupCard(children: visible),
+          if (widget.collapsible)
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _openLabel.value = _open ? null : widget.label,
+              child: Semantics(
+                button: true,
+                expanded: _open,
+                label: widget.label,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+                  child: Row(
+                    children: [
+                      Expanded(child: label),
+                      Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: t.textSecondary),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            Padding(padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm), child: label),
+          if (!widget.collapsible || _open) ...[
+            if (widget.collapsible) const SizedBox(height: AppSpacing.xs),
+            _GroupCard(children: visible),
+          ],
         ],
       ),
     );

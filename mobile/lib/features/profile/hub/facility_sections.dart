@@ -461,10 +461,10 @@ class _Locked extends StatelessWidget {
 // ── Courts & sports ────────────────────────────────────────────────────────
 
 const _tileTints = [
-  Color(0xFF10B981),
+  Color(0xFF4817C2),
   Color(0xFF3B82F6),
   Color(0xFFF97316),
-  Color(0xFF84CC16),
+  Color(0xFF0E9384),
   Color(0xFF8B5CF6),
 ];
 
@@ -736,7 +736,7 @@ class PricingSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.tokens;
     final owner = isFacilityOwner(ref);
-    final rules = data.pricing?.rules ?? const <PricingRule>[];
+    final rules = (data.pricing?.rules ?? const <PricingRule>[]).where((r) => r.audience == 'GENERAL').toList();
     return HubCard(
       title: 'Pricing',
       subtitle: 'What a booking costs, by sport and court.',

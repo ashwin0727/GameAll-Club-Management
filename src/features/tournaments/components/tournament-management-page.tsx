@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   CalendarDays,
   ClipboardList,
   ExternalLink,
@@ -67,6 +65,39 @@ const WHY_SEPARATE = [
   },
 ] as const;
 
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.gameall.gameall&hl=en_IN";
+
+/** The Google Play triangle, in its four brand colours. */
+function PlayStoreIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="#00D7FE" d="M3.6 1.8c-.3.3-.5.8-.5 1.4v17.6c0 .6.2 1.1.5 1.4l9.9-10.2z" />
+      <path fill="#00F076" d="M17 8.4 13.5 12l3.5 3.6 4-2.3c1.1-.6 1.1-1.6 0-2.2z" transform="translate(0 0)" />
+      <path fill="#FF3A44" d="M3.6 22.2c.4.4 1 .4 1.7.1L17 15.6 13.5 12z" />
+      <path fill="#FFD500" d="M3.6 1.8 13.5 12 17 8.4 5.3 1.7c-.7-.4-1.3-.3-1.7.1z" />
+    </svg>
+  );
+}
+
+function PlayStoreBadge({ onClick }: { onClick: () => void }) {
+  return (
+    <a
+      href={PLAY_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClick}
+      aria-label="Get GameAll on Google Play"
+      className="inline-flex h-12 items-center gap-3 rounded-lg bg-[#171717] px-4 text-white transition-colors hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <PlayStoreIcon className="h-6 w-6 shrink-0" />
+      <span className="flex flex-col text-left leading-tight">
+        <span className="text-[10px] font-medium uppercase tracking-wide">Get it on</span>
+        <span className="text-base font-semibold">Google Play</span>
+      </span>
+    </a>
+  );
+}
+
 type LaunchState = "idle" | "failed";
 
 export function TournamentManagementPage() {
@@ -116,17 +147,6 @@ export function TournamentManagementPage() {
 
   return (
     <div className="max-w-5xl space-y-10 pb-8">
-      {/* Breadcrumb / back */}
-      <div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back to Dashboard
-        </Link>
-      </div>
-
       {/* Hero */}
       <section className="grid items-start gap-10 md:grid-cols-2">
         <div className="order-2 space-y-5 md:order-1">
@@ -172,11 +192,23 @@ export function TournamentManagementPage() {
           {links.availabilityLabel && (
             <p className="text-xs text-muted-foreground">{links.availabilityLabel}</p>
           )}
-          {!primaryCta && (
-            <p className="text-sm text-muted-foreground">
-              The Tournament App links aren&apos;t configured yet. Add them in your environment to enable this.
-            </p>
-          )}
+
+          {/* Already have the app: in the hero so it is visible without scrolling. Text left, store button right. */}
+          <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold">Already have the app?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Jump straight into your organizer dashboard.</p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
+              {links.openUrl && (
+                <Button size="lg" onClick={openApp} className="w-full sm:w-auto">
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  Open Tournament App
+                </Button>
+              )}
+              <PlayStoreBadge onClick={onDownloadClick} />
+            </div>
+          </Card>
         </div>
 
         <div className="order-1 md:order-2">
@@ -210,29 +242,6 @@ export function TournamentManagementPage() {
         </div>
       </section>
 
-      {/* Already have the app */}
-      <section>
-        <Card className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Already have the app?</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Jump straight into your organizer dashboard.
-            </p>
-          </div>
-          {links.openUrl ? (
-            <Button size="lg" onClick={openApp} className="w-full sm:w-auto">
-              <ExternalLink className="h-4 w-4" aria-hidden />
-              Open Tournament App
-            </Button>
-          ) : downloadHref ? (
-            <Button asChild size="lg" className="w-full sm:w-auto">
-              <a href={downloadHref} target="_blank" rel="noopener noreferrer" onClick={onDownloadClick}>
-                Download App
-              </a>
-            </Button>
-          ) : null}
-        </Card>
-      </section>
     </div>
   );
 }

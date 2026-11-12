@@ -26,8 +26,8 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
         <AreaChart data={points} margin={{ top: 12, right: 12, left: 4, bottom: 4 }}>
           <defs>
             <linearGradient id="bookingTotalGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00F08A" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#00F08A" stopOpacity={0.02} />
+              <stop offset="0%" stopColor="#4817C2" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#4817C2" stopOpacity={0.02} />
             </linearGradient>
           </defs>
 
@@ -53,7 +53,7 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
           />
 
           <Tooltip
-            cursor={{ stroke: "#00F08A", strokeWidth: 1, strokeDasharray: "3 3" }}
+            cursor={{ stroke: "#4817C2", strokeWidth: 1, strokeDasharray: "3 3" }}
             contentStyle={{
               borderRadius: 12,
               border: "1px solid var(--border)",
@@ -71,12 +71,12 @@ export function BookingTrendChart({ points }: { points: BookingTrendPoint[] }) {
           <Area
             type="monotone"
             dataKey="total"
-            stroke="#00F08A"
+            stroke="#4817C2"
             strokeWidth={2.5}
             fill="url(#bookingTotalGradient)"
             name="total"
-            dot={{ r: 3, fill: "#00F08A", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#00F08A", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+            dot={{ r: 3, fill: "#4817C2", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#4817C2", stroke: "hsl(var(--background))", strokeWidth: 2 }}
             isAnimationActive
             animationDuration={700}
             animationEasing="ease-out"

@@ -8,6 +8,7 @@ class AppUser {
     required this.onboardingCompleted,
     this.mustResetPassword = false,
     this.mobileVerificationPending = false,
+    this.verifiedMobile,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class AppUser {
   /// A new owner who still has to verify a mobile number (SMS OTP) before onboarding.
   final bool mobileVerificationPending;
 
+  /// The 10-digit mobile the owner verified by OTP at signup (`user_verified_phones`), when there is one.
+  final String? verifiedMobile;
+
   AppUser withMobileVerificationPending(bool pending) => AppUser(
         id: id,
         fullName: fullName,
@@ -31,6 +35,18 @@ class AppUser {
         onboardingCompleted: onboardingCompleted,
         mustResetPassword: mustResetPassword,
         mobileVerificationPending: pending,
+        verifiedMobile: verifiedMobile,
+      );
+
+  AppUser withVerifiedMobile(String? mobile) => AppUser(
+        id: id,
+        fullName: fullName,
+        email: email,
+        role: role,
+        onboardingCompleted: onboardingCompleted,
+        mustResetPassword: mustResetPassword,
+        mobileVerificationPending: mobileVerificationPending,
+        verifiedMobile: mobile,
       );
 
   factory AppUser.fromJson(Map<String, dynamic> json) {

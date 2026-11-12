@@ -9,6 +9,7 @@ const Map<String, ({String icon, String description})> _presentation = {
   'CRICKET': (icon: '🏏', description: 'Bat-and-ball team sport'),
   'FOOTBALL': (icon: '⚽', description: 'Outdoor team sport'),
   'TENNIS': (icon: '🎾', description: 'Racket sport on a court'),
+  'BASKETBALL': (icon: '🏀', description: 'Indoor or outdoor court sport'),
   'OTHER': (icon: '➕', description: 'A sport not listed here'),
 };
 const _defaultPresentation = (icon: '🏅', description: '');

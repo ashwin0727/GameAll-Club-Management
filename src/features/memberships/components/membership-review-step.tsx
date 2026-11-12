@@ -302,7 +302,7 @@ export function MembershipReviewStep({
             <span
               className={cn(
                 "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
-                draft.sendWelcome ? "bg-[#0B9B63]" : "border-2 border-input",
+                draft.sendWelcome ? "bg-[#4817C2]" : "border-2 border-input",
               )}
             >
               {draft.sendWelcome && <Check className="h-2.5 w-2.5 text-white" strokeWidth={4} aria-hidden />}

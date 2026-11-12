@@ -15,6 +15,7 @@ export const bankPayoutSchema = z.object({
     .trim()
     .toUpperCase()
     .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Enter a valid IFSC, like HDFC0001234."),
+  accountType: z.enum(["SAVINGS", "CURRENT"], { message: "Choose Savings or Current." }),
 });
 
 export const upiPayoutSchema = z.object({
@@ -29,10 +30,9 @@ export const upiPayoutSchema = z.object({
 
 export const payoutSchema = z.discriminatedUnion("type", [bankPayoutSchema, upiPayoutSchema]);
 
-/** "XXXXXX1234" — enough to recognise an account, never the whole number. */
-export function maskAccountNumber(n: string | null): string {
-  if (!n) return "";
-  return n.length <= 4 ? n : `${"X".repeat(n.length - 4)}${n.slice(-4)}`;
+/** "•••• 4821" from the last four digits: enough to recognise an account, never the whole number. */
+export function maskAccountNumber(last4: string | null): string {
+  return last4 ? `•••• ${last4.slice(-4)}` : "";
 }
 
 /** "ra••••@okhdfc" — keeps the handle's first two characters and the bank. */

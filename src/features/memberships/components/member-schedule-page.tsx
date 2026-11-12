@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** Sampled from the Membership_Dashboard.png artwork's own pale-mint backdrop — same value the
  *  Add Member wizard's hero uses, so the panel and the image read as one surface. */
-const PANEL_TINT = "#EAF9F1";
+const PANEL_TINT = "#F1EBFF";
 
 function dateLabel(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;

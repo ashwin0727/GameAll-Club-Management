@@ -7,6 +7,7 @@ const DAY_TYPE_LABEL: Record<PeriodDraft["dayType"], string> = {
   ALL_DAYS: "All days",
   WEEKDAYS: "Weekdays",
   WEEKENDS: "Weekends",
+  SPECIFIC_DAYS: "Specific days",
 };
 
 /** "05:00" -> "5:00 AM" */

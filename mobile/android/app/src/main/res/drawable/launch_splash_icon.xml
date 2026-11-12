@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Solid black, matching the splash background, so the mandatory Android 12+
+<!-- Solid deep purple, matching the splash background, so the mandatory Android 12+
      system-splash icon is effectively invisible — the Flutter video splash
      is the only thing the user sees. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#FF000000" />
+    <solid android:color="#FF2A0E6B" />
     <size android:width="108dp" android:height="108dp" />
 </shape>

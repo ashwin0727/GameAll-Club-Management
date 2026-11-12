@@ -185,14 +185,14 @@ export function PaymentStep({
               tabLocked
                 ? "cursor-not-allowed border-input opacity-50"
                 : draft.paymentTab === t.tab
-                  ? "border-[#0B9B63] bg-success/10"
+                  ? "border-[#4817C2] bg-primary/10"
                   : "border-input hover:bg-accent/50",
             )}
           >
             <span
               className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                draft.paymentTab === t.tab ? "bg-[#0B9B63] text-white" : "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+                draft.paymentTab === t.tab ? "bg-[#4817C2] text-white" : "bg-blue-500/15 text-blue-600 dark:text-blue-400",
               )}
             >
               <t.icon className="h-4.5 w-4.5" aria-hidden />
@@ -277,7 +277,7 @@ export function PaymentStep({
                   <button
                     type="button"
                     onClick={copyLink}
-                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0B9B63] px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#4817C2] px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90"
                   >
                     <Copy className="h-3.5 w-3.5" aria-hidden />
                     {copied ? "Copied" : "Copy"}
@@ -293,7 +293,7 @@ export function PaymentStep({
                 type="button"
                 disabled={generatingLink}
                 onClick={onGenerateLink}
-                className="mx-auto flex w-2/5 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0F9D66] to-[#0B7A55] py-3.5 text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="mx-auto flex w-2/5 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0F9D66] to-[#4817C2] py-3.5 text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 <Link2 className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="text-center">
@@ -394,7 +394,7 @@ export function PaymentStep({
                   className={cn(
                     "flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm transition-colors",
                     draft.paymentMethod === m.value
-                      ? "border-[#0B9B63] bg-success/10 font-medium text-[#0B7A55]"
+                      ? "border-[#4817C2] bg-primary/10 font-medium text-[#4817C2]"
                       : "border-input hover:bg-accent",
                   )}
                 >

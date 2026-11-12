@@ -42,6 +42,28 @@ class SportsRepository {
     }
   }
 
+  /// Saves the venue's sports: the catalogue sports by id and any number of the venue's own sports by name (each is the catalogue's
+  /// "Other" sport with its own name). Anything offered before and not listed now is switched off.
+  Future<List<FacilitySport>> saveFacilitySportsMulti(
+    String facilityId, {
+    required List<String> sportIds,
+    List<String> customSportNames = const [],
+  }) async {
+    try {
+      final rows = await _client.rpc(
+        'sync_facility_sports_multi',
+        params: {
+          'p_facility_id': facilityId,
+          'p_sport_ids': sportIds,
+          'p_custom_sport_names': customSportNames,
+        },
+      );
+      return (rows as List<dynamic>).cast<Map<String, dynamic>>().map(FacilitySport.fromJson).toList();
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e, duplicate: AppErrorCode.duplicateFacilitySport);
+    }
+  }
+
   Future<List<FacilitySport>> saveFacilitySports(
     String facilityId,
     List<String> sportIds, {

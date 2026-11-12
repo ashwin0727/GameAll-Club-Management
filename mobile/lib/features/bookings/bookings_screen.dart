@@ -539,7 +539,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final plan = _pricingPlan;
     if (plan == null) return null;
     PricingRule? pick(bool Function(PricingRule) test) {
-      final matches = plan.rules.where(test).toList();
+      final matches = plan.rules.where((r) => r.audience == 'GENERAL').where(test).toList();
       if (matches.isEmpty) return null;
       matches.sort((a, b) =>
           (a.coversFullDay ? 0 : 1).compareTo(b.coversFullDay ? 0 : 1));
@@ -990,7 +990,7 @@ LinearGradient _blockGradient(_BlockKind k, AppColorTokens t) {
   switch (k) {
     case _BlockKind.booked:
       return LinearGradient(
-        colors: [t.primary, const Color(0xFF00A76A)],
+        colors: [t.primary, const Color(0xFF39109F)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );

@@ -35,16 +35,18 @@ import '../../features/memberships/add_member_wizard_screen.dart';
 import '../../features/memberships/members_screen.dart';
 import '../../features/memberships/memberships_screen.dart';
 import '../../features/membership_sessions/membership_sessions_screen.dart';
-import '../../features/onboarding/courts_setup_screen.dart';
+import '../../features/onboarding/operating_hours_setup_screen.dart';
+import '../../features/onboarding/sports_courts_screen.dart';
 import '../../features/onboarding/onboarding_welcome_screen.dart';
-import '../../features/onboarding/payments_screen.dart';
+import '../../features/onboarding/payout_setup_screen.dart';
+import '../../features/onboarding/setup_review_screen.dart';
 import '../../features/profile/hub/account_screens.dart';
 import '../../features/profile/hub/facility_screens.dart';
 import '../../features/profile/hub/payouts_screen.dart';
 import '../../features/profile/hub/profile_hub_screen.dart';
 import '../../features/onboarding/facility_details_screen.dart';
 import '../../features/onboarding/operating_hours_screen.dart';
-import '../../features/onboarding/pricing_screen.dart';
+import '../../features/onboarding/pricing_setup_screen.dart';
 import '../../features/onboarding/setup_summary_screen.dart';
 import '../../features/onboarding/sports_setup_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -215,32 +217,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboardingSportsCourts,
         pageBuilder: (context, state) =>
-            slideOver(state, const SportsSetupScreen()),
+            slideOver(state, const SportsCourtsScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingSports,
         pageBuilder: (context, state) =>
-            slideOver(state, const SportsSetupScreen()),
+            slideOver(state, const SportsCourtsScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingCourts,
         pageBuilder: (context, state) =>
-            slideOver(state, const CourtsSetupScreen()),
+            slideOver(state, const SportsCourtsScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingOperatingHours,
         pageBuilder: (context, state) =>
-            slideOver(state, const OperatingHoursScreen()),
+            slideOver(state, const OperatingHoursSetupScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingPricing,
         pageBuilder: (context, state) =>
-            slideOver(state, const PricingScreen()),
+            slideOver(state, const PricingSetupScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingPayments,
         pageBuilder: (context, state) =>
-            slideOver(state, const PaymentsScreen()),
+            slideOver(state, const PayoutSetupScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.setupReview,
+        pageBuilder: (context, state) =>
+            slideOver(state, const SetupReviewScreen()),
       ),
       GoRoute(
         path: AppRoutes.onboardingComplete,
@@ -390,7 +397,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.profilePricing, pageBuilder: (context, state) => slideOver(state, const PricingOverviewScreen())),
       GoRoute(path: AppRoutes.profileEditSports, pageBuilder: (context, state) => slideOver(state, const SportsSetupScreen(editMode: true))),
       GoRoute(path: AppRoutes.profileEditHours, pageBuilder: (context, state) => slideOver(state, const OperatingHoursScreen(editMode: true))),
-      GoRoute(path: AppRoutes.profileEditPricing, pageBuilder: (context, state) => slideOver(state, const PricingScreen(editMode: true))),
+      GoRoute(path: AppRoutes.profileEditPricing, pageBuilder: (context, state) => slideOver(state, const PricingSetupScreen(editMode: true))),
       GoRoute(
         path: AppRoutes.setPassword,
         pageBuilder: (context, state) =>

@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   const page = pdf.addPage([420, 560]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const green = rgb(0, 0.51, 0.32);
+  const green = rgb(0.282, 0.09, 0.761); // brand purple #4817C2
   let y = 520;
   const line = (text: string, opts: { size?: number; f?: typeof font; color?: typeof green } = {}) => {
     page.drawText(text, { x: 40, y, size: opts.size ?? 10, font: opts.f ?? font, color: opts.color ?? rgb(0.15, 0.15, 0.15) });

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { axisTicks, type MonthTrendPoint } from "@/features/memberships/dashboard-stats";
 
-const ACTIVE = "#00A86B";
+const ACTIVE = "#4817C2";
 const INACTIVE = "#D9DEE5";
 /** Room on the left for the y-axis figures. */
 const AXIS_GUTTER = "2rem";

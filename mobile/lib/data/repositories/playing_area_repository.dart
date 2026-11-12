@@ -48,12 +48,20 @@ class PlayingAreaRepository {
     String id, {
     String? name,
     String? areaType,
+    String? surface,
+    String? lightingType,
+    List<String>? courtAmenities,
+    int? displayOrder,
     String? status,
     bool? bookingEnabled,
   }) async {
     final patch = <String, dynamic>{};
     if (name != null) patch['name'] = name;
     if (areaType != null) patch['area_type'] = areaType;
+    if (surface != null) patch['surface'] = surface;
+    if (lightingType != null) patch['lighting_type'] = lightingType;
+    if (courtAmenities != null) patch['court_amenities'] = courtAmenities;
+    if (displayOrder != null) patch['display_order'] = displayOrder;
     if (status != null) patch['status'] = status;
     if (bookingEnabled != null) patch['booking_enabled'] = bookingEnabled;
 

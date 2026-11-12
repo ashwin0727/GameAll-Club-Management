@@ -39,10 +39,10 @@ class PayoutValidators {
     return null;
   }
 
-  /// "XXXXXX1234" — enough to recognise an account, never the whole number.
-  static String maskAccountNumber(String? n) {
-    if (n == null || n.isEmpty) return '';
-    return n.length <= 4 ? n : '${'X' * (n.length - 4)}${n.substring(n.length - 4)}';
+  /// "•••• 4821" from the last four digits — enough to recognise an account, never the whole number.
+  static String maskAccountNumber(String? last4) {
+    if (last4 == null || last4.isEmpty) return '';
+    return '•••• ${last4.length <= 4 ? last4 : last4.substring(last4.length - 4)}';
   }
 
   /// "ch••••@okhdfc" — the handle's first two characters and the bank.

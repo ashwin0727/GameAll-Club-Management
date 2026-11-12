@@ -25,7 +25,7 @@ void main() {
   });
 
   test('masks account numbers and UPI handles', () {
-    expect(PayoutValidators.maskAccountNumber('123456789012'), 'XXXXXXXX9012');
+    expect(PayoutValidators.maskAccountNumber('9012'), '•••• 9012');
     expect(PayoutValidators.maskUpi('champz@okhdfc'), 'ch••••@okhdfc');
   });
 }

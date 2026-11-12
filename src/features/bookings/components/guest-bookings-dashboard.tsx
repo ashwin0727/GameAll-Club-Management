@@ -240,7 +240,7 @@ export function GuestBookingsDashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/guest-bookings/new")}
-                className="flex h-[42px] items-center justify-center gap-2 rounded-[10px] bg-[#0B7A55] px-5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+                className="flex h-[42px] items-center justify-center gap-2 rounded-[10px] bg-[#4817C2] px-5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
               >
                 <Plus className="h-4 w-4" aria-hidden />
                 New Guest Booking

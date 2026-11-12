@@ -47,7 +47,7 @@ export function BookingAgenda({
               <p
                 className={cn(
                   "mx-auto mt-1 flex h-9 w-9 items-center justify-center rounded-full text-lg font-semibold",
-                  today && "bg-[#0B7A55] text-white dark:bg-primary dark:text-primary-foreground",
+                  today && "bg-[#4817C2] text-white dark:bg-primary dark:text-primary-foreground",
                 )}
               >
                 {day.getDate()}

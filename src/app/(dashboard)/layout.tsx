@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentProfile, getFacilityContext, getIsPlatformAdmin } from "@/features/auth/api/auth.api";
+import { getCurrentProfile, getFacilityContext, getIsPlatformAdmin, getSetupReview } from "@/features/auth/api/auth.api";
+import { SetupReviewPopup } from "@/features/setup-review/components/setup-review-popup";
 import { AppShell } from "@/components/shared/app-shell";
 import { NavigationProgress } from "@/components/shared/navigation-progress";
 
@@ -23,9 +24,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/admin");
   }
 
+  // Setup finished but GameAll has not approved it yet (or sent it back): the dashboard stays usable, with a closable reminder.
+  const review = facilityContext ? await getSetupReview() : null;
+  const reviewStatus = review && (review.status === "PENDING" || review.status === "REJECTED") ? review.status : null;
+
   return (
     <AppShell profile={profile} facilityContext={facilityContext}>
       <NavigationProgress />
+      {reviewStatus && review && <SetupReviewPopup status={reviewStatus} note={review.note} facilityId={review.facilityId} />}
       {children}
     </AppShell>
   );

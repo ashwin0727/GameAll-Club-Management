@@ -106,6 +106,26 @@ export interface Database {
           has_toilets: boolean;
           has_cafeteria: boolean;
           has_equipment_rental: boolean;
+          ownership_type: "OWNED" | "LEASED";
+          whatsapp_number: string | null;
+          contact_person_name: string | null;
+          contact_person_role: string | null;
+          contact_person_alt_phone: string | null;
+          allow_online_booking: boolean;
+          allow_walk_in_booking: boolean;
+          advance_payment_required: boolean;
+          allow_cancellations: boolean;
+          require_player_details: boolean;
+          amenity_keys: string[];
+          custom_amenities: string[];
+          allow_bookings_outside_hours: boolean;
+          operating_break_start: string | null;
+          operating_break_end: string | null;
+          sport_wise_hours: boolean;
+          pricing_mode: "BY_SPORT" | "BY_COURT";
+          different_weekend_pricing: boolean;
+          member_pricing_enabled: boolean;
+          coaching_pricing_enabled: boolean;
           location_verification_status: "PENDING" | "VERIFIED" | "REJECTED";
           location_verification_note: string | null;
         };
@@ -145,6 +165,26 @@ export interface Database {
           has_toilets?: boolean;
           has_cafeteria?: boolean;
           has_equipment_rental?: boolean;
+          ownership_type?: "OWNED" | "LEASED";
+          whatsapp_number?: string | null;
+          contact_person_name?: string | null;
+          contact_person_role?: string | null;
+          contact_person_alt_phone?: string | null;
+          allow_online_booking?: boolean;
+          allow_walk_in_booking?: boolean;
+          advance_payment_required?: boolean;
+          allow_cancellations?: boolean;
+          require_player_details?: boolean;
+          amenity_keys?: string[];
+          custom_amenities?: string[];
+          allow_bookings_outside_hours?: boolean;
+          operating_break_start?: string | null;
+          operating_break_end?: string | null;
+          sport_wise_hours?: boolean;
+          pricing_mode?: "BY_SPORT" | "BY_COURT";
+          different_weekend_pricing?: boolean;
+          member_pricing_enabled?: boolean;
+          coaching_pricing_enabled?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["facilities"]["Insert"]>;
         Relationships: [
@@ -355,6 +395,8 @@ export interface Database {
           sport_id: string;
           name: string;
           surface: string | null;
+          lighting_type: "LED" | "FLOODLIGHT" | "NATURAL" | "NONE" | null;
+          court_amenities: string[];
           hourly_rate_inr: number;
           area_type: DbAreaType;
           status: DbEntityStatus;
@@ -371,6 +413,8 @@ export interface Database {
           sport_id: string;
           name: string;
           surface?: string | null;
+          lighting_type?: "LED" | "FLOODLIGHT" | "NATURAL" | "NONE" | null;
+          court_amenities?: string[];
           hourly_rate_inr?: number;
           area_type?: DbAreaType;
           status?: DbEntityStatus;
@@ -1767,6 +1811,32 @@ export interface Database {
           },
         ];
       };
+      facility_closures: {
+        Row: {
+          id: string;
+          facility_id: string;
+          closure_date: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          facility_id: string;
+          closure_date: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["facility_closures"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "facility_closures_facility_id_fkey";
+            columns: ["facility_id"];
+            isOneToOne: false;
+            referencedRelation: "facilities";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       operating_time_slots: {
         Row: {
           id: string;
@@ -1836,7 +1906,10 @@ export interface Database {
           facility_id: string;
           facility_sport_id: string;
           playing_area_id: string | null;
-          day_type: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS";
+          day_type: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS" | "SPECIFIC_DAYS";
+          days_of_week: number[] | null;
+          rate_tier: "PEAK" | "OFF_PEAK" | null;
+          audience: "GENERAL" | "MEMBER" | "COACHING";
           covers_full_day: boolean;
           start_time: string | null;
           end_time: string | null;
@@ -1854,7 +1927,10 @@ export interface Database {
           facility_id: string;
           facility_sport_id: string;
           playing_area_id?: string | null;
-          day_type?: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS";
+          day_type?: "ALL_DAYS" | "WEEKDAYS" | "WEEKENDS" | "SPECIFIC_DAYS";
+          days_of_week?: number[] | null;
+          rate_tier?: "PEAK" | "OFF_PEAK" | null;
+          audience?: "GENERAL" | "MEMBER" | "COACHING";
           covers_full_day?: boolean;
           start_time?: string | null;
           end_time?: string | null;
@@ -2406,6 +2482,14 @@ export interface Database {
           p_description: string | null;
         };
         Returns: Database["public"]["Tables"]["facilities"]["Row"];
+      };
+      sync_facility_sports_multi: {
+        Args: {
+          p_facility_id: string;
+          p_sport_ids: string[];
+          p_custom_sport_names?: string[];
+        };
+        Returns: Database["public"]["Tables"]["facility_sports"]["Row"][];
       };
       sync_facility_sports: {
         Args: {

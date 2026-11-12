@@ -14,7 +14,7 @@ export function CapacityDonut({
 }) {
   const total = Math.max(capacity, 1);
   const segments = [
-    { value: members, color: "#00D084", label: "Members" },
+    { value: members, color: "#4817C2", label: "Members" },
     { value: guestsBooked, color: "#5B6CFF", label: "Guests Booked" },
     { value: availableToRelease, color: "#94a3b8", label: "Available to Release" },
   ];

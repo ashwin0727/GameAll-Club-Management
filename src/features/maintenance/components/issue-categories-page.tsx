@@ -97,7 +97,7 @@ export function IssueCategoriesPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total Categories" value={String(all.length)} accent="#5B6CFF" />
-        <StatCard label="Active" value={String(all.filter((c) => c.isActive).length)} accent="#00D084" />
+        <StatCard label="Active" value={String(all.filter((c) => c.isActive).length)} accent="#4817C2" />
         <StatCard label="Inactive" value={String(all.filter((c) => !c.isActive).length)} accent="#AAB5C7" />
         <StatCard label="Total Issues This Month" value={String(totalIssues)} accent="#8B5CF6" />
       </div>

@@ -9,6 +9,8 @@ import 'tournament_app_config.dart';
 import 'tournament_app_launcher.dart';
 import 'tournament_app_preview.dart';
 
+const kGameAllPlayStoreUrl = 'https://play.google.com/store/apps/details?id=com.gameall.gameall&hl=en_IN';
+
 /// Handoff / bridge screen for the SEPARATE Tournament Management application.
 /// GameAll Facility Management builds no tournament features itself — this
 /// screen explains the dedicated app and opens or links to it.
@@ -105,12 +107,7 @@ class _TournamentManagementScreenState extends State<TournamentManagementScreen>
             if (hasOpen)
               PrimaryButton(label: 'Open Tournament App', onPressed: _open, icon: Icons.open_in_new)
             else if (hasDownload)
-              PrimaryButton(label: 'Download App', onPressed: _download, icon: Icons.open_in_new)
-            else
-              Text(
-                "The Tournament App links aren't configured yet.",
-                style: AppTypography.caption(context).copyWith(color: t.textSecondary),
-              ),
+              PrimaryButton(label: 'Download App', onPressed: _download, icon: Icons.open_in_new),
             if (hasOpen && hasDownload) ...[
               const SizedBox(height: AppSpacing.sm),
               SecondaryButton(label: 'Download App', onPressed: _download),
@@ -122,6 +119,28 @@ class _TournamentManagementScreenState extends State<TournamentManagementScreen>
                     style: AppTypography.caption(context).copyWith(color: t.textSecondary)),
               ),
             ],
+
+            const SizedBox(height: AppSpacing.lg),
+            // Already have the app: right under the intro so it is visible without scrolling. Text left, store button right.
+            AppCard(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Already have the app?', style: AppTypography.rowTitle(context)),
+                        const SizedBox(height: 4),
+                        Text('Jump straight into your organizer dashboard.',
+                            style: AppTypography.caption(context).copyWith(color: t.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  _PlayStoreBadge(onTap: () => _launcher.open(kGameAllPlayStoreUrl)),
+                ],
+              ),
+            ),
 
             const SizedBox(height: AppSpacing.xxl),
             Text('Everything You Need for Tournament Success',
@@ -140,25 +159,6 @@ class _TournamentManagementScreenState extends State<TournamentManagementScreen>
             const SizedBox(height: AppSpacing.md),
             ..._whySeparate.map((f) => _InfoCard(icon: f.$1, title: f.$2, body: f.$3)),
 
-            const SizedBox(height: AppSpacing.xl),
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Already have the app?', style: AppTypography.rowTitle(context)),
-                  const SizedBox(height: 4),
-                  Text('Jump straight into your organizer dashboard.',
-                      style: AppTypography.caption(context).copyWith(color: t.textSecondary)),
-                  if (hasOpen) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    PrimaryButton(label: 'Open Tournament App', onPressed: _open, icon: Icons.open_in_new),
-                  ] else if (hasDownload) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    PrimaryButton(label: 'Download App', onPressed: _download, icon: Icons.open_in_new),
-                  ],
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -228,4 +228,70 @@ class _InfoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The dark "Get it on Google Play" button.
+class _PlayStoreBadge extends StatelessWidget {
+  const _PlayStoreBadge({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Get GameAll on Google Play',
+      child: Material(
+        color: const Color(0xFF171717),
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 22, height: 22, child: CustomPaint(painter: _PlayLogoPainter())),
+                const SizedBox(width: 8),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('GET IT ON', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w600, letterSpacing: 0.4)),
+                    Text('Google Play', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700, height: 1.1)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Google Play triangle in its four brand colours.
+class _PlayLogoPainter extends CustomPainter {
+  const _PlayLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final k = size.width / 24;
+    void poly(List<Offset> pts, Color c) {
+      final p = Path()..moveTo(pts.first.dx * k, pts.first.dy * k);
+      for (final o in pts.skip(1)) {
+        p.lineTo(o.dx * k, o.dy * k);
+      }
+      canvas.drawPath(p..close(), Paint()..color = c);
+    }
+
+    poly(const [Offset(3.6, 1.8), Offset(3.1, 3.2), Offset(3.1, 20.8), Offset(3.6, 22.2), Offset(13.5, 12)], const Color(0xFF00D7FE));
+    poly(const [Offset(17, 8.4), Offset(13.5, 12), Offset(17, 15.6), Offset(21, 13.3), Offset(21, 10.7)], const Color(0xFF00F076));
+    poly(const [Offset(3.6, 22.2), Offset(13.5, 12), Offset(17, 15.6), Offset(5.3, 22.3)], const Color(0xFFFF3A44));
+    poly(const [Offset(3.6, 1.8), Offset(5.3, 1.7), Offset(17, 8.4), Offset(13.5, 12)], const Color(0xFFFFD500));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

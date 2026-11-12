@@ -16,7 +16,7 @@ export interface SelectOption {
  * by the browser — square corners, a blue highlight — and can't be styled, so
  * this renders the same control ourselves: the list shares the field's 10px
  * radius; unselected rows are white, the chosen row carries the page colour
- * (#F7FDF9) and hover is the app's mint.
+ * (#FAF8FF) and hover is the app lilac.
  * Keyboard: arrows move, Enter/Space picks, Escape closes.
  */
 export function SelectField({
@@ -149,7 +149,7 @@ export function SelectField({
                 o.value === value
                   ? "bg-[var(--light-page-bg)] font-semibold text-foreground dark:bg-accent/60"
                   : "bg-white text-foreground/90 dark:bg-transparent",
-                i === active && o.value !== value && !o.disabled && "bg-[#E9F9F3] dark:bg-accent",
+                i === active && o.value !== value && !o.disabled && "bg-[#F1EBFF] dark:bg-accent",
               )}
             >
               {o.label}

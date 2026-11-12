@@ -41,5 +41,12 @@ export interface OperatingSchedule {
   updatedAt: string;
 }
 
+/** A date the venue is closed (a holiday, maintenance, an event). [date] is "yyyy-MM-dd". */
+export interface FacilityClosure {
+  id?: string;
+  date: string;
+  name: string;
+}
+
 /** What saveFacilitySchedule/savePlayingAreaSchedule take — no id/timestamps, those are server-assigned. */
 export type OperatingScheduleInput = Pick<OperatingSchedule, "days">;

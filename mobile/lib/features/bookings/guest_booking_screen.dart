@@ -51,6 +51,8 @@ int? _resolvePriceMinor(List<PricingRule> rules, String facilitySportId, String?
     return dow == 6 || dow == 7;
   }
 
+  bool dayOk(PricingRule r) => r.dayType == 'SPECIFIC_DAYS' ? r.daysOfWeek.contains(date.weekday % 7) : dayMatch(r.dayType);
+
   bool timeMatch(PricingRule r) {
     if (r.coversFullDay) return true;
     final s = r.startTime, e = r.endTime;
@@ -59,11 +61,11 @@ int? _resolvePriceMinor(List<PricingRule> rules, String facilitySportId, String?
   }
 
   final matches = rules
-      .where((r) => r.facilitySportId == facilitySportId && dayMatch(r.dayType) && timeMatch(r))
+      .where((r) => r.facilitySportId == facilitySportId && r.audience == 'GENERAL' && dayOk(r) && timeMatch(r))
       .where((r) => r.playingAreaId == null || r.playingAreaId == courtId)
       .toList();
   if (matches.isEmpty) return null;
-  int spec(PricingRule r) => (r.coversFullDay ? 0 : 2) + (r.dayType == 'ALL_DAYS' ? 0 : 1);
+  int spec(PricingRule r) => (r.coversFullDay ? 0 : 2) + (r.dayType == 'ALL_DAYS' ? 0 : r.dayType == 'SPECIFIC_DAYS' ? 2 : 1);
   matches.sort((a, b) {
     final ac = a.playingAreaId != null ? 1 : 0;
     final bc = b.playingAreaId != null ? 1 : 0;

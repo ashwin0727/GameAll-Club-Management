@@ -41,7 +41,7 @@ export function WizardStepper({
                 className={cn(
                   "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors",
                   isCurrent
-                    ? "bg-[#0B9B63] text-white"
+                    ? "bg-[#4817C2] text-white"
                     : isDone
                       ? "bg-success/20 text-success"
                       : "bg-muted text-muted-foreground",

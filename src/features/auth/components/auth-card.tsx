@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
-import { BrandMark } from "@/features/auth/components/brand-mark";
+import { BrandWordmark } from "@/features/auth/components/brand-mark";
 
 /**
  * The one container every auth screen uses.
@@ -30,10 +30,10 @@ export function AuthCard({
         className="mb-8 inline-flex rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mb-10"
         aria-label={`${APP_NAME} home`}
       >
-        <BrandMark />
+        <BrandWordmark />
       </Link>
 
-      <div className="auth-enter sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:p-8 sm:shadow-xl sm:shadow-black/20">
+      <div className="auth-enter sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:p-8 sm:shadow-xl sm:shadow-[#4817C2]/10">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{title}</h1>
           {subtitle && <p className="text-sm leading-relaxed text-muted-foreground">{subtitle}</p>}

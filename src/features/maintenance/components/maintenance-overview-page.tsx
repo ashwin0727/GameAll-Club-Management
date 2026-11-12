@@ -86,9 +86,9 @@ export function MaintenanceOverviewPage() {
         <StatCard icon={AlertOctagon} label="Open Issues" value={String(overview.openIssues)} accent="#FF4D67" />
         <StatCard icon={Loader2} label="In Progress" value={String(overview.inProgress)} accent="#5B6CFF" />
         <StatCard icon={CalendarClock} label="Scheduled" value={String(overview.scheduled)} accent="#FFB020" />
-        <StatCard icon={CheckCircle2} label="Resolved This Month" value={String(overview.resolvedThisMonth)} accent="#00D084" />
+        <StatCard icon={CheckCircle2} label="Resolved This Month" value={String(overview.resolvedThisMonth)} accent="#4817C2" />
         <StatCard icon={Ban} label="Courts Blocked" value={String(overview.courtsBlocked)} accent="#8B5CF6" />
-        <StatCard icon={IndianRupee} label="Repair Cost" value={formatMoney(overview.repairCostThisMonthMinor)} accent="#00D084" />
+        <StatCard icon={IndianRupee} label="Repair Cost" value={formatMoney(overview.repairCostThisMonthMinor)} accent="#4817C2" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

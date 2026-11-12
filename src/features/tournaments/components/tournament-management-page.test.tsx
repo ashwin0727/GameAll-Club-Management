@@ -29,16 +29,18 @@ describe("TournamentManagementPage", () => {
     }
   });
 
-  it("explains when the app links are not configured instead of pointing anywhere fake", () => {
+  it("links to the GameAll app on Google Play, with no Open button when the app links are not configured", () => {
     render(<TournamentManagementPage />);
-    // No env vars in the test environment → no CTA, a clear message instead.
     expect(screen.queryByRole("button", { name: /Open Tournament App/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/links aren't configured yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Google Play/i })).toHaveAttribute(
+      "href",
+      "https://play.google.com/store/apps/details?id=com.gameall.gameall&hl=en_IN",
+    );
   });
 
-  it("has a back link to the dashboard", () => {
+  it("has no back-to-dashboard link", () => {
     render(<TournamentManagementPage />);
-    expect(screen.getByRole("link", { name: /Back to Dashboard/i })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: /Back to Dashboard/i })).not.toBeInTheDocument();
   });
 });
 

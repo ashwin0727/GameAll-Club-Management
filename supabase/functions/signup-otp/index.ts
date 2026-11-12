@@ -12,7 +12,7 @@
 // password is passed straight to Supabase Auth (which hashes it) and is never stored, logged or echoed by this function.
 //
 // Required secrets: RESEND_API_KEY, RESEND_FROM (e.g. "GameAll <no-reply@yourdomain.com>"), SIGNUP_OTP_SECRET (long
-// random string), and SITE_URL (public site origin — hosts /logo-icon.png for the email) or SIGNUP_EMAIL_LOGO_URL.
+// random string), and SITE_URL (public site origin — hosts /brand/gameall-logo-light-mode.png for the email) or SIGNUP_EMAIL_LOGO_URL.
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are always present. Supabase "Confirm email" must stay ON.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   const resendFrom = Deno.env.get("RESEND_FROM");
   const otpSecret = Deno.env.get("SIGNUP_OTP_SECRET");
   const siteUrl = (Deno.env.get("SITE_URL") ?? "").replace(/\/+$/, "");
-  const logoUrl = Deno.env.get("SIGNUP_EMAIL_LOGO_URL") ?? (siteUrl ? `${siteUrl}/logo-icon.png` : "");
+  const logoUrl = Deno.env.get("SIGNUP_EMAIL_LOGO_URL") ?? (siteUrl ? `${siteUrl}/brand/gameall-logo-light-mode.png` : "");
   if (!supabaseUrl || !serviceKey || !resendKey || !resendFrom || !otpSecret) {
     return fail("not_configured", "Signup email is not configured yet.", 500);
   }

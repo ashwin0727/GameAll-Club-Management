@@ -69,7 +69,7 @@ export function BookingToolbar({
         <button
           type="button"
           onClick={onToday}
-          className="h-[42px] rounded-[10px] border border-[#0B7A55] bg-card px-4 text-sm font-medium text-[#0B7A55] transition-colors hover:bg-[#0B7A55]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10"
+          className="h-[42px] rounded-[10px] border border-[#4817C2] bg-card px-4 text-sm font-medium text-[#4817C2] transition-colors hover:bg-[#4817C2]/10 dark:border-primary dark:text-primary dark:hover:bg-primary/10"
         >
           Today
         </button>
@@ -95,7 +95,7 @@ export function BookingToolbar({
             className={cn(
               "h-9 min-w-[4.5rem] rounded-[6px] px-4 text-sm font-medium transition-colors",
               view === v.value
-                ? "bg-[#0B7A55] text-white shadow-sm dark:bg-primary dark:text-primary-foreground"
+                ? "bg-[#4817C2] text-white shadow-sm dark:bg-primary dark:text-primary-foreground"
                 : "text-foreground hover:bg-accent",
             )}
           >
@@ -109,7 +109,7 @@ export function BookingToolbar({
           <button
             type="button"
             onClick={onGuestBooking}
-            className="flex h-[42px] items-center justify-center gap-2 rounded-[10px] bg-[#0B7A55] px-5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
+            className="flex h-[42px] items-center justify-center gap-2 rounded-[10px] bg-[#4817C2] px-5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 dark:bg-primary dark:text-primary-foreground"
           >
             <Plus className="h-4 w-4" aria-hidden />
             Guest Booking

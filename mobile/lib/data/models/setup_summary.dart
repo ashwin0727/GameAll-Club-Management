@@ -42,7 +42,7 @@ class SetupSummary {
       schedule == null || !schedule!.days.any((d) => !d.isClosed);
 
   List<String> get sportsMissingPricing {
-    final rules = pricingPlan?.rules ?? const <PricingRule>[];
+    final rules = (pricingPlan?.rules ?? const <PricingRule>[]).where((r) => r.audience == 'GENERAL').toList();
     final missing = <String>[];
     for (final fs in facilitySports) {
       final hasSportLevelRule = rules.any(
