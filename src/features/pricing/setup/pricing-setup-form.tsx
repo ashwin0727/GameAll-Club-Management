@@ -465,7 +465,7 @@ export function PricingSetupForm({ onDone }: { onDone?: () => void } = {}) {
           {!editing && (
             <button
               type="button"
-              onClick={() => router.push("/onboarding/operating-hours")}
+              onClick={() => router.replace("/onboarding/operating-hours")}
               disabled={saving !== null}
               className="flex h-12 items-center gap-2 rounded-lg border border-[#E5E1EF] bg-white px-6 text-sm font-semibold hover:bg-[#FBFAFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2] disabled:opacity-60"
             >

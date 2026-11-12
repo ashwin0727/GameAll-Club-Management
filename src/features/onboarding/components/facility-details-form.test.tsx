@@ -7,7 +7,7 @@ import { installFakeAuthService, installFakeFacilityService, renderWithProviders
 import { routerMock } from "@/test/router-mock";
 
 // The photo uploads talk to Supabase storage; the form only needs to know they were asked for.
-const photoMock = vi.hoisted(() => ({ addAll: vi.fn(async () => undefined), upload: vi.fn(async () => "https://img.test/logo.png") }));
+const photoMock = vi.hoisted(() => ({ addAll: vi.fn(async () => undefined), upload: vi.fn(async () => "https://img.test/logo.png"), list: vi.fn(async () => [] as { url: string }[]) }));
 vi.mock("@/features/facility-profile/photos", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/features/facility-profile/photos")>();
   return {
@@ -15,6 +15,7 @@ vi.mock("@/features/facility-profile/photos", async (importOriginal) => {
     FacilityPhotos: class {
       addAll = photoMock.addAll;
       upload = photoMock.upload;
+      list = photoMock.list;
     },
   };
 });
@@ -377,7 +378,7 @@ describe("FacilityDetailsForm", () => {
     expect(useOnboardingStore.getState().draft.facilityName).toBe("Champz Turf");
 
     await user.click(screen.getByRole("button", { name: /Back/ }));
-    expect(routerMock.push).toHaveBeenCalledWith("/onboarding/welcome");
+    expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/welcome");
   });
 
   it("restores a previously entered draft after remounting", async () => {
@@ -391,5 +392,59 @@ describe("FacilityDetailsForm", () => {
 
     renderWithProviders(<FacilityDetailsForm />);
     expect(await screen.findByDisplayValue(VALID.facilityName)).toBeInTheDocument();
+  });
+});
+
+describe("FacilityDetailsForm - coming back to a facility that was already saved", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useOnboardingStore.setState({ draft: {} });
+    routerMock.push.mockClear();
+    photoMock.list.mockResolvedValue([{ url: "https://img.test/saved.jpg" }]);
+  });
+
+  async function savedFacility(step: "FACILITY_DETAILS" | "PAYMENTS") {
+    installFakeAuthService({ getCurrentUser: vi.fn(async () => FAKE_USER) });
+    const service = installFakeFacilityService();
+    service.setCurrentUserId(FAKE_USER.id);
+    const created = await service.createFacility({
+      ownerId: FAKE_USER.id,
+      name: "Saved Arena",
+      type: "MULTI_SPORT",
+      businessEmail: FAKE_USER.email,
+      businessPhone: "9876543210",
+      address: { line1: "12 Main Road", area: "Adyar", city: "Chennai", state: "Tamil Nadu", country: "India", pinCode: "600020" },
+    });
+    await service.updateFacility(created.id, { locationUrl: MAPS_LINK, contactPerson: { name: "Ravi Kumar", role: "Facility Owner" } });
+    await service.updateOnboardingStep(created.id, step);
+    return { service, created };
+  }
+
+  it("fills the form from the saved facility and counts its saved photos", async () => {
+    await savedFacility("PAYMENTS");
+    renderWithProviders(<FacilityDetailsForm />);
+    await waitFor(() => expect(screen.getByLabelText(label("Facility Name"))).toHaveValue("Saved Arena"));
+    expect(screen.getByLabelText(label("City"))).toHaveValue("Chennai");
+    expect(await screen.findByAltText("Saved facility photo 1")).toBeInTheDocument();
+  });
+
+  it("saving updates that facility (no second one) and keeps a later step where it was", async () => {
+    const user = userEvent.setup({ delay: null });
+    const { service, created } = await savedFacility("PAYMENTS");
+    renderWithProviders(<FacilityDetailsForm />);
+    await waitFor(() => expect(screen.getByLabelText(label("Facility Name"))).toHaveValue("Saved Arena"));
+    await screen.findByAltText("Saved facility photo 1");
+
+    const name = screen.getByLabelText(label("Facility Name"));
+    await user.clear(name);
+    await user.paste("Renamed Arena");
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/sports"));
+    const all = await service.getFacilities();
+    expect(all).toHaveLength(1);
+    expect(all[0]?.id).toBe(created.id);
+    expect(all[0]?.name).toBe("Renamed Arena");
+    expect(all[0]?.onboardingStep).toBe("PAYMENTS");
   });
 });

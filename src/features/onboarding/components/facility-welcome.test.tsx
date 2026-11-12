@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FacilityWelcome } from "@/features/onboarding/components/facility-welcome";
 import { renderWithProviders } from "@/test/harness";
@@ -21,6 +21,6 @@ describe("FacilityWelcome", () => {
   it("Get Started continues to Facility Details", async () => {
     renderWithProviders(<FacilityWelcome />);
     await userEvent.setup().click(screen.getByRole("button", { name: /Get Started/ }));
-    expect(routerMock.push).toHaveBeenCalledWith("/onboarding/facility");
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/facility"));
   });
 });

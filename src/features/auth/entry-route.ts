@@ -6,7 +6,7 @@ import type { EntryRoute } from "@/features/auth/types";
  *
  *   signed in as the platform admin → admin back office
  *   signed in, mobile not yet verified → mobile verification
- *   signed in, onboarding incomplete → facility onboarding
+ *   signed in, onboarding incomplete → setup welcome (Get Started resumes where they stopped)
  *   signed in, onboarding complete   → dashboard
  *   signed out, returning            → login
  *   signed out, first run            → welcome
@@ -26,6 +26,6 @@ export function resolveEntryRoute({
 }): EntryRoute {
   if (signedIn && isPlatformAdmin) return "/admin";
   if (signedIn && mobileVerificationPending) return "/verify-mobile";
-  if (signedIn) return onboardingCompleted ? "/dashboard" : "/onboarding/facility";
+  if (signedIn) return onboardingCompleted ? "/dashboard" : "/onboarding/welcome";
   return deviceOnboarded ? "/login" : "/welcome";
 }

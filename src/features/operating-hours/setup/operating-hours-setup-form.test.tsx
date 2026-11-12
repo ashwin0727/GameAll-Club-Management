@@ -359,7 +359,7 @@ describe("OperatingHoursSetupForm", () => {
     renderWithProviders(<OperatingHoursSetupForm />);
 
     await user.click(await screen.findByRole("button", { name: /Back/ }));
-    expect(routerMock.push).toHaveBeenCalledWith("/onboarding/sports");
+    expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/sports");
   });
 
   it("sends a venue with no courts back to Sports & Courts", async () => {

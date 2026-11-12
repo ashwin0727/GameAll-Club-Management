@@ -117,6 +117,6 @@ describe("PricingSetupForm", () => {
     await setup();
     renderWithProviders(<PricingSetupForm />);
     await user.click(await screen.findByRole("button", { name: /Back/ }));
-    expect(routerMock.push).toHaveBeenCalledWith("/onboarding/operating-hours");
+    expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/operating-hours");
   });
 });

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/facility.dart';
@@ -48,11 +51,44 @@ class SessionRepository {
   /// falls back to the individual requests, so an older database keeps working.
   Future<SessionBundle?> fetch() async {
     try {
-      final data = await _client.rpc('get_session_bundle');
+      final data = await _client.rpc('get_session_bundle').timeout(const Duration(seconds: 8));
       if (data is! Map) return null;
-      return SessionBundle.fromJson(data.cast<String, dynamic>());
+      final json = data.cast<String, dynamic>();
+      _remember(json);
+      return SessionBundle.fromJson(json);
     } catch (_) {
       return null;
     }
+  }
+
+  static const _cacheKey = 'session_bundle_v1';
+
+  /// Keeps the last bundle on the phone, so the next app start can open straight onto the right screen while the fresh one loads.
+  void _remember(Map<String, dynamic> json) {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return;
+    SharedPreferences.getInstance().then((p) => p.setString(_cacheKey, jsonEncode({'uid': uid, 'data': json}))).catchError((Object _) => false);
+  }
+
+  /// The bundle saved at the last start, for this person only; null when there is none (first start, other person, signed out).
+  Future<SessionBundle?> cached() async {
+    try {
+      final uid = _client.auth.currentUser?.id;
+      if (uid == null) return null;
+      final raw = (await SharedPreferences.getInstance()).getString(_cacheKey);
+      if (raw == null) return null;
+      final saved = jsonDecode(raw) as Map<String, dynamic>;
+      if (saved['uid'] != uid) return null;
+      return SessionBundle.fromJson((saved['data'] as Map).cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Forgets the saved bundle (sign-out), so the next person on this phone never sees it.
+  Future<void> forget() async {
+    try {
+      await (await SharedPreferences.getInstance()).remove(_cacheKey);
+    } catch (_) {}
   }
 }

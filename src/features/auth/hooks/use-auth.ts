@@ -98,7 +98,7 @@ export function useLogin() {
             ? "/verify-mobile"
             : user.onboardingCompleted
               ? "/dashboard"
-              : "/onboarding/facility",
+              : "/onboarding/welcome",
       );
       // Server components hold the old (signed-out) session until refreshed.
       router.refresh();

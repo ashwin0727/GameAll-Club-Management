@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check } from "lucide-react";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
+import { onboardingResumePath } from "@/features/onboarding/resume-path";
+import { getFacilityService } from "@/services/facility";
 
 const CHECKLIST = [
   "Add your facility details",
@@ -15,6 +17,16 @@ const CHECKLIST = [
 
 export function FacilityWelcome() {
   const router = useRouter();
+
+  // Someone who already started setup continues at the step they stopped on; a new owner starts at the first step.
+  async function getStarted() {
+    try {
+      const facility = await getFacilityService().getFacility();
+      router.push(onboardingResumePath(facility?.onboardingStep));
+    } catch {
+      router.push("/onboarding/facility");
+    }
+  }
 
   return (
     <OnboardingShell firstStepLabel="Basic Details" fit>
@@ -49,7 +61,7 @@ export function FacilityWelcome() {
         <div className="mt-8 flex sm:justify-end lg:mt-6">
           <button
             type="button"
-            onClick={() => router.push("/onboarding/facility")}
+            onClick={getStarted}
             className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#4817C2] px-8 text-base font-semibold text-white transition-colors hover:bg-[#39109F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2] focus-visible:ring-offset-2 sm:w-auto sm:min-w-[220px]"
           >
             Get Started

@@ -338,6 +338,6 @@ describe("SportsCourtsForm", () => {
     renderWithProviders(<SportsCourtsForm />);
 
     await user.click(await screen.findByRole("button", { name: /Back/ }));
-    expect(routerMock.push).toHaveBeenCalledWith("/onboarding/facility");
+    expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility");
   });
 });

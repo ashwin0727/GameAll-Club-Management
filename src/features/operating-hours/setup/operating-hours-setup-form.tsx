@@ -504,7 +504,7 @@ export function OperatingHoursSetupForm() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push("/onboarding/sports")}
+            onClick={() => router.replace("/onboarding/sports")}
             disabled={saving !== null}
             className="flex h-12 items-center gap-2 rounded-lg border border-[#E5E1EF] bg-white px-6 text-sm font-semibold hover:bg-[#FBFAFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2] disabled:opacity-60"
           >

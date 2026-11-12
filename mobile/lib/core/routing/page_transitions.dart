@@ -107,13 +107,29 @@ CustomTransitionPage<void> fadeThrough(GoRouterState state, Widget child) {
   );
 }
 
+/// Passed as the route's extra when a setup step opens the previous step in place of itself (Back): the page then glides in from the left,
+/// the way a normal Back does, instead of arriving from the right like a forward step.
+const kBackwardsNavigation = 'navigate-backwards';
+
+/// The previous page arriving from the left while the one being left slides out to the right.
+Widget appSlideBackTransition(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+  final incoming = CurvedAnimation(parent: animation, curve: _enterCurve, reverseCurve: _exitCurve);
+  return SlideTransition(
+    position: Tween<Offset>(begin: const Offset(-0.12, 0), end: Offset.zero).animate(incoming),
+    child: FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: const Interval(0, 0.7, curve: Curves.easeOut)),
+      child: child,
+    ),
+  );
+}
+
 CustomTransitionPage<void> slideOver(GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
     transitionDuration: _enter,
     reverseTransitionDuration: _exit,
     child: child,
-    transitionsBuilder: appSlideTransition,
+    transitionsBuilder: state.extra == kBackwardsNavigation ? appSlideBackTransition : appSlideTransition,
   );
 }
 

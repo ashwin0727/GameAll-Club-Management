@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/routing/app_routes.dart';
+import '../../core/routing/page_transitions.dart';
+
 /// The light-only look of the redesigned facility-setup screens (palette and weights from the GameAll setup spec):
 /// primary #4817C2, hover #39109F, active #F1EBFF, border #E5E1EF, text #171717 / #666666 on white; Inter 400-700.
 class SetupColors {
@@ -26,24 +29,67 @@ final Map<int, TextStyle> _setupTextCache = <int, TextStyle>{};
 
 /// Inter (bundled with the app) at the requested size, weight and colour. A screen asks for the same handful of styles hundreds of
 /// times per build, so each distinct style is created once and reused.
-TextStyle setupText({double size = 14, FontWeight weight = FontWeight.w400, Color color = SetupColors.text, double? height}) {
+TextStyle setupText({
+  double size = 14,
+  FontWeight weight = FontWeight.w400,
+  Color color = SetupColors.text,
+  double? height,
+}) {
   final key = Object.hash(size, weight.value, color.toARGB32(), height);
-  return _setupTextCache[key] ??= TextStyle(fontFamily: 'Inter', fontSize: size, fontWeight: weight, color: color, height: height);
+  return _setupTextCache[key] ??= TextStyle(
+    fontFamily: 'Inter',
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: height,
+  );
 }
 
 /// Back: returns to the previous step exactly as it was left (nothing is rebuilt or reloaded). Only when there is nothing to go back
 /// to (the app was opened straight on this step) does it open [fallback].
+///
+/// [fallback] is the step just before this one. When the page underneath is not a setup step (Get Started, because the person was
+/// sent straight to step 5 when they resumed), Back opens [fallback] in place of this page instead, so Back walks 5 → 4 → 3 → … and
+/// only the first step returns to Get Started.
 void goBackOr(BuildContext context, String fallback) {
-  if (context.canPop()) {
+  // A second quick tap must not pop a step too many while the page is already leaving.
+  if (ModalRoute.of(context)?.animation?.status == AnimationStatus.reverse) {
+    return; // already on its way out
+  }
+  // Put the keyboard away first, so it is not still sliding down while the page changes.
+  FocusManager.instance.primaryFocus?.unfocus();
+
+  final isWelcome = fallback == AppRoutes.onboardingWelcome;
+  if (!context.canPop()) {
+    context.go(fallback);
+    return;
+  }
+  if (isWelcome || _pageBelowIsSetupStep(context)) {
     context.pop();
   } else {
-    context.go(fallback);
+    context.pushReplacement(fallback, extra: kBackwardsNavigation);
   }
+}
+
+bool _pageBelowIsSetupStep(BuildContext context) {
+  final matches = GoRouter.of(context)
+      .routerDelegate
+      .currentConfiguration
+      .matches;
+  if (matches.length < 2) return false;
+  final below = matches[matches.length - 2].matchedLocation;
+  return below.startsWith('/onboarding/') &&
+      below != AppRoutes.onboardingWelcome;
 }
 
 /// The shared page: white ground, GameAll logo + "Need Help?" on top, scrolling body, pinned footer.
 class SetupPage extends StatelessWidget {
-  const SetupPage({super.key, required this.children, required this.footer, this.scrollController});
+  const SetupPage({
+    super.key,
+    required this.children,
+    required this.footer,
+    this.scrollController,
+  });
 
   final List<Widget> children;
   final Widget footer;
@@ -52,13 +98,26 @@ class SetupPage extends StatelessWidget {
   static const double maxWidth = 640;
 
   // Built once: ColorScheme.fromSeed does real colour maths, which is wasted work on every keystroke.
-  static final ColorScheme _scheme = ColorScheme.fromSeed(seedColor: SetupColors.primary, brightness: Brightness.light, primary: SetupColors.primary, surface: SetupColors.background);
-  static const TextSelectionThemeData _selection = TextSelectionThemeData(cursorColor: SetupColors.primary, selectionHandleColor: SetupColors.primary);
+  static final ColorScheme _scheme = ColorScheme.fromSeed(
+    seedColor: SetupColors.primary,
+    brightness: Brightness.light,
+    primary: SetupColors.primary,
+    surface: SetupColors.background,
+  );
+  static const TextSelectionThemeData _selection = TextSelectionThemeData(
+    cursorColor: SetupColors.primary,
+    selectionHandleColor: SetupColors.primary,
+  );
 
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: Theme.of(context).copyWith(brightness: Brightness.light, scaffoldBackgroundColor: SetupColors.background, colorScheme: _scheme, textSelectionTheme: _selection),
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: SetupColors.background,
+        colorScheme: _scheme,
+        textSelectionTheme: _selection,
+      ),
       child: Scaffold(
         backgroundColor: SetupColors.background,
         body: SafeArea(
@@ -73,21 +132,31 @@ class SetupPage extends StatelessWidget {
                     constraints: const BoxConstraints(maxWidth: maxWidth),
                     child: SingleChildScrollView(
                       controller: scrollController,
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: children,
+                      ),
                     ),
                   ),
                 ),
               ),
               // A slim bar: one row of buttons, no extra lines, so the content keeps the screen.
               DecoratedBox(
-                decoration: const BoxDecoration(color: SetupColors.background, border: Border(top: BorderSide(color: SetupColors.border))),
+                decoration: const BoxDecoration(
+                  color: SetupColors.background,
+                  border: Border(top: BorderSide(color: SetupColors.border)),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Center(
                     heightFactor: 1,
-                    child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxWidth), child: footer),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: maxWidth),
+                      child: footer,
+                    ),
                   ),
                 ),
               ),
@@ -101,7 +170,12 @@ class SetupPage extends StatelessWidget {
 
 /// The footer every setup step uses: Back (left, narrow) and the main action (right, wide), one slim row.
 class SetupNavFooter extends StatelessWidget {
-  const SetupNavFooter({super.key, required this.onBack, required this.next, this.backLabel = 'Back'});
+  const SetupNavFooter({
+    super.key,
+    required this.onBack,
+    required this.next,
+    this.backLabel = 'Back',
+  });
 
   final VoidCallback? onBack;
   final Widget next;
@@ -111,7 +185,13 @@ class SetupNavFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: SetupButton(label: backLabel, icon: Icons.arrow_back, onPressed: onBack)),
+        Expanded(
+          child: SetupButton(
+            label: backLabel,
+            icon: Icons.arrow_back,
+            onPressed: onBack,
+          ),
+        ),
         const SizedBox(width: 12),
         Expanded(flex: 2, child: next),
       ],
@@ -129,14 +209,26 @@ class SetupHeader extends StatelessWidget {
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(color: SetupColors.background, border: Border(bottom: BorderSide(color: SetupColors.border))),
+      decoration: const BoxDecoration(
+        color: SetupColors.background,
+        border: Border(bottom: BorderSide(color: SetupColors.border)),
+      ),
       child: Row(
         children: [
           // the logo gives way first on a very narrow phone, so the help link is never pushed off the edge
           Flexible(
             child: Semantics(
               label: 'GameAll',
-              child: ExcludeSemantics(child: Image.asset('assets/images/gameall_logo_light.png', height: 34, cacheHeight: 150, fit: BoxFit.contain, alignment: Alignment.centerLeft, filterQuality: FilterQuality.high)),
+              child: ExcludeSemantics(
+                child: Image.asset(
+                  'assets/images/gameall_logo_light.png',
+                  height: 34,
+                  cacheHeight: 150,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                  filterQuality: FilterQuality.high,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -144,14 +236,27 @@ class SetupHeader extends StatelessWidget {
           InkWell(
             key: const ValueKey('setup-help'),
             borderRadius: BorderRadius.circular(8),
-            onTap: () => launchUrl(Uri(scheme: 'mailto', path: helpEmail, queryParameters: {'subject': 'Facility setup help'})),
+            onTap: () => launchUrl(
+              Uri(
+                scheme: 'mailto',
+                path: helpEmail,
+                queryParameters: {'subject': 'Facility setup help'},
+              ),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.help_outline, size: 20, color: SetupColors.text),
+                  const Icon(
+                    Icons.help_outline,
+                    size: 20,
+                    color: SetupColors.text,
+                  ),
                   const SizedBox(width: 6),
-                  Text('Need Help?', style: setupText(size: 14, weight: FontWeight.w500)),
+                  Text(
+                    'Need Help?',
+                    style: setupText(size: 14, weight: FontWeight.w500),
+                  ),
                 ],
               ),
             ),
@@ -166,7 +271,13 @@ class SetupHeader extends StatelessWidget {
 class SetupStepper extends StatelessWidget {
   const SetupStepper({super.key, this.current = 1});
 
-  static const List<String> steps = ['Facility Information', 'Sports & Courts', 'Operating Hours', 'Pricing', 'Payout'];
+  static const List<String> steps = [
+    'Facility Information',
+    'Sports & Courts',
+    'Operating Hours',
+    'Pricing',
+    'Payout',
+  ];
   final int current;
 
   @override
@@ -176,7 +287,14 @@ class SetupStepper extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Step $current of ${steps.length} · ${steps[current - 1]}', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.primary)),
+          Text(
+            'Step $current of ${steps.length} · ${steps[current - 1]}',
+            style: setupText(
+              size: 12,
+              weight: FontWeight.w600,
+              color: SetupColors.primary,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -184,7 +302,12 @@ class SetupStepper extends StatelessWidget {
                 Expanded(
                   child: Container(
                     height: 5,
-                    decoration: BoxDecoration(color: i < current ? SetupColors.primary : SetupColors.activeBg, borderRadius: BorderRadius.circular(99)),
+                    decoration: BoxDecoration(
+                      color: i < current
+                          ? SetupColors.primary
+                          : SetupColors.activeBg,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
                   ),
                 ),
                 if (i < steps.length - 1) const SizedBox(width: 5),
@@ -198,7 +321,11 @@ class SetupStepper extends StatelessWidget {
 }
 
 class SetupCard extends StatelessWidget {
-  const SetupCard({super.key, required this.child, this.padding = const EdgeInsets.all(16)});
+  const SetupCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
 
   final Widget child;
   final EdgeInsets padding;
@@ -208,14 +335,23 @@ class SetupCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: padding,
-      decoration: BoxDecoration(color: SetupColors.background, border: Border.all(color: SetupColors.border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: SetupColors.background,
+        border: Border.all(color: SetupColors.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: child,
     );
   }
 }
 
 class SetupCardHeading extends StatelessWidget {
-  const SetupCardHeading({super.key, required this.title, this.description, this.icon});
+  const SetupCardHeading({
+    super.key,
+    required this.title,
+    this.description,
+    this.icon,
+  });
 
   final String title;
   final String? description;
@@ -228,13 +364,29 @@ class SetupCardHeading extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (icon != null) ...[Icon(icon, color: SetupColors.primary, size: 26), const SizedBox(width: 12)],
+          if (icon != null) ...[
+            Icon(icon, color: SetupColors.primary, size: 26),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: setupText(size: 17, weight: FontWeight.w600)),
-                if (description != null) ...[const SizedBox(height: 2), Text(description!, style: setupText(size: 13, color: SetupColors.secondary, height: 1.35))],
+                Text(
+                  title,
+                  style: setupText(size: 17, weight: FontWeight.w600),
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description!,
+                    style: setupText(
+                      size: 13,
+                      color: SetupColors.secondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -246,7 +398,12 @@ class SetupCardHeading extends StatelessWidget {
 
 /// A label (600) above its control, with the red star / "(Optional)" marker — the same shape on every field so rows line up.
 class SetupLabel extends StatelessWidget {
-  const SetupLabel(this.text, {super.key, this.required = false, this.optional = false});
+  const SetupLabel(
+    this.text, {
+    super.key,
+    this.required = false,
+    this.optional = false,
+  });
 
   final String text;
   final bool required;
@@ -261,8 +418,20 @@ class SetupLabel extends StatelessWidget {
           style: setupText(size: 14, weight: FontWeight.w600),
           children: [
             TextSpan(text: text),
-            if (required) TextSpan(text: ' *', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.error)),
-            if (optional) TextSpan(text: ' (Optional)', style: setupText(size: 12, color: SetupColors.secondary)),
+            if (required)
+              TextSpan(
+                text: ' *',
+                style: setupText(
+                  size: 14,
+                  weight: FontWeight.w600,
+                  color: SetupColors.error,
+                ),
+              ),
+            if (optional)
+              TextSpan(
+                text: ' (Optional)',
+                style: setupText(size: 12, color: SetupColors.secondary),
+              ),
           ],
         ),
       ),
@@ -270,12 +439,26 @@ class SetupLabel extends StatelessWidget {
   }
 }
 
-InputDecoration setupDecoration({String? hint, Widget? prefix, Widget? suffix, bool filled = false, String? counterText}) {
-  OutlineInputBorder border(Color c, {double w = 1}) => OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c, width: w));
+InputDecoration setupDecoration({
+  String? hint,
+  Widget? prefix,
+  Widget? suffix,
+  bool filled = false,
+  String? counterText,
+}) {
+  OutlineInputBorder border(Color c, {double w = 1}) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(10),
+    borderSide: BorderSide(color: c, width: w),
+  );
   return InputDecoration(
     hintText: hint,
     hintStyle: setupText(size: 15, color: SetupColors.placeholder),
-    errorStyle: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.error, height: 1.3),
+    errorStyle: setupText(
+      size: 12,
+      weight: FontWeight.w500,
+      color: SetupColors.error,
+      height: 1.3,
+    ),
     errorMaxLines: 3,
     filled: true,
     fillColor: filled ? SetupColors.mutedFill : SetupColors.background,
@@ -348,7 +531,9 @@ class SetupTextField extends StatelessWidget {
           focusNode: focusNode,
           readOnly: readOnly,
           keyboardType: keyboardType,
-          textInputAction: maxLines > 1 ? TextInputAction.newline : textInputAction,
+          textInputAction: maxLines > 1
+              ? TextInputAction.newline
+              : textInputAction,
           validator: validator,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           inputFormatters: inputFormatters,
@@ -357,10 +542,33 @@ class SetupTextField extends StatelessWidget {
           minLines: maxLines > 1 ? maxLines : 1,
           onChanged: onChanged,
           style: setupText(size: 15),
-          decoration: setupDecoration(hint: hint, prefix: prefix, filled: readOnly, counterText: ''),
+          decoration: setupDecoration(
+            hint: hint,
+            prefix: prefix,
+            filled: readOnly,
+            counterText: '',
+          ),
         ),
-        if (counter != null) Align(alignment: Alignment.centerRight, child: Padding(padding: const EdgeInsets.only(top: 4), child: counter)),
-        if (helper != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(helper!, style: setupText(size: 12, color: SetupColors.secondary, height: 1.35))),
+        if (counter != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: counter,
+            ),
+          ),
+        if (helper != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              helper!,
+              style: setupText(
+                size: 12,
+                color: SetupColors.secondary,
+                height: 1.35,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -400,7 +608,9 @@ class SetupDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = [for (final i in items) (value: i.value as T, label: _labelOf(i))];
+    final options = [
+      for (final i in items) (value: i.value as T, label: _labelOf(i)),
+    ];
     final selected = options.where((o) => o.value == value).firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,37 +632,78 @@ class SetupDropdown<T> extends StatelessWidget {
                   label: selected == null ? label : '$label, ${selected.label}',
                   child: Material(
                     color: SetupColors.background,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: hasError ? SetupColors.error : SetupColors.border)),
-                    child: InkWell(
-                      key: ValueKey('select-$label'),
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
-                      onTap: () async {
-                        final picked = await showSetupOptionSheet<T>(context, title: label, options: options, selected: value);
-                        if (picked == null) return;
-                        state.didChange(picked.value);
-                        onChanged(picked.value);
-                      },
-                      child: Container(
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                selected?.label ?? hint ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: setupText(size: 15, color: selected == null ? SetupColors.placeholder : SetupColors.text),
+                      side: BorderSide(
+                        color: hasError
+                            ? SetupColors.error
+                            : SetupColors.border,
+                      ),
+                    ),
+                    child: Builder(
+                      builder: (fieldContext) => InkWell(
+                        key: ValueKey('select-$label'),
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () async {
+                          // a few options drop down right under the field (like the website); a long list gets the full sheet with search
+                          final picked = options.length <= _menuUpTo
+                              ? await _showOptionMenu<T>(
+                                  fieldContext,
+                                  options: options,
+                                  selected: value,
+                                )
+                              : await showSetupOptionSheet<T>(
+                                  context,
+                                  title: label,
+                                  options: options,
+                                  selected: value,
+                                );
+                          if (picked == null) return;
+                          state.didChange(picked.value);
+                          onChanged(picked.value);
+                        },
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  selected?.label ?? hint ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: setupText(
+                                    size: 15,
+                                    color: selected == null
+                                        ? SetupColors.placeholder
+                                        : SetupColors.text,
+                                  ),
+                                ),
                               ),
-                            ),
-                            const Icon(Icons.keyboard_arrow_down, color: SetupColors.text),
-                          ],
+                              const Icon(
+                                Icons.keyboard_arrow_down,
+                                color: SetupColors.text,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                if (hasError) Padding(padding: const EdgeInsets.only(top: 6), child: Text(state.errorText ?? '', style: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.error, height: 1.3))),
+                if (hasError)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      state.errorText ?? '',
+                      style: setupText(
+                        size: 12,
+                        weight: FontWeight.w500,
+                        color: SetupColors.error,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
               ],
             );
           },
@@ -460,6 +711,80 @@ class SetupDropdown<T> extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Lists of this many options or fewer open as a menu under the field; longer ones open the bottom sheet.
+const int _menuUpTo = 8;
+
+/// A short list, shown directly under the field and as wide as it, with the chosen option highlighted and ticked.
+Future<({T value, String label})?> _showOptionMenu<T>(
+  BuildContext fieldContext, {
+  required List<({T value, String label})> options,
+  required T? selected,
+}) {
+  final box = fieldContext.findRenderObject()! as RenderBox;
+  final overlay =
+      Overlay.of(fieldContext).context.findRenderObject()! as RenderBox;
+  final topLeft = box.localToGlobal(
+    Offset(0, box.size.height + 4),
+    ancestor: overlay,
+  );
+  final position = RelativeRect.fromLTRB(
+    topLeft.dx,
+    topLeft.dy,
+    overlay.size.width - topLeft.dx - box.size.width,
+    0,
+  );
+  return showMenu<({T value, String label})>(
+    context: fieldContext,
+    position: position,
+    constraints: BoxConstraints.tightFor(width: box.size.width),
+    color: SetupColors.background,
+    surfaceTintColor: Colors.transparent,
+    elevation: 6,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: SetupColors.border),
+    ),
+    items: [
+      for (final o in options)
+        PopupMenuItem<({T value, String label})>(
+          value: o,
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: o.value == selected ? SetupColors.activeBg : null,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    o.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: setupText(
+                      size: 15,
+                      weight: o.value == selected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: o.value == selected
+                          ? SetupColors.primary
+                          : SetupColors.text,
+                    ),
+                  ),
+                ),
+                if (o.value == selected)
+                  const Icon(Icons.check, size: 18, color: SetupColors.primary),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 /// The option list behind a [SetupDropdown]. Returns the chosen option, or null when it is dismissed. [searchAbove] options or more
@@ -477,13 +802,25 @@ Future<({T value, String label})?> showSetupOptionSheet<T>(
     useSafeArea: true,
     showDragHandle: false, // the list draws its own handle
     backgroundColor: SetupColors.background,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (sheetContext) => _OptionSheet<T>(title: title, options: options, selected: selected, searchable: options.length > searchAbove),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) => _OptionSheet<T>(
+      title: title,
+      options: options,
+      selected: selected,
+      searchable: options.length > searchAbove,
+    ),
   );
 }
 
 class _OptionSheet<T> extends StatefulWidget {
-  const _OptionSheet({required this.title, required this.options, required this.selected, required this.searchable});
+  const _OptionSheet({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.searchable,
+  });
 
   final String title;
   final List<({T value, String label})> options;
@@ -505,7 +842,9 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
     super.initState();
     // opens with the chosen row in view
     final index = widget.options.indexWhere((o) => o.value == widget.selected);
-    _scroll = ScrollController(initialScrollOffset: index <= 2 ? 0 : (index - 2) * _rowHeight);
+    _scroll = ScrollController(
+      initialScrollOffset: index <= 2 ? 0 : (index - 2) * _rowHeight,
+    );
   }
 
   @override
@@ -517,7 +856,11 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final shown = _query.isEmpty ? widget.options : widget.options.where((o) => o.label.toLowerCase().contains(_query)).toList();
+    final shown = _query.isEmpty
+        ? widget.options
+        : widget.options
+              .where((o) => o.label.toLowerCase().contains(_query))
+              .toList();
     final screen = MediaQuery.of(context).size.height;
     final keyboard = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
@@ -528,24 +871,57 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 10),
-            Container(height: 4, width: 40, decoration: BoxDecoration(color: SetupColors.border, borderRadius: BorderRadius.circular(2))),
+            Container(
+              height: 4,
+              width: 40,
+              decoration: BoxDecoration(
+                color: SetupColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-              child: Align(alignment: Alignment.centerLeft, child: Text(widget.title, style: setupText(size: 17, weight: FontWeight.w600))),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.title,
+                  style: setupText(size: 17, weight: FontWeight.w600),
+                ),
+              ),
             ),
             if (widget.searchable)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
                   controller: _search,
-                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _query = v.trim().toLowerCase()),
                   style: setupText(size: 15),
-                  decoration: setupDecoration(hint: 'Search', prefix: const Padding(padding: EdgeInsets.only(left: 12, right: 8), child: Icon(Icons.search, size: 20, color: SetupColors.secondary))),
+                  decoration: setupDecoration(
+                    hint: 'Search',
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 12, right: 8),
+                      child: Icon(
+                        Icons.search,
+                        size: 20,
+                        color: SetupColors.secondary,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             Flexible(
               child: shown.isEmpty
-                  ? Padding(padding: const EdgeInsets.all(28), child: Text('No matches', style: setupText(size: 14, color: SetupColors.secondary)))
+                  ? Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Text(
+                        'No matches',
+                        style: setupText(
+                          size: 14,
+                          color: SetupColors.secondary,
+                        ),
+                      ),
+                    )
                   : ListView.builder(
                       controller: _scroll,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
@@ -557,13 +933,17 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Material(
-                            color: isSelected ? SetupColors.activeBg : Colors.transparent,
+                            color: isSelected
+                                ? SetupColors.activeBg
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(10),
                               onTap: () => Navigator.of(context).pop(o),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 child: Row(
                                   children: [
                                     Expanded(
@@ -571,10 +951,23 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
                                         o.label,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: setupText(size: 15, weight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? SetupColors.primary : SetupColors.text),
+                                        style: setupText(
+                                          size: 15,
+                                          weight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color: isSelected
+                                              ? SetupColors.primary
+                                              : SetupColors.text,
+                                        ),
                                       ),
                                     ),
-                                    if (isSelected) const Icon(Icons.check, size: 20, color: SetupColors.primary),
+                                    if (isSelected)
+                                      const Icon(
+                                        Icons.check,
+                                        size: 20,
+                                        color: SetupColors.primary,
+                                      ),
                                   ],
                                 ),
                               ),
@@ -593,7 +986,16 @@ class _OptionSheetState<T> extends State<_OptionSheet<T>> {
 
 /// Two or three pill options in one bordered row (Owned / Leased, Indoor / Outdoor).
 class SetupSegmented<T> extends StatelessWidget {
-  const SetupSegmented({super.key, required this.label, required this.value, required this.options, required this.onChanged, this.required = false, this.error, this.keyPrefix = 'seg'});
+  const SetupSegmented({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.required = false,
+    this.error,
+    this.keyPrefix = 'seg',
+  });
 
   final String label;
   final T? value;
@@ -612,7 +1014,13 @@ class SetupSegmented<T> extends StatelessWidget {
         Container(
           height: 48,
           padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(color: SetupColors.background, borderRadius: BorderRadius.circular(10), border: Border.all(color: error == null ? SetupColors.border : SetupColors.error)),
+          decoration: BoxDecoration(
+            color: SetupColors.background,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: error == null ? SetupColors.border : SetupColors.error,
+            ),
+          ),
           child: Row(
             children: [
               for (final o in options)
@@ -629,9 +1037,13 @@ class SetupSegmented<T> extends StatelessWidget {
                         duration: const Duration(milliseconds: 140),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: value == o.value ? SetupColors.activeBg : Colors.transparent,
+                          color: value == o.value
+                              ? SetupColors.activeBg
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
-                          border: value == o.value ? Border.all(color: SetupColors.primary) : null,
+                          border: value == o.value
+                              ? Border.all(color: SetupColors.primary)
+                              : null,
                         ),
                         // scales down on a narrow phone instead of overflowing
                         child: FittedBox(
@@ -639,8 +1051,24 @@ class SetupSegmented<T> extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (value == o.value) ...[const Icon(Icons.check_circle, size: 16, color: SetupColors.primary), const SizedBox(width: 6)],
-                              Text(o.label, style: setupText(size: 14, weight: FontWeight.w600, color: value == o.value ? SetupColors.primary : SetupColors.text)),
+                              if (value == o.value) ...[
+                                const Icon(
+                                  Icons.check_circle,
+                                  size: 16,
+                                  color: SetupColors.primary,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                o.label,
+                                style: setupText(
+                                  size: 14,
+                                  weight: FontWeight.w600,
+                                  color: value == o.value
+                                      ? SetupColors.primary
+                                      : SetupColors.text,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -651,7 +1079,19 @@ class SetupSegmented<T> extends StatelessWidget {
             ],
           ),
         ),
-        if (error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(error!, key: ValueKey('$keyPrefix-error'), style: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.error))),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              error!,
+              key: ValueKey('$keyPrefix-error'),
+              style: setupText(
+                size: 12,
+                weight: FontWeight.w500,
+                color: SetupColors.error,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -659,7 +1099,13 @@ class SetupSegmented<T> extends StatelessWidget {
 
 /// A checkbox row with an "i" hint pinned to the right edge, so every row lines up whatever the label length.
 class SetupCheckRow extends StatelessWidget {
-  const SetupCheckRow({super.key, required this.label, required this.value, required this.onChanged, this.hint});
+  const SetupCheckRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.hint,
+  });
 
   final String label;
   final bool value;
@@ -683,17 +1129,35 @@ class SetupCheckRow extends StatelessWidget {
                 onChanged: (v) => onChanged(v ?? false),
                 activeColor: SetupColors.primary,
                 side: const BorderSide(color: SetupColors.border, width: 1.6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: setupText(size: 14, weight: FontWeight.w500, height: 1.25))),
+            Expanded(
+              child: Text(
+                label,
+                style: setupText(
+                  size: 14,
+                  weight: FontWeight.w500,
+                  height: 1.25,
+                ),
+              ),
+            ),
             if (hint != null)
               Tooltip(
                 message: hint!,
                 triggerMode: TooltipTriggerMode.tap,
-                child: const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.info_outline, size: 18, color: SetupColors.secondary)),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: SetupColors.secondary,
+                  ),
+                ),
               ),
           ],
         ),
@@ -713,13 +1177,27 @@ class SetupErrorBanner extends StatelessWidget {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFFFDECEA), border: Border.all(color: const Color(0xFFF5B5B0)), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDECEA),
+        border: Border.all(color: const Color(0xFFF5B5B0)),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.error_outline, size: 18, color: SetupColors.error),
           const SizedBox(width: 8),
-          Expanded(child: Text(message, style: setupText(size: 13, weight: FontWeight.w500, color: SetupColors.error, height: 1.35))),
+          Expanded(
+            child: Text(
+              message,
+              style: setupText(
+                size: 13,
+                weight: FontWeight.w500,
+                color: SetupColors.error,
+                height: 1.35,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -728,7 +1206,16 @@ class SetupErrorBanner extends StatelessWidget {
 
 /// Primary (filled purple) and secondary (outlined) buttons used in the footer.
 class SetupButton extends StatelessWidget {
-  const SetupButton({super.key, required this.label, required this.onPressed, this.primary = false, this.icon, this.trailingIcon, this.loading = false, this.loadingLabel});
+  const SetupButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.primary = false,
+    this.icon,
+    this.trailingIcon,
+    this.loading = false,
+    this.loadingLabel,
+  });
 
   final String label;
   final VoidCallback? onPressed;
@@ -742,36 +1229,72 @@ class SetupButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final fg = primary ? Colors.white : SetupColors.text;
     final content = loading
-        ? Row(mainAxisSize: MainAxisSize.min, children: [
-            SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: fg)),
-            const SizedBox(width: 10),
-            Text(loadingLabel ?? label, style: setupText(size: 15, weight: FontWeight.w600, color: fg)),
-          ])
-        : Row(mainAxisSize: MainAxisSize.min, children: [
-            if (icon != null) ...[Icon(icon, size: 18, color: fg), const SizedBox(width: 8)],
-            Text(label, style: setupText(size: 15, weight: FontWeight.w600, color: fg)),
-            if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 18, color: fg)],
-          ]);
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                loadingLabel ?? label,
+                style: setupText(size: 15, weight: FontWeight.w600, color: fg),
+              ),
+            ],
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: fg),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: setupText(size: 15, weight: FontWeight.w600, color: fg),
+              ),
+              if (trailingIcon != null) ...[
+                const SizedBox(width: 8),
+                Icon(trailingIcon, size: 18, color: fg),
+              ],
+            ],
+          );
     // Scales down on a very narrow phone instead of overflowing.
     final child = FittedBox(fit: BoxFit.scaleDown, child: content);
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    );
     return SizedBox(
       height: 48,
       child: primary
           ? FilledButton(
               onPressed: loading ? null : onPressed,
-              style: FilledButton.styleFrom(
-                backgroundColor: SetupColors.primary,
-                disabledBackgroundColor: SetupColors.primary.withValues(alpha: 0.7),
-                foregroundColor: Colors.white,
-                shape: shape,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-              ).copyWith(overlayColor: WidgetStatePropertyAll(SetupColors.primaryPressed.withValues(alpha: 0.35))),
+              style:
+                  FilledButton.styleFrom(
+                    backgroundColor: SetupColors.primary,
+                    disabledBackgroundColor: SetupColors.primary.withValues(
+                      alpha: 0.7,
+                    ),
+                    foregroundColor: Colors.white,
+                    shape: shape,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  ).copyWith(
+                    overlayColor: WidgetStatePropertyAll(
+                      SetupColors.primaryPressed.withValues(alpha: 0.35),
+                    ),
+                  ),
               child: child,
             )
           : OutlinedButton(
               onPressed: loading ? null : onPressed,
-              style: OutlinedButton.styleFrom(side: const BorderSide(color: SetupColors.border), foregroundColor: SetupColors.text, shape: shape, padding: const EdgeInsets.symmetric(horizontal: 12)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: SetupColors.border),
+                foregroundColor: SetupColors.text,
+                shape: shape,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
               child: child,
             ),
     );
@@ -780,14 +1303,26 @@ class SetupButton extends StatelessWidget {
 
 /// A flat placeholder block for [SetupLoadingPage]. Its colour is painted by the one shimmer above it.
 class SetupSkeletonBox extends StatelessWidget {
-  const SetupSkeletonBox({super.key, this.width, this.height = 14, this.radius = 8});
+  const SetupSkeletonBox({
+    super.key,
+    this.width,
+    this.height = 14,
+    this.radius = 8,
+  });
 
   final double? width;
   final double height;
   final double radius;
 
   @override
-  Widget build(BuildContext context) => Container(width: width, height: height, decoration: BoxDecoration(color: SetupColors.skeleton, borderRadius: BorderRadius.circular(radius)));
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: SetupColors.skeleton,
+      borderRadius: BorderRadius.circular(radius),
+    ),
+  );
 }
 
 /// One sweep of light across everything inside it. A single controller and a single shader for the whole loading page, however many
@@ -801,8 +1336,12 @@ class SetupShimmer extends StatefulWidget {
   State<SetupShimmer> createState() => _SetupShimmerState();
 }
 
-class _SetupShimmerState extends State<SetupShimmer> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+class _SetupShimmerState extends State<SetupShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
 
   @override
   void dispose() {
@@ -812,7 +1351,9 @@ class _SetupShimmerState extends State<SetupShimmer> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return widget.child;
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      return widget.child;
+    }
     return AnimatedBuilder(
       animation: _c,
       child: widget.child,
@@ -821,7 +1362,11 @@ class _SetupShimmerState extends State<SetupShimmer> with SingleTickerProviderSt
         shaderCallback: (rect) {
           final dx = rect.width * (_c.value * 3 - 1);
           return LinearGradient(
-            colors: const [Color(0x00FFFFFF), Color(0x99FFFFFF), Color(0x00FFFFFF)],
+            colors: const [
+              Color(0x00FFFFFF),
+              Color(0x99FFFFFF),
+              Color(0x00FFFFFF),
+            ],
             stops: const [0.0, 0.5, 1.0],
           ).createShader(Rect.fromLTWH(dx, 0, rect.width, rect.height));
         },
@@ -844,9 +1389,18 @@ class SetupLoadingPage extends StatelessWidget {
     return SetupPage(
       footer: Row(
         children: const [
-          Expanded(child: SetupShimmer(child: SetupSkeletonBox(height: 48, radius: 12))),
+          Expanded(
+            child: SetupShimmer(
+              child: SetupSkeletonBox(height: 48, radius: 12),
+            ),
+          ),
           SizedBox(width: 12),
-          Expanded(flex: 2, child: SetupShimmer(child: SetupSkeletonBox(height: 48, radius: 12))),
+          Expanded(
+            flex: 2,
+            child: SetupShimmer(
+              child: SetupSkeletonBox(height: 48, radius: 12),
+            ),
+          ),
         ],
       ),
       children: [
@@ -860,7 +1414,16 @@ class SetupLoadingPage extends StatelessWidget {
                 // the stepper
                 const SetupSkeletonBox(width: 150, height: 12),
                 const SizedBox(height: 10),
-                Row(children: [for (var i = 0; i < 5; i++) ...[const Expanded(child: SetupSkeletonBox(height: 5, radius: 99)), if (i < 4) const SizedBox(width: 5)]]),
+                Row(
+                  children: [
+                    for (var i = 0; i < 5; i++) ...[
+                      const Expanded(
+                        child: SetupSkeletonBox(height: 5, radius: 99),
+                      ),
+                      if (i < 4) const SizedBox(width: 5),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 22),
                 // the heading and its line
                 const SetupSkeletonBox(width: 210, height: 28, radius: 8),
@@ -892,7 +1455,10 @@ class _SkeletonCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(border: Border.all(color: SetupColors.border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        border: Border.all(color: SetupColors.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

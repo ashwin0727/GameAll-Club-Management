@@ -29,11 +29,11 @@ const GRID_NARROW = "grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3";
 /** Whether the court table is wide enough for its column layout (decided from the table's own width). */
 const WideContext = React.createContext(false);
 
-function Cell({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {
+function Cell({ label, required, className, hideLabel, children }: { label: string; required?: boolean; className?: string; hideLabel?: boolean; children: React.ReactNode }) {
   const wide = React.useContext(WideContext);
   return (
     <div className={className}>
-      {!wide && (
+      {!wide && !hideLabel && (
         <span className="mb-1 block text-xs font-semibold text-[#666666]">
           {label}
           {required && <span className="ml-0.5 text-[#C62828]">*</span>}
@@ -292,19 +292,22 @@ export function CourtsConfig({
                     {wide ? (
                       <span className="pt-3 text-sm font-medium">{index + 1}</span>
                     ) : (
-                      <div className="col-span-full flex items-center justify-between">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F1EBFF] text-xs font-semibold text-[#4817C2]">{index + 1}</span>
+                      <div className="col-span-full flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F1EBFF] text-xs font-semibold text-[#4817C2]">{index + 1}</span>
+                        <span className="flex-1 text-xs font-semibold text-[#666666]">
+                          Court Name<span className="ml-0.5 text-[#C62828]">*</span>
+                        </span>
                         <button
                           type="button"
                           aria-label={`Remove ${court.name || `court ${index + 1}`}`}
                           onClick={() => onRemove(court.id)}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-[#C62828] hover:bg-[#FDECEA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C62828]"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#C62828] hover:bg-[#FDECEA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C62828]"
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
                     )}
-                    <Cell label="Court Name" required className={wide ? undefined : "col-span-full"}>
+                    <Cell label="Court Name" required hideLabel className={wide ? undefined : "col-span-full"}>
                       <SetupInput
                         id={`${idPrefix}-name`}
                         aria-label={`Court ${index + 1} name`}

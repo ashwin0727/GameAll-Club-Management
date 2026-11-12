@@ -67,6 +67,31 @@ function formDefaults(d: Draft, ownerName = ""): Partial<FacilityDetailsInput> {
   };
 }
 
+/** The form's values from a facility that already exists (what was saved to the database wins over the browser's draft). */
+function formFromFacility(f: Facility, ownerName: string): Partial<FacilityDetailsInput> {
+  return {
+    facilityName: f.name,
+    facilityType: f.type,
+    customFacilityType: f.customType ?? "",
+    ownershipType: f.ownershipType ?? "OWNED",
+    businessPhone: f.businessPhone,
+    whatsappNumber: f.whatsappNumber ?? "",
+    description: f.description ?? "",
+    addressLine: f.address.line1,
+    area: f.address.area ?? "",
+    city: f.address.city,
+    state: f.address.state,
+    pinCode: f.address.pinCode,
+    locationUrl: f.locationUrl ?? "",
+    contactPersonName: f.contactPerson?.name || ownerName,
+    contactPersonRole: (f.contactPerson?.role || "Facility Owner") as FacilityDetailsInput["contactPersonRole"],
+    contactAlternatePhone: f.contactPerson?.alternatePhone ?? "",
+    policies: f.policies ?? DEFAULT_POLICIES,
+    amenityKeys: (f.amenityKeys ?? []) as FacilityDetailsInput["amenityKeys"],
+    customAmenities: f.customAmenities ?? [],
+  };
+}
+
 export function FacilityDetailsForm() {
   const router = useRouter();
   const { data: user } = useCurrentUser();
@@ -75,6 +100,8 @@ export function FacilityDetailsForm() {
   const completeFacilityDetails = useOnboardingStore((s) => s.completeFacilityDetails);
   const [photos, setPhotos] = useState<File[]>([]);
   const [photosError, setPhotosError] = useState<string | undefined>();
+  // Photos already saved for an existing facility (they count towards the 5 and satisfy "at least one").
+  const [savedPhotos, setSavedPhotos] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   // If a later step (the photos) fails after the facility was created, retrying must not create a second facility.
   const createdFacility = useRef<Facility | null>(null);
@@ -127,6 +154,31 @@ export function FacilityDetailsForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // An owner who comes back (to continue, or after stopping part-way) gets the facility they already saved, not an empty form;
+  // saving then updates that facility instead of creating a second one.
+  const userId = user?.id;
+  const userName = user?.name ?? "";
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const existing = await getFacilityService().getFacility();
+        if (!existing || cancelled) return;
+        createdFacility.current = existing;
+        reset(formFromFacility(existing, userName));
+        const saved = await new FacilityPhotos().list(existing.id);
+        if (!cancelled) setSavedPhotos(saved.map((p) => p.url));
+      } catch {
+        // Offline or not allowed yet: the form simply stays as it is (the browser's draft, if any).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   // The contact number is the mobile the owner already verified by OTP at signup: use it, locked, with a Verified badge.
   const verifiedMobile = user?.verifiedMobile;
   useEffect(() => {
@@ -144,7 +196,7 @@ export function FacilityDetailsForm() {
   }
 
   const onInvalid = () => {
-    if (photos.length === 0) setPhotosError("Add at least one photo of your facility.");
+    if (photos.length + savedPhotos.length === 0) setPhotosError("Add at least one photo of your facility.");
     setSaveError("Please fix the highlighted fields to continue.");
   };
 
@@ -153,7 +205,7 @@ export function FacilityDetailsForm() {
       setSaveError("We couldn't save your facility details. Please try again.");
       return;
     }
-    if (photos.length === 0) {
+    if (photos.length + savedPhotos.length === 0) {
       setPhotosError("Add at least one photo of your facility.");
       setSaveError("Please fix the highlighted fields to continue.");
       return;
@@ -164,6 +216,7 @@ export function FacilityDetailsForm() {
     try {
       const service = getFacilityService();
       let facility = createdFacility.current;
+      const alreadySaved = facility !== null;
       if (!facility) {
         facility = await service.createFacility({
           ownerId: user.id,
@@ -189,6 +242,24 @@ export function FacilityDetailsForm() {
       // Everything the create call doesn't take, then the photos (they go to GameAll's admin for checking).
       const photoService = new FacilityPhotos();
       await service.updateFacility(facility.id, {
+        // An existing facility is edited here too, so the core fields are saved as well.
+        ...(alreadySaved
+          ? {
+              name: input.facilityName.trim(),
+              type: input.facilityType as FacilityType,
+              customType: input.facilityType === "OTHER" ? input.customFacilityType : undefined,
+              businessPhone: input.businessPhone.trim(),
+              description: input.description.trim() || undefined,
+              address: {
+                line1: input.addressLine.trim(),
+                area: input.area.trim(),
+                city: input.city.trim(),
+                state: input.state,
+                country: "India",
+                pinCode: input.pinCode,
+              },
+            }
+          : {}),
         locationUrl: input.locationUrl.trim(),
         ownershipType: input.ownershipType,
         whatsappNumber: input.whatsappNumber,
@@ -201,7 +272,8 @@ export function FacilityDetailsForm() {
       // Done: if the owner comes back to this screen they start from the facility that now exists.
       setPhotos([]);
 
-      await service.updateOnboardingStep(facility.id, "SPORTS");
+      // Never move someone who is further along (say at Payout) back to an earlier step.
+      if (facility.onboardingStep === "FACILITY_DETAILS") await service.updateOnboardingStep(facility.id, "SPORTS");
       completeFacilityDetails(facility);
       router.push("/onboarding/sports");
     } catch (e) {
@@ -369,7 +441,7 @@ export function FacilityDetailsForm() {
         </div>
 
         <div className="border-t border-[#E5E1EF] lg:border-l lg:border-t-0 lg:p-6">
-          <SetupPhotos files={photos} onChange={(f) => { setPhotos(f); if (f.length > 0) setPhotosError(undefined); }} error={photosError} />
+          <SetupPhotos existingUrls={savedPhotos} files={photos} onChange={(f) => { setPhotos(f); if (f.length > 0) setPhotosError(undefined); }} error={photosError} />
         </div>
       </SetupCard>
 
@@ -433,7 +505,7 @@ export function FacilityDetailsForm() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push("/onboarding/welcome")}
+            onClick={() => router.replace("/onboarding/welcome")}
             className="flex h-12 items-center gap-2 rounded-lg border border-[#E5E1EF] bg-white px-6 text-sm font-semibold hover:bg-[#FBFAFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2]"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />

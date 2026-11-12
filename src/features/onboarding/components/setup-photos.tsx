@@ -8,7 +8,8 @@ import { FieldError } from "@/features/onboarding/components/setup-fields";
 export const MAX_SETUP_PHOTOS = 5;
 
 /** "Facility Photos" panel: up to 5 photos (JPG/PNG/WebP, under 8 MB each), the first is the cover players see once GameAll verifies it. */
-export function SetupPhotos({ files, onChange, error }: { files: File[]; onChange: (files: File[]) => void; error?: string }) {
+export function SetupPhotos({ files, onChange, error, existingUrls = [] }: { files: File[]; onChange: (files: File[]) => void; error?: string; existingUrls?: string[] }) {
+  const room = MAX_SETUP_PHOTOS - existingUrls.length;
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [problem, setProblem] = React.useState<string | null>(null);
   const previews = React.useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
@@ -19,7 +20,7 @@ export function SetupPhotos({ files, onChange, error }: { files: File[]; onChang
     const next = [...files];
     let message: string | null = null;
     for (const file of Array.from(list)) {
-      if (next.length >= MAX_SETUP_PHOTOS) {
+      if (next.length >= room) {
         message = `You can add up to ${MAX_SETUP_PHOTOS} photos.`;
         break;
       }
@@ -60,6 +61,13 @@ export function SetupPhotos({ files, onChange, error }: { files: File[]; onChang
       />
 
       <ul className="mt-4 grid grid-cols-2 gap-3">
+        {existingUrls.map((url, i) => (
+          <li key={url} className="relative aspect-[4/3] overflow-hidden rounded-lg border border-[#E5E1EF]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- already-saved photo */}
+            <img src={url} alt={`Saved facility photo ${i + 1}`} className="h-full w-full object-cover" />
+            {i === 0 && <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">Cover</span>}
+          </li>
+        ))}
         {files.map((file, i) => (
           <li key={`${file.name}-${i}`} className="relative aspect-[4/3] overflow-hidden rounded-lg border border-[#E5E1EF]">
             {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
@@ -78,7 +86,7 @@ export function SetupPhotos({ files, onChange, error }: { files: File[]; onChang
             </button>
           </li>
         ))}
-        {files.length < MAX_SETUP_PHOTOS && (
+        {files.length < room && (
           <li>
             <button
               type="button"
@@ -86,14 +94,14 @@ export function SetupPhotos({ files, onChange, error }: { files: File[]; onChang
               className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#4817C2]/50 bg-[#F8F4FF] text-sm font-semibold text-[#4817C2] transition-colors hover:bg-[#F1EBFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2]"
             >
               <ImagePlus className="h-6 w-6" aria-hidden="true" />
-              {files.length === 0 ? "Upload Photos" : "Upload More"}
+              {files.length + existingUrls.length === 0 ? "Upload Photos" : "Upload More"}
             </button>
           </li>
         )}
       </ul>
 
       <p className="mt-2 text-xs font-normal text-[#666666]">
-        {files.length} of {MAX_SETUP_PHOTOS} added · GameAll checks each photo before players see it.
+        {files.length + existingUrls.length} of {MAX_SETUP_PHOTOS} added · GameAll checks each photo before players see it.
       </p>
       {(problem || error) && <FieldError>{problem ?? error}</FieldError>}
     </div>

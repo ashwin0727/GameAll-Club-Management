@@ -157,6 +157,17 @@ class SessionController extends Notifier<SessionState> {
     if (!_resolvedOnce) state = state.copyWith(isLoading: true);
 
     final authRepo = ref.read(authRepositoryProvider);
+    // First start of a signed-in person: open at once from what was saved last time, then let the fresh answer below replace it.
+    // (Only for the screen routing; every request is still checked by the database itself.)
+    if (!_resolvedOnce && ref.read(supabaseClientProvider).auth.currentUser != null) {
+      final saved = await ref.read(sessionRepositoryProvider).cached();
+      if (saved != null) {
+        final quick = await authRepo.getCurrentUser(profileRow: saved.profile);
+        if (quick != null && !_resolvedOnce) {
+          state = SessionState(user: quick, facility: saved.facility, baseRole: saved.baseRole, permissions: saved.permissions, plan: saved.plan, isLoading: false);
+        }
+      }
+    }
     // One request for profile, facility, role, permissions and plan (null when unavailable: the fallback below does it the long way).
     final signedIn = ref.read(supabaseClientProvider).auth.currentUser != null;
     final bundle = signedIn ? await ref.read(sessionRepositoryProvider).fetch() : null;
@@ -209,6 +220,7 @@ class SessionController extends Notifier<SessionState> {
   Future<void> signOut() async {
     _resolvedOnce = true;
     state = const SessionState(isLoading: false);
+    ref.read(sessionRepositoryProvider).forget();
     try {
       await ref.read(authRepositoryProvider).logout();
     } catch (_) {}

@@ -85,7 +85,7 @@ describe("LoginForm", () => {
 
     await signIn(user);
 
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/facility"));
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith("/onboarding/welcome"));
   });
 
   it("confirms a completed verification when arriving from the email link", () => {

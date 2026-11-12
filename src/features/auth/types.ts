@@ -36,4 +36,4 @@ export interface AuthUser {
 }
 
 /** Where the splash screen sends the visitor once session state is known. */
-export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/facility" | "/verify-mobile" | "/admin";
+export type EntryRoute = "/welcome" | "/login" | "/dashboard" | "/onboarding/welcome" | "/verify-mobile" | "/admin";

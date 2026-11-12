@@ -24,7 +24,7 @@ describe("resolveEntryRoute", () => {
   it("sends a signed-in user who hasn't finished facility setup to onboarding", () => {
     expect(
       resolveEntryRoute({ signedIn: true, deviceOnboarded: true, onboardingCompleted: false }),
-    ).toBe("/onboarding/facility");
+    ).toBe("/onboarding/welcome");
   });
 
   it("sends the platform admin to the back office, never to facility setup", () => {

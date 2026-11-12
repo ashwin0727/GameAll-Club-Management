@@ -182,11 +182,13 @@ export class SupabaseAuthService implements AuthService {
       facilityCompleted = Boolean(facility);
       if (!facilityCompleted) {
         // A staff member added by an owner has no facility of their own and nothing to set up: they belong to one already.
+        // (The owner's own row does not count: it is created together with their facility, before setup is finished.)
         const { data: assignment } = await this.supabase
           .from("facility_users")
           .select("facility_id")
           .eq("user_id", user.id)
           .eq("status", "ACTIVE")
+          .neq("role", "owner")
           .limit(1)
           .maybeSingle();
         facilityCompleted = Boolean(assignment);
