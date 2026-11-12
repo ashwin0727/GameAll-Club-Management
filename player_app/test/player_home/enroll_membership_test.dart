@@ -179,8 +179,9 @@ Future<(_Enroll, List<Uri>, List<String>)> _pump(
     ],
   );
   addTearDown(c.dispose);
-  if (preferredSport != null)
+  if (preferredSport != null) {
     c.read(preferredSportProvider.notifier).set(preferredSport);
+  }
   final wide = size.width >= 840;
   await tester.pumpWidget(
     UncontrolledProviderScope(

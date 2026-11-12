@@ -73,8 +73,9 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   // Back from the payment page (or the browser tab): look at once.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _stage == _Stage.waiting)
+    if (state == AppLifecycleState.resumed && _stage == _Stage.waiting) {
       _check();
+    }
   }
 
   /// Whether the payment this page waits for is in: the whole amount for a balance payment, otherwise what the receipt says.

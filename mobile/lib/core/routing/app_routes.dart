@@ -6,9 +6,18 @@ class AppRoutes {
   const AppRoutes._();
 
   static const splash = '/splash';
+  /// The intro a signed-out visitor sees first: Get Started (new) or Log In (existing).
+  static const welcome = '/welcome';
+
+  /// The two auto-advancing intro pages after Get Started on the welcome page; they end at Create Account.
+  static const intro = '/intro';
   static const signIn = '/sign-in';
   static const createAccount = '/create-account';
-  static const emailVerification = '/email-verification';
+  /// After Create Account, step 1 of 2: the mobile number is confirmed with a 6-digit OTP.
+  static const verifyPhone = '/verify-phone';
+
+  /// Step 2 of 2: the email address is confirmed with the code emailed when the account was created.
+  static const verifyEmail = '/verify-email';
   static const forgotPassword = '/forgot-password';
   static const verifyMobile = '/verify-mobile';
   static const setupReview = '/setup-review';

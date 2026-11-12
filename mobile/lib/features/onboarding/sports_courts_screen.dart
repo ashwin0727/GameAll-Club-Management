@@ -9,8 +9,10 @@ import '../../data/models/facility.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/top_notice.dart';
 import '../authentication/session_controller.dart';
 import 'court_setup_logic.dart';
+import 'setup_flow.dart';
 import 'setup_ui.dart';
 
 const _uuid = Uuid();
@@ -55,7 +57,23 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   String? _error;
   bool _savingNext = false;
-  bool _savingDraft = false;
+  bool _autoSaving = false;
+
+  /// Saves the courts as a draft by itself, 10 quiet seconds after the last change (see [DraftAutosave]).
+  late final DraftAutosave _autosave = DraftAutosave(
+    signature: _signature,
+    save: () => _persist(advance: false, silent: true),
+    onSaved: () {
+      if (mounted) showTopNotice(context, kDraftSavedMessage, compact: true, duration: const Duration(milliseconds: 2800));
+    },
+  );
+
+  /// Everything the person can change on this step, as one short string.
+  String _signature() => [
+        _selectedIds.join(','),
+        _customNames.join('|'),
+        for (final d in _drafts) '${d.id}:${d.sportId}:${d.name}:${d.type}:${d.surface}:${d.lighting}:${d.amenities.join(',')}',
+      ].join('\n');
 
   @override
   void initState() {
@@ -65,6 +83,7 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   @override
   void dispose() {
+    _autosave.dispose();
     _customInput.dispose();
     super.dispose();
   }
@@ -77,14 +96,25 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final sportsRepo = ref.read(sportsRepositoryProvider);
+      final areaRepo = ref.read(playingAreaRepositoryProvider);
+      final knownId = knownFacilityId(ref);
+      // Requested together, not one after another: the facility, the sports list, and (when the app already knows the facility's id)
+      // this facility's sports and courts.
+      final facilityFuture = ref.read(facilityRepositoryProvider).getFacility()..ignore();
+      final catalogueFuture = sportsRepo.getActiveSports()..ignore();
+      final existingFuture = knownId == null ? null : (sportsRepo.getFacilitySports(knownId)..ignore());
+      final areasFuture = knownId == null ? null : (areaRepo.getPlayingAreas(knownId)..ignore());
+
+      final facility = await facilityFuture;
       if (facility == null) {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
-      final catalogue = await ref.read(sportsRepositoryProvider).getActiveSports();
-      final existingSports = await ref.read(sportsRepositoryProvider).getFacilitySports(facility.id);
-      final areas = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      final catalogue = await catalogueFuture;
+      final sameFacility = knownId == facility.id;
+      final existingSports = await (sameFacility ? existingFuture! : sportsRepo.getFacilitySports(facility.id));
+      final areas = await (sameFacility ? areasFuture! : areaRepo.getPlayingAreas(facility.id));
       if (!mounted) return;
 
       final otherId = catalogue.where((s) => s.code == otherSportCode).firstOrNull?.id;
@@ -137,6 +167,8 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
         _loading = false;
       });
       _ensureCourts();
+      // what is on screen now counts as saved: only what the person changes from here is auto-saved
+      _autosave.start();
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -271,40 +303,53 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   // ── save ─────────────────────────────────────────────────────────────
 
-  Future<void> _persist({required bool advance}) async {
+  /// Saves the sports and courts. With [silent] (the auto-save) nothing is shown or changed on screen, and a step that is not valid yet
+  /// is simply skipped. Returns whether it saved.
+  Future<bool> _persist({required bool advance, bool silent = false}) async {
     final facilityId = _facilityId;
-    if (facilityId == null) return;
-    setState(() => _error = null);
+    if (facilityId == null) return false;
+    if (silent && (_savingNext || _autoSaving)) return false;
 
-    var selectionOk = true;
-    if (_selectedIds.isEmpty && _customNames.isEmpty) {
-      setState(() => _sportsError = 'Select at least one sport to continue.');
-      selectionOk = false;
-    }
-    if (selectionOk && _customNames.isNotEmpty && _otherSport == null) {
-      setState(() => _sportsError = 'Adding your own sport isn’t available right now. Please pick from the list.');
-      selectionOk = false;
-    }
     final selected = _selectedSports;
     final keep = _drafts.where((d) => selected.any((s) => s.id == d.sportId)).toList();
     final found = validateCourtDrafts(keep, [for (final s in selected) (id: s.id, name: s.name, code: s.code)]);
-    setState(() => _problems = found);
-    if (!selectionOk || !found.ok) {
-      setState(() => _error = 'Please fix the highlighted fields to continue.');
-      return;
+    final noSports = _selectedIds.isEmpty && _customNames.isEmpty;
+    final noOther = _customNames.isNotEmpty && _otherSport == null;
+
+    if (silent) {
+      if (noSports || noOther || !found.ok) return false;
+    } else {
+      setState(() => _error = null);
+      String? sportsProblem;
+      if (noSports) {
+        sportsProblem = 'Select at least one sport to continue.';
+      } else if (noOther) {
+        sportsProblem = 'Adding your own sport isn’t available right now. Please pick from the list.';
+      }
+      setState(() {
+        _sportsError = sportsProblem;
+        _problems = found;
+      });
+      if (sportsProblem != null || !found.ok) {
+        setState(() => _error = 'Please fix the highlighted fields to continue.');
+        return false;
+      }
     }
 
-    setState(() => advance ? _savingNext = true : _savingDraft = true);
+    if (silent) {
+      _autoSaving = true;
+    } else {
+      setState(() => _savingNext = true);
+    }
     try {
       final sportsRepo = ref.read(sportsRepositoryProvider);
       final areaRepo = ref.read(playingAreaRepositoryProvider);
       final keepSaved = keep.map((d) => d.savedId).whereType<String>().toSet();
 
-      // 1. courts that were removed (or belong to a sport that was switched off) are archived first
-      for (final id in _loadedCourtIds.where((id) => !keepSaved.contains(id)).toList()) {
-        await areaRepo.removePlayingArea(id);
-        _loadedCourtIds.remove(id);
-      }
+      // 1. courts that were removed (or belong to a sport that was switched off) are archived first, all at once
+      final removed = _loadedCourtIds.where((id) => !keepSaved.contains(id)).toList();
+      await Future.wait([for (final id in removed) areaRepo.removePlayingArea(id)]);
+      _loadedCourtIds.removeAll(removed);
 
       // 2. the sports
       final saved = await sportsRepo.saveFacilitySportsMulti(
@@ -317,14 +362,15 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
           ? saved.where((r) => r.sportId == otherId && (r.customSportName ?? '').trim().toLowerCase() == key.substring(_customPrefix.length)).firstOrNull
           : saved.where((r) => r.sportId == key && (r.customSportName ?? '').isEmpty).firstOrNull;
 
-      // 3. the courts
+      // 3. the courts, all at once
       final order = <String, int>{};
+      final jobs = <Future<void>>[];
       for (final court in keep) {
         final fs = savedFor(court.sportId);
         if (fs == null) throw AppException(AppErrorCode.facilitySportNotFound);
         final index = order[court.sportId] = (order[court.sportId] ?? -1) + 1;
         if (court.savedId != null) {
-          await areaRepo.updatePlayingArea(
+          jobs.add(areaRepo.updatePlayingArea(
             court.savedId!,
             name: court.name.trim(),
             areaType: court.type,
@@ -332,56 +378,60 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
             lightingType: court.lighting,
             courtAmenities: court.amenities,
             displayOrder: index,
-          );
-        } else {
-          final created = await areaRepo.createPlayingArea(PlayingArea(
-            id: court.id,
-            facilityId: facilityId,
-            facilitySportId: fs.id,
-            // a sport the owner added is the catalogue's "Other" sport with its own name
-            sportId: court.sportId.startsWith(_customPrefix) ? otherId! : court.sportId,
-            name: court.name.trim(),
-            areaType: court.type,
-            surface: court.surface.trim(),
-            lightingType: court.lighting,
-            courtAmenities: List.of(court.amenities),
-            status: 'ACTIVE',
-            bookingEnabled: true,
-            archived: false,
-            displayOrder: index,
           ));
-          court.savedId = created.id;
-          _loadedCourtIds.add(created.id);
+        } else {
+          jobs.add(areaRepo
+              .createPlayingArea(PlayingArea(
+                id: court.id,
+                facilityId: facilityId,
+                facilitySportId: fs.id,
+                // a sport the owner added is the catalogue's "Other" sport with its own name
+                sportId: court.sportId.startsWith(_customPrefix) ? otherId! : court.sportId,
+                name: court.name.trim(),
+                areaType: court.type,
+                surface: court.surface.trim(),
+                lightingType: court.lighting,
+                courtAmenities: List.of(court.amenities),
+                status: 'ACTIVE',
+                bookingEnabled: true,
+                archived: false,
+                displayOrder: index,
+              ))
+              .then((created) {
+            court.savedId = created.id;
+            _loadedCourtIds.add(created.id);
+          }));
         }
       }
+      await Future.wait(jobs);
 
       if (advance) {
         final step = ref.read(sessionControllerProvider).facility?.onboardingStep;
         if (step == null || step == OnboardingStep.facilityDetails || step == OnboardingStep.sportsCourts) {
           await ref.read(facilityRepositoryProvider).updateOnboardingStep(facilityId, OnboardingStep.operatingHours);
         }
-        await ref.read(sessionControllerProvider.notifier).refresh();
-        if (!mounted) return;
+        _autosave.markSaved();
+        // the next step opens now; the app's copy of the session catches up behind it
+        refreshSessionInBackground(ref);
+        if (!mounted) return true;
         context.push(AppRoutes.onboardingOperatingHours);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Draft saved. You can pick up where you left off.')));
       }
+      return true;
     } on AppException catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.message);
+      if (silent) {
+        debugPrint('Sports & courts auto-save skipped: ${e.message}');
+        return false;
+      }
+      if (mounted) setState(() => _error = e.message);
+      return false;
     } catch (e, stack) {
       debugPrint('Sports & courts save failed: $e\n$stack');
-      if (!mounted) return;
-      setState(() => _error = 'Something went wrong. Please try again.');
+      if (silent) return false;
+      if (mounted) setState(() => _error = 'Something went wrong. Please try again.');
+      return false;
     } finally {
-      if (mounted) {
-        setState(() {
-          _savingNext = false;
-          _savingDraft = false;
-        });
-      }
+      _autoSaving = false;
+      if (!silent && mounted) setState(() => _savingNext = false);
     }
   }
 
@@ -389,39 +439,21 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _loadError != null) {
+    if (_loadError != null) {
       return SetupPage(
-        footer: _loadError == null ? const SizedBox(height: 52) : SetupButton(label: 'Try again', primary: true, onPressed: _load),
-        children: [
-          const SetupStepper(current: 2),
-          const SizedBox(height: 18),
-          if (_loadError != null) SetupErrorBanner(_loadError!) else const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())),
-        ],
+        footer: SetupButton(label: 'Try again', primary: true, onPressed: _load),
+        children: [const SetupStepper(current: 2), const SizedBox(height: 18), SetupErrorBanner(_loadError!)],
       );
     }
+    if (_loading) return const SetupLoadingPage(cards: [3, 3, 2]);
 
     final selected = _selectedSports;
     final visible = _drafts.where((d) => selected.any((s) => s.id == d.sportId)).toList();
 
     return SetupPage(
-      footer: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(child: SetupButton(label: 'Back', icon: Icons.arrow_back, onPressed: () => context.go(AppRoutes.onboardingFacility))),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _savingNext, loadingLabel: 'Saving…', onPressed: _savingDraft ? null : () => _persist(advance: true))),
-            ],
-          ),
-          const SizedBox(height: 4),
-          TextButton.icon(
-            key: const ValueKey('save-draft'),
-            onPressed: (_savingNext || _savingDraft) ? null : () => _persist(advance: false),
-            icon: _savingDraft ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.description_outlined, size: 18, color: SetupColors.secondary),
-            label: Text('Save as Draft', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.secondary)),
-          ),
-        ],
+      footer: SetupNavFooter(
+        onBack: () => goBackOr(context, AppRoutes.onboardingFacility),
+        next: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _savingNext, loadingLabel: 'Saving…', onPressed: () => _persist(advance: true)),
       ),
       children: [
         const SetupStepper(current: 2),

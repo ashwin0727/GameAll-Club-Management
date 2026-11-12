@@ -15,9 +15,11 @@ class AuthRepository {
   /// 6-digit code (Resend); no Supabase confirmation link is involved.
   Future<void> _signupOtp(Map<String, dynamic> body) => _signupOtpFunction('signup-otp', body);
 
-  Future<void> _signupOtpFunction(String function, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>?> _signupOtpFunction(String function, Map<String, dynamic> body) async {
     try {
-      await _client.functions.invoke(function, body: body);
+      final response = await _client.functions.invoke(function, body: body);
+      final data = response.data;
+      return data is Map ? Map<String, dynamic>.from(data) : null;
     } on FunctionException catch (e) {
       final details = e.details;
       final message = details is Map ? details['message'] : null;
@@ -34,12 +36,37 @@ class AuthRepository {
     }
   }
 
+  /// Creates the account (unconfirmed) and emails the 6-digit code. With [phone] and [mobileProof] (from [verifySignupPhoneCode]) the
+  /// number is recorded as already verified, so it is not asked for again after the email step.
   Future<void> register({
     required String name,
     required String email,
     required String password,
+    String? phone,
+    String? mobileProof,
   }) =>
-      _signupOtp({'action': 'start', 'name': name, 'email': email, 'password': password});
+      _signupOtp({
+        'action': 'start',
+        'name': name,
+        'email': email,
+        'password': password,
+        if (phone != null && mobileProof != null) ...{'phone': phone, 'mobile_proof': mobileProof},
+      });
+
+  /// Sends a 6-digit code to [phone] BEFORE the account exists: the anonymous flavour of `mobile-otp` (the one the public booking page
+  /// uses), which needs no sign-in.
+  Future<void> sendSignupPhoneCode(String phone) =>
+      _signupOtpFunction('mobile-otp', {'action': 'send', 'purpose': 'booking', 'phone': phone});
+
+  /// Checks the code and returns the signed, phone-bound proof (valid 30 minutes) that [register] accepts as "this number is verified".
+  Future<String> verifySignupPhoneCode({required String phone, required String code}) async {
+    final data = await _signupOtpFunction('mobile-otp', {'action': 'verify', 'purpose': 'booking', 'phone': phone, 'code': code});
+    final proof = data?['proof'];
+    if (proof is! String || proof.isEmpty) {
+      throw AppException(AppErrorCode.databaseError, 'Could not verify your number. Please try again.');
+    }
+    return proof;
+  }
 
   /// Checks the code the owner received by email; on success the address is confirmed server-side.
   Future<void> verifySignupCode({required String email, required String code}) =>

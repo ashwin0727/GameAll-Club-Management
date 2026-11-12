@@ -171,8 +171,9 @@ class CoachingDetail {
     if (s == null || e == null || e.isBefore(s)) return null;
     final days = e.difference(s).inDays + 1;
     final months = (days / 30).round();
-    if (days >= 25 && months >= 1)
+    if (days >= 25 && months >= 1) {
       return months == 1 ? '1 Month' : '$months Months';
+    }
     return days == 1 ? '1 Day' : '$days Days';
   }
 

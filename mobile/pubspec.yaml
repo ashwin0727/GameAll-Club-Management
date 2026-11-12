@@ -75,6 +75,9 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  # Only the tests use these two: a fake photo gallery for the multi-photo picker.
+  image_picker_platform_interface: ^2.11.1
+  plugin_platform_interface: ^2.1.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -105,6 +108,20 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Inter is bundled (no download at runtime): text renders correctly on the first frame, offline, and without the per-widget
+  # font lookups google_fonts did. Licence: assets/fonts/Inter-LICENSE.txt (SIL OFL 1.1).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
 
   assets:
     - assets/images/logo-icon.png

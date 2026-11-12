@@ -11,7 +11,6 @@ import '../../../core/widgets/gameall_buttons.dart';
 import '../../../core/widgets/pressable.dart';
 import '../../../core/widgets/top_toast.dart';
 import '../../auth/application/auth_providers.dart';
-import '../../auth/domain/player_profile.dart';
 import '../../player_home/application/player_home_controller.dart';
 import '../application/profile_providers.dart';
 import '../data/profile_repository.dart';

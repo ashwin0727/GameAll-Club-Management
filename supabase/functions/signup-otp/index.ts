@@ -4,6 +4,11 @@
 // Actions (POST JSON { action, ... }):
 //   start   { name, email, password } → creates the auth user UNCONFIRMED (no Supabase email is sent), then emails a
 //                                       6-digit code through Resend.
+//           optional { phone, mobile_proof } → the number was already verified by SMS before the account existed (the
+//                                       anonymous mobile-otp flow, which returns a signed, phone-bound, 30-minute proof).
+//                                       A valid proof records the number as verified for the new account, so the owner
+//                                       is not asked for it again after the email step. No proof → unchanged behaviour
+//                                       (the number is verified after sign-in, as the web does).
 //   resend  { email }                 → issues a fresh code for a still-unconfirmed signup.
 //   verify  { email, code }           → checks the code; on success marks the email confirmed so the client can sign in.
 //
@@ -27,6 +32,7 @@ import {
   hashOtp,
   safeEqual,
 } from "../_shared/signup-otp.ts";
+import { normalizeIndianMobile, verifyMobileProof } from "../_shared/mobile-otp.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -131,21 +137,40 @@ Deno.serve(async (req) => {
       if (name.length < 2 || name.length > 80) return fail("invalid_name", "Enter your full name.");
       if (password.length < 8 || password.length > 128) return fail("weak_password", "Password must be 8–128 characters.");
 
+      // A phone verified before the account exists. Checked first, so a bad or expired proof creates nothing.
+      let verifiedPhone: string | null = null;
+      if (body.phone !== undefined || body.mobile_proof !== undefined) {
+        const phone = normalizeIndianMobile(String(body.phone ?? ""));
+        if (!phone || !(await verifyMobileProof(phone, String(body.mobile_proof ?? ""), otpSecret))) {
+          return fail("invalid_mobile_proof", "Your mobile verification has expired. Please verify your number again.");
+        }
+        verifiedPhone = phone;
+      }
+
       const existing = await userStatus();
       if (existing?.confirmed) return fail("email_taken", "An account already exists for this email address. Sign in instead.", 409);
 
       // require_mobile: new owners must also verify a mobile number (mobile-otp) before onboarding.
       const meta = { full_name: name, account_type: "owner", require_mobile: true };
+      let userId: string;
       if (existing) {
         // An earlier, never-verified attempt: refresh its details and re-issue a code.
         const { error } = await admin.auth.admin.updateUserById(existing.id, { password, user_metadata: meta });
         if (error) throw error;
+        userId = existing.id;
       } else {
-        const { error } = await admin.auth.admin.createUser({ email, password, email_confirm: false, user_metadata: meta });
+        const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: false, user_metadata: meta });
         if (error) {
           if (/password/i.test(error.message)) return fail("weak_password", "That password is too weak. Try a longer one.");
           throw error;
         }
+        userId = data.user.id;
+      }
+      if (verifiedPhone) {
+        // Same two writes mobile-otp makes when a signed-in owner verifies their number.
+        const { error } = await admin.from("user_verified_phones").upsert({ user_id: userId, phone: verifiedPhone, verified_at: new Date().toISOString() });
+        if (error) throw error;
+        await admin.from("profiles").update({ phone: verifiedPhone }).eq("id", userId);
       }
       const blocked = await issueCode(name);
       if (blocked) return blocked;

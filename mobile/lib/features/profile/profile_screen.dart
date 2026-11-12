@@ -32,6 +32,14 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  /// The management sections that are open. Kept here, not inside each section: the menu is a long scrolling list, and a section that
+  /// scrolls out of view is thrown away by the list, which used to close it again when it came back.
+  final Set<String> _openSections = <String>{};
+
+  void _toggleSection(String label) => setState(() {
+        if (!_openSections.remove(label)) _openSections.add(label);
+      });
+
   int? _courts;
   int? _sports;
   int? _pricingRules;
@@ -102,7 +110,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      _OpenSections(open: _openSections, onToggle: _toggleSection, child: Builder(builder: _buildScaffold));
+
+  Widget _buildScaffold(BuildContext context) {
     final t = context.tokens;
     final themeLabel = _modeLabel(ref.watch(themeModeControllerProvider));
     final session = ref.watch(sessionControllerProvider);
@@ -944,10 +955,25 @@ class _SignOutButton extends StatelessWidget {
   }
 }
 
+/// Hands the set of open sections (and the way to toggle one) down to the [_Section]s of the profile menu.
+class _OpenSections extends InheritedWidget {
+  const _OpenSections({required this.open, required this.onToggle, required super.child});
+
+  final Set<String> open;
+  final void Function(String label) onToggle;
+
+  static _OpenSections of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_OpenSections>()!;
+
+  // The set is changed in place, so tell every dependent to rebuild on each change.
+  @override
+  bool updateShouldNotify(_OpenSections oldWidget) => true;
+}
+
 /// One titled group of menu rows. Rows whose page the person's role doesn't include are dropped, and a group left with
 /// no rows disappears entirely (title and spacing too). Each management (and Finance) collapses under its heading,
-/// starting closed, so the menu opens short and shows a section's pages only when asked.
-class _Section extends ConsumerStatefulWidget {
+/// starting closed, so the menu opens short and shows a section's pages only when asked. Sections open and close on their own:
+/// opening one leaves the others as they were.
+class _Section extends ConsumerWidget {
   const _Section({required this.label, required this.children});
 
   final String label;
@@ -956,70 +982,45 @@ class _Section extends ConsumerStatefulWidget {
   bool get collapsible => label.endsWith('Management') || label == 'Finance';
 
   @override
-  ConsumerState<_Section> createState() => _SectionState();
-}
-
-class _SectionState extends ConsumerState<_Section> {
-  /// Accordion: the label of the one management that is open (null = all closed). Shared by every section on the screen, so
-  /// opening one closes the others.
-  static final ValueNotifier<String?> _openLabel = ValueNotifier<String?>(null);
-
-  bool get _open => _openLabel.value == widget.label;
-
-  @override
-  void initState() {
-    super.initState();
-    _openLabel.addListener(_onOpenChanged);
-  }
-
-  @override
-  void dispose() {
-    _openLabel.removeListener(_onOpenChanged);
-    super.dispose();
-  }
-
-  void _onOpenChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
-    final visible = widget.children.where((c) {
+    final visible = children.where((c) {
       if (c is _NavRow && c.pages.isNotEmpty) return c.pages.any(session.canViewPage);
       return true;
     }).toList();
     if (visible.isEmpty) return const SizedBox.shrink();
     final t = context.tokens;
-    final label = Text(widget.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary));
+    final sections = _OpenSections.of(context);
+    final open = sections.open.contains(label);
+    final title = Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary));
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.collapsible)
+          if (collapsible)
             InkWell(
               borderRadius: BorderRadius.circular(8),
-              onTap: () => _openLabel.value = _open ? null : widget.label,
+              onTap: () => sections.onToggle(label),
               child: Semantics(
                 button: true,
-                expanded: _open,
-                label: widget.label,
+                expanded: open,
+                label: label,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
                   child: Row(
                     children: [
-                      Expanded(child: label),
-                      Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: t.textSecondary),
+                      Expanded(child: title),
+                      Icon(open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: t.textSecondary),
                     ],
                   ),
                 ),
               ),
             )
           else
-            Padding(padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm), child: label),
-          if (!widget.collapsible || _open) ...[
-            if (widget.collapsible) const SizedBox(height: AppSpacing.xs),
+            Padding(padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm), child: title),
+          if (!collapsible || open) ...[
+            if (collapsible) const SizedBox(height: AppSpacing.xs),
             _GroupCard(children: visible),
           ],
         ],

@@ -64,6 +64,39 @@ Widget appFadeThroughTransition(
   );
 }
 
+/// Fade-in motion for a page that other pages are pushed over (welcome, sign-in): it arrives like [appFadeThroughTransition], but while
+/// something slides over it, it drifts left and dims a little, like the pages under a [slideOver]. It never fades out, so the
+/// background cannot show through while the page on top is still fading in.
+Widget appFadeCoveredTransition(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  final curved = CurvedAnimation(parent: animation, curve: _enterCurve, reverseCurve: _exitCurve);
+  final covered = CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+  return SlideTransition(
+    position: Tween<Offset>(begin: Offset.zero, end: const Offset(-0.08, 0)).animate(covered),
+    child: FadeTransition(
+      opacity: Tween<double>(begin: 1, end: 0.82).animate(covered),
+      child: FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(scale: Tween<double>(begin: 0.985, end: 1).animate(curved), child: child),
+      ),
+    ),
+  );
+}
+
+CustomTransitionPage<void> fadeThroughCovered(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: _enter,
+    reverseTransitionDuration: _exit,
+    child: child,
+    transitionsBuilder: appFadeCoveredTransition,
+  );
+}
+
 CustomTransitionPage<void> fadeThrough(GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
     key: state.pageKey,

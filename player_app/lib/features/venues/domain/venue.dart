@@ -200,8 +200,9 @@ class Venue {
   List<PlanPrice> plansFor(String? sport) {
     if (sport == null || sportPlans.isEmpty) return planPrices;
     for (final e in sportPlans.entries) {
-      if (e.key.trim().toLowerCase() == sport.trim().toLowerCase())
+      if (e.key.trim().toLowerCase() == sport.trim().toLowerCase()) {
         return e.value;
+      }
     }
     return const [];
   }

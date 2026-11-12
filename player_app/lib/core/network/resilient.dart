@@ -8,8 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 bool isTransientError(Object error) {
   // SocketException is matched by name: dart:io does not exist on the web build
   if (error is TimeoutException ||
-      error.runtimeType.toString() == 'SocketException')
+      error.runtimeType.toString() == 'SocketException') {
     return true;
+  }
   if (error is PostgrestException) {
     final code = error.code ?? '';
     // 57014 = the database cancelled the call (statement_timeout); 53300 = too many connections; 08xxx = connection problems

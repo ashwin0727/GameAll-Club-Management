@@ -103,6 +103,25 @@ class AuthLayout extends StatelessWidget {
   }
 }
 
+/// The input style of the redesigned auth pages: white fields with a soft lilac outline and a purple ring on focus. The app-wide
+/// input fill is the lilac one, so these pages wrap their form in a [Theme] built from this.
+ThemeData authFieldsTheme(BuildContext context) {
+  final base = Theme.of(context);
+  final outline = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: const BorderSide(color: Color(0xFFE5E1EF)),
+  );
+  return base.copyWith(
+    inputDecorationTheme: base.inputDecorationTheme.copyWith(
+      filled: true,
+      fillColor: Colors.white,
+      border: outline,
+      enabledBorder: outline,
+      focusedBorder: outline.copyWith(borderSide: BorderSide(color: context.tokens.primary, width: 1.6)),
+    ),
+  );
+}
+
 /// The bright-green gradient pill CTA from the auth mockups, with a soft
 /// green glow. Mirrors [PrimaryButton]'s loading/disabled behaviour.
 class AuthGradientButton extends StatelessWidget {
@@ -112,6 +131,10 @@ class AuthGradientButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.loadingLabel,
+    this.radius,
+    this.labelSize = 16,
+    this.labelWeight = FontWeight.w500,
+    this.trailing,
   });
 
   final String label;
@@ -119,15 +142,26 @@ class AuthGradientButton extends StatelessWidget {
   final bool isLoading;
   final String? loadingLabel;
 
+  /// Corner radius; the full pill when null.
+  final double? radius;
+
+  /// Label size and weight. The defaults are the original look, so only screens that ask for more are affected.
+  final double labelSize;
+  final FontWeight labelWeight;
+
+  /// An icon at the right end of the button (the label stays centred), e.g. an arrow.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final disabled = isLoading || onPressed == null;
+    final corner = radius ?? AppRadius.pill;
     return Opacity(
       opacity: disabled ? 0.6 : 1,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+          borderRadius: BorderRadius.circular(corner),
           border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -151,7 +185,7 @@ class AuthGradientButton extends StatelessWidget {
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
+            borderRadius: BorderRadius.circular(corner),
             onTap: disabled ? null : onPressed,
             child: Container(
               height: _kAuthButtonHeight,
@@ -170,24 +204,50 @@ class AuthGradientButton extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          loadingLabel ?? label,
-                          style: TextStyle(
-                            color: tokens.onPrimary,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 16,
+                        Flexible(
+                          child: Text(
+                            loadingLabel ?? label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: tokens.onPrimary,
+                              fontWeight: labelWeight,
+                              fontSize: labelSize,
+                            ),
                           ),
                         ),
                       ],
                     )
-                  : Text(
-                      label,
-                      style: TextStyle(
-                        color: tokens.onPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                      ),
-                    ),
+                  : trailing == null
+                      ? Text(
+                          label,
+                          style: TextStyle(
+                            color: tokens.onPrimary,
+                            fontWeight: labelWeight,
+                            fontSize: labelSize,
+                          ),
+                        )
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Center(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: tokens.onPrimary,
+                                  fontWeight: labelWeight,
+                                  fontSize: labelSize,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 22,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(child: IconTheme(data: IconThemeData(color: tokens.onPrimary, size: 26), child: trailing!)),
+                            ),
+                          ],
+                        ),
             ),
           ),
         ),
@@ -274,26 +334,34 @@ class AuthFooterPrompt extends StatelessWidget {
     required this.prompt,
     required this.action,
     required this.onTap,
+    this.actionKey,
   });
 
   final String prompt;
   final String action;
   final VoidCallback onTap;
+  final Key? actionKey;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    // A Wrap, not a Row: at a large text size the action drops to the next line instead of overflowing.
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(prompt, style: TextStyle(color: tokens.textSecondary)),
-        const SizedBox(width: AppSpacing.xs),
-        GestureDetector(
-          onTap: onTap,
-          child: Text(
-            action,
-            style: TextStyle(color: tokens.primary, fontWeight: FontWeight.w700),
+        Text(prompt, style: TextStyle(fontSize: 17, color: tokens.textSecondary)),
+        // A real button with a 48 px tap area (the old bare text was only as big as its letters and often missed).
+        TextButton(
+          key: actionKey,
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: tokens.primary,
+            minimumSize: const Size(64, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            tapTargetSize: MaterialTapTargetSize.padded,
           ),
+          child: Text(action, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
         ),
       ],
     );

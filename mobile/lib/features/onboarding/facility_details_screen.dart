@@ -18,8 +18,10 @@ import '../../data/models/facility_image.dart';
 import '../../data/repositories/facility_repository.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/utils/photo_picker.dart';
+import '../../shared/widgets/top_notice.dart';
 import '../authentication/session_controller.dart';
 import 'facility_setup_validation.dart';
+import 'setup_flow.dart';
 import 'setup_ui.dart';
 
 const String _draftKey = 'facility_setup_draft_v1';
@@ -88,6 +90,19 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
   /// Set when the owner already created a facility and stepped back here — the form then prefills and saves as an update.
   String? _existingFacilityId;
 
+  /// Saves the typed values as a draft by itself, 10 quiet seconds after the last change (see [DraftAutosave]).
+  late final DraftAutosave _autosave = DraftAutosave(
+    signature: () => jsonEncode(_draftJson()),
+    save: () async {
+      if (_isSubmitting) return false;
+      await _saveDraft(announce: false);
+      return true;
+    },
+    onSaved: () {
+      if (mounted) showTopNotice(context, kDraftSavedMessage, compact: true, duration: const Duration(milliseconds: 2800));
+    },
+  );
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +111,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   @override
   void dispose() {
+    _autosave.dispose();
     _scroll.dispose();
     for (final c in [_name, _customType, _phone, _whatsapp, _description, _addressLine, _area, _city, _pinCode, _locationUrl, _contactName, _contactAlt]) {
       c.dispose();
@@ -106,6 +122,18 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
   // ── prefill / draft ──────────────────────────────────────────────────
 
   Future<void> _prefill() async {
+    try {
+      await _loadAndShow();
+    } finally {
+      // what is on screen now counts as saved: only what the person changes from here is auto-saved
+      if (mounted) _autosave.start();
+    }
+  }
+
+  Future<void> _loadAndShow() async {
+    // The facility is requested right away, in parallel with reading the saved draft, instead of after it.
+    final facilityFuture = ref.read(facilityRepositoryProvider).getFacility();
+    facilityFuture.ignore();
     // A saved draft first (typed but never submitted), then the real facility on top if one exists.
     await _loadDraft();
     // The contact person defaults to the account holder (a saved draft or the facility, loaded next, wins).
@@ -113,7 +141,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
     if (account != null && _contactName.text.trim().isEmpty) _contactName.text = account.fullName;
     try {
       final repo = ref.read(facilityRepositoryProvider);
-      final facility = await repo.getFacility();
+      final facility = await facilityFuture;
       if (facility == null || !mounted) return;
       setState(() {
         _existingFacilityId = facility.id;
@@ -233,24 +261,28 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   // ── photos ───────────────────────────────────────────────────────────
 
-  Future<void> _addPhoto() async {
-    if (_savedPhotos.length + _newPhotos.length >= FacilitySetupValidation.maxSetupPhotos) {
-      setState(() => _photosError = 'You can add up to ${FacilitySetupValidation.maxSetupPhotos} photos.');
+  /// Adds photos from the gallery in one go (up to the limit), or one from the camera.
+  Future<void> _addPhotos() async {
+    const max = FacilitySetupValidation.maxSetupPhotos;
+    final remaining = max - _savedPhotos.length - _newPhotos.length;
+    if (remaining <= 0) {
+      setState(() => _photosError = 'You can add up to $max photos.');
       return;
     }
     setState(() => _addingPhoto = true);
     try {
-      final picked = await pickPhoto(context, maxWidth: 1600);
-      if (picked == null || !mounted) return;
-      final bytes = await picked.readAsBytes();
+      final picked = await pickPhotos(context, limit: remaining, maxWidth: 1600);
+      if (picked.files.isEmpty || !mounted) return;
+      // read them all at once
+      final added = await Future.wait(picked.files.map((x) async => NewPhoto(await x.readAsBytes(), x.name)));
       if (!mounted) return;
       setState(() {
-        _newPhotos.add(NewPhoto(bytes, picked.name));
-        _photosError = null;
+        _newPhotos.addAll(added);
+        _photosError = picked.skipped > 0 ? 'You can add up to $max photos, so ${picked.skipped} ${picked.skipped == 1 ? 'was' : 'were'} left out.' : null;
       });
     } catch (e, stack) {
       debugPrint('Photo pick failed: $e\n$stack');
-      if (mounted) setState(() => _photosError = 'We couldn’t use that photo. Please try another.');
+      if (mounted) setState(() => _photosError = 'We couldn’t use those photos. Please try again.');
     } finally {
       if (mounted) setState(() => _addingPhoto = false);
     }
@@ -350,12 +382,28 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
       // The photos go up now that the facility exists; they start waiting for GameAll's check. Anything already uploaded on an
       // earlier try stays, so a retry never duplicates.
+      // all at once, not one after another; whatever went up is kept even if one failed, so a retry only sends the rest
+      final batch = List.of(_newPhotos);
+      final results = await Future.wait(batch.map((p) async {
+        try {
+          return await repo.uploadFacilityPhoto(p.bytes, p.name);
+        } catch (e) {
+          return e;
+        }
+      }));
       final urls = <String>[];
-      for (final photo in List.of(_newPhotos)) {
-        urls.add(await repo.uploadFacilityPhoto(photo.bytes, photo.name));
-        _newPhotos.remove(photo);
+      Object? uploadError;
+      for (var i = 0; i < batch.length; i++) {
+        final r = results[i];
+        if (r is String) {
+          urls.add(r);
+          _newPhotos.remove(batch[i]);
+        } else {
+          uploadError ??= r;
+        }
       }
       await repo.addFacilityImages(facility.id, urls, firstSortOrder: _savedPhotos.length);
+      if (uploadError != null) throw uploadError;
       _existingFacilityId = facility.id;
 
       // Only advance the step forward, never drag it back.
@@ -364,7 +412,8 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
         await repo.updateOnboardingStep(facility.id, OnboardingStep.sportsCourts);
       }
       await _clearDraft();
-      await ref.read(sessionControllerProvider.notifier).refresh();
+      _autosave.markSaved();
+      refreshSessionInBackground(ref);
       if (!mounted) return;
       context.push(AppRoutes.onboardingSportsCourts);
     } on AppException catch (e) {
@@ -390,10 +439,9 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final account = ref.watch(sessionControllerProvider).user;
-    final email = account?.email ?? '';
+    // Only the two session values this page shows: it is not rebuilt (it is a long form) when the session refreshes for other reasons.
+    final (email, verifiedMobile) = ref.watch(sessionControllerProvider.select((s) => (s.user?.email ?? '', s.user?.verifiedMobile)));
     // The contact number is the mobile verified at signup: locked, with a Verified badge (older accounts without one type it).
-    final verifiedMobile = account?.verifiedMobile;
     if (verifiedMobile != null && _phone.text != verifiedMobile) _phone.text = verifiedMobile;
     const gap = SizedBox(height: 16);
 
@@ -401,36 +449,12 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
       key: _formKey,
       child: SetupPage(
         scrollController: _scroll,
-        footer: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: SetupButton(
-                    label: 'Back',
-                    icon: Icons.arrow_back,
-                    onPressed: () async {
-                      await _saveDraft(announce: false);
-                      if (context.mounted) context.go(AppRoutes.onboardingWelcome);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _isSubmitting, loadingLabel: 'Saving…', onPressed: _submit),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            TextButton.icon(
-              key: const ValueKey('save-draft'),
-              onPressed: _isSubmitting ? null : _saveDraft,
-              icon: const Icon(Icons.description_outlined, size: 18, color: SetupColors.secondary),
-              label: Text('Save as Draft', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.secondary)),
-            ),
-          ],
+        footer: SetupNavFooter(
+          onBack: () async {
+            await _saveDraft(announce: false);
+            if (context.mounted) goBackOr(context, AppRoutes.onboardingWelcome);
+          },
+          next: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _isSubmitting, loadingLabel: 'Saving…', onPressed: _submit),
         ),
         children: [
           const SetupStepper(current: 1),
@@ -668,7 +692,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                 added: _newPhotos,
                 busy: _addingPhoto,
                 error: _photosError,
-                onAdd: _addPhoto,
+                onAdd: _addPhotos,
                 onRemoveNew: (p) => setState(() => _newPhotos.remove(p)),
               ),
             ),
@@ -803,7 +827,7 @@ class _SetupPhotos extends StatelessWidget {
     final tiles = <Widget>[
       for (var i = 0; i < saved.length; i++)
         frame(
-          Image.network(saved[i].url, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: SetupColors.mutedFill, child: const Icon(Icons.broken_image_outlined, color: SetupColors.secondary))),
+          Image.network(saved[i].url, fit: BoxFit.cover, cacheWidth: 720, errorBuilder: (_, _, _) => Container(color: SetupColors.mutedFill, child: const Icon(Icons.broken_image_outlined, color: SetupColors.secondary))),
           cover: i == 0,
           caption: saved[i].status.label,
           captionColor: switch (saved[i].status) {
@@ -813,7 +837,7 @@ class _SetupPhotos extends StatelessWidget {
           },
         ),
       for (var i = 0; i < added.length; i++)
-        frame(Image.memory(added[i].bytes, fit: BoxFit.cover), cover: saved.isEmpty && i == 0, onRemove: () => onRemoveNew(added[i])),
+        frame(Image.memory(added[i].bytes, fit: BoxFit.cover, cacheWidth: 720), cover: saved.isEmpty && i == 0, onRemove: () => onRemoveNew(added[i])),
       if (total < max)
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -91,8 +91,9 @@ class SupabasePlayerAuthRepository implements PlayerAuthRepository {
 
   SupabaseClient get _need {
     final c = _client;
-    if (c == null)
+    if (c == null) {
       throw const AuthFailure('Sign in is not available in this build.');
+    }
     return c;
   }
 
@@ -207,15 +208,17 @@ class SupabasePlayerAuthRepository implements PlayerAuthRepository {
       );
       return PlayerProfile.fromJson((result as Map).cast<String, dynamic>());
     } on PostgrestException catch (e) {
-      if (e.code == '23505')
+      if (e.code == '23505') {
         throw const AuthFailure(
           'This phone number already belongs to another player.',
         );
+      }
       if (e.code == '23514') throw AuthFailure(e.message);
-      if (e.code == 'PGRST202' || e.code == '42883')
+      if (e.code == 'PGRST202' || e.code == '42883') {
         throw const AuthFailure(
           'Player accounts are not switched on yet. Please try again soon.',
         );
+      }
       throw const AuthFailure(
         "We couldn't save your details. Please try again.",
       );
@@ -237,20 +240,24 @@ class SupabasePlayerAuthRepository implements PlayerAuthRepository {
     final m = e.message.toLowerCase();
     // Phone sign-in has not been switched on (Supabase Auth > Phone) yet.
     if (e.code == 'phone_provider_disabled' ||
-        m.contains('unsupported phone provider'))
+        m.contains('unsupported phone provider')) {
       return 'Phone sign-in is not available yet. Please try again later.';
-    if (m.contains('rate') || m.contains('seconds') || e.statusCode == '429')
+    }
+    if (m.contains('rate') || m.contains('seconds') || e.statusCode == '429') {
       return 'Too many attempts. Please wait a minute and try again.';
-    if (m.contains('invalid') && m.contains('phone'))
+    }
+    if (m.contains('invalid') && m.contains('phone')) {
       return 'That phone number does not look right.';
+    }
     // An SMS provider that is not switched on yet, or any other send failure.
     return "We couldn't send the code right now. Please try again in a moment.";
   }
 
   static String _verifyMessage(AuthException e) {
     final m = e.message.toLowerCase();
-    if (m.contains('rate') || e.statusCode == '429')
+    if (m.contains('rate') || e.statusCode == '429') {
       return 'Too many attempts. Please wait a minute and try again.';
+    }
     return "That code isn't right, or it has expired. Check it or ask for a new one.";
   }
 }

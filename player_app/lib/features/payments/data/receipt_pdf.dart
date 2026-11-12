@@ -32,8 +32,9 @@ String inrText(int amount) => rupees(amount).replaceFirst('₹', 'Rs. ');
 List<(String, String)> receiptDetailRows(PaymentReceipt r) {
   final rows = <(String, String)>[];
   void add(String label, String? value) {
-    if (value != null && value.trim().isNotEmpty)
+    if (value != null && value.trim().isNotEmpty) {
       rows.add((label, value.trim()));
+    }
   }
 
   switch (r.kind) {

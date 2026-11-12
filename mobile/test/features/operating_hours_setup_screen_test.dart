@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:gameall_club_mobile/features/onboarding/setup_flow.dart';
 
 import 'package:gameall_club_mobile/data/models/app_user.dart';
 import 'package:gameall_club_mobile/data/models/facility.dart';
@@ -336,14 +337,40 @@ void main() {
     expect(_facilityRepo.steps, [OnboardingStep.pricing]);
   });
 
-  testWidgets('Save as Draft saves but stays on the page', (tester) async {
+  testWidgets('a change is saved as a draft by itself after 10 quiet seconds: it stays on the page, and a small notice shows at the top', (tester) async {
     await _pump(tester);
+    expect(find.text('Save as Draft'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('save-draft')));
-    await tester.pumpAndSettle();
+    await _pickTime(tester, 'std-close', '22:00');
+    await tester.pump(const Duration(seconds: 6));
+    expect(_hoursRepo.savedDays, isNull, reason: 'not before 10 seconds');
+
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pump();
     expect(_hoursRepo.savedDays, isNotNull);
+    expect(find.text(kDraftSavedMessage), findsOneWidget);
     expect(find.text('PRICING PAGE'), findsNothing);
     expect(_facilityRepo.steps, isEmpty);
+  });
+
+  testWidgets('hours that are not valid yet are not auto-saved, and nothing is shown about it', (tester) async {
+    await _pump(tester);
+
+    for (final d in [1, 2, 3, 4, 5, 6]) {
+      await tester.tap(find.byKey(ValueKey('std-day-$d')));
+      await tester.pump();
+    }
+    await tester.pump(const Duration(seconds: 15));
+    expect(_hoursRepo.savedDays, isNull);
+    expect(find.text(kDraftSavedMessage), findsNothing);
+    expect(find.text('Please fix the highlighted fields to continue.'), findsNothing);
+  });
+
+  testWidgets('unchanged hours are not auto-saved', (tester) async {
+    await _pump(tester);
+    await tester.pump(const Duration(seconds: 30));
+    expect(_hoursRepo.savedDays, isNull);
+    expect(find.text(kDraftSavedMessage), findsNothing);
   });
 
   testWidgets('Sport-wise hours: each sport gets its own hours, applied to each of its courts', (tester) async {

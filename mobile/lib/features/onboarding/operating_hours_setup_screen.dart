@@ -9,8 +9,9 @@ import '../../data/models/operating_hours.dart';
 import '../../data/models/playing_area.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../authentication/session_controller.dart';
+import '../../shared/widgets/top_notice.dart';
 import 'hours_setup_logic.dart';
+import 'setup_flow.dart';
 import 'setup_ui.dart';
 
 const String _customSportIcon = '🏅';
@@ -75,7 +76,36 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
   Map<String, String> _sportErrors = {};
   String? _error;
   bool _savingNext = false;
-  bool _savingDraft = false;
+  bool _autoSaving = false;
+
+  /// Saves the hours as a draft by itself, 10 quiet seconds after the last change (see [DraftAutosave]).
+  late final DraftAutosave _autosave = DraftAutosave(
+    signature: _signature,
+    save: () => _persist(advance: false, silent: true),
+    onSaved: () {
+      if (mounted) showTopNotice(context, kDraftSavedMessage, compact: true, duration: const Duration(milliseconds: 2800));
+    },
+  );
+
+  static String _plansSignature(List<DayPlan> plans) => plans.map((d) => '${d.dayOfWeek}${d.isOpen ? 'o' : 'c'}${d.open}-${d.close}${d.is24Hours ? '*' : ''}').join(',');
+
+  /// Everything the person can change on this step, as one short string.
+  String _signature() => [
+        _mode.name,
+        '${_standard.days.join(',')}|${_standard.open}|${_standard.close}|${_standard.is24Hours}',
+        _plansSignature(_custom),
+        _closures.map((c) => '${c.date}:${c.name}').join(';'),
+        '$_allowOutside',
+        '$_breakOn:${_break.start}-${_break.end}',
+        '$_sportWise',
+        for (final e in (_sportPlans.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))) '${e.key}=${_plansSignature(e.value)}',
+      ].join('\n');
+
+  @override
+  void dispose() {
+    _autosave.dispose();
+    super.dispose();
+  }
 
   bool _hadSportWise = false;
   final Set<String> _courtsWithOverride = {};
@@ -95,26 +125,40 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final sportsRepo = ref.read(sportsRepositoryProvider);
+      final areaRepo = ref.read(playingAreaRepositoryProvider);
+      final hours = ref.read(operatingHoursRepositoryProvider);
+      final knownId = knownFacilityId(ref);
+      // Requested together, not one after another. When the app already knows the facility's id, its sports, courts, hours and closures
+      // are asked for at the same moment as the facility itself.
+      final facilityFuture = ref.read(facilityRepositoryProvider).getFacility()..ignore();
+      final catalogueFuture = sportsRepo.getActiveSports()..ignore();
+      final facSportsFuture = knownId == null ? null : (sportsRepo.getFacilitySports(knownId)..ignore());
+      final courtsFuture = knownId == null ? null : (areaRepo.getPlayingAreas(knownId)..ignore());
+      final scheduleFuture = knownId == null ? null : (hours.getFacilitySchedule(knownId)..ignore());
+      final closuresFuture = knownId == null ? null : (hours.getClosures(knownId)..ignore());
+
+      final facility = await facilityFuture;
       if (facility == null) {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
-      final sportsRepo = ref.read(sportsRepositoryProvider);
-      final catalogue = await sportsRepo.getActiveSports();
-      final facSports = await sportsRepo.getFacilitySports(facility.id);
-      final courts = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      final same = knownId == facility.id;
+      final catalogue = await catalogueFuture;
+      final facSports = await (same ? facSportsFuture! : sportsRepo.getFacilitySports(facility.id));
+      final courts = await (same ? courtsFuture! : areaRepo.getPlayingAreas(facility.id));
       if (facSports.isEmpty || courts.isEmpty) {
         if (mounted) context.go(AppRoutes.onboardingSportsCourts);
         return;
       }
-      final hours = ref.read(operatingHoursRepositoryProvider);
-      final schedule = await hours.getFacilitySchedule(facility.id);
-      final closures = await hours.getClosures(facility.id);
+      final schedule = await (same ? scheduleFuture! : hours.getFacilitySchedule(facility.id));
+      final closures = await (same ? closuresFuture! : hours.getClosures(facility.id));
+      // every court's own hours, all at once
+      final courtSchedules = await Future.wait([for (final c in courts) hours.getPlayingAreaSchedule(c.id)]);
       final overrides = <String, List<DayPlan>>{};
-      for (final c in courts) {
-        final o = await hours.getPlayingAreaSchedule(c.id);
-        if (o != null) overrides[c.id] = plansFromSchedule(o.days);
+      for (var i = 0; i < courts.length; i++) {
+        final o = courtSchedules[i];
+        if (o != null) overrides[courts[i].id] = plansFromSchedule(o.days);
       }
       if (!mounted) return;
 
@@ -147,6 +191,8 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
         _sportPlans = perSport;
         _loading = false;
       });
+      // what is on screen now counts as saved: only what the person changes from here is auto-saved
+      _autosave.start();
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -212,10 +258,13 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
 
   // ── save ────────────────────────────────────────────────────────────
 
-  Future<void> _persist({required bool advance}) async {
+  /// Saves the hours. With [silent] (the auto-save) nothing is shown or changed on screen, and a step that is not valid yet is simply
+  /// skipped. Returns whether it saved.
+  Future<bool> _persist({required bool advance, bool silent = false}) async {
     final facilityId = _facilityId;
-    if (facilityId == null) return;
-    setState(() => _error = null);
+    if (facilityId == null) return false;
+    if (silent && (_savingNext || _autoSaving)) return false;
+    if (!silent) setState(() => _error = null);
 
     // with sport-wise hours on, the venue-wide hours and break are not used, so they are not checked
     final found = _sportWise ? validatePlans(_plans, null) : validatePlans(_plans, _activeBreak);
@@ -227,69 +276,80 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
         if (message != null) sportProblems[e.id] = message;
       }
     }
-    setState(() {
-      _problems = found;
-      _sportErrors = sportProblems;
-    });
-    if (found.any || sportProblems.isNotEmpty) {
-      setState(() => _error = 'Please fix the highlighted fields to continue.');
-      return;
+    if (silent) {
+      if (found.any || sportProblems.isNotEmpty) return false;
+    } else {
+      setState(() {
+        _problems = found;
+        _sportErrors = sportProblems;
+      });
+      if (found.any || sportProblems.isNotEmpty) {
+        setState(() => _error = 'Please fix the highlighted fields to continue.');
+        return false;
+      }
     }
 
-    setState(() => advance ? _savingNext = true : _savingDraft = true);
+    if (silent) {
+      _autoSaving = true;
+    } else {
+      setState(() => _savingNext = true);
+    }
     try {
       final hours = ref.read(operatingHoursRepositoryProvider);
-      await hours.saveFacilitySchedule(facilityId, scheduleFromPlans(_plans, _activeBreak));
-      await hours.replaceClosures(facilityId, _closures);
-      await ref.read(facilityRepositoryProvider).updateHoursSettings(
-            facilityId,
-            allowBookingsOutsideHours: _allowOutside,
-            breakStart: _activeBreak?.start,
-            breakEnd: _activeBreak?.end,
-            sportWiseHours: _sportWise,
-          );
+      // the three venue-wide saves touch different tables: all at once
+      await Future.wait([
+        hours.saveFacilitySchedule(facilityId, scheduleFromPlans(_plans, _activeBreak)),
+        hours.replaceClosures(facilityId, _closures),
+        ref.read(facilityRepositoryProvider).updateHoursSettings(
+              facilityId,
+              allowBookingsOutsideHours: _allowOutside,
+              breakStart: _activeBreak?.start,
+              breakEnd: _activeBreak?.end,
+              sportWiseHours: _sportWise,
+            ),
+      ]);
 
       if (_sportWise) {
+        final jobs = <Future<void>>[];
         for (final e in _sportEntries) {
           final days = scheduleFromPlans(_sportPlans[e.id] ?? const [], null);
           for (final court in _areas.where((a) => a.facilitySportId == e.id)) {
-            await hours.savePlayingAreaSchedule(court.id, facilityId, days);
+            jobs.add(hours.savePlayingAreaSchedule(court.id, facilityId, days));
             _courtsWithOverride.add(court.id);
           }
         }
+        await Future.wait(jobs);
       } else if (_hadSportWise) {
         // sport-wise hours were on and are now off: the courts go back to the venue's hours
-        for (final id in _courtsWithOverride.toList()) {
-          await hours.deletePlayingAreaOverride(id);
-        }
+        await Future.wait([for (final id in _courtsWithOverride.toList()) hours.deletePlayingAreaOverride(id)]);
         _courtsWithOverride.clear();
       }
       _hadSportWise = _sportWise;
 
       if (advance) {
         await ref.read(facilityRepositoryProvider).updateOnboardingStep(facilityId, OnboardingStep.pricing);
-        await ref.read(sessionControllerProvider.notifier).refresh();
-        if (!mounted) return;
+        _autosave.markSaved();
+        // the next step opens now; the app's copy of the session catches up behind it
+        refreshSessionInBackground(ref);
+        if (!mounted) return true;
         context.push(AppRoutes.onboardingPricing);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Draft saved. You can pick up where you left off.')));
       }
+      return true;
     } on AppException catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.message);
+      if (silent) {
+        debugPrint('Operating hours auto-save skipped: ${e.message}');
+        return false;
+      }
+      if (mounted) setState(() => _error = e.message);
+      return false;
     } catch (e, stack) {
       debugPrint('Operating hours save failed: $e\n$stack');
-      if (!mounted) return;
-      setState(() => _error = 'We couldn’t save your operating hours. Please try again.');
+      if (silent) return false;
+      if (mounted) setState(() => _error = 'We couldn’t save your operating hours. Please try again.');
+      return false;
     } finally {
-      if (mounted) {
-        setState(() {
-          _savingNext = false;
-          _savingDraft = false;
-        });
-      }
+      _autoSaving = false;
+      if (!silent && mounted) setState(() => _savingNext = false);
     }
   }
 
@@ -918,36 +978,18 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _loadError != null) {
+    if (_loadError != null) {
       return SetupPage(
-        footer: _loadError == null ? const SizedBox(height: 52) : SetupButton(label: 'Try again', primary: true, onPressed: _load),
-        children: [
-          const SetupStepper(current: 3),
-          const SizedBox(height: 18),
-          if (_loadError != null) SetupErrorBanner(_loadError!) else const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())),
-        ],
+        footer: SetupButton(label: 'Try again', primary: true, onPressed: _load),
+        children: [const SetupStepper(current: 3), const SizedBox(height: 18), SetupErrorBanner(_loadError!)],
       );
     }
+    if (_loading) return const SetupLoadingPage(cards: [2, 3, 2]);
 
     return SetupPage(
-      footer: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(child: SetupButton(label: 'Back', icon: Icons.arrow_back, onPressed: () => context.go(AppRoutes.onboardingSportsCourts))),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _savingNext, loadingLabel: 'Saving…', onPressed: _savingDraft ? null : () => _persist(advance: true))),
-            ],
-          ),
-          const SizedBox(height: 4),
-          TextButton.icon(
-            key: const ValueKey('save-draft'),
-            onPressed: (_savingNext || _savingDraft) ? null : () => _persist(advance: false),
-            icon: _savingDraft ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.description_outlined, size: 18, color: SetupColors.secondary),
-            label: Text('Save as Draft', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.secondary)),
-          ),
-        ],
+      footer: SetupNavFooter(
+        onBack: () => goBackOr(context, AppRoutes.onboardingSportsCourts),
+        next: SetupButton(label: 'Next', primary: true, trailingIcon: Icons.arrow_forward, loading: _savingNext, loadingLabel: 'Saving…', onPressed: () => _persist(advance: true)),
       ),
       children: [
         const SetupStepper(current: 3),

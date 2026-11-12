@@ -253,23 +253,25 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
     return Validators.googleMapsLink(v);
   }
 
+  /// Adds photos from the gallery in one go (up to the limit), or one from the camera.
   Future<void> _addPhoto() async {
-    if (_saved.length + _newPhotos.length >= maxFacilityPhotos) {
+    final remaining = maxFacilityPhotos - _saved.length - _newPhotos.length;
+    if (remaining <= 0) {
       setState(() => _photosError = 'You can add up to $maxFacilityPhotos photos.');
       return;
     }
     setState(() => _addingPhoto = true);
     try {
-      final picked = await pickPhoto(context, maxWidth: 1600);
-      if (picked == null || !mounted) return;
-      final bytes = await picked.readAsBytes();
+      final picked = await pickPhotos(context, limit: remaining, maxWidth: 1600);
+      if (picked.files.isEmpty || !mounted) return;
+      final added = await Future.wait(picked.files.map((x) async => NewPhoto(await x.readAsBytes(), x.name)));
       if (!mounted) return;
       setState(() {
-        _newPhotos.add(NewPhoto(bytes, picked.name));
-        _photosError = null;
+        _newPhotos.addAll(added);
+        _photosError = picked.skipped > 0 ? 'You can add up to $maxFacilityPhotos photos, so ${picked.skipped} ${picked.skipped == 1 ? 'was' : 'were'} left out.' : null;
       });
     } catch (_) {
-      if (mounted) setState(() => _photosError = 'We couldn’t use that photo. Please try another.');
+      if (mounted) setState(() => _photosError = 'We couldn’t use those photos. Please try again.');
     } finally {
       if (mounted) setState(() => _addingPhoto = false);
     }

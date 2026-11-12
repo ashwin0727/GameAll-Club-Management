@@ -11,9 +11,10 @@ import '../../data/models/playing_area.dart';
 import '../../data/models/pricing.dart';
 import '../../data/models/sport.dart';
 import '../../data/repositories/repository_providers.dart';
-import '../authentication/session_controller.dart';
+import '../../shared/widgets/top_notice.dart';
 import 'hours_setup_logic.dart' show formatClock, shortDay, timeOptions;
 import 'pricing_setup_logic.dart';
+import 'setup_flow.dart';
 import 'setup_ui.dart';
 
 const String _customSportIcon = '🏅';
@@ -67,7 +68,36 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
   Map<String, SetupProblems> _problems = {};
   String? _error;
   bool _savingNext = false;
-  bool _savingDraft = false;
+  bool _autoSaving = false;
+
+  /// Saves the prices as a draft by itself, 10 quiet seconds after the last change (see [DraftAutosave]). Not in the profile editor,
+  /// where there is one explicit Save.
+  late final DraftAutosave _autosave = DraftAutosave(
+    signature: _signature,
+    save: () => _persist(advance: false, silent: true),
+    onSaved: () {
+      if (mounted) showTopNotice(context, kDraftSavedMessage, compact: true, duration: const Duration(milliseconds: 2800));
+    },
+  );
+
+  static String _slotsSignature(List<Slot> l) => l.map((s) => '${s.start}-${s.end}:${s.price}:${s.tier}').join(',');
+
+  static String _setupSignature(PriceSetup p) =>
+      '${p.unit.name}|${p.basePrice}|${p.timeBased}|${_slotsSignature(p.allDays)}|${_slotsSignature(p.weekdays)}|${_slotsSignature(p.weekends)}|${p.specificDays.join(',')}|${_slotsSignature(p.specificSlots)}|${p.memberPrice}|${p.coachingPrice}';
+
+  /// Everything the person can change on this step, as one short string.
+  String _signature() => [
+        _settings.mode.name,
+        '${_settings.differentWeekendPricing}${_settings.memberPricingEnabled}${_settings.coachingPricingEnabled}',
+        for (final e in (_sportSetups.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))) 's${e.key}=${_setupSignature(e.value)}',
+        for (final e in (_courtSetups.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))) 'c${e.key}=${_setupSignature(e.value)}',
+      ].join('\n');
+
+  @override
+  void dispose() {
+    _autosave.dispose();
+    super.dispose();
+  }
 
   Span get _span => openSpan(_operatingDays);
 
@@ -85,21 +115,35 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final sportsRepo = ref.read(sportsRepositoryProvider);
+      final areaRepo = ref.read(playingAreaRepositoryProvider);
+      final hoursRepo = ref.read(operatingHoursRepositoryProvider);
+      final pricingRepo = ref.read(pricingRepositoryProvider);
+      final knownId = knownFacilityId(ref);
+      // Requested together, not one after another. When the app already knows the facility's id, its sports, courts, hours and pricing
+      // are asked for at the same moment as the facility itself.
+      final facilityFuture = ref.read(facilityRepositoryProvider).getFacility()..ignore();
+      final catalogueFuture = sportsRepo.getActiveSports()..ignore();
+      final facSportsFuture = knownId == null ? null : (sportsRepo.getFacilitySports(knownId)..ignore());
+      final courtsFuture = knownId == null ? null : (areaRepo.getPlayingAreas(knownId)..ignore());
+      final scheduleFuture = knownId == null ? null : (hoursRepo.getFacilitySchedule(knownId)..ignore());
+      final planFuture = knownId == null ? null : (pricingRepo.getPricingPlan(knownId)..ignore());
+
+      final facility = await facilityFuture;
       if (facility == null) {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
-      final sportsRepo = ref.read(sportsRepositoryProvider);
-      final catalogue = await sportsRepo.getActiveSports();
-      final facSports = await sportsRepo.getFacilitySports(facility.id);
-      final courts = await ref.read(playingAreaRepositoryProvider).getPlayingAreas(facility.id);
+      final same = knownId == facility.id;
+      final catalogue = await catalogueFuture;
+      final facSports = await (same ? facSportsFuture! : sportsRepo.getFacilitySports(facility.id));
+      final courts = await (same ? courtsFuture! : areaRepo.getPlayingAreas(facility.id));
       if (facSports.isEmpty || courts.isEmpty) {
         if (mounted) context.go(AppRoutes.onboardingSportsCourts);
         return;
       }
-      final schedule = await ref.read(operatingHoursRepositoryProvider).getFacilitySchedule(facility.id);
-      final plan = await ref.read(pricingRepositoryProvider).getPricingPlan(facility.id);
+      final schedule = await (same ? scheduleFuture! : hoursRepo.getFacilitySchedule(facility.id));
+      final plan = await (same ? planFuture! : pricingRepo.getPricingPlan(facility.id));
       if (!mounted) return;
 
       final rules = plan?.rules ?? const <PricingRule>[];
@@ -136,6 +180,8 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
         _selectedCourt = courts.first.id;
         _loading = false;
       });
+      // what is on screen now counts as saved: only what the person changes from here is auto-saved
+      if (!widget.editMode) _autosave.start();
     } on AppException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -203,72 +249,86 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
       ? [for (final fs in _facilitySports) (id: fs.id, setup: _sportSetups[fs.id] ?? PriceSetup(), scope: RuleScope(fs.id))]
       : [for (final a in _areas) (id: a.id, setup: _courtSetups[a.id] ?? PriceSetup(), scope: RuleScope(a.facilitySportId, a.id))];
 
-  Future<void> _persist({required bool advance}) async {
+  /// Saves the prices. With [silent] (the auto-save) nothing is shown or changed on screen, and a step that is not valid yet is simply
+  /// skipped. Returns whether it saved.
+  Future<bool> _persist({required bool advance, bool silent = false}) async {
     final facilityId = _facilityId;
-    if (facilityId == null) return;
-    setState(() => _error = null);
+    if (facilityId == null) return false;
+    if (silent && (_savingNext || _autoSaving)) return false;
+    if (!silent) setState(() => _error = null);
 
     final found = <String, SetupProblems>{};
     for (final s in _scopes) {
       final p = validateSetup(s.setup, s.scope, _settings, _operatingDays);
       if (p.any) found[s.id] = p;
     }
-    setState(() => _problems = found);
-    if (found.isNotEmpty) {
-      final firstBad = found.keys.first;
-      final name = _settings.mode == PricingMode.bySport ? _sportEntries.where((s) => s.id == firstBad).firstOrNull?.name : _areas.where((a) => a.id == firstBad).firstOrNull?.name;
-      setState(() {
-        if (_settings.mode == PricingMode.bySport) {
-          _expandedSport = firstBad;
-        } else {
-          _selectedCourt = firstBad;
-        }
-        _error = 'Please fix the highlighted fields to continue${name == null ? '' : ' ($name)'}.';
-      });
-      return;
+    if (silent) {
+      if (found.isNotEmpty) return false;
+    } else {
+      setState(() => _problems = found);
+      if (found.isNotEmpty) {
+        final firstBad = found.keys.first;
+        final name = _settings.mode == PricingMode.bySport ? _sportEntries.where((s) => s.id == firstBad).firstOrNull?.name : _areas.where((a) => a.id == firstBad).firstOrNull?.name;
+        setState(() {
+          if (_settings.mode == PricingMode.bySport) {
+            _expandedSport = firstBad;
+          } else {
+            _selectedCourt = firstBad;
+          }
+          _error = 'Please fix the highlighted fields to continue${name == null ? '' : ' ($name)'}.';
+        });
+        return false;
+      }
     }
 
-    setState(() => advance ? _savingNext = true : _savingDraft = true);
+    if (silent) {
+      _autoSaving = true;
+    } else {
+      setState(() => _savingNext = true);
+    }
     try {
       final rules = [for (final s in _scopes) ...rulesFromSetup(s.setup, s.scope, _settings)];
-      await ref.read(pricingRepositoryProvider).savePricingRules(facilityId, rules);
       final facilityRepo = ref.read(facilityRepositoryProvider);
-      await facilityRepo.updatePricingSettings(
-        facilityId,
-        mode: _settings.mode.db,
-        differentWeekendPricing: _settings.differentWeekendPricing,
-        memberPricingEnabled: _settings.memberPricingEnabled,
-        coachingPricingEnabled: _settings.coachingPricingEnabled,
-      );
+      // the rates and the pricing options are saved at the same time
+      await Future.wait([
+        ref.read(pricingRepositoryProvider).savePricingRules(facilityId, rules),
+        facilityRepo.updatePricingSettings(
+          facilityId,
+          mode: _settings.mode.db,
+          differentWeekendPricing: _settings.differentWeekendPricing,
+          memberPricingEnabled: _settings.memberPricingEnabled,
+          coachingPricingEnabled: _settings.coachingPricingEnabled,
+        ),
+      ]);
       if (advance && widget.editMode) {
-        if (!mounted) return;
+        if (!mounted) return true;
         context.pop(true);
-        return;
+        return true;
       }
       if (advance) {
         await facilityRepo.updateOnboardingStep(facilityId, OnboardingStep.payments);
-        await ref.read(sessionControllerProvider.notifier).refresh();
-        if (!mounted) return;
+        _autosave.markSaved();
+        // the next step opens now; the app's copy of the session catches up behind it
+        refreshSessionInBackground(ref);
+        if (!mounted) return true;
         context.push(AppRoutes.onboardingPayments);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Draft saved. You can pick up where you left off.')));
       }
+      return true;
     } on AppException catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.message);
+      if (silent) {
+        debugPrint('Pricing auto-save skipped: ${e.message}');
+        return false;
+      }
+      if (mounted) setState(() => _error = e.message);
+      return false;
     } catch (e, stack) {
       debugPrint('Pricing save failed: $e\n$stack');
-      if (!mounted) return;
-      setState(() => _error = 'We couldn’t save your pricing. Please try again.');
+      if (silent) return false;
+      if (mounted) setState(() => _error = 'We couldn’t save your pricing. Please try again.');
+      return false;
     } finally {
-      if (mounted) {
-        setState(() {
-          _savingNext = false;
-          _savingDraft = false;
-        });
-      }
+      _autoSaving = false;
+      if (!silent && mounted) setState(() => _savingNext = false);
     }
   }
 
@@ -947,39 +1007,33 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _loadError != null) {
+    if (_loadError != null) {
       return SetupPage(
-        footer: _loadError == null ? const SizedBox(height: 52) : SetupButton(label: 'Try again', primary: true, onPressed: _load),
-        children: [
-          if (!widget.editMode) const SetupStepper(current: 4),
-          const SizedBox(height: 18),
-          if (_loadError != null) SetupErrorBanner(_loadError!) else const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())),
-        ],
+        footer: SetupButton(label: 'Try again', primary: true, onPressed: _load),
+        children: [if (!widget.editMode) const SetupStepper(current: 4), const SizedBox(height: 18), SetupErrorBanner(_loadError!)],
       );
     }
+    if (_loading) return const SetupLoadingPage(cards: [2, 3, 2]);
 
     final byCourt = _settings.mode == PricingMode.byCourt;
     return SetupPage(
+      // a slim bar: the message (when there is one) above a single row of buttons
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_error != null) SetupErrorBanner(_error!),
-          Row(
-            children: [
-              Expanded(child: SetupButton(label: widget.editMode ? 'Cancel' : 'Back', icon: Icons.arrow_back, onPressed: () => widget.editMode ? context.pop() : context.go(AppRoutes.onboardingOperatingHours))),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: SetupButton(label: widget.editMode ? 'Save' : 'Next', primary: true, trailingIcon: widget.editMode ? null : Icons.arrow_forward, loading: _savingNext, loadingLabel: 'Saving…', onPressed: _savingDraft ? null : () => _persist(advance: true))),
-            ],
-          ),
-          if (!widget.editMode) ...[
-            const SizedBox(height: 4),
-            TextButton.icon(
-              key: const ValueKey('save-draft'),
-              onPressed: (_savingNext || _savingDraft) ? null : () => _persist(advance: false),
-              icon: _savingDraft ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.description_outlined, size: 18, color: SetupColors.secondary),
-              label: Text('Save as Draft', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.secondary)),
+          SetupNavFooter(
+            backLabel: widget.editMode ? 'Cancel' : 'Back',
+            onBack: () => widget.editMode ? context.pop() : goBackOr(context, AppRoutes.onboardingOperatingHours),
+            next: SetupButton(
+              label: widget.editMode ? 'Save' : 'Next',
+              primary: true,
+              trailingIcon: widget.editMode ? null : Icons.arrow_forward,
+              loading: _savingNext,
+              loadingLabel: 'Saving…',
+              onPressed: () => _persist(advance: true),
             ),
-          ],
+          ),
         ],
       ),
       children: [

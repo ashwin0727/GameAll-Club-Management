@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +15,8 @@ import 'package:gameall_club_mobile/data/repositories/playing_area_repository.da
 import 'package:gameall_club_mobile/data/repositories/repository_providers.dart';
 import 'package:gameall_club_mobile/data/repositories/sports_repository.dart';
 import 'package:gameall_club_mobile/features/authentication/session_controller.dart';
+import 'package:gameall_club_mobile/features/onboarding/setup_flow.dart';
+import 'package:gameall_club_mobile/features/onboarding/setup_ui.dart';
 import 'package:gameall_club_mobile/features/onboarding/sports_courts_screen.dart';
 
 Facility _facility({FacilityType type = FacilityType.multiSport}) => Facility(
@@ -45,7 +49,10 @@ class _FakeFacilityRepo implements FacilityRepository {
   final steps = <OnboardingStep>[];
 
   @override
-  Future<Facility?> getFacility() async => facility;
+  Future<Facility?> getFacility() async {
+    _requests.add('facility');
+    return facility;
+  }
 
   @override
   Future<void> updateOnboardingStep(String facilityId, OnboardingStep step) async => steps.add(step);
@@ -72,10 +79,16 @@ class _FakeSportsRepo implements SportsRepository {
   }
 
   @override
-  Future<List<Sport>> getActiveSports() async => _catalogue;
+  Future<List<Sport>> getActiveSports() async {
+    _requests.add('catalogue');
+    return _catalogue;
+  }
 
   @override
-  Future<List<FacilitySport>> getFacilitySports(String facilityId) async => saved;
+  Future<List<FacilitySport>> getFacilitySports(String facilityId) async {
+    _requests.add('facilitySports');
+    return saved;
+  }
 
   @override
   Future<List<FacilitySport>> saveFacilitySports(String facilityId, List<String> sportIds, {String? customSportName}) async {
@@ -93,7 +106,10 @@ class _FakeAreaRepo implements PlayingAreaRepository {
   final removed = <String>[];
 
   @override
-  Future<List<PlayingArea>> getPlayingAreas(String facilityId) async => rows.where((r) => !r.archived).toList();
+  Future<List<PlayingArea>> getPlayingAreas(String facilityId) async {
+    _requests.add('areas');
+    return rows.where((r) => !r.archived).toList();
+  }
 
   @override
   Future<PlayingArea> createPlayingArea(PlayingArea input) async {
@@ -123,6 +139,12 @@ class _FakeAreaRepo implements PlayingAreaRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// The data requests the screen has made so far, in the order it made them.
+final _requests = <String>[];
+
+/// While set, the session refresh does not finish: Next must not wait for it.
+Completer<void>? _holdRefresh;
+
 class _FakeSession extends SessionController {
   @override
   SessionState build() => SessionState(
@@ -132,14 +154,19 @@ class _FakeSession extends SessionController {
       );
 
   @override
-  Future<void> refresh() async {}
+  Future<void> refresh() async {
+    await _holdRefresh?.future;
+  }
 }
 
 late _FakeFacilityRepo _facilityRepo;
+late GoRouter _router;
 late _FakeSportsRepo _sportsRepo;
 late _FakeAreaRepo _areaRepo;
 
-Future<void> _pump(WidgetTester tester, {Facility? facility, List<String> savedSports = const [], List<String> customSports = const [], List<PlayingArea> areas = const []}) async {
+Future<void> _pump(WidgetTester tester, {Facility? facility, List<String> savedSports = const [], List<String> customSports = const [], List<PlayingArea> areas = const [], bool settle = true}) async {
+  _requests.clear();
+  _holdRefresh = null;
   tester.view.physicalSize = const Size(390 * 3, 6000 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -148,7 +175,7 @@ Future<void> _pump(WidgetTester tester, {Facility? facility, List<String> savedS
   _sportsRepo = _FakeSportsRepo(saved: savedSports, customs: customSports);
   _areaRepo = _FakeAreaRepo(areas);
 
-  final router = GoRouter(
+  final router = _router = GoRouter(
     initialLocation: '/',
     routes: [
       GoRoute(path: '/', builder: (_, _) => const SportsCourtsScreen()),
@@ -167,7 +194,7 @@ Future<void> _pump(WidgetTester tester, {Facility? facility, List<String> savedS
       child: MaterialApp.router(routerConfig: router),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) await tester.pumpAndSettle();
 }
 
 Future<void> _tapSport(WidgetTester tester, String code) async {
@@ -182,6 +209,130 @@ PlayingArea _area(String id, String sportKey, String name, {String type = 'INDOO
 
 void main() {
   setUp(() => GoogleFonts.config.allowRuntimeFetching = false);
+
+group('loading', () {
+    testWidgets('the first frame is a skeleton shaped like the page: no spinner, and no "Step 2 of 5" floating in the middle', (tester) async {
+      await _pump(tester, settle: false);
+
+      expect(find.byType(SetupLoadingPage), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.textContaining('Step 2 of 5'), findsNothing);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(SetupLoadingPage), findsNothing);
+      expect(find.text('Sports & Courts'), findsWidgets);
+    });
+
+    testWidgets('the skeleton sits at the top of the page, like the real content, not in the middle of the screen', (tester) async {
+      await _pump(tester, settle: false);
+      final first = tester.getTopLeft(find.byType(SetupSkeletonBox).first);
+      // just under the 60 px header: the page's own top padding, never centred in a 6000 px screen
+      expect(first.dy, lessThan(120));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('everything the page needs is requested at the same moment, not one request after another', (tester) async {
+      await _pump(tester, settle: false);
+      // nothing has finished yet, but all four requests are already on their way
+      expect(_requests, containsAll(['facility', 'catalogue', 'facilitySports', 'areas']));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('navigation', () {
+    testWidgets('Next opens the next step at once; it does not wait for the session refresh', (tester) async {
+      await _pump(tester);
+      await _tapSport(tester, 'badminton');
+      _holdRefresh = Completer<void>(); // the refresh never finishes during this test
+
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('HOURS PAGE'), findsOneWidget);
+      _holdRefresh!.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Back from the next step returns to this one exactly as it was left, without loading it again', (tester) async {
+      await _pump(tester);
+      await _tapSport(tester, 'badminton');
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('HOURS PAGE'), findsOneWidget);
+      final loadsBefore = _requests.where((r) => r == 'facility').length;
+
+      _router.pop(); // what Back on the next step does
+      await tester.pumpAndSettle();
+
+      expect(find.text('Badminton Courts (1)'), findsOneWidget, reason: 'the ticked sport is still there');
+      expect(_requests.where((r) => r == 'facility').length, loadsBefore, reason: 'nothing was fetched again');
+      expect(find.byType(SetupLoadingPage), findsNothing);
+    });
+
+    testWidgets('Back on this step goes back one step; with nothing behind it, it opens Facility Information', (tester) async {
+      await _pump(tester);
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('FACILITY PAGE'), findsOneWidget);
+    });
+
+    testWidgets('Back pops when there is a step behind this one', (tester) async {
+      await _pump(tester);
+      _router.go('/onboarding/facility');
+      await tester.pumpAndSettle();
+      _router.push('/');
+      await tester.pumpAndSettle();
+      expect(_router.canPop(), isTrue);
+
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('FACILITY PAGE'), findsOneWidget);
+      expect(_router.canPop(), isFalse);
+    });
+  });
+
+  group('footer and draft', () {
+    testWidgets('the footer is one slim row: Back and Next only, no Save as Draft', (tester) async {
+      await _pump(tester);
+      expect(find.text('Save as Draft'), findsNothing);
+      expect(find.byKey(const ValueKey('save-draft')), findsNothing);
+      expect(find.text('Back'), findsOneWidget);
+      expect(find.text('Next'), findsOneWidget);
+      final next = tester.getSize(find.widgetWithText(FilledButton, 'Next'));
+      expect(next.height, 48);
+    });
+
+    testWidgets('a change is saved as a draft after 10 quiet seconds, with a small notice at the top, and the page stays', (tester) async {
+      await _pump(tester);
+      await _tapSport(tester, 'badminton');
+      await tester.pump(const Duration(seconds: 6));
+      expect(_sportsRepo.saved, isEmpty, reason: 'not before 10 seconds');
+
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump();
+      expect(_sportsRepo.saved.map((r) => r.sportId), ['sport-badminton']);
+      expect(_areaRepo.rows, hasLength(1));
+      expect(find.text(kDraftSavedMessage), findsOneWidget);
+      expect(find.text('HOURS PAGE'), findsNothing);
+      expect(_facilityRepo.steps, isEmpty, reason: 'a draft does not move the setup on');
+    });
+
+    testWidgets('a step that is not valid yet is not auto-saved, and nothing is shown about it', (tester) async {
+      await _pump(tester);
+      await _tapSport(tester, 'badminton');
+      // blank the court's name: it can't be saved like that
+      await tester.enterText(find.byType(TextFormField).first, '');
+      await tester.pump(const Duration(seconds: 15));
+      expect(_sportsRepo.saved, isEmpty);
+      expect(find.text(kDraftSavedMessage), findsNothing);
+      expect(find.text('Please fix the highlighted fields to continue.'), findsNothing);
+    });
+
+    testWidgets('nothing changed, nothing saved', (tester) async {
+      await _pump(tester, savedSports: ['sport-badminton'], areas: [_area('c1', 'badminton', 'Badminton Court 1')]);
+      await tester.pump(const Duration(seconds: 30));
+      expect(find.text(kDraftSavedMessage), findsNothing);
+    });
+  });
 
   testWidgets('starts empty for a multi-sport venue; ticking a sport adds its first court with the sport\'s usual settings', (tester) async {
     await _pump(tester);

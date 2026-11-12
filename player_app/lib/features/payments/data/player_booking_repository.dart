@@ -56,7 +56,7 @@ class SupabasePlayerBookingRepository implements PlayerBookingRepository {
           'startTime': start.toUtc().toIso8601String(),
           'endTime': end.toUtc().toIso8601String(),
           'partySize': partySize,
-          if (paymentOption != null) 'paymentOption': paymentOption,
+          'paymentOption': ?paymentOption,
         },
       );
       final data = res.data;

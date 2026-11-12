@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:gameall_club_mobile/features/onboarding/setup_flow.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:gameall_club_mobile/data/models/app_user.dart';
@@ -27,6 +32,32 @@ class _FakeFacilityRepository implements FacilityRepository {
 }
 
 String? _verifiedMobile;
+
+/// A tiny valid picture, so the thumbnails decode.
+final _png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+
+/// A fake photo gallery: one tap on "select several" returns [ticked] photos, and it remembers the limit the screen asked for.
+class _FakeGallery extends ImagePickerPlatform with MockPlatformInterfaceMixin {
+  _FakeGallery(this.ticked);
+
+  final int ticked;
+  int? limitAsked;
+  int multiCalls = 0;
+  int singleCalls = 0;
+
+  @override
+  Future<List<XFile>> getMultiImageWithOptions({MultiImagePickerOptions options = const MultiImagePickerOptions()}) async {
+    multiCalls++;
+    limitAsked = options.limit;
+    return [for (var i = 0; i < ticked; i++) XFile.fromData(_png, name: 'photo-$i.png', mimeType: 'image/png')];
+  }
+
+  @override
+  Future<XFile?> getImageFromSource({required ImageSource source, ImagePickerOptions options = const ImagePickerOptions()}) async {
+    singleCalls++;
+    return XFile.fromData(_png, name: 'single.png', mimeType: 'image/png');
+  }
+}
 
 class _FakeSession extends SessionController {
   @override
@@ -97,7 +128,8 @@ void main() {
         expect(find.textContaining(text), findsWidgets, reason: text);
       }
       expect(find.text('owner@yourturf.com'), findsOneWidget);
-      expect(find.text('Save as Draft'), findsOneWidget);
+      // drafts are saved by themselves now: there is no Save as Draft button
+      expect(find.text('Save as Draft'), findsNothing);
       expect(find.text('Back'), findsOneWidget);
       expect(find.text('Next'), findsOneWidget);
     });
@@ -234,16 +266,189 @@ void main() {
       expect(find.text('WELCOME PAGE'), findsOneWidget);
     });
 
-    testWidgets('Save as Draft keeps what was typed', (tester) async {
-      await _pump(tester, const FacilityDetailsScreen());
+group('dropdowns', () {
+      testWidgets('State opens a list of every state and union territory, with a search box; the chosen one shows in the field', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
 
-      final nameField = find.byType(TextFormField).first; // Facility Name is the first field
-      await tester.enterText(nameField, 'Champz Turf');
-      await tester.tap(find.byKey(const ValueKey('save-draft')));
-      await tester.pumpAndSettle();
+        expect(find.text('Select state'), findsOneWidget);
+        await tester.ensureVisible(find.byKey(const ValueKey('select-State')));
+        await tester.tap(find.byKey(const ValueKey('select-State')));
+        await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('facility_setup_draft_v1'), contains('Champz Turf'));
+        final search = find.descendant(of: find.byType(BottomSheet), matching: find.byType(TextField));
+        expect(search, findsOneWidget, reason: 'a long list has a search box');
+        expect(find.text('Tamil Nadu'), findsWidgets);
+        await tester.enterText(search, 'tamil');
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Tamil Nadu').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Tamil Nadu'), findsOneWidget);
+        expect(find.text('Select state'), findsNothing);
+      });
+
+      testWidgets('Facility Type and Contact Person Role list their options too', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
+
+        await tester.ensureVisible(find.byKey(const ValueKey('select-Facility Type')));
+        await tester.tap(find.byKey(const ValueKey('select-Facility Type')));
+        await tester.pumpAndSettle();
+        for (final t in FacilityType.values) {
+          expect(find.text(t.label), findsWidgets, reason: t.label);
+        }
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+
+        final role = find.byKey(const ValueKey('select-Role / Designation'));
+        await tester.ensureVisible(role);
+        await tester.tap(role);
+        await tester.pumpAndSettle();
+        expect(find.text('Facility Owner'), findsWidgets);
+      });
+    });
+
+    group('photos', () {
+      /// Taps a source in the sheet and lets the (really asynchronous) file reading finish.
+      Future<void> choose(WidgetTester tester, String label) async {
+        await tester.tap(find.text(label));
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+      }
+
+      Future<_FakeGallery> openPicker(WidgetTester tester, {required int ticked}) async {
+        final gallery = _FakeGallery(ticked);
+        ImagePickerPlatform.instance = gallery;
+        await _pump(tester, const FacilityDetailsScreen());
+        // a normal phone window now: the photo list is a bottom sheet, which belongs at the bottom of a screen you can see
+        tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const ValueKey('add-photo')));
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('add-photo')));
+        // the add tile shows a spinner while the picker is open, so step the clock instead of waiting for everything to stop
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        return gallery;
+      }
+
+      testWidgets('the gallery lets several be ticked in one go (up to 5): all of them are added at once', (tester) async {
+        final gallery = await openPicker(tester, ticked: 4);
+        expect(find.text('Choose from gallery (select several)'), findsOneWidget);
+        await choose(tester, 'Choose from gallery (select several)');
+
+        expect(gallery.multiCalls, 1);
+        expect(gallery.limitAsked, 5);
+        expect(find.byIcon(Icons.close), findsNWidgets(4), reason: 'four new photos, each with its remove button');
+        expect(find.text('Cover'), findsOneWidget);
+        expect(find.text('Upload More'), findsOneWidget);
+      });
+
+      testWidgets('five at once fills the grid', (tester) async {
+        await openPicker(tester, ticked: 5);
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(find.byIcon(Icons.close), findsNWidgets(5));
+        expect(find.byKey(const ValueKey('add-photo')), findsNothing, reason: 'no room for a sixth');
+      });
+
+      testWidgets('if more than 5 come back (an older phone ignores the limit), only 5 are kept and the person is told', (tester) async {
+        await openPicker(tester, ticked: 8);
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(find.byIcon(Icons.close), findsNWidgets(5));
+        expect(find.textContaining('3 were left out'), findsOneWidget);
+      });
+
+      testWidgets('with some photos already added, the gallery is asked only for what still fits', (tester) async {
+        final gallery = await openPicker(tester, ticked: 2);
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(find.byIcon(Icons.close), findsNWidgets(2));
+
+        await tester.ensureVisible(find.byKey(const ValueKey('add-photo')));
+        await tester.tap(find.byKey(const ValueKey('add-photo')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(gallery.limitAsked, 3);
+        expect(find.byIcon(Icons.close), findsNWidgets(4)); // the fake hands back two more
+      });
+
+      testWidgets('with one place left, the gallery picks a single photo', (tester) async {
+        final gallery = await openPicker(tester, ticked: 4);
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(find.byIcon(Icons.close), findsNWidgets(4));
+
+        await tester.ensureVisible(find.byKey(const ValueKey('add-photo')));
+        await tester.tap(find.byKey(const ValueKey('add-photo')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text('Choose from gallery or files'), findsOneWidget, reason: 'one place left: no "select several"');
+        await choose(tester, 'Choose from gallery or files');
+        expect(gallery.singleCalls, 1);
+        expect(find.byIcon(Icons.close), findsNWidgets(5));
+      });
+
+      testWidgets('backing out of the gallery adds nothing', (tester) async {
+        await openPicker(tester, ticked: 0);
+        await choose(tester, 'Choose from gallery (select several)');
+        expect(find.byIcon(Icons.close), findsNothing);
+      });
+    });
+
+    group('draft auto-save', () {
+      Future<String?> savedDraft() async => (await SharedPreferences.getInstance()).getString('facility_setup_draft_v1');
+
+      testWidgets('what was typed is saved as a draft after 10 quiet seconds, with a small notice at the top', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
+
+        await tester.enterText(find.byType(TextFormField).first, 'Champz Turf'); // Facility Name is the first field
+        await tester.pump(const Duration(seconds: 6));
+        expect(await savedDraft(), isNull, reason: 'not before 10 seconds');
+        expect(find.text(kDraftSavedMessage), findsNothing);
+
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pump();
+        expect(await savedDraft(), contains('Champz Turf'));
+        expect(find.text(kDraftSavedMessage), findsOneWidget);
+
+        // the notice goes away by itself
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text(kDraftSavedMessage), findsNothing);
+      });
+
+      testWidgets('typing again starts the 10 seconds over, so it never saves in the middle of typing', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
+        final name = find.byType(TextFormField).first;
+
+        await tester.enterText(name, 'Champz');
+        await tester.pump(const Duration(seconds: 8));
+        await tester.enterText(name, 'Champz Turf');
+        await tester.pump(const Duration(seconds: 8)); // 16 s in, but only 8 since the last change
+        expect(await savedDraft(), isNull);
+
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump();
+        expect(await savedDraft(), contains('Champz Turf'));
+      });
+
+      testWidgets('nothing is saved, and no notice shows, when nothing was changed', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
+        await tester.pump(const Duration(seconds: 30));
+        expect(await savedDraft(), isNull);
+        expect(find.text(kDraftSavedMessage), findsNothing);
+      });
+
+      testWidgets('the same content is not saved twice', (tester) async {
+        await _pump(tester, const FacilityDetailsScreen());
+        await tester.enterText(find.byType(TextFormField).first, 'Champz Turf');
+        await tester.pump(const Duration(seconds: 12));
+        await tester.pump();
+        expect(find.text(kDraftSavedMessage), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 6)); // the notice has gone
+        await tester.pump(const Duration(seconds: 30)); // and nothing new is saved
+        expect(find.text(kDraftSavedMessage), findsNothing);
+      });
     });
   });
 }

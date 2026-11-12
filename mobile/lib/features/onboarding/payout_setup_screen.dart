@@ -8,10 +8,12 @@ import '../../core/routing/app_routes.dart';
 import '../../data/models/payout_method.dart';
 import '../../data/models/payout_settings.dart';
 import '../../data/repositories/repository_providers.dart';
+import '../../shared/widgets/top_notice.dart';
 import '../authentication/session_controller.dart';
 import '../profile/hub/payout_widgets.dart' show showPayoutMethodSheet;
 import 'payout_setup_logic.dart';
 import 'payout_validation.dart';
+import 'setup_flow.dart';
 import 'setup_ui.dart';
 
 /// Step 5 of the setup: Payout. Bank accounts / UPI IDs, settlement settings, which earnings are included and the payout rules.
@@ -45,9 +47,22 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
   bool _ifscOk = false;
   bool _finding = false;
   bool _busy = false;
-  bool _savingDraft = false;
+  bool _autoSaving = false;
   bool _completing = false;
   String? _error;
+
+  /// Saves the payout settings as a draft by itself, 10 quiet seconds after the last change (see [DraftAutosave]). (Bank accounts and
+  /// UPI IDs are saved the moment they are added, so only the settings need this.)
+  late final DraftAutosave _autosave = DraftAutosave(
+    signature: _signature,
+    save: () => _persist(complete: false, silent: true),
+    onSaved: () {
+      if (mounted) showTopNotice(context, kDraftSavedMessage, compact: true, duration: const Duration(milliseconds: 2800));
+    },
+  );
+
+  /// Everything the person can change in the settings, as one short string.
+  String _signature() => '${_settings.frequency.name}|${_min.text.trim()}|${_settings.includeBookings}|${_settings.includeMemberships}|${_settings.includeCoaching}|${_settings.autoPayout}|${_settings.holdForReview}';
 
   @override
   void initState() {
@@ -57,6 +72,7 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
 
   @override
   void dispose() {
+    _autosave.dispose();
     _holder.dispose();
     _number.dispose();
     _ifsc.dispose();
@@ -71,14 +87,20 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
       _loadError = null;
     });
     try {
-      final facility = await ref.read(facilityRepositoryProvider).getFacility();
+      final repo = ref.read(payoutRepositoryProvider);
+      final knownId = knownFacilityId(ref);
+      // Requested together: the facility, and (when the app already knows its id) the payout accounts and settings.
+      final facilityFuture = ref.read(facilityRepositoryProvider).getFacility()..ignore();
+      final methodsFuture = knownId == null ? null : (repo.list(knownId)..ignore());
+      final settingsFuture = knownId == null ? null : (repo.loadSettings(knownId)..ignore());
+      final facility = await facilityFuture;
       if (facility == null) {
         if (mounted) context.go(AppRoutes.onboardingFacility);
         return;
       }
-      final repo = ref.read(payoutRepositoryProvider);
-      final methods = await repo.list(facility.id);
-      final settings = await repo.loadSettings(facility.id);
+      final same = knownId == facility.id;
+      final methods = await (same ? methodsFuture! : repo.list(facility.id));
+      final settings = await (same ? settingsFuture! : repo.loadSettings(facility.id));
       if (!mounted) return;
       setState(() {
         _facilityId = facility.id;
@@ -88,17 +110,23 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
         _min.text = '${settings.minimumPayoutInr}';
         _loading = false;
       });
+      // what is on screen now counts as saved: only what the person changes from here is auto-saved
+      _autosave.start();
     } on AppException catch (e) {
-      if (mounted) setState(() {
-        _loading = false;
-        _loadError = e.message;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = e.message;
+        });
+      }
     } catch (e, stack) {
       debugPrint('Payout step load failed: $e\n$stack');
-      if (mounted) setState(() {
-        _loading = false;
-        _loadError = 'We couldn’t load this step. Please try again.';
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = 'We couldn’t load this step. Please try again.';
+        });
+      }
     }
   }
 
@@ -154,10 +182,12 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
         }
       });
     } catch (_) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _ifscOk = false;
         _ifscNote = 'The IFSC directory isn’t reachable right now. You can still add the account.';
       });
+      }
     } finally {
       if (mounted) setState(() => _finding = false);
     }
@@ -203,28 +233,31 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
     if (await showPayoutMethodSheet(context, facilityId: id, method: m, dark: false)) await _reload();
   }
 
-  Future<void> _persist({required bool complete}) async {
+  /// Saves the settings; with [complete] it also finishes the setup and submits it to GameAll for approval. With [silent] (the auto-save)
+  /// nothing is shown or changed on screen, and settings that are not valid yet are simply skipped. Returns whether it saved.
+  Future<bool> _persist({required bool complete, bool silent = false}) async {
     final id = _facilityId;
-    if (id == null) return;
+    if (id == null) return false;
+    if (silent && (_completing || _autoSaving)) return false;
     final settings = _settings.copyWith(minimumPayoutInr: int.tryParse(_min.text.trim()) ?? -1);
     final problem = settings.validate();
     if (problem != null) {
-      setState(() => _error = problem);
-      return;
+      if (!silent) setState(() => _error = problem);
+      return false;
     }
     if (complete && _methods.isEmpty) {
       setState(() => _error = 'Add at least one bank account or UPI ID to finish setup.');
-      return;
+      return false;
     }
-    setState(() {
-      _error = null;
-      _settings = settings;
-      if (complete) {
-        _completing = true;
-      } else {
-        _savingDraft = true;
-      }
-    });
+    if (silent) {
+      _autoSaving = true;
+    } else {
+      setState(() {
+        _error = null;
+        _settings = settings;
+        if (complete) _completing = true;
+      });
+    }
     try {
       final payouts = ref.read(payoutRepositoryProvider);
       await payouts.saveSettings(id, settings);
@@ -236,21 +269,27 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
         } catch (_) {}
         // Plans are bought on the web, not in the app: a club created here simply starts its free trial.
         await ref.read(planRepositoryProvider).startFreeTrial(id);
+        _autosave.markSaved();
+        // the review screen needs the finished setup in the session, so this one is waited for
         await ref.read(sessionControllerProvider.notifier).refresh();
         if (mounted) context.go(AppRoutes.setupReview);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft saved. You can pick up where you left off.')));
       }
+      return true;
     } on AppException catch (e) {
+      if (silent) {
+        debugPrint('Payout auto-save skipped: ${e.message}');
+        return false;
+      }
       if (mounted) setState(() => _error = e.message);
+      return false;
     } catch (e, stack) {
       debugPrint('Payout step save failed: $e\n$stack');
+      if (silent) return false;
       if (mounted) setState(() => _error = 'We couldn’t finish your setup. Please try again.');
+      return false;
     } finally {
-      if (mounted) setState(() {
-        _completing = false;
-        _savingDraft = false;
-      });
+      _autoSaving = false;
+      if (!silent && mounted) setState(() => _completing = false);
     }
   }
 
@@ -464,35 +503,23 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _loadError != null) {
+    if (_loadError != null) {
       return SetupPage(
-        footer: _loadError == null ? const SizedBox(height: 52) : SetupButton(label: 'Try again', primary: true, onPressed: _load),
-        children: [
-          const SetupStepper(current: 5),
-          const SizedBox(height: 18),
-          if (_loadError != null) SetupErrorBanner(_loadError!) else const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())),
-        ],
+        footer: SetupButton(label: 'Try again', primary: true, onPressed: _load),
+        children: [const SetupStepper(current: 5), const SizedBox(height: 18), SetupErrorBanner(_loadError!)],
       );
     }
+    if (_loading) return const SetupLoadingPage(cards: [3, 2, 3]);
 
     return SetupPage(
+      // a slim bar: the message (when there is one) above a single row of buttons
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_error != null) SetupErrorBanner(_error!),
-          Row(
-            children: [
-              Expanded(child: SetupButton(label: 'Back', icon: Icons.arrow_back, onPressed: () => context.go(AppRoutes.onboardingPricing))),
-              const SizedBox(width: 12),
-              Expanded(flex: 2, child: SetupButton(label: 'Complete Setup', primary: true, icon: Icons.check, loading: _completing, loadingLabel: 'Submitting…', onPressed: (_savingDraft || _methods.isEmpty) ? null : () => _persist(complete: true))),
-            ],
-          ),
-          const SizedBox(height: 4),
-          TextButton.icon(
-            key: const ValueKey('save-draft'),
-            onPressed: (_completing || _savingDraft) ? null : () => _persist(complete: false),
-            icon: _savingDraft ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.description_outlined, size: 18, color: SetupColors.secondary),
-            label: Text('Save as Draft', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.secondary)),
+          SetupNavFooter(
+            onBack: () => goBackOr(context, AppRoutes.onboardingPricing),
+            next: SetupButton(label: 'Complete Setup', primary: true, icon: Icons.check, loading: _completing, loadingLabel: 'Submitting…', onPressed: _methods.isEmpty ? null : () => _persist(complete: true)),
           ),
         ],
       ),

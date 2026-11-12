@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// The light-only look of the redesigned facility-setup screens (palette and weights from the GameAll setup spec):
@@ -19,13 +19,26 @@ class SetupColors {
   static const Color error = Color(0xFFC62828);
   static const Color success = Color(0xFF2E7D32);
   static const Color mutedFill = Color(0xFFF7F5FB);
+  static const Color skeleton = Color(0xFFEEEAF7);
 }
 
-/// Inter at the requested weight. Falls back to the platform font when runtime font fetching is off (unit tests).
+final Map<int, TextStyle> _setupTextCache = <int, TextStyle>{};
+
+/// Inter (bundled with the app) at the requested size, weight and colour. A screen asks for the same handful of styles hundreds of
+/// times per build, so each distinct style is created once and reused.
 TextStyle setupText({double size = 14, FontWeight weight = FontWeight.w400, Color color = SetupColors.text, double? height}) {
-  final base = TextStyle(fontSize: size, fontWeight: weight, color: color, height: height);
-  if (!GoogleFonts.config.allowRuntimeFetching) return base;
-  return GoogleFonts.inter(textStyle: base);
+  final key = Object.hash(size, weight.value, color.toARGB32(), height);
+  return _setupTextCache[key] ??= TextStyle(fontFamily: 'Inter', fontSize: size, fontWeight: weight, color: color, height: height);
+}
+
+/// Back: returns to the previous step exactly as it was left (nothing is rebuilt or reloaded). Only when there is nothing to go back
+/// to (the app was opened straight on this step) does it open [fallback].
+void goBackOr(BuildContext context, String fallback) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go(fallback);
+  }
 }
 
 /// The shared page: white ground, GameAll logo + "Need Help?" on top, scrolling body, pinned footer.
@@ -38,15 +51,14 @@ class SetupPage extends StatelessWidget {
 
   static const double maxWidth = 640;
 
+  // Built once: ColorScheme.fromSeed does real colour maths, which is wasted work on every keystroke.
+  static final ColorScheme _scheme = ColorScheme.fromSeed(seedColor: SetupColors.primary, brightness: Brightness.light, primary: SetupColors.primary, surface: SetupColors.background);
+  static const TextSelectionThemeData _selection = TextSelectionThemeData(cursorColor: SetupColors.primary, selectionHandleColor: SetupColors.primary);
+
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: Theme.of(context).copyWith(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: SetupColors.background,
-        colorScheme: ColorScheme.fromSeed(seedColor: SetupColors.primary, brightness: Brightness.light, primary: SetupColors.primary, surface: SetupColors.background),
-        textSelectionTheme: const TextSelectionThemeData(cursorColor: SetupColors.primary, selectionHandleColor: SetupColors.primary),
-      ),
+      data: Theme.of(context).copyWith(brightness: Brightness.light, scaffoldBackgroundColor: SetupColors.background, colorScheme: _scheme, textSelectionTheme: _selection),
       child: Scaffold(
         backgroundColor: SetupColors.background,
         body: SafeArea(
@@ -54,29 +66,55 @@ class SetupPage extends StatelessWidget {
             children: [
               const SetupHeader(),
               Expanded(
-                child: Center(
+                // Top-aligned: a short page (or a loading page) sits at the top like the full one, never floating in the middle.
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: maxWidth),
                     child: SingleChildScrollView(
                       controller: scrollController,
                       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
                     ),
                   ),
                 ),
               ),
-              Container(
+              // A slim bar: one row of buttons, no extra lines, so the content keeps the screen.
+              DecoratedBox(
                 decoration: const BoxDecoration(color: SetupColors.background, border: Border(top: BorderSide(color: SetupColors.border))),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Center(
-                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxWidth), child: footer),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Center(
+                    heightFactor: 1,
+                    child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: maxWidth), child: footer),
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The footer every setup step uses: Back (left, narrow) and the main action (right, wide), one slim row.
+class SetupNavFooter extends StatelessWidget {
+  const SetupNavFooter({super.key, required this.onBack, required this.next, this.backLabel = 'Back'});
+
+  final VoidCallback? onBack;
+  final Widget next;
+  final String backLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: SetupButton(label: backLabel, icon: Icons.arrow_back, onPressed: onBack)),
+        const SizedBox(width: 12),
+        Expanded(flex: 2, child: next),
+      ],
     );
   }
 }
@@ -98,7 +136,7 @@ class SetupHeader extends StatelessWidget {
           Flexible(
             child: Semantics(
               label: 'GameAll',
-              child: ExcludeSemantics(child: Image.asset('assets/images/gameall_logo_light.png', height: 34, fit: BoxFit.contain, alignment: Alignment.centerLeft, filterQuality: FilterQuality.high)),
+              child: ExcludeSemantics(child: Image.asset('assets/images/gameall_logo_light.png', height: 34, cacheHeight: 150, fit: BoxFit.contain, alignment: Alignment.centerLeft, filterQuality: FilterQuality.high)),
             ),
           ),
           const SizedBox(width: 8),
@@ -328,7 +366,10 @@ class SetupTextField extends StatelessWidget {
   }
 }
 
-/// Label + dropdown, styled like [SetupTextField].
+/// Label + dropdown, styled like [SetupTextField] and like the website's select: a rounded field that always shows the current value, and
+/// a list of every option that opens from the bottom of the screen with the chosen one highlighted and ticked. A long list (states,
+/// banks) gets a search box. It is driven by [value], so a value set by the screen (a prefill, Back) always shows, and its validator
+/// always sees the current value.
 class SetupDropdown<T> extends StatelessWidget {
   const SetupDropdown({
     super.key,
@@ -351,31 +392,201 @@ class SetupDropdown<T> extends StatelessWidget {
   final bool required;
   final String? Function(T?)? validator;
 
+  static String _labelOf<T>(DropdownMenuItem<T> item) {
+    final child = item.child;
+    if (child is Text) return child.data ?? child.textSpan?.toPlainText() ?? '';
+    return '${item.value}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final options = [for (final i in items) (value: i.value as T, label: _labelOf(i))];
+    final selected = options.where((o) => o.value == value).firstOrNull;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SetupLabel(label, required: required),
-        DropdownButtonFormField<T>(
+        FormField<T>(
           key: fieldKey,
           initialValue: value,
-          isExpanded: true,
-          items: items,
-          onChanged: onChanged,
-          validator: validator,
+          // always judge what the screen holds now, not what the field last heard about
+          validator: validator == null ? null : (_) => validator!(value),
           autovalidateMode: AutovalidateMode.onUserInteraction,
-          icon: const Icon(Icons.keyboard_arrow_down, color: SetupColors.text),
-          dropdownColor: SetupColors.background,
-          // A rounded white menu with a soft shadow, matching the field it opens from.
-          borderRadius: BorderRadius.circular(12),
-          menuMaxHeight: 320,
-          elevation: 6,
-          style: setupText(size: 15),
-          hint: hint == null ? null : Text(hint!, style: setupText(size: 15, color: SetupColors.placeholder)),
-          decoration: setupDecoration(),
+          builder: (state) {
+            final hasError = state.hasError;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  button: true,
+                  label: selected == null ? label : '$label, ${selected.label}',
+                  child: Material(
+                    color: SetupColors.background,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: hasError ? SetupColors.error : SetupColors.border)),
+                    child: InkWell(
+                      key: ValueKey('select-$label'),
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () async {
+                        final picked = await showSetupOptionSheet<T>(context, title: label, options: options, selected: value);
+                        if (picked == null) return;
+                        state.didChange(picked.value);
+                        onChanged(picked.value);
+                      },
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                selected?.label ?? hint ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: setupText(size: 15, color: selected == null ? SetupColors.placeholder : SetupColors.text),
+                              ),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down, color: SetupColors.text),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (hasError) Padding(padding: const EdgeInsets.only(top: 6), child: Text(state.errorText ?? '', style: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.error, height: 1.3))),
+              ],
+            );
+          },
         ),
       ],
+    );
+  }
+}
+
+/// The option list behind a [SetupDropdown]. Returns the chosen option, or null when it is dismissed. [searchAbove] options or more
+/// adds a search box.
+Future<({T value, String label})?> showSetupOptionSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<({T value, String label})> options,
+  required T? selected,
+  int searchAbove = 8,
+}) {
+  return showModalBottomSheet<({T value, String label})>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: false, // the list draws its own handle
+    backgroundColor: SetupColors.background,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (sheetContext) => _OptionSheet<T>(title: title, options: options, selected: selected, searchable: options.length > searchAbove),
+  );
+}
+
+class _OptionSheet<T> extends StatefulWidget {
+  const _OptionSheet({required this.title, required this.options, required this.selected, required this.searchable});
+
+  final String title;
+  final List<({T value, String label})> options;
+  final T? selected;
+  final bool searchable;
+
+  @override
+  State<_OptionSheet<T>> createState() => _OptionSheetState<T>();
+}
+
+class _OptionSheetState<T> extends State<_OptionSheet<T>> {
+  static const double _rowHeight = 52;
+  final _search = TextEditingController();
+  late final ScrollController _scroll;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // opens with the chosen row in view
+    final index = widget.options.indexWhere((o) => o.value == widget.selected);
+    _scroll = ScrollController(initialScrollOffset: index <= 2 ? 0 : (index - 2) * _rowHeight);
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _query.isEmpty ? widget.options : widget.options.where((o) => o.label.toLowerCase().contains(_query)).toList();
+    final screen = MediaQuery.of(context).size.height;
+    final keyboard = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: screen * 0.7),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(height: 4, width: 40, decoration: BoxDecoration(color: SetupColors.border, borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+              child: Align(alignment: Alignment.centerLeft, child: Text(widget.title, style: setupText(size: 17, weight: FontWeight.w600))),
+            ),
+            if (widget.searchable)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  style: setupText(size: 15),
+                  decoration: setupDecoration(hint: 'Search', prefix: const Padding(padding: EdgeInsets.only(left: 12, right: 8), child: Icon(Icons.search, size: 20, color: SetupColors.secondary))),
+                ),
+              ),
+            Flexible(
+              child: shown.isEmpty
+                  ? Padding(padding: const EdgeInsets.all(28), child: Text('No matches', style: setupText(size: 14, color: SetupColors.secondary)))
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                      itemExtent: _rowHeight,
+                      itemCount: shown.length,
+                      itemBuilder: (context, i) {
+                        final o = shown[i];
+                        final isSelected = o.value == widget.selected;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Material(
+                            color: isSelected ? SetupColors.activeBg : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => Navigator.of(context).pop(o),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        o.label,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: setupText(size: 15, weight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? SetupColors.primary : SetupColors.text),
+                                      ),
+                                    ),
+                                    if (isSelected) const Icon(Icons.check, size: 20, color: SetupColors.primary),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -545,7 +756,7 @@ class SetupButton extends StatelessWidget {
     final child = FittedBox(fit: BoxFit.scaleDown, child: content);
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
     return SizedBox(
-      height: 52,
+      height: 48,
       child: primary
           ? FilledButton(
               onPressed: loading ? null : onPressed,
@@ -563,6 +774,138 @@ class SetupButton extends StatelessWidget {
               style: OutlinedButton.styleFrom(side: const BorderSide(color: SetupColors.border), foregroundColor: SetupColors.text, shape: shape, padding: const EdgeInsets.symmetric(horizontal: 12)),
               child: child,
             ),
+    );
+  }
+}
+
+/// A flat placeholder block for [SetupLoadingPage]. Its colour is painted by the one shimmer above it.
+class SetupSkeletonBox extends StatelessWidget {
+  const SetupSkeletonBox({super.key, this.width, this.height = 14, this.radius = 8});
+
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => Container(width: width, height: height, decoration: BoxDecoration(color: SetupColors.skeleton, borderRadius: BorderRadius.circular(radius)));
+}
+
+/// One sweep of light across everything inside it. A single controller and a single shader for the whole loading page, however many
+/// placeholder blocks it holds (a controller per block is what makes naive skeletons janky). With "remove animations" it stays still.
+class SetupShimmer extends StatefulWidget {
+  const SetupShimmer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<SetupShimmer> createState() => _SetupShimmerState();
+}
+
+class _SetupShimmerState extends State<SetupShimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (rect) {
+          final dx = rect.width * (_c.value * 3 - 1);
+          return LinearGradient(
+            colors: const [Color(0x00FFFFFF), Color(0x99FFFFFF), Color(0x00FFFFFF)],
+            stops: const [0.0, 0.5, 1.0],
+          ).createShader(Rect.fromLTWH(dx, 0, rect.width, rect.height));
+        },
+        child: child,
+      ),
+    );
+  }
+}
+
+/// What a setup step shows while its data loads: the real page chrome (logo, slim footer) around placeholders shaped like the content that
+/// is coming, so nothing jumps when it arrives. No spinner, no "Step X of 5" floating in the middle of the screen.
+class SetupLoadingPage extends StatelessWidget {
+  const SetupLoadingPage({super.key, this.cards = const [3, 3, 2]});
+
+  /// How many fields each placeholder card has.
+  final List<int> cards;
+
+  @override
+  Widget build(BuildContext context) {
+    return SetupPage(
+      footer: Row(
+        children: const [
+          Expanded(child: SetupShimmer(child: SetupSkeletonBox(height: 48, radius: 12))),
+          SizedBox(width: 12),
+          Expanded(flex: 2, child: SetupShimmer(child: SetupSkeletonBox(height: 48, radius: 12))),
+        ],
+      ),
+      children: [
+        Semantics(
+          label: 'Loading',
+          liveRegion: true,
+          child: SetupShimmer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // the stepper
+                const SetupSkeletonBox(width: 150, height: 12),
+                const SizedBox(height: 10),
+                Row(children: [for (var i = 0; i < 5; i++) ...[const Expanded(child: SetupSkeletonBox(height: 5, radius: 99)), if (i < 4) const SizedBox(width: 5)]]),
+                const SizedBox(height: 22),
+                // the heading and its line
+                const SetupSkeletonBox(width: 210, height: 28, radius: 8),
+                const SizedBox(height: 10),
+                const SetupSkeletonBox(height: 13),
+                const SizedBox(height: 6),
+                const SetupSkeletonBox(width: 240, height: 13),
+                const SizedBox(height: 20),
+                for (final fields in cards) ...[
+                  _SkeletonCard(fields: fields),
+                  const SizedBox(height: 16),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard({required this.fields});
+
+  final int fields;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(border: Border.all(color: SetupColors.border), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SetupSkeletonBox(width: 150, height: 18),
+          const SizedBox(height: 16),
+          for (var i = 0; i < fields; i++) ...[
+            const SetupSkeletonBox(width: 90, height: 12),
+            const SizedBox(height: 8),
+            const SetupSkeletonBox(height: 46, radius: 10),
+            if (i < fields - 1) const SizedBox(height: 16),
+          ],
+        ],
+      ),
     );
   }
 }

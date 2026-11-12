@@ -132,8 +132,9 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
     } on AuthFailure catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Something went wrong. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -147,8 +148,9 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
     if (!mounted) return;
     if (start.next == LoginNext.signedIn) {
       _clubRecords = start.clubRecords;
-      if (_name.text.trim().isEmpty && start.knownName != null)
+      if (_name.text.trim().isEmpty && start.knownName != null) {
         _name.text = start.knownName!;
+      }
       await _finishSignIn();
       return;
     }

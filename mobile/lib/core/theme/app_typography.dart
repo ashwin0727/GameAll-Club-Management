@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// GameAll Design System 2026 — one typeface (Manrope) across the whole
@@ -50,19 +49,14 @@ class AppTypography {
     );
   }
 
-  /// Builds the full Inter-based [TextTheme] for one theme brightness.
-  /// google_fonts fetches the font lazily and caches it after first use —
-  /// production behavior is untouched here. Only when a caller has
-  /// explicitly disabled runtime fetching (this app's own theme unit
-  /// tests, via `GoogleFonts.config.allowRuntimeFetching = false`, since no
-  /// .ttf is bundled as a test asset) does this skip the loader entirely
-  /// and fall back to the platform default TextTheme, so a theme-shape
-  /// test never has to actually resolve a real webfont to run.
+  /// The bundled typeface (see the fonts section of pubspec.yaml).
+  static const fontFamily = 'Inter';
+
+  /// Builds the full Inter-based [TextTheme] for one theme brightness. The font ships inside the app, so there is no download and
+  /// no per-style font lookup: every style is a plain [TextStyle] with a family name.
   static TextTheme textTheme({required Color primaryText, required Color secondaryText}) {
-    if (!GoogleFonts.config.allowRuntimeFetching) {
-      return _scale(const TextTheme(), primaryText, secondaryText);
-    }
-    return _scale(GoogleFonts.interTextTheme(), primaryText, secondaryText);
+    final base = Typography.material2021(platform: TargetPlatform.android).black.apply(fontFamily: fontFamily);
+    return _scale(base, primaryText, secondaryText);
   }
 
   // ── Legacy semantic helpers — kept so every screen written before this

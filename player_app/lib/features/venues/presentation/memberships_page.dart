@@ -154,7 +154,7 @@ class _MembershipsPageState extends ConsumerState<MembershipsPage> {
               inset(
                 CompactSearchField(
                   controller: _search,
-                  hint: 'Search venues (e.g., \"Champz Turf\")',
+                  hint: 'Search venues (e.g., "Champz Turf")',
                   onChanged: _setQuery,
                   onSearch: () => _setQuery(_search.text),
                 ),

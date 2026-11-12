@@ -86,8 +86,9 @@ class _MyCoachingPageState extends ConsumerState<MyCoachingPage>
   // Back from the payment page (or the browser tab): look again.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed)
+    if (state == AppLifecycleState.resumed) {
       ref.invalidate(myCoachingDetailsProvider);
+    }
   }
 
   Future<void> _pay(CoachingDetail c) async {
@@ -258,8 +259,9 @@ class _MyCoachingPageState extends ConsumerState<MyCoachingPage>
           onTab: (t) => setState(() => _tab = t),
           onPay: () => _pay(c),
           onVenue: () {
-            if (c.venue.id.isNotEmpty)
+            if (c.venue.id.isNotEmpty) {
               widget.onNavigate(AppRoutes.venuePath(c.venue.id));
+            }
           },
           onRenew: () => _renew(c),
           onReschedule: () => _askClub(c, 'reschedule a session'),
@@ -971,8 +973,9 @@ class _Avatar extends StatelessWidget {
       ),
     );
     final url = coach.avatarUrl;
-    if (url == null)
+    if (url == null) {
       return KeyedSubtree(key: const ValueKey('mc-avatar'), child: fallback);
+    }
     return ClipOval(
       key: const ValueKey('mc-avatar'),
       child: SizedBox(

@@ -20,13 +20,16 @@ enum SportKind {
 /// The icon kind for a sport name as the database spells it ("Badminton", "Football (5v5)", "Box Cricket"...).
 SportKind sportKindOf(String? sport) {
   final s = (sport ?? '').toLowerCase();
-  if (s.contains('badminton') || s.contains('shuttle'))
+  if (s.contains('badminton') || s.contains('shuttle')) {
     return SportKind.badminton;
-  if (s.contains('foot') || s.contains('soccer') || s.contains('futsal'))
+  }
+  if (s.contains('foot') || s.contains('soccer') || s.contains('futsal')) {
     return SportKind.football;
+  }
   if (s.contains('cricket')) return SportKind.cricket;
-  if (s.contains('table tennis') || s.contains('ping'))
+  if (s.contains('table tennis') || s.contains('ping')) {
     return SportKind.tableTennis;
+  }
   if (s.contains('pickle')) return SportKind.pickleball;
   if (s.contains('padel')) return SportKind.padel;
   if (s.contains('squash')) return SportKind.squash;

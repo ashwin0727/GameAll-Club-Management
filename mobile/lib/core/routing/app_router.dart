@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../data/models/facility.dart';
 import '../config/app_config.dart';
 import '../../features/authentication/create_account_screen.dart';
-import '../../features/authentication/email_verification_screen.dart';
+import '../../features/authentication/signup_draft.dart';
+import '../../features/authentication/verify_email_screen.dart';
+import '../../features/authentication/verify_phone_screen.dart';
 import '../../features/authentication/verify_mobile_screen.dart';
 import '../../features/authentication/forgot_password_screen.dart';
 import '../../features/authentication/session_controller.dart';
 import '../../features/authentication/sign_in_screen.dart';
 import '../../features/authentication/splash_screen.dart';
+import '../../features/authentication/intro_screen.dart';
+import '../../features/authentication/welcome_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
 import '../../features/bookings/guest_bookings_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
@@ -125,13 +129,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return path == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
-      final isAuthRoute = path == AppRoutes.signIn ||
+      final isAuthRoute = path == AppRoutes.welcome ||
+          path == AppRoutes.intro ||
+          path == AppRoutes.signIn ||
           path == AppRoutes.createAccount ||
-          path == AppRoutes.emailVerification ||
+          path == AppRoutes.verifyPhone ||
+          path == AppRoutes.verifyEmail ||
           path == AppRoutes.forgotPassword;
 
       if (!session.isAuthenticated) {
-        return isAuthRoute ? null : AppRoutes.signIn;
+        return isAuthRoute ? null : AppRoutes.welcome;
       }
 
       // A staff account created by an administrator must set its own password
@@ -176,24 +183,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             fadeThrough(state, const SplashScreen()),
       ),
       GoRoute(
+        path: AppRoutes.welcome,
+        pageBuilder: (context, state) =>
+            fadeThroughCovered(state, const WelcomeScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.intro,
+        pageBuilder: (context, state) =>
+            slideOver(state, const IntroScreen()),
+      ),
+      GoRoute(
         path: AppRoutes.signIn,
         pageBuilder: (context, state) =>
-            fadeThrough(state, const SignInScreen()),
+            fadeThroughCovered(state, const SignInScreen()),
       ),
       GoRoute(
         path: AppRoutes.createAccount,
         pageBuilder: (context, state) =>
             slideOver(state, const CreateAccountScreen()),
       ),
+      // The two verification steps after Create Your Account. They need what was typed there; without it (an app restart), start over.
       GoRoute(
-        path: AppRoutes.emailVerification,
-        pageBuilder: (context, state) => slideOver(
-          state,
-          EmailVerificationScreen(
-            email: state.uri.queryParameters['email'] ?? '',
-            password: state.extra is String ? state.extra as String : null,
-          ),
-        ),
+        path: AppRoutes.verifyPhone,
+        redirect: (context, state) => state.extra is SignupDraft ? null : AppRoutes.createAccount,
+        pageBuilder: (context, state) => slideOver(state, VerifyPhoneScreen(draft: state.extra! as SignupDraft)),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        redirect: (context, state) => state.extra is SignupDraft ? null : AppRoutes.createAccount,
+        pageBuilder: (context, state) => slideOver(state, VerifyEmailScreen(draft: state.extra! as SignupDraft)),
       ),
       GoRoute(
         path: AppRoutes.verifyMobile,

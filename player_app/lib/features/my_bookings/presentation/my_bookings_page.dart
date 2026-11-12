@@ -83,8 +83,9 @@ class _MyBookingsPageState extends ConsumerState<MyBookingsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed)
+    if (state == AppLifecycleState.resumed) {
       ref.invalidate(myGuestBookingsProvider);
+    }
   }
 
   List<GuestBooking> _listFor(GuestBookings g) => switch (_tab) {
@@ -852,8 +853,9 @@ class _BookingDetailsPanelState extends ConsumerState<BookingDetailsPanel> {
   bool _busy = false;
 
   void _say(String text) {
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
   }
 
   /// Cancelling: shows the player what it would cost (hours left, % deducted, refund) first, then cancels and refunds through Razorpay.
