@@ -8,6 +8,8 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/external_links.dart';
 import '../../../core/widgets/gameall_buttons.dart';
 import '../../player_home/presentation/widgets/player_header.dart';
+import '../../auth/application/auth_providers.dart';
+import '../data/native_checkout.dart';
 import '../../venues/domain/venue.dart' show rupees;
 import '../application/payment_flow.dart';
 import '../domain/payment_receipt.dart';
@@ -122,6 +124,11 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
     final link = _target?.link;
     if (link == null) return;
     setState(() => _stage = _Stage.opening);
+    // Android: Razorpay's own sheet, with the phone's UPI apps (GPay, PhonePe…) listed in it. No browser first.
+    final checkout = CheckoutStore.instance.forLink(link);
+    if (checkout != null && nativeCheckoutAvailable) {
+      return _payInSheet(checkout);
+    }
     final opened = await ref.read(linkOpenerProvider)(link);
     if (!mounted) return;
     if (!opened) {
@@ -137,6 +144,42 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
       _message = null;
     });
     _scheduleNext();
+  }
+
+  /// Opens the in-app payment sheet and deals with how the player leaves it. "Paid" is only a claim until the server has checked it
+  /// (verify-player-payment); the check that follows asks the database, which the server and the Razorpay webhook both write to.
+  Future<void> _payInSheet(CheckoutRequest request) async {
+    final me = ref.read(currentPlayerProvider);
+    final digits = (me?.phone ?? '').replaceAll(RegExp(r'D'), '');
+    final phone = digits.length >= 10 ? digits.substring(digits.length - 10) : '';
+    final email = me?.email?.trim() ?? '';
+    final payer = request.withPayer(
+      name: (me?.fullName.trim().isEmpty ?? true) ? null : me!.fullName.trim(),
+      contact: phone.isEmpty ? null : '+91$phone',
+      // Razorpay will not skip its first page without an email: a player who gave none gets one made from their number
+      email: email.isNotEmpty
+          ? email
+          : (phone.isEmpty ? null : 'player.$phone@gameall.co'),
+    );
+    final result = await ref.read(nativeCheckoutProvider)(payer);
+    if (!mounted || _done) return;
+    setState(() {
+      _stage = _Stage.waiting;
+      _waitingSince = DateTime.now();
+      _message = switch (result) {
+        CheckoutPaid() => null,
+        CheckoutCancelled() =>
+          'The payment was not completed. Tap "Open payment page" to try again.',
+        CheckoutFailed(:final message) => message,
+      };
+    });
+    if (result is CheckoutPaid) {
+      // never let a slow or failed verification hold the player on this page: the webhook records a real payment regardless
+      await ref.read(checkoutVerifierProvider)(request, result);
+      if (!mounted || _done) return;
+      await _check();
+    }
+    if (mounted && !_done && _stage == _Stage.waiting) _scheduleNext();
   }
 
   /// How long to wait before the next check. The first two minutes use [PaymentProgressPage.pollEvery]; after that the player has

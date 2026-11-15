@@ -26,7 +26,7 @@ const TILE_TINTS = [
   "bg-violet-50 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200",
   "bg-blue-50 text-blue-900 dark:bg-blue-500/10 dark:text-blue-200",
   "bg-orange-50 text-orange-900 dark:bg-orange-500/10 dark:text-orange-200",
-  "bg-lime-50 text-lime-900 dark:bg-lime-500/10 dark:text-lime-200",
+  "bg-fuchsia-50 text-fuchsia-900 dark:bg-fuchsia-500/10 dark:text-fuchsia-200",
   "bg-violet-50 text-violet-900 dark:bg-violet-500/10 dark:text-violet-200",
 ];
 

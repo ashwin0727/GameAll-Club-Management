@@ -121,6 +121,20 @@ export async function verifyPaymentSignature(razorpayOrderId: string, razorpayPa
 }
 
 /**
+ * Verifies the signature Razorpay Checkout returns after a SUBSCRIPTION payment (an AutoPay mandate): HMAC-SHA256 of
+ * `${razorpayPaymentId}|${razorpaySubscriptionId}` — payment id FIRST, the opposite order to an order payment.
+ */
+export async function verifySubscriptionPaymentSignature(
+  razorpayPaymentId: string,
+  razorpaySubscriptionId: string,
+  signature: string,
+  keySecret: string,
+): Promise<boolean> {
+  const expected = await hmacSha256Hex(`${razorpayPaymentId}|${razorpaySubscriptionId}`, keySecret);
+  return timingSafeEqual(expected, signature);
+}
+
+/**
  * Verifies a Razorpay webhook signature — HMAC-SHA256 of the exact raw
  * request body, keyed with the dedicated Razorpay Webhook Secret (never
  * the Key Secret). Callers MUST pass the untouched raw body text read

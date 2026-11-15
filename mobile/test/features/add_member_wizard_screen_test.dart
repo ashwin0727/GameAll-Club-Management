@@ -108,7 +108,7 @@ class _FakeSessions implements MembershipSessionRepository {
 }
 
 void main() {
-  testWidgets('the member joins the plan\'s own slots — no schedule step', (tester) async {
+  testWidgets('the member joins only the plan timings they pick (at least one is required) — no schedule step', (tester) async {
     final membership = _FakeMembership();
     final sessions = _FakeSessions();
     tester.view.physicalSize = const Size(390 * 3, 2400 * 3);
@@ -140,6 +140,16 @@ void main() {
     expect(find.text('7:00 AM - 8:00 AM'), findsOneWidget);
     expect(find.text('6:00 PM - 7:00 PM'), findsOneWidget);
 
+    // a timing has to be picked: without one, Next stays on this step and says so
+    await tester.tap(find.textContaining('Next: Review'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('slots-error')), findsOneWidget);
+    expect(find.text('Review & Confirm'), findsNothing);
+
+    // pick only the 6 PM timing
+    await tester.tap(find.byKey(const ValueKey('slot-b2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('slots-error')), findsNothing);
     await tester.tap(find.textContaining('Next: Review'));
     await tester.pumpAndSettle();
     expect(find.text('Review & Confirm'), findsWidgets);
@@ -154,9 +164,9 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Create Member'));
     await tester.pumpAndSettle();
 
-    expect(membership.created?.batchId, 'b1');
+    expect(membership.created?.batchId, 'b2');
     expect(membership.created?.paymentMode, MembershipPaymentMode.paid);
     expect(membership.created?.fullName, 'Arun Kumar');
-    expect(sessions.assigned, ['b2']);
+    expect(sessions.assigned, isEmpty, reason: 'the 7 AM timing was not picked');
   });
 }

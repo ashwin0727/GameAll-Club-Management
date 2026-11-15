@@ -120,4 +120,22 @@ void main() {
     expect(splitPlanName('Batch 1(5 A.M to 6 A.M)'), (main: 'Batch 1', detail: '(5 A.M to 6 A.M)'));
     expect(splitPlanName('Monthly').detail, isNull);
   });
+
+  group('chosenPlanSlots', () {
+    final slots = planSlotsFor([batch('b1', 'p', 'c1', '05:00'), batch('b2', 'p', 'c1', '06:00'), batch('b3', 'p', 'c1', '07:00')], 'p');
+
+    test('is only the timings the member ticked', () {
+      expect(chosenPlanSlots(slots, {'b2'}).map((s) => s.batchId), ['b2']);
+      expect(chosenPlanSlots(slots, {'b3', 'b1'}).map((s) => s.batchId), ['b1', 'b3']);
+    });
+
+    test('is nothing until one is ticked (a timing is required)', () {
+      expect(chosenPlanSlots(slots, {}), isEmpty);
+    });
+
+    test('a plan with one slot needs no choice', () {
+      final one = planSlotsFor([batch('only', 'p', 'c1', '05:00')], 'p');
+      expect(chosenPlanSlots(one, {}).map((s) => s.batchId), ['only']);
+    });
+  });
 }

@@ -47,7 +47,7 @@ interface BillingContext {
   memberName: string | null;
   memberPhone: string | null;
   memberEmail: string | null;
-  billing: { kind: string; status: string; shortUrl: string | null } | null;
+  billing: { kind: string; status: string; shortUrl: string | null; razorpaySubscriptionId?: string | null } | null;
 }
 
 async function razorpay(path: string, keyId: string, keySecret: string, body: unknown) {
@@ -100,7 +100,17 @@ Deno.serve(async (req) => {
 
   // Already set up → hand back the same link instead of creating a second mandate.
   if (ctx.billing && !["CANCELLED", "EXPIRED"].includes(ctx.billing.status)) {
-    return jsonResponse({ kind: ctx.billing.kind, shortUrl: ctx.billing.shortUrl, status: ctx.billing.status, reused: true }, 200);
+    return jsonResponse(
+      {
+        kind: ctx.billing.kind,
+        shortUrl: ctx.billing.shortUrl,
+        status: ctx.billing.status,
+        reused: true,
+        // an AutoPay mandate can be opened in the app's own checkout sheet (the phone's UPI apps) with this id
+        ...(ctx.billing.kind === "SUBSCRIPTION" && ctx.billing.razorpaySubscriptionId ? { keyId, subscriptionId: ctx.billing.razorpaySubscriptionId } : {}),
+      },
+      200,
+    );
   }
 
   if (ctx.outstandingMinor <= 0) return jsonResponse({ error: "There is nothing left to pay for this enrollment." }, 400);
@@ -154,7 +164,10 @@ Deno.serve(async (req) => {
         console.error("[create-player-coaching-billing] record failed", recErr.message);
         return jsonResponse({ error: "Could not save the subscription." }, 500);
       }
-      return jsonResponse({ kind: "SUBSCRIPTION", shortUrl: subscription.short_url ?? null, status: "CREATED", cycles: ctx.billingCycles, amountMinor: perCycle }, 200);
+      return jsonResponse(
+        { kind: "SUBSCRIPTION", shortUrl: subscription.short_url ?? null, status: "CREATED", cycles: ctx.billingCycles, amountMinor: perCycle, keyId, subscriptionId: subscription.id },
+        200,
+      );
     }
 
     // ONE_TIME — a payment link for whatever is still outstanding.

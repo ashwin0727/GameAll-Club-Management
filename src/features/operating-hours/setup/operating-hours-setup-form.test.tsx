@@ -138,6 +138,27 @@ describe("OperatingHoursSetupForm", () => {
     expect(screen.getAllByText("Closed").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("Custom Hours: any one day can be set to open 24 hours, and back", async () => {
+    const user = userEvent.setup({ delay: null });
+    await setup();
+    renderWithProviders(<OperatingHoursSetupForm />);
+
+    await user.click(await screen.findByRole("radio", { name: /Custom Hours/ }));
+    expect(screen.getByTestId("weekly-total")).toHaveTextContent("102 Hours");
+
+    await user.click(screen.getByLabelText("Wednesday open 24 hours"));
+    expect(screen.getByTestId("weekly-total")).toHaveTextContent("109 Hours"); // that day is 24 h instead of 17 h
+    expect(screen.queryByLabelText("Wednesday opens at")).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Wednesday open 24 hours"));
+    expect(screen.getByTestId("weekly-total")).toHaveTextContent("102 Hours");
+    expect(screen.getByLabelText("Wednesday opens at")).toBeInTheDocument();
+
+    // a closed day cannot be 24 hours: the box is off until the day is opened
+    await user.click(screen.getByLabelText("Friday"));
+    expect(screen.getByLabelText("Friday open 24 hours")).toBeDisabled();
+  });
+
   it("switching to Custom keeps the standard hours, and back to Standard takes the first open day's hours", async () => {
     const user = userEvent.setup({ delay: null });
     await setup();
@@ -299,6 +320,58 @@ describe("OperatingHoursSetupForm", () => {
     const court2 = await hours.getPlayingAreaSchedule("court-2"); // football keeps the venue's 11 PM
     expect(court1!.days.find((d) => d.dayOfWeek === 1)!.slots[0]).toMatchObject({ startTime: "06:00", endTime: "22:00" });
     expect(court2!.days.find((d) => d.dayOfWeek === 1)!.slots[0]).toMatchObject({ startTime: "06:00", endTime: "23:00" });
+  });
+
+  it("Sport-wise hours: a sport can have one timing on weekdays and another at the weekend", async () => {
+    const user = userEvent.setup({ delay: null });
+    const { hours } = await setup({ twoSports: true });
+    renderWithProviders(<OperatingHoursSetupForm />);
+
+    await screen.findByRole("radio", { name: /Standard Hours/ });
+    await user.click(screen.getByRole("switch", { name: /Apply sport-wise operating hours/ }));
+    const badminton = await screen.findByRole("region", { name: "Badminton hours" });
+
+    // one timing to begin with; adding another splits the weekend off, to be given its own hours
+    await user.click(within(badminton).getByRole("button", { name: /Add different timing/ }));
+    expect(within(badminton).getByText("Timing 1")).toBeInTheDocument();
+    expect(within(badminton).getByText("Timing 2")).toBeInTheDocument();
+    const day = (name: string) => within(badminton).getAllByRole("checkbox", { name }); // [timing 1, timing 2]
+    expect(day("Mon")[0]).toBeChecked();
+    expect(day("Sat")[1]).toBeChecked();
+    expect(day("Sun")[1]).toBeChecked();
+    // a day used by one timing cannot be ticked in the other
+    expect(day("Sat")[0]).toBeDisabled();
+    expect(day("Mon")[1]).toBeDisabled();
+
+    await user.click(within(badminton).getByRole("combobox", { name: "Badminton timing 2 opens at" }));
+    await user.click(await screen.findByRole("option", { name: "8:00 AM" }));
+    await user.click(within(badminton).getByRole("combobox", { name: "Badminton timing 2 closes at" }));
+    await user.click(await screen.findByRole("option", { name: "8:00 PM" }));
+
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/pricing"));
+    const court1 = await hours.getPlayingAreaSchedule("court-1"); // badminton
+    const saved = (n: number) => court1!.days.find((d) => d.dayOfWeek === n)!;
+    expect(saved(1).slots[0]).toMatchObject({ startTime: "06:00", endTime: "23:00" });
+    expect(saved(5).slots[0]).toMatchObject({ startTime: "06:00", endTime: "23:00" });
+    expect(saved(6).slots[0]).toMatchObject({ startTime: "08:00", endTime: "20:00" });
+    expect(saved(0).slots[0]).toMatchObject({ startTime: "08:00", endTime: "20:00" });
+  });
+
+  it("Sport-wise hours: removing a timing closes its days", async () => {
+    const user = userEvent.setup({ delay: null });
+    await setup({ twoSports: true });
+    renderWithProviders(<OperatingHoursSetupForm />);
+
+    await screen.findByRole("radio", { name: /Standard Hours/ });
+    await user.click(screen.getByRole("switch", { name: /Apply sport-wise operating hours/ }));
+    const badminton = await screen.findByRole("region", { name: "Badminton hours" });
+    await user.click(within(badminton).getByRole("button", { name: /Add different timing/ }));
+    await user.click(within(badminton).getByRole("button", { name: "Remove Badminton timing 2" }));
+
+    expect(within(badminton).queryByText("Timing 2")).not.toBeInTheDocument();
+    expect(within(badminton).getByRole("checkbox", { name: "Sat" })).not.toBeChecked(); // the weekend timing's days are now closed
+    expect(within(badminton).getByRole("checkbox", { name: "Mon" })).toBeChecked();
   });
 
   it("Sport-wise hours hides the venue-wide hours and lets a sport be open 24 hours", async () => {

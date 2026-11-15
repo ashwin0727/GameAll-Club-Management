@@ -466,7 +466,7 @@ const _tileTints = [
   Color(0xFF4817C2),
   Color(0xFF3B82F6),
   Color(0xFFF97316),
-  Color(0xFF0E9384),
+  Color(0xFFD946EF),
   Color(0xFF8B5CF6),
 ];
 

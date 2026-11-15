@@ -5,6 +5,9 @@
     <!-- Android 13+: the app must ask before it can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="GameAll Venue"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

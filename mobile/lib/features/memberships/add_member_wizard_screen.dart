@@ -86,7 +86,10 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     return null;
   }
 
-  List<PlanSlot> get _slots => planSlotsFor(_batches, _d.planId);
+  /// Every slot the chosen plan offers, and the ones this member ticked (a member plays only the timings they choose).
+  List<PlanSlot> get _planSlots => planSlotsFor(_batches, _d.planId);
+  final Set<String> _chosenSlotIds = {};
+  List<PlanSlot> get _slots => chosenPlanSlots(_planSlots, _chosenSlotIds);
 
   @override
   void initState() {
@@ -189,6 +192,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
   Map<String, String> get _errors {
     final errors = addMemberFieldErrors(_step, _d);
     if (_step == 1 && _duplicateMember != null) errors['planId'] = duplicateMemberMessage;
+    if (_step == 1 && _planSlots.length > 1 && _slots.isEmpty) errors['slots'] = selectTimingMessage;
     return errors;
   }
   String? _show(String field) => _touched.contains(field) ? _errors[field] : null;
@@ -269,6 +273,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
 
   void _choosePlan(MembershipPlan plan) {
     setState(() {
+      _chosenSlotIds.clear(); // another plan has other timings: choose again
       _d
         ..planId = plan.id
         ..planName = plan.name
@@ -726,9 +731,11 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         _gap(AppSpacing.lg),
         Text('Court & Timing', style: AppTypography.rowTitle(context)),
         const SizedBox(height: 2),
-        Text('Set by this plan — the member plays on these courts and timings. To change them, edit the plan.', style: AppTypography.caption(context)),
+        Text('Choose the timings this member will play. The member is added to these only, so you can see who plays when.', style: AppTypography.caption(context)),
         _gap(AppSpacing.sm),
-        _slotsList(_slots),
+        if (_planSlots.length > 1) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Select Timings *', style: AppTypography.rowTitle(context))),
+        _slotsList(_planSlots, selectable: _planSlots.length > 1),
+        if (_show('slots') != null) Text(_show('slots')!, key: const ValueKey('slots-error'), style: TextStyle(color: context.tokens.destructive, fontSize: 12)),
       ],
       _gap(),
       _banner('The membership will be active from the selected start date.'),
@@ -863,7 +870,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
   }
 
   /// The plan's courts and timings, read-only.
-  Widget _slotsList(List<PlanSlot> slots) {
+  Widget _slotsList(List<PlanSlot> slots, {bool selectable = false}) {
     final tokens = context.tokens;
     if (slots.isEmpty) {
       return Text("This plan doesn't reserve any court time.", style: AppTypography.caption(context));
@@ -871,19 +878,32 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     return Column(
       children: [
         for (final s in slots)
-          Container(
+          GestureDetector(
+            key: ValueKey('slot-${s.batchId}'),
+            behavior: HitTestBehavior.opaque,
+            onTap: !selectable
+                ? null
+                : () => setState(() {
+                      if (!_chosenSlotIds.add(s.batchId)) _chosenSlotIds.remove(s.batchId);
+                      _touched.remove('slots');
+                    }),
+            child: Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: AppSpacing.sm),
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: tokens.surface1,
+              color: selectable && _chosenSlotIds.contains(s.batchId) ? tokens.primary.withValues(alpha: 0.08) : tokens.surface1,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: tokens.borderColor),
+              border: Border.all(color: selectable && _chosenSlotIds.contains(s.batchId) ? tokens.primary : tokens.borderColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
+                  if (selectable) ...[
+                    SizedBox(height: 22, width: 22, child: IgnorePointer(child: Checkbox(value: _chosenSlotIds.contains(s.batchId), onChanged: (_) {}, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap))),
+                    const SizedBox(width: 8),
+                  ],
                   const Icon(Icons.place_outlined, size: 16),
                   const SizedBox(width: 6),
                   Expanded(child: Text(s.courtName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
@@ -919,6 +939,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
                 ),
               ],
             ),
+          ),
           ),
       ],
     );

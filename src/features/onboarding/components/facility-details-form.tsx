@@ -18,7 +18,7 @@ import {
 } from "@/features/facility-profile/types";
 import { SetupAmenities } from "@/features/onboarding/components/setup-amenities";
 import { CardHeading, CheckRow, Field, Segmented, SetupCard, SetupInput, SetupSelect, SetupTextarea } from "@/features/onboarding/components/setup-fields";
-import { SetupPhotos } from "@/features/onboarding/components/setup-photos";
+import { SetupPhotos, type SavedPhoto } from "@/features/onboarding/components/setup-photos";
 import { DEFAULT_FACILITY_TYPE, FACILITY_TYPE_OPTIONS, INDIAN_STATES } from "@/features/onboarding/constants";
 import { useOnboardingStore } from "@/features/onboarding/state/onboarding-store";
 import type { Facility, FacilityType } from "@/features/onboarding/types";
@@ -101,7 +101,9 @@ export function FacilityDetailsForm() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [photosError, setPhotosError] = useState<string | undefined>();
   // Photos already saved for an existing facility (they count towards the 5 and satisfy "at least one").
-  const [savedPhotos, setSavedPhotos] = useState<string[]>([]);
+  const [savedPhotos, setSavedPhotos] = useState<SavedPhoto[]>([]);
+  // Saved photos the owner took out: they are deleted for good when the step is saved.
+  const removedPhotoIds = useRef<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   // If a later step (the photos) fails after the facility was created, retrying must not create a second facility.
   const createdFacility = useRef<Facility | null>(null);
@@ -168,7 +170,7 @@ export function FacilityDetailsForm() {
         createdFacility.current = existing;
         reset(formFromFacility(existing, userName));
         const saved = await new FacilityPhotos().list(existing.id);
-        if (!cancelled) setSavedPhotos(saved.map((p) => p.url));
+        if (!cancelled) setSavedPhotos(saved.map((p) => ({ id: p.id, url: p.url })));
       } catch {
         // Offline or not allowed yet: the form simply stays as it is (the browser's draft, if any).
       }
@@ -189,6 +191,11 @@ export function FacilityDetailsForm() {
   useEffect(() => {
     if (user?.name && !getValues("contactPersonName")) setValue("contactPersonName", user.name);
   }, [user?.name, getValues, setValue]);
+
+  function removeSavedPhoto(id: string) {
+    removedPhotoIds.current.push(id);
+    setSavedPhotos((list) => list.filter((p) => p.id !== id));
+  }
 
   function saveDraft() {
     setDraft(getValues() as Draft);
@@ -269,6 +276,8 @@ export function FacilityDetailsForm() {
         customAmenities: input.customAmenities,
       });
       await photoService.addAll(facility.id, user.id, photos);
+      for (const id of removedPhotoIds.current) await photoService.remove(id);
+      removedPhotoIds.current = [];
       // Done: if the owner comes back to this screen they start from the facility that now exists.
       setPhotos([]);
 
@@ -441,7 +450,7 @@ export function FacilityDetailsForm() {
         </div>
 
         <div className="border-t border-[#E5E1EF] lg:border-l lg:border-t-0 lg:p-6">
-          <SetupPhotos existingUrls={savedPhotos} files={photos} onChange={(f) => { setPhotos(f); if (f.length > 0) setPhotosError(undefined); }} error={photosError} />
+          <SetupPhotos saved={savedPhotos} onRemoveSaved={removeSavedPhoto} files={photos} onChange={(f) => { setPhotos(f); if (f.length > 0) setPhotosError(undefined); }} error={photosError} />
         </div>
       </SetupCard>
 

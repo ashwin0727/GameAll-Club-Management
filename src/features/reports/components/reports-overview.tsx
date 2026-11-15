@@ -50,7 +50,7 @@ const CARD_STYLE: Record<OverviewMetricKey, { icon: LucideIcon; bg: string; fg: 
   GUEST_BOOKINGS: { icon: CalendarCheck2, bg: "bg-sky-500/15", fg: "text-sky-600 dark:text-sky-400" },
   MEMBERS: { icon: Crown, bg: "bg-purple-500/15", fg: "text-purple-600 dark:text-purple-400" },
   PROGRAMS: { icon: BookOpen, bg: "bg-amber-500/15", fg: "text-amber-600 dark:text-amber-400" },
-  COACHES: { icon: UserRound, bg: "bg-teal-500/15", fg: "text-teal-600 dark:text-teal-400" },
+  COACHES: { icon: UserRound, bg: "bg-fuchsia-500/15", fg: "text-fuchsia-600 dark:text-fuchsia-400" },
   STUDENTS: { icon: GraduationCap, bg: "bg-pink-500/15", fg: "text-pink-600 dark:text-pink-400" },
   GUEST_BOOKING_REVENUE: { icon: IndianRupee, bg: "bg-success/15", fg: "text-success" },
   MEMBERSHIP_REVENUE: { icon: BadgeIndianRupee, bg: "bg-purple-500/15", fg: "text-purple-600 dark:text-purple-400" },

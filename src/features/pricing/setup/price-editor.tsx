@@ -149,7 +149,7 @@ export function PriceEditor({
 
         <div>
           <label htmlFor={`${idPrefix}-base`} className="mb-1.5 block text-sm font-semibold">
-            Base Price (per {per}) <span className="text-[#C62828]">*</span>
+            Base Price (per {per}) <span className="font-normal text-[#666666]">(Optional)</span>
           </label>
           <AmountField id={`${idPrefix}-base`} label={`Base price per ${per}`} value={setup.basePrice} onChange={setBase} invalid={!!problems.base} />
           {problems.base && <FieldError>{problems.base}</FieldError>}
@@ -285,7 +285,7 @@ export function PriceEditor({
           {settings.memberPricingEnabled && (
             <div>
               <label htmlFor={`${idPrefix}-member`} className="mb-1.5 block text-sm font-semibold">
-                Member Price (per {per}) <span className="text-[#C62828]">*</span>
+                Member Price (per {per}) <span className="font-normal text-[#666666]">(Optional)</span>
               </label>
               <AmountField id={`${idPrefix}-member`} label={`Member price per ${per}`} value={setup.memberPrice} onChange={(v) => onChange({ ...setup, memberPrice: v })} invalid={!!problems.member} />
               {problems.member && <FieldError>{problems.member}</FieldError>}
@@ -294,7 +294,7 @@ export function PriceEditor({
           {settings.coachingPricingEnabled && (
             <div>
               <label htmlFor={`${idPrefix}-coaching`} className="mb-1.5 block text-sm font-semibold">
-                Coaching Price (per {per}) <span className="text-[#C62828]">*</span>
+                Coaching Price (per {per}) <span className="font-normal text-[#666666]">(Optional)</span>
               </label>
               <AmountField id={`${idPrefix}-coaching`} label={`Coaching price per ${per}`} value={setup.coachingPrice} onChange={(v) => onChange({ ...setup, coachingPrice: v })} invalid={!!problems.coaching} />
               {problems.coaching && <FieldError>{problems.coaching}</FieldError>}

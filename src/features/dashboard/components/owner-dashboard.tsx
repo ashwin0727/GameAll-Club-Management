@@ -214,7 +214,7 @@ const STATUS_DOT: Record<ActivityStatus, string> = {
 const STATUS_TEXT: Record<ActivityStatus, { label: string; cls: string }> = {
   live: { label: "Live", cls: "text-success" },
   booked: { label: "Booked", cls: "text-blue-600 dark:text-blue-400" },
-  available: { label: "Available", cls: "text-success" },
+  available: { label: "Available", cls: "text-[#0E9384]" },
 };
 
 function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
@@ -274,7 +274,7 @@ function CourtStatusCard({ rows, delay }: { rows: CourtNow[]; delay: number }) {
                 <span title={court.courtName} className="truncate font-medium">{court.courtName}</span>
                 <span className="flex items-center gap-1.5">
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", busy ? "bg-destructive" : "bg-success")} />
-                  <span className={busy ? "text-destructive" : "text-success"}>{busy ? "Busy" : "Available"}</span>
+                  <span className={busy ? "text-destructive" : "text-[#0E9384]"}>{busy ? "Busy" : "Available"}</span>
                 </span>
                 <span className="text-right text-[11px] tabular-nums text-muted-foreground">
                   {busy && busyUntil !== null ? `Until ${formatMinute(busyUntil)}` : ""}

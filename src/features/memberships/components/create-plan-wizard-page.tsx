@@ -58,6 +58,7 @@ import {
   isStepComplete,
   PLAN_CATEGORIES,
   PLAN_WIZARD_STEPS,
+  planNameWithCourts,
   validateStep,
   type PlanWizardDraft,
   type PlanWizardStep,
@@ -357,6 +358,11 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
   // Scoped to the top bar's active sport — a plan is always created for one sport at a time;
   // switching sport up there is how an owner builds a plan for their other sport.
   const courts = courtsForSport((areasQuery.data ?? []).filter((a) => a.status === "ACTIVE"), sportScope);
+  // what the plan is called: the typed name plus the court(s) chosen under Court Access
+  const fullPlanName = planNameWithCourts(
+    draft.name,
+    draft.courtIds.map((id) => courts.find((c) => c.id === id)?.name ?? ""),
+  );
   const courtSchedulesQuery = useCourtSchedules(facilityId, courts);
   const sportNamesQuery = useFacilitySportNames(facilityId);
 
@@ -424,7 +430,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
     try {
       const plan = await getMembershipService().createPlan({
         facilityId,
-        name: draft.name.trim(),
+        name: fullPlanName,
         description: draft.description.trim() || undefined,
         category: draft.category || undefined,
         planType: draft.planType,
@@ -595,7 +601,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                 label="Plan Name"
                 required
                 error={show("name")}
-                hint="e.g. Monthly Membership, 3 Months Plan, Weekend Plan, etc."
+                hint="e.g. Monthly Membership, 3 Months Plan, Weekend Plan. The court you choose is added to the name for you (Monthly Membership - Court A)."
               >
                 <input
                   value={draft.name}
@@ -993,7 +999,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-base font-bold text-black dark:text-foreground">{draft.name.trim() || "New Plan"}</p>
+                        <p className="truncate text-base font-bold text-black dark:text-foreground">{fullPlanName || "New Plan"}</p>
                         {draft.showBadge && (
                           <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
                             {draft.badgeText.trim() || "Popular"}
@@ -1155,7 +1161,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
 
               <ReviewSection n={4} title="Final Summary" onEdit={() => setStep(1)}>
                 <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">
-                  <ReviewRow label="Membership Plan" value={draft.name.trim() || "—"} />
+                  <ReviewRow label="Membership Plan" value={fullPlanName || "—"} />
                   <ReviewRow
                     label="Price"
                     value={
@@ -1237,7 +1243,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
           <div className="space-y-3 rounded-xl bg-success/5 p-4">
             <div className="flex items-start justify-between gap-2">
               <p className="text-base font-bold text-black dark:text-foreground">
-                {draft.name.trim() || "New Plan"}
+                {fullPlanName || "New Plan"}
               </p>
               {draft.showBadge && (
                 <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">

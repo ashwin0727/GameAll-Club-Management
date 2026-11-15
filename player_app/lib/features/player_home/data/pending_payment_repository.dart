@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
 import '../domain/player_dashboard_models.dart';
+import '../../payments/data/native_checkout.dart';
+import '../../payments/domain/payment_receipt.dart';
 
 /// Why a payment page could not be opened, in words for the player.
 class PaymentLinkException implements Exception {
@@ -51,17 +53,38 @@ class SupabasePendingPaymentRepository implements PendingPaymentRepository {
     try {
       final res = await client.functions.invoke(
         function,
-        body: {field: payment.id},
+        body: {
+          field: payment.id,
+          // a booking is paid in the app's own sheet (Android): ask for an order, not a hosted page
+          if (payment.kind == PendingPaymentKind.booking &&
+              nativeCheckoutAvailable)
+            'native': true,
+        },
       );
       final data = res.data;
       if (data is Map && data['paid'] == true) return null;
-      final url = data is Map ? data['shortUrl'] as String? : null;
-      if (url == null || url.isEmpty) {
+      final link = data is Map
+          ? checkoutLinkFrom(
+              data,
+              kind: switch (payment.kind) {
+                PendingPaymentKind.membership => PaymentKind.membership,
+                PendingPaymentKind.coaching => PaymentKind.coaching,
+                PendingPaymentKind.booking => PaymentKind.booking,
+              },
+              itemId: payment.id,
+              description: switch (payment.kind) {
+                PendingPaymentKind.membership => 'Membership',
+                PendingPaymentKind.coaching => 'Coaching fee',
+                PendingPaymentKind.booking => 'Court booking',
+              },
+            )
+          : null;
+      if (link == null) {
         throw const PaymentLinkException(
           "We couldn't open the payment page. Please try again.",
         );
       }
-      return Uri.parse(url);
+      return link;
     } on FunctionException catch (e) {
       final details = e.details;
       final msg = details is Map ? details['error'] as String? : null;

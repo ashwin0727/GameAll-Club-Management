@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
 import '../domain/coaching_enroll.dart';
+import '../../payments/data/native_checkout.dart';
+import '../../payments/domain/payment_receipt.dart';
 
 /// Why joining a coaching programme could not go on, in words for the player.
 class CoachingException implements Exception {
@@ -126,13 +128,21 @@ class SupabaseCoachingEnrollRepository implements CoachingEnrollRepository {
         body: {'enrollmentId': enrollmentId},
       );
       final data = res.data;
-      final url = data is Map ? data['shortUrl'] as String? : null;
-      if (url == null || url.isEmpty) {
+      // an AutoPay mandate opens in the app's own payment sheet (Android); a one-time fee stays on Razorpay's hosted page
+      final link = data is Map
+          ? checkoutLinkFrom(
+              data,
+              kind: PaymentKind.coaching,
+              itemId: enrollmentId,
+              description: 'Coaching fee',
+            )
+          : null;
+      if (link == null) {
         throw const CoachingException(
           "We couldn't open the payment page. Please try again.",
         );
       }
-      return Uri.parse(url);
+      return link;
     } on FunctionException catch (e) {
       final details = e.details;
       final msg = details is Map ? details['error'] as String? : null;

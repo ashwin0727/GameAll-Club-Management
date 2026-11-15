@@ -46,6 +46,22 @@ const customKey = (name: string) => `${CUSTOM_PREFIX}${name.trim().toLowerCase()
  * Sports & Courts (setup step 2): pick the sports on offer, then describe each court — name, indoor/outdoor, surface, lighting and
  * amenities — one by one or in bulk per sport. Everything is saved together on Next (or Save as Draft).
  */
+/** Whether any sport has courts whose type, surface, lighting or amenities are not the same. */
+function courtsDiffer(drafts: CourtDraft[]): boolean {
+  const first = new Map<string, CourtDraft>();
+  const same = (a: CourtDraft, b: CourtDraft) =>
+    a.type === b.type &&
+    a.surface === b.surface &&
+    a.lighting === b.lighting &&
+    [...a.amenities].sort().join(",") === [...b.amenities].sort().join(",");
+  for (const d of drafts) {
+    const base = first.get(d.sportId);
+    if (!base) first.set(d.sportId, d);
+    else if (!same(base, d)) return true;
+  }
+  return false;
+}
+
 export function SportsCourtsForm() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useCurrentUser();
@@ -61,7 +77,7 @@ export function SportsCourtsForm() {
   const [customNames, setCustomNames] = React.useState<string[]>([]);
   const [drafts, setDrafts] = React.useState<CourtDraft[]>([]);
   const [activeSportId, setActiveSportId] = React.useState<string | undefined>();
-  const [mode, setMode] = React.useState<ConfigMode>("court");
+  const [mode, setMode] = React.useState<ConfigMode>("bulk");
 
   const [sportsError, setSportsError] = React.useState<string | null>(null);
   const [problems, setProblems] = React.useState<CourtProblems>(NO_PROBLEMS);
@@ -128,6 +144,9 @@ export function SportsCourtsForm() {
         setSelectedIds(ids);
         setCustomNames(customs);
         setDrafts(initial);
+        // Bulk (same for every court of a sport) is the starting point; courts saved with different settings open by court,
+        // so nothing the owner set one by one is overwritten.
+        if (courtsDiffer(initial)) setMode("court");
         setLoadState("ready");
       } catch {
         if (!cancelled) setSaveError("We couldn't load your sports and courts. Please refresh and try again.");

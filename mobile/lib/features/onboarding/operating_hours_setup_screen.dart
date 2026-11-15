@@ -44,6 +44,16 @@ class _SportEntry {
   final int courts;
 }
 
+/// One set of days that share the same hours for a sport, e.g. "Mon-Fri 6 AM - 10 PM" or "Sat, Sun 8 AM - 8 PM".
+class _Timing {
+  _Timing({required this.id, required this.days, required this.open, required this.close, required this.is24});
+  final int id;
+  List<int> days;
+  String open;
+  String close;
+  bool is24;
+}
+
 /// Step 3 of the setup: Operating Hours. Standard hours (the same hours on the chosen days) or custom hours (each day on its own), the
 /// venue's holidays and closures, and the extras — bookings outside hours, a daily break and sport-wise hours. Everything is saved
 /// together on Next (or Save as Draft).
@@ -71,6 +81,11 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
   BreakTime _break = const BreakTime('13:00', '14:00');
   bool _sportWise = false;
   Map<String, List<DayPlan>> _sportPlans = {};
+
+  /// Each sport's open days grouped by the hours they share (what the sport-wise card shows). Rebuilt from [_sportPlans] whenever the
+  /// two stop agreeing (loaded, reset); edits made on screen keep them in step.
+  final Map<String, List<_Timing>> _sportGroups = {};
+  int _timingSeq = 0;
 
   PlanProblems _problems = const PlanProblems();
   Map<String, String> _sportErrors = {};
@@ -496,7 +511,7 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
     );
   }
 
-  Widget _dayChips(List<int> selected, void Function(List<int>) onChange, String keyPrefix) {
+  Widget _dayChips(List<int> selected, void Function(List<int>) onChange, String keyPrefix, {List<int> disabled = const []}) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -504,15 +519,17 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
         for (final d in displayOrder)
           GestureDetector(
             key: ValueKey('$keyPrefix-$d'),
-            onTap: () => setState(() {
-              onChange(selected.contains(d) ? (List.of(selected)..remove(d)) : [...selected, d]);
-              _clearProblems();
-            }),
+            onTap: disabled.contains(d) && !selected.contains(d)
+                ? null // already used by another timing
+                : () => setState(() {
+                      onChange(selected.contains(d) ? (List.of(selected)..remove(d)) : [...selected, d]);
+                      _clearProblems();
+                    }),
             child: Container(
               height: 40,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: selected.contains(d) ? SetupColors.activeBg : SetupColors.background,
+                color: selected.contains(d) ? SetupColors.activeBg : (disabled.contains(d) ? SetupColors.mutedFill : SetupColors.background),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: selected.contains(d) ? SetupColors.primary.withValues(alpha: 0.5) : SetupColors.border),
               ),
@@ -693,6 +710,34 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
                         Expanded(child: _timeBox(id: 'day-${p.dayOfWeek}-close', label: '${dayLabels[p.dayOfWeek]} closes at', value: p.isOpen ? p.close : '', onChanged: (v) => p.close = v, enabled: p.isOpen, invalid: _problems.byDay.containsKey(p.dayOfWeek))),
                       ],
                     ),
+                  // the whole day, with no opening or closing time to set (only an open day can have it)
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    key: ValueKey('custom-24-${p.dayOfWeek}'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: !p.isOpen
+                        ? null
+                        : () => setState(() {
+                              p.is24Hours = !p.is24Hours;
+                              _clearProblems();
+                            }),
+                    child: Opacity(
+                      opacity: p.isOpen ? 1 : 0.45,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: IgnorePointer(
+                              child: Checkbox(value: p.isOpen && p.is24Hours, onChanged: (_) {}, activeColor: SetupColors.primary, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text('Open 24 hours', style: setupText(size: 14, weight: FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  ),
                   if (_problems.byDay[p.dayOfWeek] != null) _errorText(_problems.byDay[p.dayOfWeek]!),
                 ],
               ),
@@ -770,8 +815,12 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
           GestureDetector(
             key: const ValueKey('add-closure'),
             onTap: () => _editClosure(null),
+            behavior: HitTestBehavior.opaque,
+            // as wide as the card, with the label centred (it used to shrink to the width of its text and sit at the left)
             child: Container(
               height: 48,
+              width: double.infinity,
+              alignment: Alignment.center,
               decoration: BoxDecoration(color: const Color(0xFFF8F4FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: SetupColors.primary.withValues(alpha: 0.55))),
               // scales down on a narrow phone instead of overflowing
               child: FittedBox(
@@ -908,22 +957,98 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
     );
   }
 
-  Widget _sportSection(_SportEntry e) {
-    final list = _sportPlans[e.id] ?? const <DayPlan>[];
-    final openDays = [for (final p in list) if (p.isOpen) p.dayOfWeek];
-    final first = list.where((p) => p.isOpen).firstOrNull ?? (list.isEmpty ? null : list.first);
-    final open = first?.open ?? '06:00';
-    final close = first?.close ?? '23:00';
-    final is24 = first?.is24Hours ?? false;
-    void apply(List<int> days, String o, String c, {bool? all}) {
-      _sportPlans[e.id] = [for (final p in list) DayPlan(dayOfWeek: p.dayOfWeek, isOpen: days.contains(p.dayOfWeek), open: o, close: c, is24Hours: all ?? is24)];
-    }
+  // ── sport-wise timings ───────────────────────────────────────────────
 
-    void toggle24() => setState(() {
-          apply(openDays, open, close, all: !is24);
-          _sportErrors = {};
-          _error = null;
-        });
+  List<_Timing> _groupsFromPlans(List<DayPlan> list) {
+    final byKey = <String, _Timing>{};
+    for (final d in displayOrder) {
+      final p = list.where((x) => x.dayOfWeek == d).firstOrNull;
+      if (p == null || !p.isOpen) continue;
+      final key = p.is24Hours ? '24h' : '${p.open}-${p.close}';
+      final existing = byKey[key];
+      if (existing != null) {
+        existing.days.add(d);
+      } else {
+        byKey[key] = _Timing(id: ++_timingSeq, days: [d], open: p.open, close: p.close, is24: p.is24Hours);
+      }
+    }
+    if (byKey.isNotEmpty) return byKey.values.toList();
+    final first = list.isEmpty ? null : list.first;
+    return [_Timing(id: ++_timingSeq, days: [], open: first?.open ?? '06:00', close: first?.close ?? '23:00', is24: false)];
+  }
+
+  List<DayPlan> _plansFromGroups(List<DayPlan> base, List<_Timing> groups) => [
+        for (final p in base)
+          () {
+            final g = groups.where((x) => x.days.contains(p.dayOfWeek)).firstOrNull;
+            return g == null
+                ? DayPlan(dayOfWeek: p.dayOfWeek, isOpen: false, open: p.open, close: p.close)
+                : DayPlan(dayOfWeek: p.dayOfWeek, isOpen: true, open: g.open, close: g.close, is24Hours: g.is24);
+          }(),
+      ];
+
+  static bool _samePlans(List<DayPlan> a, List<DayPlan> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      final p = a[i], q = b[i];
+      if (p.dayOfWeek != q.dayOfWeek || p.isOpen != q.isOpen) return false;
+      if (p.isOpen && (p.is24Hours != q.is24Hours || (!p.is24Hours && (p.open != q.open || p.close != q.close)))) return false;
+    }
+    return true;
+  }
+
+  List<_Timing> _timingsFor(String sportId) {
+    final list = _sportPlans[sportId] ?? const <DayPlan>[];
+    var groups = _sportGroups[sportId];
+    if (groups == null || !_samePlans(_plansFromGroups(list, groups), list)) {
+      groups = _groupsFromPlans(list);
+      _sportGroups[sportId] = groups;
+    }
+    return groups;
+  }
+
+  /// Applies an edit to a sport's timings and writes the matching days to its plans.
+  void _editTimings(String sportId, void Function(List<_Timing> groups) edit) {
+    final list = _sportPlans[sportId] ?? const <DayPlan>[];
+    final groups = _timingsFor(sportId);
+    setState(() {
+      edit(groups);
+      _sportPlans[sportId] = _plansFromGroups(list, groups);
+      _sportErrors = {};
+      _error = null;
+    });
+  }
+
+  void _addTiming(String sportId) {
+    _editTimings(sportId, (groups) {
+      final used = {for (final g in groups) ...g.days};
+      final unused = [for (final d in displayOrder) if (!used.contains(d)) d];
+      final donor = groups.reduce((a, b) => b.days.length > a.days.length ? b : a);
+      const weekend = [6, 0];
+      final fromDonor = donor.days.where(weekend.contains).toList();
+      List<int> take;
+      if (fromDonor.isNotEmpty && fromDonor.length < donor.days.length) {
+        // the usual case: the weekend gets its own timing (a weekend day that is not open yet joins it)
+        take = [for (final d in displayOrder) if (fromDonor.contains(d) || (weekend.contains(d) && !used.contains(d))) d];
+      } else if (unused.isNotEmpty) {
+        take = unused;
+      } else {
+        take = [donor.days.last];
+      }
+      for (final g in groups) {
+        g.days = g.days.where((d) => !take.contains(d)).toList();
+      }
+      groups.add(_Timing(id: ++_timingSeq, days: take, open: donor.open, close: donor.close, is24: donor.is24));
+    });
+  }
+
+  Widget _sportSection(_SportEntry e) {
+    final groups = _timingsFor(e.id);
+    final many = groups.length > 1;
+    final used = {for (final g in groups) ...g.days};
+    final donor = groups.reduce((a, b) => b.days.length > a.days.length ? b : a);
+    final canAdd = used.length < 7 || donor.days.length >= 2;
+    final weekly = weeklyMinutes(_sportPlans[e.id] ?? const <DayPlan>[], null);
 
     return Container(
       key: ValueKey('sport-hours-${e.id}'),
@@ -942,35 +1067,97 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
               Text('${e.courts} ${e.courts == 1 ? 'court' : 'courts'}', style: setupText(size: 12, color: SetupColors.secondary)),
             ],
           ),
+          if (many)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${formatHours(weekly)} a week', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.primary)),
+            ),
           const SizedBox(height: 10),
-          _dayChips(openDays, (days) => apply(days, open, close), 'sport-${e.id}-day'),
-          const SizedBox(height: 10),
-          if (is24)
-            Text('Open all day, 24 Hours', key: ValueKey('sport-${e.id}-24h-note'), style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.primary))
-          else
-          Row(
-            children: [
-              Expanded(child: _labelled('Opens At', _timeBox(id: 'sport-${e.id}-open', label: '${e.name} opens at', value: open, onChanged: (v) => apply(openDays, v, close), invalid: _sportErrors.containsKey(e.id)))),
-              const SizedBox(width: 10),
-              Expanded(child: _labelled('Closes At', _timeBox(id: 'sport-${e.id}-close', label: '${e.name} closes at', value: close, onChanged: (v) => apply(openDays, open, v), invalid: _sportErrors.containsKey(e.id)))),
-            ],
-          ),
-          const SizedBox(height: 6),
-          InkWell(
-            key: ValueKey('sport-${e.id}-24h'),
-            onTap: toggle24,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: 22, width: 22, child: Checkbox(value: is24, onChanged: (_) => toggle24(), activeColor: SetupColors.primary, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap)),
-                const SizedBox(width: 10),
-                Text('Open 24 hours', style: setupText(size: 14, weight: FontWeight.w500)),
-              ],
+          for (var i = 0; i < groups.length; i++) _timingBlock(e, groups, i, many),
+          OutlinedButton.icon(
+            key: ValueKey('sport-${e.id}-add-timing'),
+            onPressed: canAdd ? () => _addTiming(e.id) : null,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add different timing for some days'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: SetupColors.primary,
+              backgroundColor: const Color(0xFFF8F4FF),
+              side: BorderSide(color: SetupColors.primary.withValues(alpha: 0.45)),
+              minimumSize: const Size.fromHeight(44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              textStyle: setupText(size: 13.5, weight: FontWeight.w600),
             ),
           ),
           if (_sportErrors[e.id] != null) _errorText(_sportErrors[e.id]!),
         ],
       ),
+    );
+  }
+
+  Widget _timingBlock(_SportEntry e, List<_Timing> groups, int i, bool many) {
+    final g = groups[i];
+    // one timing keeps the plain keys; with several, each is numbered so they can be told apart
+    final id = many ? '${e.id}-t${i + 1}' : e.id;
+    final label = many ? '${e.name} timing ${i + 1}' : e.name;
+    final takenByOthers = [for (final o in groups) if (o.id != g.id) ...o.days];
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (many)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(child: Text('Timing ${i + 1}', style: setupText(size: 14, weight: FontWeight.w600))),
+                IconButton(
+                  key: ValueKey('sport-${e.id}-t${i + 1}-remove'),
+                  tooltip: 'Remove $label',
+                  onPressed: () => _editTimings(e.id, (list) => list.removeWhere((x) => x.id == g.id)),
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.delete_outline, size: 20, color: SetupColors.error),
+                ),
+              ],
+            ),
+          ),
+        _dayChips(g.days, (days) => _editTimings(e.id, (list) => list.firstWhere((x) => x.id == g.id).days = days), 'sport-$id-day', disabled: takenByOthers),
+        const SizedBox(height: 10),
+        if (g.is24)
+          Text('Open all day, 24 Hours', key: ValueKey('sport-$id-24h-note'), style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.primary))
+        else
+          Row(
+            children: [
+              Expanded(child: _labelled('Opens At', _timeBox(id: 'sport-$id-open', label: '$label opens at', value: g.open, onChanged: (v) => _editTimings(e.id, (list) => list.firstWhere((x) => x.id == g.id).open = v), invalid: _sportErrors.containsKey(e.id)))),
+              const SizedBox(width: 10),
+              Expanded(child: _labelled('Closes At', _timeBox(id: 'sport-$id-close', label: '$label closes at', value: g.close, onChanged: (v) => _editTimings(e.id, (list) => list.firstWhere((x) => x.id == g.id).close = v), invalid: _sportErrors.containsKey(e.id)))),
+            ],
+          ),
+        const SizedBox(height: 6),
+        InkWell(
+          key: ValueKey('sport-$id-24h'),
+          onTap: () => _editTimings(e.id, (list) {
+            final t = list.firstWhere((x) => x.id == g.id);
+            t.is24 = !t.is24;
+          }),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 22, width: 22, child: IgnorePointer(child: Checkbox(value: g.is24, onChanged: (_) {}, activeColor: SetupColors.primary, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap))),
+              const SizedBox(width: 10),
+              Text('Open 24 hours', style: setupText(size: 14, weight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
+    return Container(
+      key: ValueKey('sport-timing-$id'),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: many ? const EdgeInsets.all(10) : EdgeInsets.zero,
+      decoration: many ? BoxDecoration(color: const Color(0xFFFBFAFE), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFEFECF6))) : null,
+      child: body,
     );
   }
 
@@ -1011,13 +1198,14 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
             _customCard(),
           const SizedBox(height: 16),
         ],
+        // with sport-wise hours on, the sports' own hours come first (they take the place of the venue's hours), then holidays, then settings
+        if (_sportWise) ...[
+          _sportHoursCard(),
+          const SizedBox(height: 16),
+        ],
         _closuresCard(),
         const SizedBox(height: 16),
         _settingsCard(),
-        if (_sportWise) ...[
-          const SizedBox(height: 16),
-          _sportHoursCard(),
-        ],
       ],
     );
   }

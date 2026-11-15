@@ -148,3 +148,15 @@ export function isStepComplete(step: PlanWizardStep, draft: PlanWizardDraft, cur
 export function composeFeatures(draft: Pick<PlanWizardDraft, "features">): string[] {
   return draft.features.map((f) => f.trim()).filter(Boolean);
 }
+
+/**
+ * The plan's name as everyone sees it: what the owner typed plus the court(s) it is for, added by the app ("Monthly Membership -
+ * Court A"), so the owner never types the court and two plans for different courts are told apart. A name that already ends with the
+ * court part is left alone, and with no court chosen yet it is just what was typed.
+ */
+export function planNameWithCourts(typed: string, courtNames: readonly string[]): string {
+  const base = typed.trim();
+  const courts = courtNames.map((n) => n.trim()).filter(Boolean).join(", ");
+  if (!base || !courts) return base;
+  return base.endsWith(` - ${courts}`) ? base : `${base} - ${courts}`;
+}

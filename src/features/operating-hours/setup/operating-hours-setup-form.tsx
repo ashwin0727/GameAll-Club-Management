@@ -258,7 +258,7 @@ export function OperatingHoursSetupForm() {
           ? {
               ...p,
               ...patch,
-              is24Hours: patch.isOpen === false ? false : p.is24Hours,
+              is24Hours: patch.isOpen === false ? false : (patch.is24Hours ?? p.is24Hours),
             }
           : p,
       ),

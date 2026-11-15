@@ -20,7 +20,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { allowed } from "../_shared/rate-limit.ts";
 import { extractLinkPayment, mapPaymentLinkEventToStatus, razorpaySubscriptionStatusToCoaching } from "../_shared/coaching-billing.ts";
-import { unixToDateString } from "../_shared/razorpay.ts";
+import { fetchRazorpayOrderPayments, mapRazorpayPaymentStatus, pickMostDecisivePayment, unixToDateString } from "../_shared/razorpay.ts";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -129,6 +129,31 @@ Deno.serve(async (req) => {
           await admin.rpc("apply_booking_payment_link_event", { p_razorpay_payment_link_id: linkId, p_event: rz.status });
           changed = true;
         }
+      }
+      // paid in the app's own checkout sheet (a Razorpay ORDER, no link): the webhook and verify-player-payment normally record it; this
+      // is the third way, for when both were missed. Same gate, deduped on the Razorpay payment id.
+      const { data: orderOnly } = await admin
+        .from("payment_orders")
+        .select("id, razorpay_order_id, status")
+        .eq("booking_id", body.id)
+        .is("razorpay_payment_link_id", null)
+        .not("razorpay_order_id", "is", null)
+        .not("status", "in", "(CAPTURED,COMPLETED,SETTLEMENT_EXCEPTION)")
+        .order("created_at", { ascending: false })
+        .limit(2);
+      for (const o of orderOnly ?? []) {
+        const picked = pickMostDecisivePayment(await fetchRazorpayOrderPayments(o.razorpay_order_id as string, keyId, keySecret));
+        if (!picked || picked.status !== "captured") continue;
+        const { error } = await admin.rpc("apply_payment_verification", {
+          p_payment_order_id: o.id,
+          p_razorpay_order_id: picked.order_id,
+          p_razorpay_payment_id: picked.id,
+          p_razorpay_status: mapRazorpayPaymentStatus(picked.status),
+          p_amount_minor: picked.amount,
+          p_currency: picked.currency,
+        });
+        if (error && error.code !== "23514") throw new Error(`apply_payment_verification failed: ${error.message}`);
+        changed = changed || !error;
       }
       const { data: afterBooking } = await userClient.rpc("get_my_payment_receipt", { p_kind: kind, p_id: body.id });
       return jsonResponse({ changed, state: (afterBooking as { state?: string } | null)?.state ?? null }, 200);

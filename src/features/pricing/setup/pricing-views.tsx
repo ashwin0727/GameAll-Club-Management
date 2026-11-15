@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, ChevronRight, ChevronUp, Home, Layers, LayoutGrid, Plus, Snowflake, Sprout } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, Home, Layers, LayoutGrid, Snowflake, Sprout } from "lucide-react";
 import { CardHeading, SetupCard, SetupSelect } from "@/features/onboarding/components/setup-fields";
 import { PriceEditor } from "@/features/pricing/setup/price-editor";
 import { priceRangeLabel, type PriceSetup, type PricingSettings, type SetupProblems } from "@/features/pricing/setup/pricing-setup-model";
@@ -41,8 +41,6 @@ export function SportPricingView({
   onChange,
   expandedId,
   onExpand,
-  onAddSportPricing,
-  canAddSportPricing,
   settings,
   span,
   problems,
@@ -52,8 +50,6 @@ export function SportPricingView({
   onChange: (id: string, next: PriceSetup) => void;
   expandedId: string | null;
   onExpand: (id: string | null) => void;
-  onAddSportPricing: () => void;
-  canAddSportPricing: boolean;
 }) {
   return (
     <SetupCard className="p-4 sm:p-5">
@@ -61,17 +57,6 @@ export function SportPricingView({
         icon={<Layers className="h-7 w-7" aria-hidden="true" />}
         title="Sport Pricing"
         description="Add and manage booking rates for each sport."
-        action={
-          <button
-            type="button"
-            onClick={onAddSportPricing}
-            disabled={!canAddSportPricing}
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-[#4817C2]/50 bg-white px-3 text-sm font-semibold text-[#4817C2] hover:bg-[#F8F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4817C2] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Sport Pricing
-          </button>
-        }
       />
       <ul className="space-y-2">
         {sports.map((sport) => {

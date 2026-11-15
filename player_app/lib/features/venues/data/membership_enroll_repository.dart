@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
 import '../domain/membership_enroll.dart';
+import '../../payments/data/native_checkout.dart';
+import '../../payments/domain/payment_receipt.dart';
 
 /// Why joining could not go on, in words for the player.
 class EnrollException implements Exception {
@@ -19,11 +21,13 @@ abstract class MembershipEnrollRepository {
   /// Memberships the signed-in player's phone number already has at the venue.
   Future<List<ExistingMembership>> myMemberships(String venueId);
 
-  /// Makes (or resumes) the pending membership for [planId] in [batchId].
+  /// Makes (or resumes) the pending membership for [planId] in [batchId] and in every one of [extraBatchIds]: a player may pick
+  /// more than one time slot of the plan, and is put in each of them once the first payment is made.
   Future<EnrollStart> start({
     required String venueId,
     required String planId,
     String? batchId,
+    List<String> extraBatchIds = const [],
   });
 
   /// The Razorpay page where the player sets up UPI AutoPay (GPay, PhonePe or any UPI app) and pays the first amount.
@@ -87,6 +91,7 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
     required String venueId,
     required String planId,
     String? batchId,
+    List<String> extraBatchIds = const [],
   }) async {
     final client = _client;
     if (client == null) {
@@ -99,6 +104,7 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
           'p_facility_id': venueId,
           'p_plan_id': planId,
           'p_batch_id': batchId,
+          if (extraBatchIds.isNotEmpty) 'p_extra_batch_ids': extraBatchIds,
         },
       );
       final m = (r as Map).cast<String, dynamic>();
@@ -123,13 +129,21 @@ class SupabaseMembershipEnrollRepository implements MembershipEnrollRepository {
         body: {'membershipId': membershipId},
       );
       final data = res.data;
-      final url = data is Map ? data['shortUrl'] as String? : null;
-      if (url == null || url.isEmpty) {
+      // the app's own payment sheet when the server sent one (Android), otherwise Razorpay's hosted page
+      final link = data is Map
+          ? checkoutLinkFrom(
+              data,
+              kind: PaymentKind.membership,
+              itemId: membershipId,
+              description: 'Membership AutoPay',
+            )
+          : null;
+      if (link == null) {
         throw const EnrollException(
           "We couldn't open the payment page. Please try again.",
         );
       }
-      return Uri.parse(url);
+      return link;
     } on FunctionException catch (e) {
       final details = e.details;
       final msg = details is Map ? details['error'] as String? : null;

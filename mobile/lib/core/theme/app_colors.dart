@@ -23,7 +23,7 @@ class AppColors {
   static const Color violet = Color(0xFFA98CFF);
 
   // ── Status ─────────────────────────────────────────────────────────────
-  static const Color success = Color(0xFF0E9384); // teal
+  static const Color success = Color(0xFF4817C2); // done / paid / confirmed / selected: the brand purple (the app has no green accent)
   static const Color warning = Color(0xFFFFC061);
   static const Color destructive = Color(0xFFFF6B82);
   static const Color info = Color(0xFF7E93FF);
@@ -176,7 +176,7 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
     borderColor: Color(0xFF2E2E33),
     primary: Color(0xFF9C7BFF),
     onPrimary: Color(0xFF1B0B4B),
-    success: Color(0xFF2DD4BF),
+    success: Color(0xFF9C7BFF),
     warning: Color(0xFFFFC061),
     destructive: Color(0xFFFF6B82),
     info: Color(0xFF7E93FF),
@@ -202,7 +202,7 @@ class AppColorTokens extends ThemeExtension<AppColorTokens> {
     borderColor: Color(0xFFE5E1EF),
     primary: Color(0xFF4817C2),
     onPrimary: Color(0xFFFFFFFF),
-    success: Color(0xFF0E9384),
+    success: Color(0xFF4817C2),
     warning: Color(0xFF9A5B00),
     destructive: Color(0xFFD01A3D),
     info: Color(0xFF3B4ED6),

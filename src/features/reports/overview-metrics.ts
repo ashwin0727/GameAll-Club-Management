@@ -35,7 +35,7 @@ export const OVERVIEW_METRICS: OverviewMetricDef[] = [
   { key: "GUEST_BOOKINGS", title: "Total Guest Booking", kind: "count", color: "#0EA5E9", describe: (s) => `${s} guest bookings`, heading: (s) => `${s} Guest Bookings`, read: (m) => m.guestBookings },
   { key: "MEMBERS", title: "Total Members", kind: "count", color: "#8B5CF6", snapshot: true, describe: (s) => `${s} active memberships`, heading: () => "New Memberships Started", read: (m) => m.members },
   { key: "PROGRAMS", title: "Total Program", kind: "count", color: "#F59E0B", snapshot: true, describe: (s) => `${s} active programs`, heading: () => "Programs Started", read: (m) => m.programs },
-  { key: "COACHES", title: "Total Coach", kind: "count", color: "#14B8A6", snapshot: true, describe: (s) => `${s} active coaches`, heading: () => "Coaches Joined", read: (m) => m.coaches },
+  { key: "COACHES", title: "Total Coach", kind: "count", color: "#D946EF", snapshot: true, describe: (s) => `${s} active coaches`, heading: () => "Coaches Joined", read: (m) => m.coaches },
   { key: "STUDENTS", title: "Total Students", kind: "count", color: "#EC4899", snapshot: true, describe: (s) => `${s} enrolled students`, heading: () => "Students Enrolled", read: (m) => m.students },
   { key: "GUEST_BOOKING_REVENUE", title: "Guest Booking Revenue", kind: "money", color: "#4817C2", describe: (s) => `${s} guest booking revenue`, heading: (s) => `${s} Guest Booking Revenue Trend`, read: (m) => m.guestBookingRevenueMinor },
   { key: "MEMBERSHIP_REVENUE", title: "Membership Revenue", kind: "money", color: "#8B5CF6", describe: (s) => `${s} members revenue`, heading: (s) => `${s} Membership Revenue Trend`, read: (m) => m.membershipRevenueMinor },

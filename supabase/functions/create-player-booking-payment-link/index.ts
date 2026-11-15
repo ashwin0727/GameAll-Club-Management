@@ -14,6 +14,11 @@
 // is secured with the 50% advance, as everywhere else). Money only marks the booking paid through the razorpay-webhook
 // (payment_link.paid → apply_payment_verification), the same gate checkout payments use.
 //
+// NATIVE CHECKOUT (Android): with { native: true } the answer is a Razorpay ORDER (not a hosted page) plus the public key, so the app
+// can open Razorpay's in-app sheet, which lists the phone's own UPI apps (GPay, PhonePe…). The order is paid through the same gate as
+// the web's checkout (apply_payment_verification): the app then calls verify-player-payment, and the razorpay-webhook is the backup.
+// Without `native` nothing changes: the web keeps getting the payment link.
+//
 // Setup (shared with the other payment functions):
 //   supabase secrets set RAZORPAY_KEY_ID=... RAZORPAY_KEY_SECRET=...
 // ═══════════════════════════════════════════════════════════════════════════
@@ -104,7 +109,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Online payments are not configured yet." }, 500);
   }
 
-  let body: { bookingId?: string };
+  let body: { bookingId?: string; native?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -174,9 +179,49 @@ Deno.serve(async (req) => {
   const order = orderData as PaymentOrderRow;
   if (PAID_STATES.includes(order.status)) return jsonResponse(linkPayload(order, { status: "PAID" }), 200);
 
-  // an earlier link that is still open → the same link again, never a second one
   const { data: latest } = await admin.from("payment_orders").select("*").eq("id", order.id).single();
   const current = (latest as PaymentOrderRow | null) ?? order;
+
+  // the app's own checkout sheet: a Razorpay order, reused while it is still the one this payment is for
+  if (body.native === true) {
+    const checkout = (row: { id: string; razorpay_order_id: string | null; amount_minor: number; currency: string }) => ({
+      paymentOrderId: row.id,
+      bookingId: ctx.bookingId,
+      paid: false,
+      checkout: { keyId, orderId: row.razorpay_order_id, amountMinor: row.amount_minor, currency: row.currency },
+    });
+    if (current.razorpay_order_id) return jsonResponse(checkout(current), 200);
+    try {
+      const rzOrder = await razorpay("/orders", keyId, keySecret, {
+        amount: order.amount_minor,
+        currency: order.currency,
+        receipt: (order as unknown as { receipt?: string }).receipt ?? order.id,
+        payment_capture: 1,
+        notes: {
+          gameall_payment_order_id: order.id,
+          facility_id: order.facility_id,
+          booking_id: ctx.bookingId,
+          source_type: isGuest ? "GUEST_BOOKING" : "MEMBER_BOOKING",
+        },
+      });
+      const { data: saved, error: saveErr } = await admin
+        .from("payment_orders")
+        .update({ razorpay_order_id: rzOrder.id, status: "ORDER_CREATED" })
+        .eq("id", order.id)
+        .select("id, razorpay_order_id, amount_minor, currency")
+        .single();
+      if (saveErr || !saved) {
+        console.error("[create-player-booking-payment-link] could not save the order", saveErr?.message);
+        return jsonResponse({ error: "Could not start the payment. Please try again." }, 500);
+      }
+      return jsonResponse(checkout(saved), 200);
+    } catch (err) {
+      console.error("[create-player-booking-payment-link] razorpay order error", String(err));
+      return jsonResponse({ error: "Could not start the payment with Razorpay." }, 502);
+    }
+  }
+
+  // an earlier link that is still open → the same link again, never a second one
   if (
     reusableLink(
       {

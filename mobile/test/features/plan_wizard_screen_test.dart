@@ -288,7 +288,7 @@ void main() {
 
     // 4 — Review & Create
     expect(find.text('Review & Create'), findsWidgets);
-    expect(find.text('Monthly Membership'), findsWidgets);
+    expect(find.text('Monthly Membership - Court 1'), findsWidgets, reason: 'the court is added to the name for you');
     expect(find.text('₹2,500'), findsWidgets);
     expect(tester.takeException(), isNull);
 
@@ -296,7 +296,7 @@ void main() {
 
     expect(membership.created, hasLength(1));
     final plan = membership.created.single;
-    expect(plan.name, 'Monthly Membership');
+    expect(plan.name, 'Monthly Membership - Court 1');
     expect(plan.priceInr, 2500);
     expect(plan.durationDays, 30);
     expect(plan.planType, 'TIME_BASED');

@@ -85,6 +85,15 @@ List<PlanSlot> planSlotsFor(List<AssignableBatch> batches, String? planId) {
   return slots;
 }
 
+/// The slots the member will actually play, picked from the plan's slots. A member does not have to play every timing a plan offers: they
+/// choose the ones they will use, and at least one is required. A plan with a single slot needs no choice: it is the member's slot.
+List<PlanSlot> chosenPlanSlots(List<PlanSlot> planSlots, Set<String> chosenBatchIds) {
+  if (planSlots.length == 1) return planSlots;
+  return [for (final s in planSlots) if (chosenBatchIds.contains(s.batchId)) s];
+}
+
+const selectTimingMessage = 'Select at least one timing this member will play.';
+
 class AddMemberDraft {
   String fullName = '';
   String countryCode = '+91';

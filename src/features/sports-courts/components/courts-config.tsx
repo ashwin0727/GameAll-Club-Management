@@ -46,8 +46,9 @@ function Cell({ label, required, className, hideLabel, children }: { label: stri
 
 function AmenityChecks({ idPrefix, value, onChange }: { idPrefix: string; value: CourtAmenity[]; onChange: (next: CourtAmenity[]) => void }) {
   const wide = React.useContext(WideContext);
+  // in the table the checkboxes start a little in from the Lighting column and sit a clear space apart
   return (
-    <div className={cn("-ml-1 flex h-11 items-center gap-x-1 gap-y-1", wide ? "flex-nowrap" : "flex-wrap")}>
+    <div className={cn("flex h-11 items-center gap-y-1", wide ? "ml-3 flex-nowrap gap-x-3" : "-ml-1 flex-wrap gap-x-1")}>
       {COURT_AMENITY_OPTIONS.map((a) => {
         const on = value.includes(a.value);
         return (

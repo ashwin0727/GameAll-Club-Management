@@ -25,7 +25,7 @@ const _fallbackPalette = [
   Color(0xFF7E93FF),
   Color(0xFFA98CFF),
   Color(0xFFE8834B),
-  Color(0xFF0E9384),
+  Color(0xFFD946EF),
 ];
 
 const _fallbackIcons = [
@@ -50,7 +50,7 @@ SportVisual sportVisual(AppColorTokens tokens, String sportName) {
   if (n.contains('basketball')) return SportVisual(Icons.sports_basketball, tokens.warning);
   if (n.contains('volleyball')) return SportVisual(Icons.sports_volleyball, tokens.success);
   if (n.contains('hockey')) return SportVisual(Icons.sports_hockey, tokens.destructive);
-  if (n.contains('turf') || n.contains('futsal')) return const SportVisual(Icons.grass, Color(0xFF0E9384));
+  if (n.contains('turf') || n.contains('futsal')) return const SportVisual(Icons.grass, Color(0xFFD946EF));
 
   final idx = sportName.hashCode.abs();
   return SportVisual(_fallbackIcons[idx % _fallbackIcons.length], _fallbackPalette[idx % _fallbackPalette.length]);

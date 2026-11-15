@@ -8,6 +8,7 @@ import {
   mapSubscriptionEventToStatus,
   unixToDateString,
   verifyPaymentSignature,
+  verifySubscriptionPaymentSignature,
   verifyWebhookSignature,
 } from "./razorpay.ts";
 
@@ -34,6 +35,22 @@ Deno.test("verifyPaymentSignature rejects a signature computed for a different o
   const signature = Array.from(new Uint8Array(sigBytes)).map((b) => b.toString(16).padStart(2, "0")).join("");
 
   assertEquals(await verifyPaymentSignature("order_abc", "pay_xyz", signature, secret), false);
+});
+
+async function hmac(message: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const bytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(bytes)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+Deno.test("verifySubscriptionPaymentSignature signs payment|subscription, in that order", async () => {
+  const good = await hmac("pay_xyz|sub_abc", "test_secret");
+  assertEquals(await verifySubscriptionPaymentSignature("pay_xyz", "sub_abc", good, "test_secret"), true);
+  // the order-payment order (id|payment) is a different message and must not pass
+  const swapped = await hmac("sub_abc|pay_xyz", "test_secret");
+  assertEquals(await verifySubscriptionPaymentSignature("pay_xyz", "sub_abc", swapped, "test_secret"), false);
+  assertEquals(await verifySubscriptionPaymentSignature("pay_xyz", "sub_abc", "deadbeef", "test_secret"), false);
+  assertEquals(await verifySubscriptionPaymentSignature("pay_xyz", "sub_OTHER", good, "test_secret"), false);
 });
 
 Deno.test("verifyWebhookSignature verifies against the raw body, not a re-serialized one", async () => {

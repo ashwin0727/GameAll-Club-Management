@@ -14,6 +14,7 @@ import '../profile/hub/payout_widgets.dart' show showPayoutMethodSheet;
 import 'payout_setup_logic.dart';
 import 'payout_validation.dart';
 import 'setup_flow.dart';
+import 'submit_review_dialog.dart';
 import 'setup_ui.dart';
 
 /// Step 5 of the setup: Payout. Bank accounts / UPI IDs, settlement settings, which earnings are included and the payout rules.
@@ -231,6 +232,18 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
     final id = _facilityId;
     if (id == null) return;
     if (await showPayoutMethodSheet(context, facilityId: id, method: m, dark: false)) await _reload();
+  }
+
+  /// "Complete Setup": checks the settings, then asks for the two confirmations; only after that is the setup submitted for review.
+  Future<void> _askToSubmit() async {
+    final settings = _settings.copyWith(minimumPayoutInr: int.tryParse(_min.text.trim()) ?? -1);
+    final problem = settings.validate();
+    if (problem != null) {
+      setState(() => _error = problem);
+      return;
+    }
+    if (!await confirmSubmitForReview(context) || !mounted) return;
+    await _persist(complete: true);
   }
 
   /// Saves the settings; with [complete] it also finishes the setup and submits it to GameAll for approval. With [silent] (the auto-save)
@@ -519,7 +532,7 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
           if (_error != null) SetupErrorBanner(_error!),
           SetupNavFooter(
             onBack: () => goBackOr(context, AppRoutes.onboardingPricing),
-            next: SetupButton(label: 'Complete Setup', primary: true, icon: Icons.check, loading: _completing, loadingLabel: 'Submitting…', onPressed: _methods.isEmpty ? null : () => _persist(complete: true)),
+            next: SetupButton(label: 'Complete Setup', primary: true, icon: Icons.check, loading: _completing, loadingLabel: 'Submitting…', onPressed: _methods.isEmpty ? null : _askToSubmit),
           ),
         ],
       ),

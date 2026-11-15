@@ -45,11 +45,14 @@ export function formatClock(time: string): string {
   return `${hour % 12 === 0 ? 12 : hour % 12}:${String(m ?? 0).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
 }
 
-/** Every half hour of the day, the way the pickers list them. */
-export const TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 48 }, (_, i) => {
-  const value = fromMinutes(i * 30);
-  return { value, label: formatClock(value) };
-});
+/** Every half hour of the day, then 11:59 PM (with 12:00 AM it makes a full day without a next-day closing), the way the pickers list them. */
+export const TIME_OPTIONS: { value: string; label: string }[] = [
+  ...Array.from({ length: 48 }, (_, i) => {
+    const value = fromMinutes(i * 30);
+    return { value, label: formatClock(value) };
+  }),
+  { value: "23:59", label: formatClock("23:59") },
+];
 
 export function defaultPlan(dayOfWeek: DayOfWeek, isOpen = true): DayPlan {
   return { dayOfWeek, isOpen, open: DEFAULT_OPEN_TIME, close: DEFAULT_CLOSE_TIME, is24Hours: false };

@@ -209,7 +209,7 @@ void main() {
     expect(find.text('₹400 – ₹650 / hour'), findsOneWidget); // the preview line
   });
 
-  testWidgets('member and coaching prices appear once their settings are on, and are required', (tester) async {
+  testWidgets('member and coaching prices appear once their settings are on, and are optional', (tester) async {
     await _pump(tester);
     await _type(tester, 'base-sport-fs-bad', '400');
     await _tap(tester, 'switch-member');
@@ -218,8 +218,9 @@ void main() {
     expect(find.byKey(const ValueKey('coaching-sport-fs-bad')), findsOneWidget);
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    expect(find.text('Enter the member price.'), findsOneWidget);
-    expect(find.text('Enter the coaching price.'), findsOneWidget);
+    // left empty, they are simply not set: nothing is asked for
+    expect(find.text('Enter the member price.'), findsNothing);
+    expect(find.text('Enter the coaching price.'), findsNothing);
   });
 
   testWidgets('By Court lists the courts, starts each from its sport and saves per-court rules', (tester) async {

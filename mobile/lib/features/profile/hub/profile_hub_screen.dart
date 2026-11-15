@@ -4,6 +4,7 @@ import '../../../shared/utils/photo_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/logout_dialog.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/errors/app_exception.dart';
@@ -35,23 +36,7 @@ class ProfileHubScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final facilityName = ref.read(sessionControllerProvider).facility?.name ?? 'your facility';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log out of GameAll?'),
-        content: Text("You'll be signed out of $facilityName on this device. You can sign back in any time."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: ctx.tokens.destructive),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) await ref.read(sessionControllerProvider.notifier).signOut();
+    if (await confirmLogout(context)) await ref.read(sessionControllerProvider.notifier).signOut();
   }
 
   @override
@@ -388,7 +373,7 @@ class _VerifiedBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: const Color(0xFF0E9384).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(color: const Color(0xFF4817C2).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [

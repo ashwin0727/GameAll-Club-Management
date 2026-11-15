@@ -119,6 +119,7 @@ class _Enroll implements MembershipEnrollRepository {
   final List<ExistingMembership> mine;
   final String? failWith;
   final started = <(String, String?)>[];
+  final extras = <List<String>>[];
 
   @override
   Future<EnrollInfo?> info(String venueId) async {
@@ -134,9 +135,11 @@ class _Enroll implements MembershipEnrollRepository {
     required String venueId,
     required String planId,
     String? batchId,
+    List<String> extraBatchIds = const [],
   }) async {
     if (failWith != null) throw EnrollException(failWith!);
     started.add((planId, batchId));
+    extras.add(extraBatchIds);
     return const EnrollStart(membershipId: 'm1', amountInr: 2999);
   }
 
@@ -302,6 +305,8 @@ void main() {
         );
         expect(_text(tester, 'summary-plan'), 'Monthly (1 month)');
 
+        // slots add up now: untick the 7 PM one before looking at the 8 PM one on its own
+        await _tap(tester, 'enroll-slot-7:00 PM – 8:00 PM');
         await _tap(tester, 'enroll-slot-8:00 PM – 9:00 PM');
         expect(
           find.text('Full'),
@@ -397,6 +402,36 @@ void main() {
       },
     );
 
+    testWidgets(
+      'more than one time slot can be ticked: only the plans that run in all of them are offered, and the player joins each',
+      (tester) async {
+        final (repo, _, _) = await _pump(tester);
+        await _tap(tester, 'enroll-slot-6:00 PM – 7:00 PM');
+        expect(find.byKey(const ValueKey('enroll-plan-Quarterly')), findsOneWidget);
+
+        // the 7 PM slot only has the Monthly plan, so Quarterly is no longer offered
+        await _tap(tester, 'enroll-slot-7:00 PM – 8:00 PM');
+        expect(find.byKey(const ValueKey('enroll-plan-Quarterly')), findsNothing);
+        expect(find.byKey(const ValueKey('enroll-plan-Monthly')), findsOneWidget);
+        expect(_text(tester, 'summary-slot'), '6:00 PM – 7:00 PM, 7:00 PM – 8:00 PM');
+
+        await _tap(tester, 'enroll-plan-Monthly');
+        await _tap(tester, 'enroll-pay');
+        expect(repo.started.single, ('monthly', 'b-monthly-4'));
+        expect(repo.extras.single, ['b-monthly-0'], reason: 'the second slot rides along');
+      },
+    );
+
+    testWidgets('unticking every slot goes back to asking for one, and nothing can be paid', (tester) async {
+      await _pump(tester);
+      await _tap(tester, 'enroll-slot-6:00 PM – 7:00 PM');
+      await _tap(tester, 'enroll-plan-Monthly');
+      await _tap(tester, 'enroll-slot-6:00 PM – 7:00 PM'); // untick it
+      expect(find.byKey(const ValueKey('enroll-plan-Monthly')), findsNothing);
+      expect(find.byKey(const ValueKey('plans-for')), findsOneWidget);
+      expect(_text(tester, 'plans-for'), 'Pick your time slots to see their plans');
+    });
+
     testWidgets('a club without AutoPay cannot be paid online, and says so', (
       tester,
     ) async {
@@ -424,14 +459,14 @@ void main() {
           findsOneWidget,
         );
         expect(find.byKey(const ValueKey('enroll-sport-Turf')), findsNothing);
-        expect(find.text('Select Membership Time Slot'), findsOneWidget);
+        expect(find.text('Select Membership Time Slots'), findsOneWidget);
         expect(_text(tester, 'summary-sport'), 'Badminton');
         // the slots still follow: the time slot comes after the sport
         final sport = tester
             .getTopLeft(find.byKey(const ValueKey('enroll-sport-Badminton')))
             .dy;
         final slot = tester
-            .getTopLeft(find.text('Select Membership Time Slot'))
+            .getTopLeft(find.text('Select Membership Time Slots'))
             .dy;
         expect(sport, lessThan(slot));
       },
@@ -466,7 +501,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, repo: _Enroll(data: _info(slots: false)));
-      expect(find.text('Select Membership Time Slot'), findsNothing);
+      expect(find.text('Select Membership Time Slots'), findsNothing);
       expect(find.byKey(const ValueKey('enroll-plan-Monthly')), findsOneWidget);
     });
 
@@ -565,7 +600,7 @@ void main() {
       await _pump(tester);
       for (final t in [
         'Select Sport',
-        'Select Membership Time Slot',
+        'Select Membership Time Slots',
         'Available Membership Plans',
         'Plan Benefits',
       ]) {

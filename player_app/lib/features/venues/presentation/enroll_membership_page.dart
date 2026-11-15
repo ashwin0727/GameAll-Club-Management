@@ -48,7 +48,8 @@ class EnrollMembershipPage extends ConsumerStatefulWidget {
 
 class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
   String? _sportId;
-  String? _slotKey;
+  /// The time slots the player ticked (one or more): the plans offered are the ones that run in every one of them.
+  final Set<String> _slotKeys = {};
   String? _planId;
   bool _paying = false;
   bool _policyOpen = true;
@@ -58,7 +59,7 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
     return DateTime(n.year, n.month, n.day);
   }
 
-  Future<void> _pay(EnrollInfo info, EnrollSlot? slot, EnrollPlan plan) async {
+  Future<void> _pay(EnrollInfo info, List<EnrollSlot> chosen, EnrollPlan plan) async {
     if (ref.read(currentPlayerProvider) == null) {
       widget.onNavigate(AppRoutes.login);
       return;
@@ -74,10 +75,15 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
           title: plan.name,
           venueName: info.venueName,
           prepare: () async {
+            final ids = [
+              for (final s in chosen)
+                if (s.batchFor(plan.id) != null) s.batchFor(plan.id)!.id,
+            ];
             final start = await repo.start(
               venueId: info.venueId,
               planId: plan.id,
-              batchId: slot?.batchFor(plan.id)?.id,
+              batchId: ids.isEmpty ? null : ids.first,
+              extraBatchIds: ids.skip(1).toList(),
             );
             final link = await repo.autopayLink(start.membershipId);
             return PaymentTarget(id: start.membershipId, link: link);
@@ -232,43 +238,56 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
       for (final s in info.slots)
         if (s.sportId == _sportId) s,
     ];
-    final slot = slots.where((s) => s.key == _slotKey).firstOrNull;
+    final chosen = [
+      for (final s in slots)
+        if (_slotKeys.contains(s.key)) s,
+    ];
+    // the single ticked slot, for the parts of the page that talk about one slot (who plays there now)
+    final slot = chosen.length == 1 ? chosen.first : null;
 
     // 2 · the plans of that slot (every plan when the club made no time slots)
     final needsSlot = info.hasSlots;
     final plans = !needsSlot
         ? info.plans
-        : (slot == null
+        : (chosen.isEmpty
               ? <EnrollPlan>[]
               : [
                   for (final pl in info.plans)
-                    if (slot.planIds.contains(pl.id)) pl,
+                    if (chosen.every((s) => s.planIds.contains(pl.id))) pl,
                 ]);
     final plan = plans.where((pl) => pl.id == _planId).firstOrNull;
-    final full = plan != null && slot != null && slot.batchFor(plan.id) == null;
+    final full = plan != null && chosen.any((s) => s.batchFor(plan.id) == null);
     final ready =
         plan != null &&
         !full &&
         info.autopayAvailable &&
-        !(needsSlot && slot == null);
+        !(needsSlot && chosen.isEmpty);
 
     final sportRow = _SportRow(
       sports: sports,
       selected: _sportId,
       onTap: (id) => setState(() {
         _sportId = id;
-        _slotKey = null;
+        _slotKeys.clear();
         _planId = null;
       }),
     );
     final slotGrid = _SlotGrid(
       slots: slots,
-      selected: _slotKey,
+      selected: _slotKeys,
       onTap: (s) => setState(() {
-        _slotKey = s.key;
-        if (!s.planIds.contains(_planId)) _planId = null;
-        // a slot that offers one plan only has that plan chosen for the player
-        if (s.planIds.length == 1) _planId = s.planIds.first;
+        if (!_slotKeys.add(s.key)) _slotKeys.remove(s.key);
+        final now = [
+          for (final x in slots)
+            if (_slotKeys.contains(x.key)) x,
+        ];
+        final common = [
+          for (final pl in info.plans)
+            if (now.isNotEmpty && now.every((x) => x.planIds.contains(pl.id))) pl,
+        ];
+        if (!common.any((pl) => pl.id == _planId)) _planId = null;
+        // when only one plan runs in every ticked slot, it is chosen for the player
+        if (common.length == 1) _planId = common.first.id;
       }),
     );
 
@@ -287,8 +306,8 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
           if (needsSlot) ...[
             if (hasSportRow) _rule(p),
             const EnrollBarHeading(
-              title: 'Select Membership Time Slot',
-              subtitle: 'Choose a fixed court time for your membership',
+              title: 'Select Membership Time Slots',
+              subtitle: 'Choose the court times you will play (at least one). You can pick more than one.',
             ),
             const SizedBox(height: 14),
             slotGrid,
@@ -320,9 +339,9 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
                 padding: const EdgeInsets.only(left: 14),
                 child: Text(
                   needsSlot
-                      ? (slot == null
-                            ? 'Pick a time slot to see its plans'
-                            : 'Plans for the selected time slot:  ${slot.label}')
+                      ? (chosen.isEmpty
+                            ? 'Pick your time slots to see their plans'
+                            : 'Plans that cover:  ${chosen.map((s) => s.label).join(', ')}')
                       : 'Plans at ${info.venueName}',
                   style: AppTextStyles.body(p.secondaryText),
                   key: const ValueKey('plans-for'),
@@ -333,7 +352,9 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   child: Text(
-                    'No plans to show yet.',
+                    needsSlot && chosen.length > 1
+                        ? 'No plan covers all of these time slots. Untick one to see more plans.'
+                        : 'No plans to show yet.',
                     key: const ValueKey('plans-empty'),
                     style: AppTextStyles.body(p.mutedText),
                   ),
@@ -343,7 +364,7 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
                   _PlanTile(
                     plan: pl,
                     selected: pl.id == _planId,
-                    full: slot != null && slot.batchFor(pl.id) == null,
+                    full: chosen.any((s) => s.batchFor(pl.id) == null),
                     onTap: () => setState(() => _planId = pl.id),
                   ),
             ],
@@ -358,6 +379,7 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
       info: info,
       sport: sports.where((s) => s.id == _sportId).firstOrNull?.name,
       slot: slot,
+      slotsLabel: chosen.isEmpty ? null : chosen.map((s) => s.label).join(', '),
       plan: plan,
       today: _today,
       ready: ready,
@@ -365,7 +387,7 @@ class _EnrollMembershipPageState extends ConsumerState<EnrollMembershipPage> {
       paying: _paying,
       policyOpen: _policyOpen,
       onPolicy: () => setState(() => _policyOpen = !_policyOpen),
-      onPay: ready ? () => _pay(info, slot, plan) : null,
+      onPay: ready ? () => _pay(info, chosen, plan) : null,
     );
 
     final existing = mine.isEmpty ? null : _Existing(memberships: mine);
@@ -626,7 +648,7 @@ class _SlotGrid extends StatelessWidget {
     required this.onTap,
   });
   final List<EnrollSlot> slots;
-  final String? selected;
+  final Set<String> selected;
   final ValueChanged<EnrollSlot> onTap;
 
   @override
@@ -653,7 +675,7 @@ class _SlotGrid extends StatelessWidget {
                 width: w,
                 child: Semantics(
                   button: true,
-                  selected: s.key == selected,
+                  selected: selected.contains(s.key),
                   label: s.label,
                   child: ExcludeSemantics(
                     child: Pressable(
@@ -670,22 +692,22 @@ class _SlotGrid extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
-                          gradient: s.key == selected
+                          gradient: selected.contains(s.key)
                               ? const LinearGradient(
                                   colors: [AppColors.violet, AppColors.purple],
                                 )
                               : null,
-                          color: s.key == selected
+                          color: selected.contains(s.key)
                               ? null
                               : (p.isDark
                                     ? const Color(0xFF0E1630)
                                     : p.elevated),
                           border: Border.all(
-                            color: s.key == selected
+                            color: selected.contains(s.key)
                                 ? AppColors.purple
                                 : p.border,
                           ),
-                          boxShadow: s.key == selected
+                          boxShadow: selected.contains(s.key)
                               ? [
                                   BoxShadow(
                                     color: AppColors.violet.withValues(
@@ -699,7 +721,7 @@ class _SlotGrid extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (s.key == selected) ...[
+                            if (selected.contains(s.key)) ...[
                               const Icon(
                                 Icons.check_rounded,
                                 size: 16,
@@ -714,7 +736,7 @@ class _SlotGrid extends StatelessWidget {
                                   s.label,
                                   maxLines: 1,
                                   style: AppTextStyles.body(
-                                    s.key == selected
+                                    selected.contains(s.key)
                                         ? Colors.white
                                         : p.primaryText,
                                   ).copyWith(fontWeight: FontWeight.w600),
@@ -1013,6 +1035,7 @@ class _SummaryPanel extends StatelessWidget {
     required this.info,
     required this.sport,
     required this.slot,
+    required this.slotsLabel,
     required this.plan,
     required this.today,
     required this.ready,
@@ -1026,6 +1049,7 @@ class _SummaryPanel extends StatelessWidget {
   final EnrollInfo info;
   final String? sport;
   final EnrollSlot? slot;
+  final String? slotsLabel;
   final EnrollPlan? plan;
   final DateTime today;
   final bool ready;
@@ -1144,7 +1168,7 @@ class _SummaryPanel extends StatelessWidget {
                 row(
                   Icons.schedule_rounded,
                   'Time Slot',
-                  slot?.label ?? '—',
+                  slotsLabel ?? slot?.label ?? '—',
                   key: const ValueKey('summary-slot'),
                 ),
               row(

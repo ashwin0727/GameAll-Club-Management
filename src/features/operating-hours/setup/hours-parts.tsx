@@ -65,26 +65,31 @@ export function TimeField({
 // ── day chips ──────────────────────────────────────────────────────────────
 
 /** Mon ... Sun as tick-able chips. */
-export function DayChips({ value, onChange, idPrefix }: { value: DayOfWeek[]; onChange: (next: DayOfWeek[]) => void; idPrefix: string }) {
+/** [disabled] days are greyed out and cannot be ticked (for example, already used by another timing). */
+export function DayChips({ value, onChange, idPrefix, disabled = [] }: { value: DayOfWeek[]; onChange: (next: DayOfWeek[]) => void; idPrefix: string; disabled?: DayOfWeek[] }) {
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Operating days">
       {DISPLAY_ORDER.map((d) => {
         const on = value.includes(d);
+        const taken = disabled.includes(d) && !on;
         return (
           <label
             key={d}
             htmlFor={`${idPrefix}-${d}`}
             className={cn(
-              "flex h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-[#4817C2]",
-              on ? "border-[#4817C2]/50 bg-[#F1EBFF] text-[#4817C2]" : "border-[#E5E1EF] bg-white hover:bg-[#FBFAFE]",
+              "flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors focus-within:ring-2 focus-within:ring-[#4817C2]",
+              taken ? "cursor-not-allowed border-[#E5E1EF] bg-[#F7F5FB] text-[#9A97A8]" : "cursor-pointer",
+              !taken && (on ? "border-[#4817C2]/50 bg-[#F1EBFF] text-[#4817C2]" : "border-[#E5E1EF] bg-white hover:bg-[#FBFAFE]"),
             )}
+            title={taken ? "Already used by another timing" : undefined}
           >
             <input
               id={`${idPrefix}-${d}`}
               type="checkbox"
               checked={on}
+              disabled={taken}
               onChange={(e) => onChange(e.target.checked ? [...value, d] : value.filter((x) => x !== d))}
-              className="h-4 w-4 cursor-pointer rounded accent-[#4817C2]"
+              className="h-4 w-4 cursor-pointer rounded accent-[#4817C2] disabled:cursor-not-allowed"
             />
             <span title={DAY_LABELS[d]}>{SHORT_DAY[d]}</span>
           </label>
@@ -238,7 +243,7 @@ export function CustomHoursTable({
 }) {
   const [ref, wide] = useContainerWide(560);
   const total = formatHours(weeklyMinutes(plans, brk));
-  const grid = "grid grid-cols-[96px_1fr_1fr_96px] items-center gap-3";
+  const grid = "grid grid-cols-[96px_1fr_1fr_120px_96px] items-center gap-3";
 
   return (
     <SetupCard className="p-4 sm:p-5">
@@ -249,6 +254,7 @@ export function CustomHoursTable({
             <span>Day</span>
             <span>Operating Hours</span>
             <span />
+            <span>24 Hours</span>
             <span>Status</span>
           </div>
         )}
@@ -278,6 +284,20 @@ export function CustomHoursTable({
                 {SHORT_DAY[p.dayOfWeek]}
               </label>
             );
+            // the whole day, with no opening or closing time to set (only an open day can have it)
+            const all24 = (
+              <label className={cn("flex items-center gap-2 text-sm font-medium", p.isOpen ? "cursor-pointer" : "cursor-not-allowed opacity-50")}>
+                <input
+                  type="checkbox"
+                  checked={p.isOpen && p.is24Hours}
+                  disabled={!p.isOpen}
+                  aria-label={`${label} open 24 hours`}
+                  onChange={(e) => onChange(p.dayOfWeek, { is24Hours: e.target.checked })}
+                  className="h-4 w-4 cursor-pointer rounded accent-[#4817C2] disabled:cursor-not-allowed"
+                />
+                Open 24 hours
+              </label>
+            );
             const times = p.is24Hours ? (
               <p className="col-span-2 flex h-11 items-center text-sm font-medium text-[#4817C2]">Open 24 hours</p>
             ) : (
@@ -293,6 +313,7 @@ export function CustomHoursTable({
                   <div className={grid}>
                     {dayCell}
                     {times}
+                    {all24}
                     <span>{status}</span>
                   </div>
                 ) : (
@@ -302,6 +323,7 @@ export function CustomHoursTable({
                       {status}
                     </div>
                     <div className="grid grid-cols-2 gap-3">{times}</div>
+                    {all24}
                   </div>
                 )}
                 {errors[p.dayOfWeek] && <FieldError>{errors[p.dayOfWeek]}</FieldError>}

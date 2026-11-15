@@ -238,11 +238,6 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
     });
   }
 
-  void _addSportPricing() {
-    final next = _facilitySports.where((fs) => !_priced(_sportSetups[fs.id])).firstOrNull;
-    if (next != null) setState(() => _expandedSport = next.id);
-  }
-
   // ── save ────────────────────────────────────────────────────────────
 
   List<({String id, PriceSetup setup, RuleScope scope})> get _scopes => _settings.mode == PricingMode.bySport
@@ -548,11 +543,11 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
         ],
         if (_settings.memberPricingEnabled) ...[
           const SizedBox(height: 14),
-          _AmountField(key: ValueKey('member-$id'), label: 'Member Price (per $per)', required: true, value: s.memberPrice, error: p.member, onChanged: (v) => _edit(id, () => s.memberPrice = v)),
+          _AmountField(key: ValueKey('member-$id'), label: 'Member Price (per $per)', required: false, optional: true, value: s.memberPrice, error: p.member, onChanged: (v) => _edit(id, () => s.memberPrice = v)),
         ],
         if (_settings.coachingPricingEnabled) ...[
           const SizedBox(height: 14),
-          _AmountField(key: ValueKey('coaching-$id'), label: 'Coaching Price (per $per)', required: true, value: s.coachingPrice, error: p.coaching, onChanged: (v) => _edit(id, () => s.coachingPrice = v)),
+          _AmountField(key: ValueKey('coaching-$id'), label: 'Coaching Price (per $per)', required: false, optional: true, value: s.coachingPrice, error: p.coaching, onChanged: (v) => _edit(id, () => s.coachingPrice = v)),
         ],
       ],
     );
@@ -684,14 +679,6 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SetupCardHeading(icon: Icons.layers_outlined, title: 'Sport Pricing', description: 'Add and manage booking rates for each sport.'),
-          OutlinedButton.icon(
-            key: const ValueKey('add-sport-pricing'),
-            onPressed: _facilitySports.any((fs) => !_priced(_sportSetups[fs.id])) ? _addSportPricing : null,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Sport Pricing'),
-            style: OutlinedButton.styleFrom(foregroundColor: SetupColors.primary, side: BorderSide(color: SetupColors.primary.withValues(alpha: 0.5)), minimumSize: const Size.fromHeight(44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-          ),
-          const SizedBox(height: 12),
           for (final sport in _sportEntries) _sportTile(sport),
         ],
       ),
@@ -789,7 +776,7 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
             Container(
               height: 20,
               width: 20,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: done ? const Color(0xFF2E7D32) : SetupColors.background, border: Border.all(color: done ? const Color(0xFF2E7D32) : const Color(0xFFD6D2E3))),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: done ? SetupColors.primary : SetupColors.background, border: Border.all(color: done ? SetupColors.primary : const Color(0xFFD6D2E3))),
               child: done ? const Icon(Icons.check, size: 13, color: Colors.white) : null,
             ),
             const SizedBox(width: 10),
@@ -938,43 +925,25 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
 
   Widget _previewCard() {
     if (_settings.mode == PricingMode.byCourt) {
-      final court = _courtEntries.where((c) => c.id == _selectedCourt).firstOrNull;
-      final setup = court == null ? null : _courtSetups[court.id];
-      final rows = setup == null ? const <PreviewRow>[] : previewRows(setup, _settings);
+      // every court, under its sport, with all of its rates (not only the court being edited)
       return SetupCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SetupCardHeading(icon: Icons.visibility_outlined, title: court == null ? 'Pricing Preview' : 'Pricing Preview – ${court.name}', description: 'Booking rate summary for this court.'),
-            if (rows.isEmpty)
-              Text('Set a price to see the summary.', style: setupText(size: 13.5, color: SetupColors.secondary))
-            else
-              Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFEFECF6))),
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: const BoxDecoration(color: SetupColors.activeBg, borderRadius: BorderRadius.vertical(top: Radius.circular(9))),
-                      child: Row(children: [
-                        Expanded(flex: 3, child: Text('Day', style: setupText(size: 12, weight: FontWeight.w600))),
-                        Expanded(flex: 5, child: Text('Time Slot', style: setupText(size: 12, weight: FontWeight.w600))),
-                        Expanded(flex: 3, child: Text('Rate', textAlign: TextAlign.right, style: setupText(size: 12, weight: FontWeight.w600))),
-                      ]),
-                    ),
-                    for (final r in rows)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFEFECF6)))),
-                        child: Row(children: [
-                          Expanded(flex: 3, child: Text(r.day, style: setupText(size: 13, weight: FontWeight.w500))),
-                          Expanded(flex: 5, child: Text(r.time, style: setupText(size: 13))),
-                          Expanded(flex: 3, child: Text(r.rate, textAlign: TextAlign.right, style: setupText(size: 13, weight: FontWeight.w500))),
-                        ]),
-                      ),
-                  ],
+            const SetupCardHeading(icon: Icons.visibility_outlined, title: 'Pricing Preview', description: 'Here’s a quick summary of your pricing setup.'),
+            for (final sport in _sportEntries)
+              if (_courtEntries.any((c) => c.sportId == sport.id)) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Row(children: [
+                    Text(sport.icon, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(sport.name, style: setupText(size: 14, weight: FontWeight.w600))),
+                  ]),
                 ),
-              ),
+                for (final court in _courtEntries.where((c) => c.sportId == sport.id))
+                  _courtPreviewTile(court, _courtSetups[court.id] == null ? const <PreviewRow>[] : previewRows(_courtSetups[court.id]!, _settings)),
+              ],
           ],
         ),
       );
@@ -997,6 +966,39 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
                   Flexible(child: Text(priceRangeLabel(_sportSetups[s.id] ?? PriceSetup(), _settings), textAlign: TextAlign.right, style: setupText(size: 13.5, weight: FontWeight.w600))),
                 ],
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// One court in the preview: its name and every rate line it has ("Not set" when it has no price yet).
+  Widget _courtPreviewTile(_CourtEntry court, List<PreviewRow> rows) {
+    return Container(
+      key: ValueKey('preview-court-${court.id}'),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFEFECF6))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: const BoxDecoration(color: Color(0xFFF7F5FB), borderRadius: BorderRadius.vertical(top: Radius.circular(9))),
+            child: Row(children: [
+              Expanded(child: Text(court.name, style: setupText(size: 13.5, weight: FontWeight.w600))),
+              if (rows.isEmpty) Text('Not set', style: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.secondary)),
+            ]),
+          ),
+          for (final r in rows)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFEFECF6)))),
+              child: Row(children: [
+                Expanded(flex: 3, child: Text(r.day, style: setupText(size: 13, weight: FontWeight.w500))),
+                Expanded(flex: 5, child: Text(r.time, style: setupText(size: 13))),
+                Expanded(flex: 3, child: Text(r.rate, textAlign: TextAlign.right, style: setupText(size: 13, weight: FontWeight.w500))),
+              ]),
             ),
         ],
       ),
@@ -1061,12 +1063,13 @@ class _PricingSetupScreenState extends ConsumerState<PricingSetupScreen> {
 
 /// A rupee amount field: digits and one decimal point, with its own controller so typing is never interrupted by a rebuild.
 class _AmountField extends StatefulWidget {
-  const _AmountField({super.key, required this.label, required this.value, required this.onChanged, this.required = false, this.error, this.invalid = false});
+  const _AmountField({super.key, required this.label, required this.value, required this.onChanged, this.required = false, this.optional = false, this.error, this.invalid = false});
 
   final String label;
   final String value;
   final ValueChanged<String> onChanged;
   final bool required;
+  final bool optional;
   final String? error;
   final bool invalid;
 
@@ -1088,7 +1091,7 @@ class _AmountFieldState extends State<_AmountField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SetupLabel(widget.label, required: widget.required),
+        SetupLabel(widget.label, required: widget.required, optional: widget.optional),
         TextFormField(
           controller: _controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),

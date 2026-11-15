@@ -143,4 +143,21 @@ void main() {
   test('draft keys for new slots are unique', () {
     expect(newPlanWindowId(), isNot(newPlanWindowId()));
   });
+
+  group('planNameWithCourts', () {
+    test('adds the court to what was typed', () {
+      expect(planNameWithCourts('Monthly Membership', ['Court A']), 'Monthly Membership - Court A');
+      expect(planNameWithCourts('  Monthly Membership ', ['Court B']), 'Monthly Membership - Court B');
+    });
+
+    test('lists several courts, skips blanks, and leaves a name that already has them alone', () {
+      expect(planNameWithCourts('Weekend Plan', ['Court A', '', 'Court B']), 'Weekend Plan - Court A, Court B');
+      expect(planNameWithCourts('Monthly Membership - Court A', ['Court A']), 'Monthly Membership - Court A');
+    });
+
+    test('is just the typed name until a court is chosen, and empty when nothing was typed', () {
+      expect(planNameWithCourts('Monthly Membership', []), 'Monthly Membership');
+      expect(planNameWithCourts('', ['Court A']), '');
+    });
+  });
 }

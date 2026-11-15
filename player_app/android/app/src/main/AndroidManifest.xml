@@ -1,12 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The debug and profile builds get this from their own manifests; a release build has no network without it. -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- "Use my current location" in the city picker: approximate is enough to find the nearest city. -->
+    <!-- "Use my current location" in the city picker: approximate (coarse) is enough to find the nearest city, so the precise-location permission is deliberately not requested. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <!-- Android 13+: the app must ask before it can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="GameAll Play"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

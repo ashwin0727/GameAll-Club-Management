@@ -93,10 +93,11 @@ void main() {
       expect(describePlan(_plan(h24: true)), 'Open 24 hours');
     });
 
-    test('the time list is every half hour, midnight first', () {
-      expect(timeOptions, hasLength(48));
+    test('the time list is every half hour, midnight first, then 11:59 PM', () {
+      expect(timeOptions, hasLength(49));
       expect(timeOptions.first, (value: '00:00', label: '12:00 AM'));
-      expect(timeOptions.last, (value: '23:30', label: '11:30 PM'));
+      expect(timeOptions[47], (value: '23:30', label: '11:30 PM'));
+      expect(timeOptions.last, (value: '23:59', label: '11:59 PM'));
     });
   });
 

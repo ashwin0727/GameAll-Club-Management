@@ -257,6 +257,30 @@ void main() {
     expect(find.text('84 Hours'), findsOneWidget);
   });
 
+  testWidgets('Custom Hours: any one day can be set to open 24 hours, and back', (tester) async {
+    await _pump(tester);
+    await _toggle(tester, 'mode-custom');
+    expect(find.text('102 Hours'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('custom-24-3')));
+    await tester.tap(find.byKey(const ValueKey('custom-24-3')));
+    await tester.pumpAndSettle();
+    expect(find.text('109 Hours'), findsOneWidget); // that day is 24 h instead of 17 h
+    expect(find.text('Open 24 hours'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('custom-24-3')));
+    await tester.pumpAndSettle();
+    expect(find.text('102 Hours'), findsOneWidget);
+
+    // a closed day cannot be 24 hours: tapping it does nothing
+    await tester.ensureVisible(find.byKey(const ValueKey('custom-open-5')));
+    await tester.tap(find.byKey(const ValueKey('custom-open-5')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('custom-24-5')));
+    await tester.pumpAndSettle();
+    expect(find.text('85 Hours'), findsOneWidget);
+  });
+
   testWidgets('switching to Custom keeps the standard hours, and back to Standard takes the first open day\'s hours', (tester) async {
     await _pump(tester);
 
@@ -389,6 +413,52 @@ void main() {
     expect((mondaySlot('court-1').startTime, mondaySlot('court-1').endTime), ('06:00', '22:00'));
     expect((mondaySlot('court-2').startTime, mondaySlot('court-2').endTime), ('06:00', '23:00'));
     expect(_facilityRepo.settings!['sportWise'], isTrue);
+  });
+
+  testWidgets('Sport-wise hours come first, then Holiday / Special Closure, then Additional Settings', (tester) async {
+    await _pump(tester);
+    await _toggle(tester, 'switch-sportwise');
+    final sports = tester.getTopLeft(find.byKey(const ValueKey('sport-hours-fs-bad'))).dy;
+    final closures = tester.getTopLeft(find.byKey(const ValueKey('add-closure'))).dy;
+    final settings = tester.getTopLeft(find.byKey(const ValueKey('switch-break'))).dy;
+    expect(sports, lessThan(closures));
+    expect(closures, lessThan(settings));
+  });
+
+  testWidgets('Sport-wise hours: a sport can have one timing on weekdays and another at the weekend', (tester) async {
+    await _pump(tester);
+    await _toggle(tester, 'switch-sportwise');
+    expect(find.byKey(const ValueKey('sport-timing-fs-bad-t2')), findsNothing);
+
+    await _toggle(tester, 'sport-fs-bad-add-timing');
+    expect(find.byKey(const ValueKey('sport-timing-fs-bad-t1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('sport-timing-fs-bad-t2')), findsOneWidget);
+
+    await _pickTime(tester, 'sport-fs-bad-t2-open', '08:00');
+    await _pickTime(tester, 'sport-fs-bad-t2-close', '20:00');
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('PRICING PAGE'), findsOneWidget);
+    OperatingTimeSlot slot(int day) => _hoursRepo.areaSchedules['court-1']!.days.firstWhere((d) => d.dayOfWeek == day).slots.first;
+    expect((slot(1).startTime, slot(1).endTime), ('06:00', '23:00'));
+    expect((slot(5).startTime, slot(5).endTime), ('06:00', '23:00'));
+    expect((slot(6).startTime, slot(6).endTime), ('08:00', '20:00'));
+    expect((slot(0).startTime, slot(0).endTime), ('08:00', '20:00'));
+    // the other sport keeps the venue's hours
+    expect(_hoursRepo.areaSchedules['court-2']!.days.firstWhere((d) => d.dayOfWeek == 6).slots.first.startTime, '06:00');
+  });
+
+  testWidgets('Sport-wise hours: removing a timing closes its days', (tester) async {
+    await _pump(tester);
+    await _toggle(tester, 'switch-sportwise');
+    await _toggle(tester, 'sport-fs-bad-add-timing');
+    await _toggle(tester, 'sport-fs-bad-t2-remove');
+    expect(find.byKey(const ValueKey('sport-timing-fs-bad-t2')), findsNothing);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(_hoursRepo.areaSchedules['court-1']!.days.firstWhere((d) => d.dayOfWeek == 6).isClosed, isTrue);
+    expect(_hoursRepo.areaSchedules['court-1']!.days.firstWhere((d) => d.dayOfWeek == 1).isClosed, isFalse);
   });
 
   testWidgets('Sport-wise hours hides the venue-wide hours and lets a sport be open 24 hours', (tester) async {

@@ -7,7 +7,7 @@ import { installFakeAuthService, installFakeFacilityService, renderWithProviders
 import { routerMock } from "@/test/router-mock";
 
 // The photo uploads talk to Supabase storage; the form only needs to know they were asked for.
-const photoMock = vi.hoisted(() => ({ addAll: vi.fn(async () => undefined), upload: vi.fn(async () => "https://img.test/logo.png"), list: vi.fn(async () => [] as { url: string }[]) }));
+const photoMock = vi.hoisted(() => ({ addAll: vi.fn(async () => undefined), upload: vi.fn(async () => "https://img.test/logo.png"), list: vi.fn(async () => [] as { id: string; url: string }[]), remove: vi.fn(async () => undefined) }));
 vi.mock("@/features/facility-profile/photos", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/features/facility-profile/photos")>();
   return {
@@ -16,6 +16,7 @@ vi.mock("@/features/facility-profile/photos", async (importOriginal) => {
       addAll = photoMock.addAll;
       upload = photoMock.upload;
       list = photoMock.list;
+      remove = photoMock.remove;
     },
   };
 });
@@ -400,7 +401,11 @@ describe("FacilityDetailsForm - coming back to a facility that was already saved
     window.localStorage.clear();
     useOnboardingStore.setState({ draft: {} });
     routerMock.push.mockClear();
-    photoMock.list.mockResolvedValue([{ url: "https://img.test/saved.jpg" }]);
+    photoMock.remove.mockClear();
+    photoMock.list.mockResolvedValue([
+      { id: "img-1", url: "https://img.test/saved.jpg" },
+      { id: "img-2", url: "https://img.test/saved-2.jpg" },
+    ]);
   });
 
   async function savedFacility(step: "FACILITY_DETAILS" | "PAYMENTS") {
@@ -446,5 +451,34 @@ describe("FacilityDetailsForm - coming back to a facility that was already saved
     expect(all[0]?.id).toBe(created.id);
     expect(all[0]?.name).toBe("Renamed Arena");
     expect(all[0]?.onboardingStep).toBe("PAYMENTS");
+  });
+
+  it("a saved photo can be taken out, and it is deleted when the step is saved", async () => {
+    const user = userEvent.setup({ delay: null });
+    await savedFacility("PAYMENTS");
+    renderWithProviders(<FacilityDetailsForm />);
+    await screen.findByAltText("Saved facility photo 2");
+
+    await user.click(screen.getByRole("button", { name: "Remove saved photo 1" }));
+    expect(screen.queryByAltText("Saved facility photo 2")).not.toBeInTheDocument();
+    expect(photoMock.remove).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith("/onboarding/sports"));
+    expect(photoMock.remove).toHaveBeenCalledWith("img-1");
+    expect(photoMock.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("taking out every saved photo asks for a new one", async () => {
+    const user = userEvent.setup({ delay: null });
+    photoMock.list.mockResolvedValue([{ id: "img-1", url: "https://img.test/saved.jpg" }]);
+    await savedFacility("PAYMENTS");
+    renderWithProviders(<FacilityDetailsForm />);
+    await screen.findByAltText("Saved facility photo 1");
+
+    await user.click(screen.getByRole("button", { name: "Remove saved photo 1" }));
+    await user.click(screen.getByRole("button", { name: /Next/ }));
+    expect(await screen.findByText("Add at least one photo of your facility.")).toBeInTheDocument();
+    expect(photoMock.remove).not.toHaveBeenCalled();
   });
 });

@@ -16,11 +16,20 @@ const sections: LegalSection[] = [
   {
     title: "From the app (quickest)",
     body: (
-      <ol className="list-decimal space-y-1.5 pl-5">
-        <li>Open the GameAll Venue app and sign in.</li>
-        <li>Go to <strong>Profile</strong>.</li>
-        <li>Choose <strong>Delete account</strong> and confirm.</li>
-      </ol>
+      <>
+        <p><strong>GameAll Play (players)</strong></p>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>Open GameAll Play and sign in.</li>
+          <li>Go to <strong>Profile → Support &amp; Legal</strong>.</li>
+          <li>Choose <strong>Delete my account</strong> and confirm.</li>
+        </ol>
+        <p><strong>GameAll Venue (venue owners and staff)</strong></p>
+        <ol className="list-decimal space-y-1.5 pl-5">
+          <li>Open the GameAll Venue app and sign in.</li>
+          <li>Go to <strong>Profile</strong>.</li>
+          <li>Choose <strong>Delete account</strong> and confirm.</li>
+        </ol>
+      </>
     ),
   },
   {
@@ -42,6 +51,7 @@ const sections: LegalSection[] = [
         <li>Your sign-in, profile (name, email, phone, photo) and notification settings.</li>
         <li>If you are a facility owner: the facility and the members, bookings, memberships and coaching records stored for it. Download anything you need first, because this cannot be undone.</li>
         <li>If you are a staff member: your access. The facility keeps its own records of what you did.</li>
+        <li>If you are a player: your sign-in, your name, email and phone on your profile, your notification settings, and any Auto Pay you set up (cancelled so nobody is charged again). A venue keeps its own booking, attendance and payment records of you, as a business must, without your GameAll profile attached.</li>
       </ul>
     ),
   },

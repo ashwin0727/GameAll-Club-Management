@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  planNameWithCourts,
   composeFeatures,
   fieldErrors,
   findOverlap,
@@ -140,5 +141,20 @@ describe("composeFeatures", () => {
 
   it("returns an empty list when no features were typed", () => {
     expect(composeFeatures(draft({ features: [] }))).toEqual([]);
+  });
+});
+
+describe('planNameWithCourts', () => {
+  it('adds the court to what was typed', () => {
+    expect(planNameWithCourts('Monthly Membership', ['Court A'])).toBe('Monthly Membership - Court A');
+    expect(planNameWithCourts('  Monthly Membership ', ['Court B'])).toBe('Monthly Membership - Court B');
+  });
+  it('lists several courts, skips blanks, and leaves a name that already has them alone', () => {
+    expect(planNameWithCourts('Weekend Plan', ['Court A', '', 'Court B'])).toBe('Weekend Plan - Court A, Court B');
+    expect(planNameWithCourts('Monthly Membership - Court A', ['Court A'])).toBe('Monthly Membership - Court A');
+  });
+  it('is just the typed name until a court is chosen, and empty when nothing was typed', () => {
+    expect(planNameWithCourts('Monthly Membership', [])).toBe('Monthly Membership');
+    expect(planNameWithCourts('', ['Court A'])).toBe('');
   });
 });

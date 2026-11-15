@@ -19,7 +19,7 @@ export function SetupReviewPopup({ status, note }: { status: "PENDING" | "REJECT
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className={cn(setupFontClass, "max-w-[480px] gap-0 rounded-2xl border-[#E5E1EF] bg-gradient-to-b from-white via-[#FBF9FF] to-[#F3ECFF] p-6 text-center text-[#171717] sm:p-8")}>
+      <DialogContent onOpenAutoFocus={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).focus(); }} className={cn(setupFontClass, "focus:outline-none max-w-[480px] gap-0 rounded-2xl border-[#E5E1EF] bg-gradient-to-b from-white via-[#FBF9FF] to-[#F3ECFF] p-6 text-center text-[#171717] sm:p-8")}>
         {rejected ? (
           <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#FDECEC] text-[#C62828]">
             <ShieldAlert className="h-9 w-9" aria-hidden="true" />

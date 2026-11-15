@@ -47,3 +47,13 @@ export function slotsForChosenCourt(slots: PlanSlot[], chosenCourtId: string): P
   if (courtsOf(slots).length <= 1) return slots;
   return slots.filter((sl) => sl.courtId === chosenCourtId);
 }
+
+/**
+ * The slots the member will actually play, picked from [courtSlots] (the plan's slots on the court they play on). A member does not
+ * have to play every timing a plan offers: they choose the ones they will use, and at least one is required. A plan with a single
+ * slot needs no choice: it is the member's slot.
+ */
+export function chosenSlots(courtSlots: PlanSlot[], chosenBatchIds: readonly string[]): PlanSlot[] {
+  if (courtSlots.length === 1) return courtSlots;
+  return courtSlots.filter((sl) => chosenBatchIds.includes(sl.batchId));
+}

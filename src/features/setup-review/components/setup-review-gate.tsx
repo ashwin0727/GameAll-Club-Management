@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowRight, BadgeCheck, Check, ChevronRight, CircleHelp, Clock, Headset, Info, Loader2, LogOut, Rocket, ShieldAlert, UserRoundCheck } from "lucide-react";
-import { useLogout } from "@/features/auth/hooks/use-auth";
+import { LogoutConfirm } from "@/features/auth/components/logout-confirm";
 import { LEGAL_CONTACT_EMAIL } from "@/features/legal/legal-page";
 import { setupFontClass } from "@/features/onboarding/components/onboarding-shell";
 import { fetchMyReview, resubmitForReview, type ReviewStatus } from "@/features/setup-review/api";
@@ -61,7 +61,7 @@ export function SetupReviewGate({
   initialNote: string | null;
   isOwner: boolean;
 }) {
-  const logout = useLogout();
+  const [confirmLogout, setConfirmLogout] = React.useState(false);
   const review = useQuery({
     queryKey: ["setup-review", facilityId],
     queryFn: () => fetchMyReview(facilityId),
@@ -102,8 +102,7 @@ export function SetupReviewGate({
           </a>
           <button
             type="button"
-            onClick={() => logout.mutate()}
-            disabled={logout.isPending}
+            onClick={() => setConfirmLogout(true)}
             className="flex items-center gap-1.5 text-sm font-medium text-[#666666] hover:text-[#171717] disabled:opacity-60"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -111,6 +110,7 @@ export function SetupReviewGate({
           </button>
         </div>
       </header>
+      <LogoutConfirm open={confirmLogout} onCancel={() => setConfirmLogout(false)} />
 
       <main className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-1 flex-col items-center px-4 pb-10 pt-6 text-center sm:px-6 sm:pt-8">
         {rejected ? (

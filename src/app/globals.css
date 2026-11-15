@@ -29,7 +29,7 @@
     --accent-foreground: 257 79% 43%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --success: 173 83% 32%; /* teal #0E9384: Available, Paid, Confirmed */
+    --success: 257 79% 43%; /* the brand purple #4817C2: done / paid / confirmed / selected — the app has no green accent */
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
@@ -49,7 +49,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 142 71% 45%;
+    --primary: 258 90% 66%;
     --primary-foreground: 228 52% 4%;
     --secondary: 226 49% 8%;
     --secondary-foreground: 210 40% 98%;
@@ -59,7 +59,7 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
-    --success: 142 71% 45%;
+    --success: 258 90% 66%;
     --success-foreground: 228 52% 4%;
     --warning: 38 92% 50%;
     --warning-foreground: 228 52% 4%;
@@ -268,10 +268,10 @@
   }
 }
 
-/* Toasts: sonner's rich "success" is its own green; use the app's status teal instead. */
+/* Toasts: sonner's rich "success" is its own green; use the app's purple instead. */
 [data-sonner-toaster][data-sonner-theme="light"] [data-sonner-toast][data-rich-colors="true"][data-type="success"],
 [data-sonner-toast][data-rich-colors="true"][data-type="success"] {
-  --success-bg: #ecfaf8;
-  --success-border: #a8e3dc;
-  --success-text: #0b6f64;
+  --success-bg: #f1ebff;
+  --success-border: #d9ccf7;
+  --success-text: #4817c2;
 }

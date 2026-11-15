@@ -255,11 +255,6 @@ export function PricingSetupForm({ onDone }: { onDone?: () => void } = {}) {
     setSaveError(null);
   }
 
-  function addSportPricing() {
-    const next = facilitySports.find((fs) => !priced(sportSetups[fs.id]));
-    if (next) setExpandedSport(next.id);
-  }
-
   // ── save ──────────────────────────────────────────────────────────
   async function persist(advance: boolean) {
     if (!facility) return;
@@ -361,8 +356,8 @@ export function PricingSetupForm({ onDone }: { onDone?: () => void } = {}) {
         settings={settings}
         sports={sportEntries}
         sportSetups={sportSetups}
-        court={court}
-        courtSetup={court ? courtSetups[court.id] : undefined}
+        courts={courtEntries}
+        courtSetups={courtSetups}
       />
     </div>
   );
@@ -399,10 +394,6 @@ export function PricingSetupForm({ onDone }: { onDone?: () => void } = {}) {
             onChange={changeSport}
             expandedId={expandedSport}
             onExpand={setExpandedSport}
-            onAddSportPricing={addSportPricing}
-            canAddSportPricing={facilitySports.some(
-              (fs) => !priced(sportSetups[fs.id]),
-            )}
             settings={settings}
             span={span}
             problems={problems}

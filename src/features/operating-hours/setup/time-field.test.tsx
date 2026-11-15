@@ -5,16 +5,17 @@ import { TimeField } from "@/features/operating-hours/setup/hours-parts";
 import { TIME_OPTIONS } from "@/features/operating-hours/setup-model";
 
 describe("TimeField", () => {
-  it("lists every half hour of the day as 12-hour times, midnight first", async () => {
+  it("lists every half hour of the day as 12-hour times, midnight first, and 11:59 PM last (a full day without a next-day closing)", async () => {
     const user = userEvent.setup();
     render(<TimeField id="t" ariaLabel="Opens at" value="06:00" onChange={() => {}} />);
 
-    expect(TIME_OPTIONS).toHaveLength(48);
+    expect(TIME_OPTIONS).toHaveLength(49);
     expect(TIME_OPTIONS[0]).toEqual({ value: "00:00", label: "12:00 AM" });
     expect(TIME_OPTIONS[47]).toEqual({ value: "23:30", label: "11:30 PM" });
+    expect(TIME_OPTIONS[48]).toEqual({ value: "23:59", label: "11:59 PM" });
 
     await user.click(screen.getByRole("combobox", { name: "Opens at" }));
-    expect(await screen.findAllByRole("option")).toHaveLength(48);
+    expect(await screen.findAllByRole("option")).toHaveLength(49);
     expect(screen.getByRole("option", { name: "6:00 AM" })).toBeInTheDocument();
   });
 
@@ -34,7 +35,7 @@ describe("TimeField", () => {
 
     expect(screen.getByRole("combobox", { name: "Opens at" })).toHaveTextContent("6:15 AM");
     await user.click(screen.getByRole("combobox", { name: "Opens at" }));
-    expect(await screen.findAllByRole("option")).toHaveLength(49);
+    expect(await screen.findAllByRole("option")).toHaveLength(50);
   });
 
   it("can be disabled (a closed day)", () => {

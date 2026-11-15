@@ -33,7 +33,7 @@ class AppColors {
   static const Color lightBorder = Color(0xFFE1E8F2);
 
   // Status
-  static const Color success = Color(0xFF2ED993);
+  static const Color success = Color(0xFF7954F6); // done / paid / confirmed: the brand purple (the app has no green accent)
   static const Color warning = Color(0xFFFFC061);
   static const Color danger = Color(0xFFFF6B82);
 

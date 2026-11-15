@@ -29,6 +29,8 @@ dependencies:
   geolocator: ^14.1.2
   image_picker: ^1.2.4
   share_plus: ^13.3.1
+  # In-app Razorpay checkout (Android): lists the phone's own UPI apps (GPay, PhonePe...) instead of opening a web page.
+  razorpay_flutter: ^1.4.0
 
 dev_dependencies:
   flutter_test:

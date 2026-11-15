@@ -33,7 +33,7 @@ import {
 import { durationLabel, monthlyEquivalentInr, periodEndDate, planBadges, planFeatures, splitPlanName, type PlanBadge } from "@/features/memberships/plan-insights";
 import { PLAN_CARD_THEMES } from "@/features/memberships/components/plan-card";
 import { useAllMemberships } from "@/features/memberships/hooks/use-membership-dashboard";
-import { courtsOf, planSlotsFor, slotsForChosenCourt } from "@/features/memberships/plan-slots";
+import { chosenSlots, courtsOf, planSlotsFor, slotsForChosenCourt } from "@/features/memberships/plan-slots";
 import { DUPLICATE_MEMBER_MESSAGE, findDuplicateMember } from "@/features/memberships/duplicate-guards";
 import { getPlayingAreasService } from "@/services/playing-areas";
 import { plansForSport } from "@/features/memberships/sport-scope";
@@ -400,7 +400,14 @@ export function AddMemberWizardPage() {
   const needsCourtChoice = planCourts.length > 1;
   const [chosenCourtId, setChosenCourtId] = useState("");
   const [courtTried, setCourtTried] = useState(false);
-  const slots = useMemo(() => slotsForChosenCourt(planSlots, chosenCourtId), [planSlots, chosenCourtId]);
+  // The plan's slots on that court, and the ones this member will actually play: they tick the timings they will use (at least one).
+  const courtSlots = useMemo(() => slotsForChosenCourt(planSlots, chosenCourtId), [planSlots, chosenCourtId]);
+  const [chosenSlotIds, setChosenSlotIds] = useState<string[]>([]);
+  const slots = useMemo(() => chosenSlots(courtSlots, chosenSlotIds), [courtSlots, chosenSlotIds]);
+  // a different plan or court means different timings: start the choice again
+  useEffect(() => {
+    setChosenSlotIds([]);
+  }, [draft.planId, chosenCourtId]);
   // The same person (same phone number) can't be put on the same plan twice.
   const duplicateMember = useMemo(
     () =>
@@ -414,10 +421,11 @@ export function AddMemberWizardPage() {
     [step, draft, duplicateMember],
   );
   const courtChoiceError = needsCourtChoice && !chosenCourtId ? "Choose the court this member will play on." : null;
+  const timingChoiceError = courtSlots.length > 1 && slots.length === 0 ? "Select at least one timing this member will play." : null;
   const stepError =
     validateStep(step, draft) ??
     (step === 2 && duplicateMember ? DUPLICATE_MEMBER_MESSAGE : null) ??
-    (step === 2 ? courtChoiceError : null);
+    (step === 2 ? (courtChoiceError ?? timingChoiceError) : null);
   const furthest = furthestReachableStep(draft);
   // Shown as soon as a field is left (blurred), or once Next/Create has been tried — not while
   // it's still being typed into for the first time.
@@ -910,7 +918,7 @@ export function AddMemberWizardPage() {
                 <div>
                   <p className="text-sm font-semibold text-foreground">Court &amp; Timing</p>
                   <p className="text-xs text-muted-foreground">
-                    Set by this plan — the member plays on these courts and timings. To change them, edit the plan.
+                    Choose the timings this member will play. The member is added to these only, so you can see who plays when.
                   </p>
                 </div>
                 {needsCourtChoice && (
@@ -945,7 +953,28 @@ export function AddMemberWizardPage() {
                     {courtChoiceError && courtTried && <p className="text-xs text-destructive">{courtChoiceError}</p>}
                   </div>
                 )}
-                <PlanSlotsList slots={needsCourtChoice ? (chosenCourtId ? slots : planSlots) : slots} className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2" />
+{needsCourtChoice && !chosenCourtId ? (
+                  <PlanSlotsList slots={planSlots} className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2" />
+                ) : (
+                  <div className="space-y-2">
+                    {courtSlots.length > 1 && (
+                      <p className="text-sm font-medium text-foreground">
+                        Select Timings <span className="text-destructive">*</span>
+                      </p>
+                    )}
+                    <PlanSlotsList
+                      slots={courtSlots}
+                      selectedIds={courtSlots.length > 1 ? chosenSlotIds : courtSlots.map((c) => c.batchId)}
+                      onToggle={
+                        courtSlots.length > 1
+                          ? (id) => setChosenSlotIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
+                          : undefined
+                      }
+                      className="grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2"
+                    />
+                    {timingChoiceError && courtTried && <p className="text-xs text-destructive">{timingChoiceError}</p>}
+                  </div>
+                )}
               </div>
             )}
 

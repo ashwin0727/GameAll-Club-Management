@@ -79,6 +79,8 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
   List<String> _customAmenities = [];
 
   List<FacilityImage> _savedPhotos = [];
+  /// Saved photos the owner took out: they are deleted for good when the step is saved.
+  final List<FacilityImage> _removedPhotos = [];
   final List<NewPhoto> _newPhotos = [];
   bool _addingPhoto = false;
   String? _photosError;
@@ -261,6 +263,15 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
   // ── photos ───────────────────────────────────────────────────────────
 
+  /// Takes a saved photo out of the grid (it is deleted when the step is saved).
+  void _removeSavedPhoto(FacilityImage photo) {
+    setState(() {
+      _savedPhotos = _savedPhotos.where((p) => p.id != photo.id).toList();
+      _removedPhotos.add(photo);
+      _photosError = null;
+    });
+  }
+
   /// Adds photos from the gallery in one go (up to the limit), or one from the camera.
   Future<void> _addPhotos() async {
     const max = FacilitySetupValidation.maxSetupPhotos;
@@ -403,6 +414,10 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
         }
       }
       await repo.addFacilityImages(facility.id, urls, firstSortOrder: _savedPhotos.length);
+      for (final gone in List.of(_removedPhotos)) {
+        await repo.removeFacilityImage(gone.id);
+        _removedPhotos.remove(gone);
+      }
       if (uploadError != null) throw uploadError;
       _existingFacilityId = facility.id;
 
@@ -582,21 +597,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          children: [
-                            Text.rich(TextSpan(style: setupText(size: 14, weight: FontWeight.w600), children: [
-                              const TextSpan(text: 'Contact Number'),
-                              TextSpan(text: ' *', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.error)),
-                            ])),
-                            const Icon(Icons.verified_outlined, size: 15, color: SetupColors.success),
-                            Text('Verified', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.success)),
-                          ],
-                        ),
-                      ),
+                      _VerifiedLabel('Contact Number'),
                       Container(
                         key: const ValueKey('verified-contact'),
                         height: 50,
@@ -640,22 +641,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        children: [
-                          Text.rich(TextSpan(style: setupText(size: 14, weight: FontWeight.w600), children: [
-                            const TextSpan(text: 'Email Address'),
-                            TextSpan(text: ' *', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.error)),
-                          ])),
-                          const Icon(Icons.verified_outlined, size: 15, color: SetupColors.success),
-                          const SizedBox(width: 3),
-                          Text('Verified', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.success)),
-                        ],
-                      ),
-                    ),
+                    _VerifiedLabel('Email Address'),
                     Container(
                       height: 50,
                       alignment: Alignment.centerLeft,
@@ -694,6 +680,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
                 error: _photosError,
                 onAdd: _addPhotos,
                 onRemoveNew: (p) => setState(() => _newPhotos.remove(p)),
+                onRemoveSaved: _removeSavedPhoto,
               ),
             ),
           ),
@@ -768,7 +755,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
 
 /// "Facility Photos": up to 5. Saved ones show GameAll's verdict; new ones are uploaded when the step is saved.
 class _SetupPhotos extends StatelessWidget {
-  const _SetupPhotos({required this.saved, required this.added, required this.busy, required this.onAdd, required this.onRemoveNew, this.error});
+  const _SetupPhotos({required this.saved, required this.added, required this.busy, required this.onAdd, required this.onRemoveNew, required this.onRemoveSaved, this.error});
 
   final List<FacilityImage> saved;
   final List<NewPhoto> added;
@@ -776,6 +763,7 @@ class _SetupPhotos extends StatelessWidget {
   final String? error;
   final VoidCallback onAdd;
   final ValueChanged<NewPhoto> onRemoveNew;
+  final ValueChanged<FacilityImage> onRemoveSaved;
 
   @override
   Widget build(BuildContext context) {
@@ -829,6 +817,7 @@ class _SetupPhotos extends StatelessWidget {
         frame(
           Image.network(saved[i].url, fit: BoxFit.cover, cacheWidth: 720, errorBuilder: (_, _, _) => Container(color: SetupColors.mutedFill, child: const Icon(Icons.broken_image_outlined, color: SetupColors.secondary))),
           cover: i == 0,
+          onRemove: () => onRemoveSaved(saved[i]),
           caption: saved[i].status.label,
           captionColor: switch (saved[i].status) {
             VerificationStatus.verified => SetupColors.success,
@@ -1512,3 +1501,36 @@ class AmenitiesCard extends StatelessWidget {
   }
 }
 
+
+/// "Contact Number * ✓ Verified" / "Email Address * ✓ Verified": one label for both locked, verified fields, so the badge sits in
+/// exactly the same place on each (right after the label, on the same line).
+class _VerifiedLabel extends StatelessWidget {
+  const _VerifiedLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text.rich(
+              TextSpan(style: setupText(size: 14, weight: FontWeight.w600), children: [
+                TextSpan(text: text),
+                TextSpan(text: ' *', style: setupText(size: 14, weight: FontWeight.w600, color: SetupColors.error)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.verified_outlined, size: 15, color: SetupColors.success),
+          const SizedBox(width: 4),
+          Text('Verified', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.success)),
+        ],
+      ),
+    );
+  }
+}

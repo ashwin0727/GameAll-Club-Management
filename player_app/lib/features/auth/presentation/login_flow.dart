@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/external_links.dart';
+import '../../../core/utils/legal_links.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/gameall_buttons.dart';
@@ -78,6 +81,12 @@ class LoginFlow extends ConsumerStatefulWidget {
 }
 
 class _LoginFlowState extends ConsumerState<LoginFlow> {
+  // The legal pages the sign-in text points to (shared with GameAll Venue).
+  late final TapGestureRecognizer _termsTap = TapGestureRecognizer()
+    ..onTap = () => ref.read(linkOpenerProvider)(legalUri(LegalPage.terms));
+  late final TapGestureRecognizer _privacyTap = TapGestureRecognizer()
+    ..onTap = () => ref.read(linkOpenerProvider)(legalUri(LegalPage.privacy));
+
   _Step _step = _Step.phone;
   final _phone = TextEditingController();
   final _code = TextEditingController();
@@ -105,6 +114,8 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
   @override
   void dispose() {
     _timer?.cancel();
+    _termsTap.dispose();
+    _privacyTap.dispose();
     _phone.dispose();
     _code.dispose();
     _name.dispose();
@@ -352,7 +363,8 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
                 text: "By entering your number, you're agreeing to our ",
               ),
               TextSpan(
-                text: 'Terms of Service',
+                text: 'Terms & Conditions',
+                recognizer: _termsTap,
                 style: TextStyle(
                   color: AppColors.blue,
                   decoration: TextDecoration.underline,
@@ -361,6 +373,7 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
               const TextSpan(text: ' & '),
               TextSpan(
                 text: 'Privacy Policy.',
+                recognizer: _privacyTap,
                 style: TextStyle(
                   color: AppColors.blue,
                   decoration: TextDecoration.underline,

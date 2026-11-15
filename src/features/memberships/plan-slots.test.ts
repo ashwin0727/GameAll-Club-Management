@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planSlotsFor, courtsOf, slotsForChosenCourt } from "@/features/memberships/plan-slots";
+import { chosenSlots, planSlotsFor, courtsOf, slotsForChosenCourt } from "@/features/memberships/plan-slots";
 import type { MembershipBatch } from "@/features/membership-sessions/types";
 
 function batch(over: Partial<MembershipBatch>): MembershipBatch {
@@ -68,5 +68,28 @@ describe("courtsOf / slotsForChosenCourt", () => {
   it("needs no choice on a single-court plan", () => {
     const one = multi.slice(0, 2);
     expect(slotsForChosenCourt(one, "")).toEqual(one);
+  });
+});
+
+describe('chosenSlots', () => {
+  const courts = new Map([['c1', 'Court A']]);
+  const slots = planSlotsFor(
+    [batch({ id: 'b1', startTime: '05:00:00', endTime: '06:00:00' }), batch({ id: 'b2', startTime: '06:00:00', endTime: '07:00:00' }), batch({ id: 'b3', startTime: '07:00:00', endTime: '08:00:00' })],
+    'plan-1',
+    courts,
+  );
+
+  it('is only the timings the member ticked', () => {
+    expect(chosenSlots(slots, ['b2']).map((x) => x.batchId)).toEqual(['b2']);
+    expect(chosenSlots(slots, ['b3', 'b1']).map((x) => x.batchId)).toEqual(['b1', 'b3']);
+  });
+
+  it('is nothing until one is ticked (a timing is required)', () => {
+    expect(chosenSlots(slots, [])).toEqual([]);
+  });
+
+  it('a plan with one slot needs no choice: that slot is the member slot', () => {
+    const one = planSlotsFor([batch({ id: 'only' })], 'plan-1', courts);
+    expect(chosenSlots(one, []).map((x) => x.batchId)).toEqual(['only']);
   });
 });

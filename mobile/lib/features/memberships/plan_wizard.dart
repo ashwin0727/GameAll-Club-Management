@@ -177,3 +177,13 @@ String newPlanWindowId() {
   _windowSeq += 1;
   return 'w-${DateTime.now().microsecondsSinceEpoch}-$_windowSeq';
 }
+
+/// The plan's name as everyone sees it: what the owner typed plus the court(s) it is for, added by the app ("Monthly Membership -
+/// Court A"), so the owner never types the court and two plans for different courts are told apart. A name that already ends with the
+/// court part is left alone, and with no court chosen yet it is just what was typed.
+String planNameWithCourts(String typed, List<String> courtNames) {
+  final base = typed.trim();
+  final courts = courtNames.map((n) => n.trim()).where((n) => n.isNotEmpty).join(', ');
+  if (base.isEmpty || courts.isEmpty) return base;
+  return base.endsWith(' - $courts') ? base : '$base - $courts';
+}

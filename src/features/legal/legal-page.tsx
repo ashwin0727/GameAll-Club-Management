@@ -6,7 +6,7 @@ import { APP_NAME } from "@/lib/constants";
 export const LEGAL_CONTACT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "admin@gameall.co";
 export const LEGAL_CONTACT_PHONE = "9360428761";
 export const LEGAL_WEBSITE = "gameall.co";
-export const LEGAL_UPDATED = "28 October 2026";
+export const LEGAL_UPDATED = "14 November 2026";
 
 export interface LegalSection {
   title: string;
@@ -28,6 +28,12 @@ export function LegalPage({ title, intro, sections }: { title: string; intro: Re
             </Link>
             <Link href="/terms" className="hover:text-foreground">
               Terms
+            </Link>
+            <Link href="/refund-policy" className="hover:text-foreground">
+              Refunds
+            </Link>
+            <Link href="/delete-account" className="hover:text-foreground">
+              Delete account
             </Link>
           </nav>
         </div>

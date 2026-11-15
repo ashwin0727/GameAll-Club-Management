@@ -240,7 +240,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       final plan = _createdPlan ??
           await repo.createPlan(MembershipPlanInput(
             facilityId: fid,
-            name: _d.name.trim(),
+            name: _fullPlanName,
             description: _d.description.trim().isEmpty ? null : _d.description.trim(),
             category: _d.category,
             planType: _d.planType,
@@ -460,6 +460,9 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
 
   // ── step 1 — Plan Details ──────────────────────────────────────────────
 
+  /// What the plan is called: the typed name plus the court(s) chosen under Court Access.
+  String get _fullPlanName => planNameWithCourts(_d.name, [for (final id in _d.courtIds) _courts.where((c) => c.id == id).firstOrNull?.name ?? '']);
+
   List<Widget> _stepDetails(AppColorTokens tokens) {
     return [
       _heading('Plan Details', 'Enter the basic information for this membership plan.'),
@@ -471,7 +474,8 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
           labelText: 'Plan Name *',
           hintText: 'Monthly Membership',
           errorText: _show('name'),
-          helperText: 'e.g. Monthly Membership, 3 Months Plan, Weekend Plan',
+          helperText: 'e.g. Monthly Membership, 3 Months Plan, Weekend Plan. The court you choose is added for you (Monthly Membership - Court A).',
+          helperMaxLines: 3,
         ),
       ),
       const SizedBox(height: AppSpacing.md),
@@ -1128,7 +1132,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         Row(
           children: [
             Expanded(
-              child: Text(_d.name.trim().isEmpty ? 'New Plan' : _d.name.trim(),
+              child: Text(_fullPlanName.isEmpty ? 'New Plan' : _fullPlanName,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             ),
             if (_d.showBadge)
@@ -1175,7 +1179,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       ),
       const SizedBox(height: AppSpacing.md),
       _reviewSection(4, 'Final Summary', 0, [
-        _kv('Membership Plan', _d.name.trim().isEmpty ? '—' : _d.name.trim()),
+        _kv('Membership Plan', _fullPlanName.isEmpty ? '—' : _fullPlanName),
         _kv('Price', priceText),
         _kv(recurring ? 'Billing Interval' : 'Membership Duration',
             recurring ? planBillingIntervalLabel(_d.durationDays) : planWizardDurationLabel(_d.durationDays)),

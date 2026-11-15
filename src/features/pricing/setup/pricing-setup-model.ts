@@ -247,14 +247,10 @@ export function validateSetup(setup: PriceSetup, scope: RuleScope, settings: Pri
   if (setup.basePrice.trim() === "") problems.base = "Enter the base price.";
   else if (!validAmount(setup.basePrice)) problems.base = "Enter a valid amount greater than 0.";
 
-  if (settings.memberPricingEnabled) {
-    if (setup.memberPrice.trim() === "") problems.member = "Enter the member price.";
-    else if (!validAmount(setup.memberPrice)) problems.member = "Enter a valid amount greater than 0.";
-  }
-  if (settings.coachingPricingEnabled) {
-    if (setup.coachingPrice.trim() === "") problems.coaching = "Enter the coaching price.";
-    else if (!validAmount(setup.coachingPrice)) problems.coaching = "Enter a valid amount greater than 0.";
-  }
+  // The member and coaching rates are optional: left empty they are simply not set (and not saved), as if that toggle were off.
+  // Only a rate that was typed has to be a real amount.
+  if (settings.memberPricingEnabled && setup.memberPrice.trim() !== "" && !validAmount(setup.memberPrice)) problems.member = "Enter a valid amount greater than 0.";
+  if (settings.coachingPricingEnabled && setup.coachingPrice.trim() !== "" && !validAmount(setup.coachingPrice)) problems.coaching = "Enter a valid amount greater than 0.";
 
   if (setup.timeBased) {
     const groups: SlotGroup[] = settings.differentWeekendPricing ? ["WEEKDAYS", "WEEKENDS", "SPECIFIC_DAYS"] : ["ALL_DAYS"];

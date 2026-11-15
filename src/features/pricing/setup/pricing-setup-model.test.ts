@@ -196,9 +196,14 @@ describe("checking a setup", () => {
     expect(validateSetup(none, SCOPE, settings(), hours).groups.SPECIFIC_DAYS).toBe("Choose at least one day.");
   });
 
-  it("member and coaching rates are required once switched on", () => {
-    const p = validateSetup({ ...emptySetup(), basePrice: "400" }, SCOPE, settings({ memberPricingEnabled: true, coachingPricingEnabled: true }), hours);
-    expect([p.member, p.coaching]).toEqual(["Enter the member price.", "Enter the coaching price."]);
+  it("member and coaching rates are optional: empty is fine and is not saved, a typed one must be a real amount", () => {
+    const on = settings({ memberPricingEnabled: true, coachingPricingEnabled: true });
+    const empty = validateSetup({ ...emptySetup(), basePrice: "400" }, SCOPE, on, hours);
+    expect([empty.member, empty.coaching]).toEqual([undefined, undefined]);
+    expect(hasSetupProblems(empty)).toBe(false);
+    expect(rulesFromSetup({ ...emptySetup(), basePrice: "400" }, SCOPE, on).map((r) => r.audience)).not.toContain("MEMBER");
+    const bad = validateSetup({ ...emptySetup(), basePrice: "400", memberPrice: "abc", coachingPrice: "0" }, SCOPE, on, hours);
+    expect([bad.member, bad.coaching]).toEqual(["Enter a valid amount greater than 0.", "Enter a valid amount greater than 0."]);
     expect(hasSetupProblems(validateSetup({ ...emptySetup(), basePrice: "400", memberPrice: "300", coachingPrice: "250" }, SCOPE, settings({ memberPricingEnabled: true, coachingPricingEnabled: true }), hours))).toBe(false);
   });
 });

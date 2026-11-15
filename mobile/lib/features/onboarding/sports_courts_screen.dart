@@ -49,7 +49,8 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   final List<CourtDraft> _drafts = [];
   String? _activeSportId;
-  bool _bulk = false;
+  /// Bulk (same settings for every court of a sport) is the starting point; courts saved with different settings open by court.
+  bool _bulk = true;
   CourtProblems _problems = const CourtProblems();
 
   /// Courts already in the database when the screen loaded, so a removal can archive them on save.
@@ -164,6 +165,7 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
         _loadedCourtIds
           ..clear()
           ..addAll(areas.map((a) => a.id));
+        _bulk = !_courtsDiffer(initial);
         _loading = false;
       });
       _ensureCourts();
@@ -437,6 +439,21 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   // ── build ────────────────────────────────────────────────────────────
 
+  /// Whether any sport has courts whose type, surface, lighting or amenities are not the same.
+  static bool _courtsDiffer(List<CourtDraft> drafts) {
+    final first = <String, CourtDraft>{};
+    String amenities(CourtDraft c) => (List.of(c.amenities)..sort()).join(',');
+    for (final d in drafts) {
+      final base = first[d.sportId];
+      if (base == null) {
+        first[d.sportId] = d;
+      } else if (base.type != d.type || base.surface != d.surface || base.lighting != d.lighting || amenities(base) != amenities(d)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadError != null) {
@@ -695,8 +712,6 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Text('${active.name} Courts (${courts.length})', key: const ValueKey('active-heading'), style: setupText(size: 17, weight: FontWeight.w600)),
-            const SizedBox(height: 10),
             if (_bulk && courts.isNotEmpty) _bulkCard(active, courts.first),
             for (var i = 0; i < courts.length; i++) _courtCard(active, courts[i], i),
             if (_problems.bySport[active.id] != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_problems.bySport[active.id]!, style: setupText(size: 12, weight: FontWeight.w500, color: SetupColors.error))),
@@ -824,51 +839,53 @@ class _SportsCourtsScreenState extends ConsumerState<SportsCourtsScreen> {
 
   Widget _courtCard(({String id, String name, String code, String icon}) sport, CourtDraft court, int index) {
     final p = _problems.byCourt[court.id];
-    return Container(
+    // "Badminton Court (1)" / "Cricket Turf (2)": what each one is called follows the sport (court, turf, playing area)
+    final title = '${sport.name} ${playingAreaLabelFor(sport.code)} (${index + 1})';
+    return Padding(
       key: ValueKey('court-${court.id}'),
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: SetupColors.border)),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                height: 24,
-                width: 24,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(color: SetupColors.activeBg, shape: BoxShape.circle),
-                child: Text('${index + 1}', style: setupText(size: 12, weight: FontWeight.w600, color: SetupColors.primary)),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(child: SetupLabel('Court Name', required: true)),
+              Expanded(child: Text(title, key: ValueKey('title-${court.id}'), style: setupText(size: 16, weight: FontWeight.w600))),
               IconButton(
                 key: ValueKey('remove-${court.id}'),
                 tooltip: 'Remove ${court.name}',
                 onPressed: () => _removeCourt(court.id),
                 visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+                constraints: const BoxConstraints.tightFor(width: 36, height: 36),
                 padding: EdgeInsets.zero,
-                icon: const Icon(Icons.delete_outline, color: SetupColors.error, size: 20),
+                icon: const Icon(Icons.delete_outline, color: SetupColors.error, size: 21),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          TextFormField(
-            key: ValueKey('name-${court.id}'),
-            initialValue: court.name,
-            maxLength: 50,
-            style: setupText(size: 15),
-            onChanged: (v) => _changeCourt(court, (c) => c.name = v),
-            decoration: setupDecoration(counterText: '').copyWith(errorText: p?['name']),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: SetupColors.border)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SetupLabel('Court Name', required: true),
+                TextFormField(
+                  key: ValueKey('name-${court.id}'),
+                  initialValue: court.name,
+                  maxLength: 50,
+                  style: setupText(size: 15),
+                  onChanged: (v) => _changeCourt(court, (c) => c.name = v),
+                  decoration: setupDecoration(counterText: '').copyWith(errorText: p?['name']),
+                ),
+                const SizedBox(height: 12),
+                if (_bulk)
+                  Text('Uses the settings for all ${sport.name} courts above.', style: setupText(size: 12, color: SetupColors.secondary))
+                else
+                  _settingsFields(keyPrefix: 'court-${court.id}', sportCode: sport.code, court: court, problems: p, apply: (edit) => _changeCourt(court, edit)),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          if (_bulk)
-            Text('Uses the settings for all ${sport.name} courts above.', style: setupText(size: 12, color: SetupColors.secondary))
-          else
-            _settingsFields(keyPrefix: 'court-${court.id}', sportCode: sport.code, court: court, problems: p, apply: (edit) => _changeCourt(court, edit)),
         ],
       ),
     );

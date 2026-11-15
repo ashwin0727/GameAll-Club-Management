@@ -128,10 +128,14 @@ void main() {
       expect(validateSetup(PriceSetup(basePrice: '400'), _scope, _settings, null).any, isFalse);
     });
 
-    test('member / coaching prices are required once their setting is on', () {
-      final p = validateSetup(PriceSetup(basePrice: '400'), _scope, const PricingSettings(memberPricingEnabled: true, coachingPricingEnabled: true), null);
-      expect(p.member, isNotNull);
-      expect(p.coaching, isNotNull);
+    test('member / coaching prices are optional: empty is fine, a typed one must be a real amount', () {
+      const on = PricingSettings(memberPricingEnabled: true, coachingPricingEnabled: true);
+      final empty = validateSetup(PriceSetup(basePrice: '400'), _scope, on, null);
+      expect(empty.member, isNull);
+      expect(empty.coaching, isNull);
+      final bad = validateSetup(PriceSetup(basePrice: '400', memberPrice: 'abc', coachingPrice: '0'), _scope, on, null);
+      expect(bad.member, isNotNull);
+      expect(bad.coaching, isNotNull);
     });
 
     test('a slot needs a price and different start and end times', () {

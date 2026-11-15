@@ -263,7 +263,7 @@ group('loading', () {
       _router.pop(); // what Back on the next step does
       await tester.pumpAndSettle();
 
-      expect(find.text('Badminton Courts (1)'), findsOneWidget, reason: 'the ticked sport is still there');
+      expect(find.text('Badminton Court (1)'), findsOneWidget, reason: 'the ticked sport is still there');
       expect(_requests.where((r) => r == 'facility').length, loadsBefore, reason: 'nothing was fetched again');
       expect(find.byType(SetupLoadingPage), findsNothing);
     });
@@ -341,7 +341,7 @@ group('loading', () {
     expect(find.text('Preview of Courts (0)'), findsOneWidget);
 
     await _tapSport(tester, 'badminton');
-    expect(find.text('Badminton Courts (1)'), findsOneWidget);
+    expect(find.text('Badminton Court (1)'), findsOneWidget);
     expect(find.text('Badminton Court 1'), findsWidgets);
     expect(find.text('Preview of Courts (1)'), findsOneWidget);
     expect(find.text('Wooden · LED'), findsOneWidget);
@@ -350,7 +350,7 @@ group('loading', () {
 
   testWidgets('a single-sport facility type preselects its sport', (tester) async {
     await _pump(tester, facility: _facility(type: FacilityType.football));
-    expect(find.text('Football Courts (1)'), findsOneWidget);
+    expect(find.text('Football Turf (1)'), findsOneWidget);
     expect(find.text('Football Turf 1'), findsWidgets);
   });
 
@@ -362,11 +362,12 @@ group('loading', () {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('add-court')));
     await tester.pump();
-    expect(find.text('Badminton Courts (3)'), findsOneWidget);
+    expect(find.text('Badminton Court (3)'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Remove Badminton Court 2').first);
     await tester.pump();
-    expect(find.text('Badminton Courts (2)'), findsOneWidget);
+    expect(find.text('Badminton Court (2)'), findsOneWidget);
+    expect(find.text('Badminton Court (3)'), findsNothing, reason: 'the cards are numbered again after a removal');
 
     await tester.tap(find.byKey(const ValueKey('add-court')));
     await tester.pump();
@@ -404,6 +405,10 @@ group('loading', () {
     await tester.tap(find.byKey(const ValueKey('add-court')));
     await tester.pump();
 
+    expect(find.byKey(const ValueKey('bulk-card')), findsOneWidget, reason: 'bulk is the mode a new setup starts in');
+    await tester.tap(find.byKey(const ValueKey('mode-by court')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('bulk-card')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('mode-bulk (same)')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('bulk-card')), findsOneWidget);
@@ -430,13 +435,13 @@ group('loading', () {
     await _pump(tester);
 
     await addSport(tester, 'Table Tennis');
-    expect(find.text('Table Tennis Courts (1)'), findsOneWidget);
+    expect(find.text('Table Tennis Playing Area (1)'), findsOneWidget);
     // Add Sport is still there for another one, and another
     expect(find.byKey(const ValueKey('add-sport')), findsOneWidget);
     await addSport(tester, 'Squash');
     await addSport(tester, 'Kabaddi');
 
-    expect(find.text('Kabaddi Courts (1)'), findsOneWidget);
+    expect(find.text('Kabaddi Playing Area (1)'), findsOneWidget);
     for (final name in ['table tennis', 'squash', 'kabaddi']) {
       expect(find.byKey(ValueKey('custom-sport-$name')), findsOneWidget, reason: name);
     }
@@ -507,6 +512,9 @@ group('loading', () {
     await _tapSport(tester, 'badminton');
     await _tapSport(tester, 'football');
     await tester.tap(find.byKey(const ValueKey('active-sport-badminton')));
+    await tester.pumpAndSettle();
+    // bulk is the starting mode; switch to by-court to set one court's amenities on its own
+    await tester.tap(find.byKey(const ValueKey('mode-by court')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(ValueKey('court-${_courtIdFor(tester, 'Badminton Court 1')}-amenity-ac')));
     await tester.pumpAndSettle();

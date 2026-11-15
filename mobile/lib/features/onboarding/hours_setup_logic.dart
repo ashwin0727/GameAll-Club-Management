@@ -47,9 +47,10 @@ String formatClock(String time) {
   return '$hour12:${m.toString().padLeft(2, '0')} ${h < 12 ? 'AM' : 'PM'}';
 }
 
-/// Every half hour of the day, the way the time lists show them.
+/// Every half hour of the day, then 11:59 PM (with 12:00 AM it makes a full day without a next-day closing), the way the time lists show them.
 final List<({String value, String label})> timeOptions = [
   for (var i = 0; i < 48; i++) (value: fromMinutes(i * 30), label: formatClock(fromMinutes(i * 30))),
+  (value: '23:59', label: formatClock('23:59')),
 ];
 
 DayPlan defaultPlan(int day, {bool isOpen = true}) => DayPlan(dayOfWeek: day, isOpen: isOpen);

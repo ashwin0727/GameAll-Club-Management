@@ -109,7 +109,9 @@ describe("PricingSetupForm", () => {
     await user.click(await screen.findByRole("radio", { name: /By Court/ }));
     expect(await screen.findByText("Select Court")).toBeInTheDocument();
     expect(screen.getByText(/This pricing applies only to/)).toBeInTheDocument();
-    expect(screen.getByText(/Pricing Preview – Court 1/)).toBeInTheDocument();
+    // the preview lists every court, not only the one being edited
+    expect(screen.getByText("Pricing Preview")).toBeInTheDocument();
+    expect(screen.getAllByText("Court 1").length).toBeGreaterThan(0);
   });
 
   it("Back returns to Operating Hours", async () => {

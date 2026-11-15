@@ -40,47 +40,70 @@ export function PricingSettingsCard({ settings, onChange }: { settings: PricingS
   );
 }
 
-/** "Pricing Preview": a line per sport (By Sport) or the selected court's rate table (By Court). */
+/**
+ * "Pricing Preview": the prices of everything that has been priced. By Sport it is a line per sport; By Court it is every court (under
+ * its sport) with all of its rates, not only the court being edited.
+ */
 export function PricingPreviewCard({
   mode,
   settings,
   sports,
   sportSetups,
-  court,
-  courtSetup,
+  courts,
+  courtSetups,
 }: {
   mode: PricingSettings["mode"];
   settings: PricingSettings;
   sports: SportEntry[];
   sportSetups: Record<string, PriceSetup>;
-  court?: CourtEntry;
-  courtSetup?: PriceSetup;
+  courts: CourtEntry[];
+  courtSetups: Record<string, PriceSetup>;
 }) {
   if (mode === "BY_COURT") {
-    const rows = court && courtSetup ? previewRows(courtSetup, settings) : [];
     return (
       <SetupCard className="p-4 sm:p-5">
-        <CardHeading icon={<Eye className="h-7 w-7" aria-hidden="true" />} title={court ? `Pricing Preview – ${court.name}` : "Pricing Preview"} description="Booking rate summary for this court." />
-        {rows.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-[#E5E1EF] p-4 text-center text-sm text-[#666666]">Set a price to see the summary.</p>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-[#EFECF6]">
-            <div className="grid grid-cols-[84px_1fr_auto] gap-2 bg-[#F1EBFF] px-3 py-2 text-xs font-semibold">
-              <span>Day</span>
-              <span>Time Slot</span>
-              <span className="text-right">Rate</span>
-            </div>
-            <ul>
-              {rows.map((r, i) => (
-                <li key={i} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 border-t border-[#EFECF6] px-3 py-2.5 text-sm">
-                  <span className="font-medium">{r.day}</span>
-                  <span>{r.time}</span>
-                  <span className="text-right font-medium">{r.rate}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <CardHeading icon={<Eye className="h-7 w-7" aria-hidden="true" />} title="Pricing Preview" description="Here's a quick summary of your pricing setup." />
+        <div className="space-y-4">
+          {sports.map((sport) => {
+            const own = courts.filter((c) => c.sportId === sport.id);
+            if (own.length === 0) return null;
+            return (
+              <section key={sport.id} aria-label={`${sport.name} prices`}>
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  <span aria-hidden="true" className="text-lg leading-none">
+                    {sport.icon}
+                  </span>
+                  {sport.name}
+                </h3>
+                <ul className="space-y-2">
+                  {own.map((c) => {
+                    const setup = courtSetups[c.id];
+                    const rows = setup ? previewRows(setup, settings) : [];
+                    return (
+                      <li key={c.id} className="overflow-hidden rounded-lg border border-[#EFECF6]">
+                        <div className="flex items-center justify-between gap-2 bg-[#F7F5FB] px-3 py-2 text-sm font-semibold">
+                          <span>{c.name}</span>
+                          {rows.length === 0 && <span className="text-xs font-medium text-[#666666]">Not set</span>}
+                        </div>
+                        {rows.length > 0 && (
+                          <ul>
+                            {rows.map((r, i) => (
+                              <li key={i} className="grid grid-cols-[84px_1fr_auto] items-center gap-2 border-t border-[#EFECF6] px-3 py-2 text-sm">
+                                <span className="font-medium">{r.day}</span>
+                                <span>{r.time}</span>
+                                <span className="text-right font-medium">{r.rate}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       </SetupCard>
     );
   }

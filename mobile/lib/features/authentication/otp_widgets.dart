@@ -261,7 +261,7 @@ class OtpPageFrame extends StatelessWidget {
                                   Text(
                                     message!,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15, height: 1.35, color: messageIsError ? const Color(0xFFC62828) : const Color(0xFF0E9384)),
+                                    style: TextStyle(fontSize: 15, height: 1.35, color: messageIsError ? const Color(0xFFC62828) : const Color(0xFF4817C2)),
                                   ),
                                 ],
                               ],

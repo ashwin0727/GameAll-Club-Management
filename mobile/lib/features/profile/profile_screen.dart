@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../shared/widgets/logout_dialog.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/routing/app_routes.dart';
@@ -81,24 +82,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _confirmSignOut() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text("You'll need to sign in again to access your facility."),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: context.tokens.destructive),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
+    final ok = await confirmLogout(context);
+    if (ok && mounted) {
       ref.read(sessionControllerProvider.notifier).signOut();
     }
   }

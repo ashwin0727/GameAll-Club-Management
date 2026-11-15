@@ -49,6 +49,7 @@ import { resubmitIfRejected } from "@/features/setup-review/api";
 import { getOnboardingService } from "@/services/onboarding";
 import { getProfileService } from "@/services/profile";
 import { cn } from "@/lib/utils";
+import { SubmitForReviewDialog } from "@/features/onboarding/components/submit-review-dialog";
 
 const settingsKey = (facilityId: string) => ["payout-settings", facilityId] as const;
 
@@ -96,6 +97,8 @@ export function PayoutSetupForm() {
   const [removing, setRemoving] = React.useState<PayoutMethod | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState<null | "draft" | "complete">(null);
+  // "Complete Setup" first asks for the two confirmations; the setup is only submitted for review after they are given.
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const refresh = () => qc.invalidateQueries({ queryKey: profileKeys.payouts(facility?.id ?? "") });
   const makePrimary = useMutation({
@@ -211,12 +214,16 @@ export function PayoutSetupForm() {
     }
   }
 
-  async function persist(complete: boolean) {
+  async function persist(complete: boolean, confirmed = false) {
     if (!facility) return;
     setError(null);
     const problem = validatePayoutSettings(settings);
     if (problem) return setError(problem);
     if (complete && list.length === 0) return setError("Add at least one bank account or UPI ID to finish setup.");
+    if (complete && !confirmed) {
+      setConfirmOpen(true);
+      return;
+    }
     setSaving(complete ? "complete" : "draft");
     try {
       await savePayoutSettings(facility.id, settings);
@@ -232,6 +239,7 @@ export function PayoutSetupForm() {
       }
     } catch (e) {
       setError(friendly(e, "We couldn't finish your setup. Please try again."));
+      setConfirmOpen(false);
     } finally {
       setSaving(null);
     }
@@ -508,6 +516,7 @@ export function PayoutSetupForm() {
           </button>
         </div>
       </div>
+      <SubmitForReviewDialog open={confirmOpen} busy={saving === "complete"} onSubmit={() => void persist(true, true)} onCancel={() => setConfirmOpen(false)} />
       <p className="text-right text-xs font-normal text-[#666666]">GameAll reviews your whole setup before your dashboard opens. You&apos;ll be notified as soon as it&apos;s approved.</p>
 
       {editing && <MethodDialog key={editing.id} facilityId={facility.id} method={editing} onClose={() => setEditing(null)} />}

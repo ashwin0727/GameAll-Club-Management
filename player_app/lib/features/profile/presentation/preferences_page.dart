@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/external_links.dart';
+import '../../../core/utils/legal_links.dart';
+import 'delete_account_dialog.dart';
 import '../../../core/routing/app_routes.dart';
 import '../../player_home/application/player_home_controller.dart';
 import '../application/profile_providers.dart';
@@ -266,7 +268,7 @@ class SupportLegalPage extends ConsumerWidget {
                         icon: Icons.description_outlined,
                         title: 'Terms & Conditions',
                         subtitle: 'The rules for using GameAll',
-                        onTap: () => open(Uri.parse('$site/terms')),
+                        onTap: () => open(legalUri(LegalPage.terms)),
                       ),
                       const ProfileDivider(),
                       ProfileMenuRow(
@@ -274,16 +276,24 @@ class SupportLegalPage extends ConsumerWidget {
                         icon: Icons.privacy_tip_outlined,
                         title: 'Privacy Policy',
                         subtitle: 'What we keep and why',
-                        onTap: () => open(Uri.parse('$site/privacy')),
+                        onTap: () => open(legalUri(LegalPage.privacy)),
+                      ),
+                      const ProfileDivider(),
+                      ProfileMenuRow(
+                        key: const ValueKey('sl-refunds'),
+                        icon: Icons.currency_rupee_rounded,
+                        title: 'Cancellation & Refund Policy',
+                        subtitle: 'What you get back when you cancel',
+                        onTap: () => open(legalUri(LegalPage.refunds)),
                       ),
                       const ProfileDivider(),
                       ProfileMenuRow(
                         key: const ValueKey('sl-delete'),
                         icon: Icons.delete_outline_rounded,
                         title: 'Delete my account',
-                        subtitle: 'How to remove your account and data',
+                        subtitle: 'Remove your account and data',
                         danger: true,
-                        onTap: () => open(Uri.parse('$site/delete-account')),
+                        onTap: () => showDeleteAccountDialog(context, ref),
                       ),
                     ],
                   ),

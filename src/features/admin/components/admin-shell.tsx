@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
 import { Banknote, Building2, ClipboardCheck, LogOut, MapPinCheck, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/features/auth/components/brand-mark";
-import { useLogout } from "@/features/auth/hooks/use-auth";
+import { LogoutConfirm } from "@/features/auth/components/logout-confirm";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -19,7 +20,7 @@ const NAV = [
 /** The platform admin's back office frame: brand, three sections, sign out. */
 export function AdminShell({ email, children }: { email: string; children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const logout = useLogout();
+  const [confirmLogout, setConfirmLogout] = React.useState(false);
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -50,13 +51,14 @@ export function AdminShell({ email, children }: { email: string; children: React
           </nav>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground md:inline">{email}</span>
-            <Button variant="outline" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
+            <Button variant="outline" size="sm" onClick={() => setConfirmLogout(true)}>
               <LogOut className="mr-1.5 h-4 w-4" aria-hidden /> Sign out
             </Button>
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">{children}</main>
+      <LogoutConfirm open={confirmLogout} onCancel={() => setConfirmLogout(false)} />
     </div>
   );
 }
