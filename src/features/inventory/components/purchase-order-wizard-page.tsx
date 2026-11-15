@@ -133,11 +133,11 @@ export function PurchaseOrderWizardPage() {
     }
   }
 
-  const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? "—";
+  const vendorName = vendors.find((v) => v.id === vendorId)?.name ?? "-";
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title="New Purchase Order" subtitle="Created as a draft — place it to record the expense." />
+      <PageHeader title="New Purchase Order" subtitle="Created as a draft, place it to record the expense." />
 
       <ol className="flex flex-wrap gap-2 text-xs">
         {STEPS.map((s, i) => (
@@ -239,9 +239,9 @@ export function PurchaseOrderWizardPage() {
               <dt className="text-muted-foreground">Order date</dt>
               <dd className="font-medium">{orderDate}</dd>
               <dt className="text-muted-foreground">Expected delivery</dt>
-              <dd className="font-medium">{expectedDelivery || "—"}</dd>
+              <dd className="font-medium">{expectedDelivery || "-"}</dd>
               <dt className="text-muted-foreground">Reference</dt>
-              <dd className="font-medium">{reference || "—"}</dd>
+              <dd className="font-medium">{reference || "-"}</dd>
             </dl>
             <div className="rounded-lg border border-border">
               {lines

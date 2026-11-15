@@ -182,10 +182,10 @@ export function CoachingStudentsPage() {
           Array.from({ length: 4 }).map((_, i) => <MembershipStatCardSkeleton key={i} compact />)
         ) : (
           <>
-            <MembershipStatCard icon={Users} iconBg="bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-400" value={kpis ? String(kpis.totalStudents) : "—"} label="Total Students" sub="All student records" index={0} compact />
-            <MembershipStatCard icon={GraduationCap} iconBg="bg-success/15" iconColor="text-success" value={kpis ? String(kpis.enrolledStudents) : "—"} label="Enrolled Students" sub="Currently enrolled" index={1} compact />
-            <MembershipStatCard icon={Wallet} iconBg="bg-warning/15" iconColor="text-warning" value={kpis ? money(kpis.revenueMinor) : "—"} label="Revenue Collected" sub="This month" index={2} compact />
-            <MembershipStatCard icon={IndianRupee} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" value={kpis ? money(kpis.pendingMinor) : "—"} label="Payments Pending" sub="Needs follow-up" index={3} compact />
+            <MembershipStatCard icon={Users} iconBg="bg-blue-500/15" iconColor="text-blue-600 dark:text-blue-400" value={kpis ? String(kpis.totalStudents) : "-"} label="Total Students" sub="All student records" index={0} compact />
+            <MembershipStatCard icon={GraduationCap} iconBg="bg-success/15" iconColor="text-success" value={kpis ? String(kpis.enrolledStudents) : "-"} label="Enrolled Students" sub="Currently enrolled" index={1} compact />
+            <MembershipStatCard icon={Wallet} iconBg="bg-warning/15" iconColor="text-warning" value={kpis ? money(kpis.revenueMinor) : "-"} label="Revenue Collected" sub="This month" index={2} compact />
+            <MembershipStatCard icon={IndianRupee} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" value={kpis ? money(kpis.pendingMinor) : "-"} label="Payments Pending" sub="Needs follow-up" index={3} compact />
           </>
         )}
       </div>
@@ -284,7 +284,7 @@ export function CoachingStudentsPage() {
                         <p className="font-medium">{e.programName}</p>
                         {e.batchName && <p className="text-xs text-muted-foreground">{e.batchName}</p>}
                       </td>
-                      <td className="p-3 tabular-nums text-muted-foreground">{e.studentPhone ?? "—"}</td>
+                      <td className="p-3 tabular-nums text-muted-foreground">{e.studentPhone ?? "-"}</td>
                       <td className="p-3 text-muted-foreground">{fmtDate(e.startDate)}</td>
                       <td className="p-3">{studentPaymentBadge(e.paymentStatus)}</td>
                       <td className="p-3">{enrollmentStatusBadge(e.status)}</td>
@@ -350,7 +350,7 @@ function StudentGridCard({ row: e }: { row: EnrollmentRow }) {
         {e.batchName && <p className="text-xs text-muted-foreground">{e.batchName}</p>}
       </div>
       <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-        {e.studentPhone ?? "—"} · {fmtDate(e.startDate)}
+        {e.studentPhone ?? "-"} · {fmtDate(e.startDate)}
       </p>
       <div className="mt-2 flex items-center gap-1.5">
         {studentPaymentBadge(e.paymentStatus)}

@@ -200,7 +200,7 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
                     children: [
                       Text(c.fullName, style: AppTypography.rowTitle(context)),
                       Text(
-                        '${c.specialization ?? '—'}'
+                        '${c.specialization ?? '-'}'
                         '${c.experienceYears != null ? ' · ${c.experienceYears} yrs' : ''}'
                         ' · ${c.sessionCount} sessions · ${c.studentCount} students',
                         maxLines: 1,

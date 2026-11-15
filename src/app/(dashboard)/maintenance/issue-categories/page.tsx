@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { IssueCategoriesPage } from "@/features/maintenance/components/issue-categories-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Issue Categories — ${APP_NAME}`,
+  title: `Issue Categories`,
 };
 
 export default function Page() {

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { CourtSchedulePage } from "@/features/maintenance/components/court-schedule-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Court Schedule — ${APP_NAME}`,
+  title: `Court Schedule`,
 };
 
 export default function Page() {

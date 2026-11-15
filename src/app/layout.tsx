@@ -14,7 +14,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — ${APP_SUBTITLE}`,
+  title: `${APP_NAME} ${APP_SUBTITLE}`,
   description: "Manage courts, bookings, memberships, and players with ease.",
 };
 

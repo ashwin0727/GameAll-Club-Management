@@ -15,7 +15,7 @@ export function formatClock(time: string): string {
  */
 export function formatDayRange(daysOfWeek: number[]): string {
   const days = [...new Set(daysOfWeek)].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b);
-  if (days.length === 0) return "—";
+  if (days.length === 0) return "-";
   if (days.length === 1) return DAY_ABBR[days[0]!]!;
   if (days.length === 7) return "Every day";
 

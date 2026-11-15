@@ -142,12 +142,12 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
                 _Row(label: 'Type', value: 'Income'),
                 _Row(label: 'Category', value: d.category),
                 _Row(label: 'Amount', value: financeAmount(d.amountMinor)),
-                _Row(label: 'Payment Mode', value: d.paymentMethod ?? '—'),
+                _Row(label: 'Payment Mode', value: d.paymentMethod ?? '-'),
                 _Row(label: 'Status', value: _statusLabel(d.status), tone: _statusTone(d.status)),
                 _Row(label: 'Transaction Date', value: Formatters.dateTimeShort(d.occurredAt)),
-                _Row(label: 'Reference', value: d.sourceReference ?? '—'),
+                _Row(label: 'Reference', value: d.sourceReference ?? '-'),
                 _Row(label: 'Description', value: d.description),
-                _Row(label: 'Recorded By', value: d.recordedBy ?? '—'),
+                _Row(label: 'Recorded By', value: d.recordedBy ?? '-'),
                 _Row(label: 'Created At', value: Formatters.dateTimeShort(d.createdAt)),
                 if (d.refundedMinor > 0) ...[
                   _Row(label: 'Refunded', value: financeAmount(d.refundedMinor)),
@@ -167,9 +167,9 @@ class _TransactionDetailsScreenState extends ConsumerState<TransactionDetailsScr
                   _Row(label: 'Booking', value: d.sourceReference ?? 'Booking'),
                 if (d.membershipId != null)
                   _Row(label: 'Membership', value: d.sourceReference ?? 'Membership'),
-                _Row(label: 'Customer', value: d.customerName ?? '—'),
+                _Row(label: 'Customer', value: d.customerName ?? '-'),
                 if (d.customerPhone != null) _Row(label: 'Phone', value: d.customerPhone!),
-                _Row(label: 'Facility', value: d.facilityName ?? '—'),
+                _Row(label: 'Facility', value: d.facilityName ?? '-'),
               ],
             ),
           ),
@@ -349,7 +349,7 @@ class _HistoryRow extends StatelessWidget {
               children: [
                 Text(Formatters.dateTimeShort(row.paidAt), style: AppTypography.caption(context)),
                 Text(
-                  '${row.paymentMethod ?? '—'}${row.reference != null ? ' · ${row.reference}' : ''}',
+                  '${row.paymentMethod ?? '-'}${row.reference != null ? ' · ${row.reference}' : ''}',
                   style: AppTypography.caption(context),
                 ),
               ],

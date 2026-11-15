@@ -229,7 +229,7 @@ export function PlayingSchedulePicker({
       {value.times.length === 0 && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
           <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-          No dedicated court time — the member can book like any guest, or you can select hours above.
+          No dedicated court time. The member can book like any guest, or you can select hours above.
         </p>
       )}
     </div>

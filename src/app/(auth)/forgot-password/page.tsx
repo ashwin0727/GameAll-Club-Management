@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Reset your password — ${PRODUCT_NAME}`,
+  title: `Reset your password`,
 };
 
 export default function ForgotPasswordPage() {

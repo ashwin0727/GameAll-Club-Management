@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL_CONTACT_EMAIL, LegalPage, type LegalSection } from "@/features/legal/legal-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Cancellation & Refund Policy — ${APP_NAME}`,
+  title: `Cancellation & Refund Policy`,
   description: "How cancelling a GameAll court booking, membership or coaching enrolment works, and how refunds are returned.",
 };
 

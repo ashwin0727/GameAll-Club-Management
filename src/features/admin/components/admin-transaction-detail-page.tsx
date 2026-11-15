@@ -176,7 +176,7 @@ function Row({
       <td className="px-4 py-3">
         <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{r.source}</span>
       </td>
-      <td className="px-4 py-3">{r.payer ?? "—"}</td>
+      <td className="px-4 py-3">{r.payer ?? "-"}</td>
       <td className="px-4 py-3 text-muted-foreground">{r.method}</td>
       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
         <span className="select-all">{r.razorpayPaymentId}</span>

@@ -213,7 +213,7 @@ export function GuestBookingWizard() {
   const priceMinor = totalMinor != null && hours > 0 ? Math.round(totalMinor / hours) : null;
   const timeLabel =
     runs.length === 0
-      ? "—"
+      ? "-"
       : courtIds.length > 1
         ? courtIds
             .filter((id) => runs.some((r) => r.courtId === id))
@@ -295,7 +295,7 @@ export function GuestBookingWizard() {
       const msg = err instanceof ServiceError ? err.message : "Unable to create this booking.";
       setError(
         created.length > 0
-          ? `${msg} ${created.length} of ${runs.length} bookings were already made (${created.map((x) => `${courtName(x.courtId)} ${hhmm(x.startTime)} – ${hhmm(x.endTime)}`).join(", ")}) — check the calendar.`
+          ? `${msg} ${created.length} of ${runs.length} bookings were already made (${created.map((x) => `${courtName(x.courtId)} ${hhmm(x.startTime)} – ${hhmm(x.endTime)}`).join(", ")}). Check the calendar.`
           : msg,
       );
     } finally {
@@ -601,13 +601,13 @@ export function GuestBookingWizard() {
                 {guestEmail && <Row label="Email" value={guestEmail} />}
                 <Row label="Sport" value={sportName} />
                 <Row label="Location" value={facility.name} />
-                <Row label={courtIds.length > 1 ? "Courts" : "Court"} value={courtsLabel ?? "—"} />
+                <Row label={courtIds.length > 1 ? "Courts" : "Court"} value={courtsLabel ?? "-"} />
                 <Row label="Date" value={fmtDateLong(date)} />
                 <Row label="Time" value={timeLabel} />
                 <Row label="Duration" value={hoursLabel} />
                 <Row label="Players" value={players} />
                 {notes && <Row label="Notes" value={notes} />}
-                <Row label="Total" value={totalMinor == null ? "—" : formatCurrency(totalMinor, currency)} />
+                <Row label="Total" value={totalMinor == null ? "-" : formatCurrency(totalMinor, currency)} />
               </dl>
             </div>
           )}
@@ -668,7 +668,7 @@ export function GuestBookingWizard() {
                         <span className="font-medium">Pay at venue</span>
                         <span className="block text-xs text-muted-foreground">
                           {advance.required
-                            ? "Not available for bookings longer than 1 hour — the advance must be paid online."
+                            ? "Not available for bookings longer than 1 hour. The advance must be paid online."
                             : `Collect ${totalMinor == null ? "the amount" : formatCurrency(totalMinor, currency)} at the venue. Booking is created with payment status Pending.`}
                         </span>
                       </span>
@@ -746,33 +746,33 @@ export function GuestBookingWizard() {
             {courtsLabel ?? "Select a court"}
           </div>
           <dl className="mt-4 space-y-2.5 text-sm">
-            <SummaryRow icon={Trophy} label="Sport" value={sportName || "—"} />
+            <SummaryRow icon={Trophy} label="Sport" value={sportName || "-"} />
             <SummaryRow icon={MapPin} label="Location" value={facility.name} />
-            <SummaryRow icon={MapPin} label={courtIds.length > 1 ? "Courts" : "Court"} value={courtsLabel ?? "—"} />
+            <SummaryRow icon={MapPin} label={courtIds.length > 1 ? "Courts" : "Court"} value={courtsLabel ?? "-"} />
             <SummaryRow icon={CalendarDays} label="Date" value={fmtDateLong(date)} />
             <SummaryRow icon={Clock} label="Time" value={timeLabel} />
-            <SummaryRow icon={Clock} label="Duration" value={picks.length > 0 ? hoursLabel : "—"} />
+            <SummaryRow icon={Clock} label="Duration" value={picks.length > 0 ? hoursLabel : "-"} />
           </dl>
           <div className="mt-4 border-t border-border pt-3">
             <p className="text-sm font-semibold">Price Details</p>
             <div className="mt-2 flex justify-between text-sm text-muted-foreground">
               <span>Court Price (Per Hour)</span>
-              <span>{priceMinor == null ? "—" : formatCurrency(priceMinor, currency)}</span>
+              <span>{priceMinor == null ? "-" : formatCurrency(priceMinor, currency)}</span>
             </div>
             <div className="mt-1 flex justify-between text-sm font-semibold text-success">
               <span>Total Amount</span>
-              <span>{totalMinor == null ? "—" : formatCurrency(totalMinor, currency)}</span>
+              <span>{totalMinor == null ? "-" : formatCurrency(totalMinor, currency)}</span>
             </div>
             {effectivePayMode === "online" && onlineAllowed && (
               <>
                 <div className="mt-1 flex justify-between text-sm font-semibold">
                   <span>{payOption === "FULL" ? "Pay Online Now" : "Advance Due Online (50%)"}</span>
-                  <span>{onlineDue.dueNowMinor == null ? "—" : formatCurrency(onlineDue.dueNowMinor, currency)}</span>
+                  <span>{onlineDue.dueNowMinor == null ? "-" : formatCurrency(onlineDue.dueNowMinor, currency)}</span>
                 </div>
                 {payOption === "ADVANCE" && (
                   <div className="mt-1 flex justify-between text-sm text-muted-foreground">
                     <span>Balance at Venue</span>
-                    <span>{onlineDue.balanceMinor == null ? "—" : formatCurrency(onlineDue.balanceMinor, currency)}</span>
+                    <span>{onlineDue.balanceMinor == null ? "-" : formatCurrency(onlineDue.balanceMinor, currency)}</span>
                   </div>
                 )}
               </>

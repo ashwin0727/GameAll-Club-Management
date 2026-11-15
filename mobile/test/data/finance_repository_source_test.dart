@@ -51,7 +51,7 @@ void main() {
       expect(source, contains("'p_end_date': dateRange.endDate,"));
     });
 
-    test('never resolves a date range on the device — presets are resolved server-side in the facility timezone', () {
+    test('never resolves a date range on the device, presets are resolved server-side in the facility timezone', () {
       expect(source, isNot(contains('DateTime.now()')));
       expect(source, isNot(contains('DateTime(')));
     });
@@ -82,7 +82,7 @@ void main() {
   });
 
   group('FinanceRepository error mapping', () {
-    test('a facility-isolation rejection maps to financeAccessDenied — never a fabricated zero summary', () {
+    test('a facility-isolation rejection maps to financeAccessDenied, never a fabricated zero summary', () {
       expect(
         source,
         contains("if (message.contains('Not authorized')) return AppException(AppErrorCode.financeAccessDenied);"),
@@ -112,7 +112,7 @@ void main() {
       expect(source, contains("'get_revenue_breakdown',"));
     });
 
-    test('maps every revenue-by-source figure — spec Critical Finance Test', () {
+    test('maps every revenue-by-source figure, spec Critical Finance Test', () {
       final breakdown = RevenueBreakdown.fromJson({
         'membership_revenue_minor': 150000,
         'member_booking_revenue_minor': 50000,
@@ -160,7 +160,7 @@ void main() {
       expect(point.netMinor, 1170000);
     });
 
-    test('an empty trend stays empty — the repository only maps rows the server sent, never fabricates points', () {
+    test('an empty trend stays empty. The repository only maps rows the server sent, never fabricates points', () {
       expect(source, contains('.map((row) => RevenueTrendPoint.fromJson((row as Map).cast<String, dynamic>()))'));
       expect(
         source,

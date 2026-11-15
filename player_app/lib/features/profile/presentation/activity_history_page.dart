@@ -59,7 +59,7 @@ class ActivityHistoryPage extends ConsumerWidget {
           ),
         );
 
-    String n(int? v) => v == null ? '—' : '$v';
+    String n(int? v) => v == null ? '-' : '$v';
 
     return ProfileSubPage(
       title: 'Activity & History',

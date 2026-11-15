@@ -246,10 +246,9 @@ export function AddStudentWizardPage() {
   /** The enrollment's total obligation: one fee, or every month's fee until the program ends. */
   const totalPayableMinor = cycleFeeMinor * cycles;
   // The program's existing Payment Mode decides which collection methods are offered.
-  // A monthly program is collected through Auto Pay, which is an Advanced-plan feature: on Basic the payment is recorded by hand
-  // (one-time payment links are in every plan).
+  // Online collection (payment links and Auto Pay) is an Advanced-plan feature: on Basic the payment is recorded by hand.
   const autoPayOk = perms ? perms.planHasFeature("AUTOPAY") : true;
-  const noAutoPay = isMonthly && !autoPayOk;
+  const noAutoPay = !autoPayOk;
   const onlineAllowed = program ? program.paymentMode !== "OFFLINE" && !noAutoPay : false;
   const offlineAllowed = program ? program.paymentMode !== "ONLINE" || noAutoPay : true;
   const monthlyNeedsDates = isMonthly && !program?.endDate;
@@ -292,7 +291,7 @@ export function AddStudentWizardPage() {
   function composeNotes(): string | null {
     const parts: string[] = [];
     if (emergencyName.trim() || emergencyPhone.trim()) {
-      parts.push(`Emergency Contact: ${emergencyName.trim() || "—"}${emergencyPhone.trim() ? ` (${emergencyPhone.trim()})` : ""}`);
+      parts.push(`Emergency Contact: ${emergencyName.trim() || "-"}${emergencyPhone.trim() ? ` (${emergencyPhone.trim()})` : ""}`);
     }
     if (notes.trim()) parts.push(notes.trim());
     return parts.length ? parts.join("\n") : null;
@@ -434,7 +433,7 @@ export function AddStudentWizardPage() {
         ))}
       </ol>
 
-      {step === "Student Details" && facilityId && (
+      {step === "Student Details" && facilityId && autoPayOk && (
         <StudentBulkUpload facilityId={facilityId} activeProgramCount={programs === null ? null : programs.length} />
       )}
 
@@ -600,10 +599,10 @@ export function AddStudentWizardPage() {
               <div className="rounded-lg border border-border p-3 text-sm">
                 <p className="font-semibold">{program.name}</p>
                 <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>{sportName ?? "—"}</span>
+                  <span>{sportName ?? "-"}</span>
                   <span>{program.level}</span>
-                  <span>{program.startDate && program.endDate ? `${fmtDate(program.startDate)} – ${fmtDate(program.endDate)}` : "—"}</span>
-                  <span>{program.isMembershipIncluded ? "Included" : program.defaultPriceMinor != null ? money(program.defaultPriceMinor) : "—"}</span>
+                  <span>{program.startDate && program.endDate ? `${fmtDate(program.startDate)} – ${fmtDate(program.endDate)}` : "-"}</span>
+                  <span>{program.isMembershipIncluded ? "Included" : program.defaultPriceMinor != null ? money(program.defaultPriceMinor) : "-"}</span>
                 </div>
               </div>
             )}
@@ -658,12 +657,12 @@ export function AddStudentWizardPage() {
             <div>
               <p className="text-xs text-muted-foreground">Program</p>
               <p className="text-sm font-medium">
-                {program.name} — {sportName ?? "—"}, {program.level}
+                {program.name}: {sportName ?? "-"}, {program.level}
               </p>
             </div>
             {selectedBatch && (
               <div>
-                <p className="text-xs text-muted-foreground">Batch Schedule (informational — already configured)</p>
+                <p className="text-xs text-muted-foreground">Batch Schedule (informational, already configured)</p>
                 <p className="text-sm font-medium">
                   {selectedBatch.name} · {selectedBatch.daysOfWeek.map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join(", ")} · {selectedBatch.startTime}–{selectedBatch.endTime}
                   {selectedBatch.coachName ? ` · Coach ${selectedBatch.coachName}` : ""}
@@ -677,24 +676,24 @@ export function AddStudentWizardPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <p className="text-xs text-muted-foreground">Program Length</p>
-                <p className="text-sm font-medium">{programLengthLabel(startDate, program.endDate) ?? "—"}</p>
+                <p className="text-sm font-medium">{programLengthLabel(startDate, program.endDate) ?? "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Sessions</p>
                 <p className="text-sm font-medium">
-                  {programTotalSessions(program) ?? "—"}
+                  {programTotalSessions(program) ?? "-"}
                   {program.sessionsPerWeek ? ` · ${program.sessionsPerWeek} / week` : ""}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Program Ends</p>
-                <p className="text-sm font-medium">{program.endDate ? fmtDate(program.endDate) : "—"}</p>
+                <p className="text-sm font-medium">{program.endDate ? fmtDate(program.endDate) : "-"}</p>
               </div>
             </div>
             <div className="rounded-lg border border-border p-3 text-sm">
               <p className="mb-2 text-xs font-semibold text-muted-foreground">Payment Summary</p>
               {program.isMembershipIncluded ? (
-                <p className="font-medium">Included — no fee</p>
+                <p className="font-medium">Included. No fee</p>
               ) : (
                 <dl className="space-y-1.5">
                   <div className="flex justify-between">
@@ -776,14 +775,6 @@ export function AddStudentWizardPage() {
               <p className="text-sm text-success">No payment due.</p>
             ) : (
               <>
-                {noAutoPay && (
-                  <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-                    Monthly Auto Pay is part of the Advanced plan. On your current plan you record each month&apos;s payment yourself.{" "}
-                    <Link href="/plans" className="font-medium text-primary hover:underline">
-                      See plans
-                    </Link>
-                  </p>
-                )}
                 <div className={cn("grid gap-2", onlineAllowed && offlineAllowed ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2")}>
                   {onlineAllowed && (
                     <button
@@ -799,7 +790,7 @@ export function AddStudentWizardPage() {
                     <button
                       type="button"
                       disabled={Boolean(billingLink)}
-                      title={billingLink ? "A payment link was already generated — record the payment through it." : undefined}
+                      title={billingLink ? "A payment link was already generated, record the payment through it." : undefined}
                       onClick={() => setPaymentMode("OFFLINE")}
                       className={cn("h-10 rounded-lg border text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50", paymentMode === "OFFLINE" ? "border-success bg-success/10 text-success" : "border-input hover:bg-accent/50")}
                     >
@@ -819,7 +810,7 @@ export function AddStudentWizardPage() {
                     <p className="text-xs text-muted-foreground">
                       {isMonthly
                         ? `A Razorpay AutoPay link will be created. The student approves it once, then ${money(cycleFeeMinor)} is charged automatically every month for ${cycles} ${cycles === 1 ? "month" : "months"}${program?.endDate ? ` (until ${fmtDate(program.endDate)})` : ""}.`
-                        : `A Razorpay payment link for ${money(totalPayableMinor - paidSoFar)} will be created. Share it with the student — the enrollment is marked paid automatically once they pay.`}
+                        : `A Razorpay payment link for ${money(totalPayableMinor - paidSoFar)} will be created. Share it with the student. The enrollment is marked paid automatically once they pay.`}
                     </p>
                     {billingLink?.shortUrl ? (
                       <div className="space-y-2 rounded-lg border border-success/30 bg-success/10 p-3">
@@ -839,7 +830,7 @@ export function AddStudentWizardPage() {
                           </button>
                         </div>
                         <p className="text-xs text-foreground/80">
-                          The student is enrolled and the payment shows as due until they pay — it updates automatically.
+                          The student is enrolled and the payment shows as due until they pay. It updates automatically.
                         </p>
                       </div>
                     ) : (
@@ -919,7 +910,7 @@ export function AddStudentWizardPage() {
                     onClick={() => setStep("Success")}
                     className="flex h-10 items-center gap-2 rounded-lg bg-[#4817C2] px-4 text-sm font-semibold text-white"
                   >
-                    Continue — Collect Payment Later
+                    Continue: Collect Payment Later
                   </button>
                 )}
               </>
@@ -936,18 +927,18 @@ export function AddStudentWizardPage() {
               <p className="text-lg font-bold">Student Added Successfully</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {selectedMember?.fullName} has been enrolled in <span className="font-medium text-foreground">{program?.name}</span>
-                {selectedBatch ? ` — ${selectedBatch.name}` : ""}.
+                {selectedBatch ? `: ${selectedBatch.name}` : ""}.
               </p>
               {billingLink && onlinePaid && (
                 <p className="mt-2 text-sm font-medium text-success">
-                  {isMonthly ? "Auto-pay is active — the first month's payment was received." : "Payment received online."}
+                  {isMonthly ? "Auto-pay is active. The first month's payment was received." : "Payment received online."}
                 </p>
               )}
               {billingLink && !onlinePaid && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {isMonthly
-                    ? "Monthly auto-pay is set up — it starts once the student approves the mandate from the link."
-                    : "Awaiting online payment — the status updates automatically once the student pays."}
+                    ? "Monthly auto-pay is set up. It starts once the student approves the mandate from the link."
+                    : "Awaiting online payment. The status updates automatically once the student pays."}
                 </p>
               )}
             </div>

@@ -61,7 +61,7 @@ export function StatCard({
         )}
       </div>
       {/* Figure and delta share a baseline, as in the design. The animated
-          number is decorative motion over the same value — the accessible
+          number is decorative motion over the same value. The accessible
           name always carries the settled one. */}
       <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
         <p className="text-xl font-semibold leading-none tabular-nums text-foreground" aria-label={value}>

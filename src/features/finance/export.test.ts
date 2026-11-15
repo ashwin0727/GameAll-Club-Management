@@ -4,7 +4,7 @@ import type { FinanceSummary, LedgerEntry } from "@/features/finance/types";
 
 const summary = { grossRevenueMinor: 1300000, refundsMinor: 50000, expensesMinor: 635000, netRevenueMinor: 615000, outstandingMinor: 600000 } as FinanceSummary;
 const entry = (over: Partial<LedgerEntry>): LedgerEntry => ({
-  id: "1", reference: "TXN-1", occurredAt: "2026-10-12T10:00:00.000Z", description: "Guest Booking — Asha, Rao", category: "Guest Booking Revenue",
+  id: "1", reference: "TXN-1", occurredAt: "2026-10-12T10:00:00.000Z", description: "Guest Booking: Asha, Rao", category: "Guest Booking Revenue",
   txnType: "INCOME", paymentMethod: "UPI", amountMinor: 40000, currency: "INR", status: "paid", sourceType: "GUEST_BOOKING",
   bookingId: null, membershipId: null, expenseId: null, ...over,
 });
@@ -18,7 +18,7 @@ describe("buildFinanceCsv", () => {
     expect(lines).toContain("Total revenue (INR),13000.00");
     expect(lines).toContain("Net revenue (INR),6150.00");
     expect(csv).toContain("Date,Reference,Description,Category,Type,Payment method,Amount (INR),Status");
-    expect(csv).toContain('"Guest Booking — Asha, Rao"');
+    expect(csv).toContain('"Guest Booking: Asha, Rao"');
     expect(csv).toContain("EXP-1");
     expect(csv).toContain("2500.00");
   });

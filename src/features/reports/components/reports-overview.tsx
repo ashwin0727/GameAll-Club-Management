@@ -159,7 +159,7 @@ export function ReportsOverview() {
         <div>
           <h1 className="text-xl font-semibold">Reports &amp; Analytics</h1>
           <p className="text-sm text-muted-foreground">
-            {sportsSelected ? `Business performance for ${sportsLabel}.` : "Business performance at a glance — all sports."}
+            {sportsSelected ? `Business performance for ${sportsLabel}.` : "Business performance at a glance, all sports."}
           </p>
         </div>
         <div className="flex flex-wrap items-start gap-3">
@@ -172,7 +172,7 @@ export function ReportsOverview() {
                 size="sm"
                 className="min-h-9"
                 disabled={!metrics || dirty}
-                title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
+                title={dirty ? "Apply the new dates first. The export is for the dates on screen." : "Export the dates on screen"}
                 onClick={handleExport}
               >
                 <Download className="h-4 w-4" aria-hidden /> Export

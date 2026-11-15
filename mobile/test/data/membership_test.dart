@@ -137,7 +137,7 @@ void main() {
   });
 
   group('Member.fromJson', () {
-    test('parses a members row — a facility customer record, not an auth account', () {
+    test('parses a members row, a facility customer record, not an auth account', () {
       final member = Member.fromJson({
         'id': 'member-1',
         'facility_id': 'facility-1',

@@ -336,7 +336,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     final cards = <Widget>[
       AppMetricCard(
         label: 'Total Revenue',
-        value: s == null ? '—' : money(s.grossRevenueMinor),
+        value: s == null ? '-' : money(s.grossRevenueMinor),
         icon: Icons.payments_outlined,
         accentColor: tokens.primary,
         changePercent: s == null ? null : changePct(current: s.grossRevenueMinor, previous: p?.grossRevenueMinor ?? 0),
@@ -345,7 +345,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       ),
       AppMetricCard(
         label: 'Total Expenses',
-        value: s == null ? '—' : money(s.expensesMinor),
+        value: s == null ? '-' : money(s.expensesMinor),
         icon: Icons.receipt_long_outlined,
         accentColor: tokens.destructive,
         countTo: s?.expensesMinor,
@@ -354,7 +354,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       ),
       AppMetricCard(
         label: 'Net Revenue',
-        value: s == null ? '—' : money(s.netRevenueMinor),
+        value: s == null ? '-' : money(s.netRevenueMinor),
         icon: Icons.account_balance_wallet_outlined,
         accentColor: tokens.electricBlue,
         changePercent: s == null ? null : changePct(current: s.netRevenueMinor, previous: p?.netRevenueMinor ?? 0),
@@ -370,7 +370,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         },
         child: AppMetricCard(
           label: 'Pending Payments',
-          value: s == null ? '—' : money(s.outstandingMinor),
+          value: s == null ? '-' : money(s.outstandingMinor),
           icon: Icons.hourglass_empty_rounded,
           accentColor: tokens.warning,
           countTo: s?.outstandingMinor,
@@ -419,7 +419,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Plus ${breakdown.membershipIncludedUsageCount} included membership '
-            'session${breakdown.membershipIncludedUsageCount == 1 ? '' : 's'} — usage, not revenue.',
+            'session${breakdown.membershipIncludedUsageCount == 1 ? '' : 's'}, usage, not revenue.',
             style: AppTypography.caption(context),
           ),
         ],
@@ -470,7 +470,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                 children: [
                   Text('${txn.reference} · ${sourceTypeLabel(txn.sourceType)}',
                       style: AppTypography.rowTitle(context)),
-                  Text(txn.customerName ?? '—', style: AppTypography.caption(context)),
+                  Text(txn.customerName ?? '-', style: AppTypography.caption(context)),
                 ],
               ),
             ),

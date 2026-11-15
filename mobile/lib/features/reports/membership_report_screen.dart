@@ -104,7 +104,7 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
   String _titleCase(String s) => s.isEmpty ? s : s[0] + s.substring(1).toLowerCase();
 
   String _typeLabel(MembershipTypeRow r) =>
-      r.planName == '—' ? _titleCase(r.membershipType) : '${_titleCase(r.membershipType)} · ${r.planName}';
+      (r.planName == '-' || r.planName == '\u2014') ? _titleCase(r.membershipType) : '${_titleCase(r.membershipType)} · ${r.planName}';
 
   String _plural(int n, String one, String many) => '$n ${n == 1 ? one : many}';
 
@@ -126,8 +126,8 @@ class _MembershipReportScreenState extends ConsumerState<MembershipReportScreen>
         ['Payments', 'Partially Paid', a.partiallyPaidCount],
         ['Payments', 'Pending', a.pendingCount],
         for (final r in _byType) ...[
-          ['Membership Types', '${_typeLabel(r)} — members', r.count],
-          ['Membership Types', '${_typeLabel(r)} — revenue (INR)', (r.revenueMinor / 100).toStringAsFixed(2)],
+          ['Membership Types', '${_typeLabel(r)}, members', r.count],
+          ['Membership Types', '${_typeLabel(r)}, revenue (INR)', (r.revenueMinor / 100).toStringAsFixed(2)],
         ],
         for (final b in _batches)
           [

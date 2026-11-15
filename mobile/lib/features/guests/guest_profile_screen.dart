@@ -158,7 +158,7 @@ class _GuestProfileScreenState extends ConsumerState<GuestProfileScreen> {
                                       ],
                                     ),
                                   ),
-                                  Text(b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '—'),
+                                  Text(b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '-'),
                                 ],
                               ),
                             ),

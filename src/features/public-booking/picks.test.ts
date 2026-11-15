@@ -11,7 +11,7 @@ const pick = (courtId: string, h: number, price = 30000): Pick => ({
 });
 
 describe("togglePick", () => {
-  it("adds, and removes on a second tap — per court", () => {
+  it("adds, and removes on a second tap, per court", () => {
     let p = togglePick([], pick("c1", 18));
     p = togglePick(p, pick("c2", 18));
     expect(p).toHaveLength(2);

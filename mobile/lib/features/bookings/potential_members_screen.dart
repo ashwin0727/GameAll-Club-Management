@@ -357,7 +357,7 @@ class _PotentialMembersScreenState extends ConsumerState<PotentialMembersScreen>
                           StatusBadge(label: g.label, tone: g.isFrequent ? StatusTone.success : StatusTone.neutral),
                         ],
                       ),
-                      Text(g.phone ?? '—', style: AppTypography.caption(context)),
+                      Text(g.phone ?? '-', style: AppTypography.caption(context)),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         '${g.bookings} bookings · last ${DateFormat('d MMM yyyy').format(g.lastBookingAt)}',

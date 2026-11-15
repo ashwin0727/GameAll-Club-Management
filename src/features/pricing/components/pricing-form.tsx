@@ -290,7 +290,7 @@ export function PricingForm({ onDone }: { onDone?: () => void } = {}) {
 
     setSportState(nextState);
     if (hasErrors) {
-      setAttention("Some pricing needs attention — fix the highlighted fields above, then continue.");
+      setAttention("Some pricing needs attention. Fix the highlighted fields above, then continue.");
       // Take the user to the first problem instead of leaving Continue looking dead.
       requestAnimationFrame(() => document.querySelector("[data-pricing-error]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
       return;

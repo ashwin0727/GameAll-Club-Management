@@ -387,8 +387,8 @@ void main() {
         expect(find.text('No programs to show yet.'), findsOneWidget);
         expect(find.byKey(const ValueKey('offer-select')), findsNothing);
         // the summary is empty and Pay & Enroll cannot be pressed
-        expect(_text(tester, 'summary-program'), '—');
-        expect(_text(tester, 'summary-total'), '—');
+        expect(_text(tester, 'summary-program'), '-');
+        expect(_text(tester, 'summary-total'), '-');
         await _tapKey(tester, 'coaching-pay');
         expect(find.byKey(const ValueKey('coaching-note')), findsOneWidget);
         expect(_text(tester, 'coaching-note'), 'Pick a program to enroll.');

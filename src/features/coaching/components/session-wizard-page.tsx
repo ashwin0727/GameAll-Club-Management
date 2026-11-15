@@ -48,7 +48,7 @@ function durationLabel(start: string, end: string): string {
   const [sh = 0, sm = 0] = start.split(":").map(Number);
   const [eh = 0, em = 0] = end.split(":").map(Number);
   const mins = eh * 60 + em - (sh * 60 + sm);
-  if (mins <= 0) return "—";
+  if (mins <= 0) return "-";
   if (mins % 60 === 0) return `${mins / 60} Hour${mins === 60 ? "" : "s"}`;
   return `${mins} minutes`;
 }
@@ -458,14 +458,14 @@ export function SessionWizardPage() {
                 <AvatarImage src={coach?.avatarUrl ?? undefined} alt="" />
                 <AvatarFallback className="text-[10px]">{coach ? initials(coach.fullName) : "?"}</AvatarFallback>
               </Avatar>
-              <span className="text-sm">{coach?.fullName ?? "—"}</span>
+              <span className="text-sm">{coach?.fullName ?? "-"}</span>
             </div>
             <dl className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-              <Row icon={BookOpen} value={`${sportName ?? "—"} | ${level}`} />
+              <Row icon={BookOpen} value={`${sportName ?? "-"} | ${level}`} />
               <Row icon={ChevronRight} value={fmtDate(date)} />
               <Row icon={ChevronRight} value={`${formatClock12(startTime)} - ${formatClock12(endTime)} (${durationLabel(startTime, endTime)})`} />
-              <Row icon={MapPin} value={`${court?.name ?? "—"} · ${sportName ?? ""}`} />
-              <Row icon={Users} value={`Max ${maxStudents || "—"} students`} />
+              <Row icon={MapPin} value={`${court?.name ?? "-"} · ${sportName ?? ""}`} />
+              <Row icon={Users} value={`Max ${maxStudents || "-"} students`} />
               <Row icon={IndianRupee} value={pricePerStudent.trim() ? `${money(Math.round(Number(pricePerStudent) * 100))} per student` : "Free session"} />
             </dl>
             {description.trim() && <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">{description}</p>}

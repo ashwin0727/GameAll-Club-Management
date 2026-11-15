@@ -460,7 +460,7 @@ export function BookingListTab({
               onPerPage={setPerPage}
               emptyText={
                 filters.kind === "EVENT"
-                  ? "No events yet — events aren't recorded in this range."
+                  ? "No events yet, events aren't recorded in this range."
                   : "No bookings match these filters."
               }
             />

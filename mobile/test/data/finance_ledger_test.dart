@@ -39,7 +39,7 @@ void main() {
         'id': 'txn-1',
         'reference': 'TXN-ABCD1234',
         'occurred_at': '2026-08-20T10:15:00Z',
-        'description': 'Guest Booking — Rahul',
+        'description': 'Guest Booking: Rahul',
         'category': 'Guest Booking Revenue',
         'txn_type': 'INCOME',
         'payment_method': 'UPI',
@@ -58,7 +58,7 @@ void main() {
       expect(entry.occurredAt.toUtc(), DateTime.parse('2026-08-20T10:15:00Z'));
       // Shown in the device's own time, not UTC: a payment taken at 6:31 PM must not read 13:01.
       expect(entry.occurredAt.isUtc, isFalse);
-      expect(entry.description, 'Guest Booking — Rahul');
+      expect(entry.description, 'Guest Booking: Rahul');
       expect(entry.category, 'Guest Booking Revenue');
       expect(entry.txnType, LedgerTxnType.income);
       expect(entry.paymentMethod, 'UPI');
@@ -71,12 +71,12 @@ void main() {
       expect(entry.expenseId, isNull);
     });
 
-    test('maps an EXPENSE row — no payment method, an expense id, negative-in-meaning', () {
+    test('maps an EXPENSE row. No payment method, an expense id, negative-in-meaning', () {
       final entry = LedgerEntry.fromJson({
         'id': 'exp-9',
         'reference': 'EXP-1A2B3C4D',
         'occurred_at': '2026-08-02T00:00:00Z',
-        'description': 'State Electricity Board — August bill',
+        'description': 'State Electricity Board: August bill',
         'category': 'Utilities',
         'txn_type': 'EXPENSE',
         'payment_method': null,

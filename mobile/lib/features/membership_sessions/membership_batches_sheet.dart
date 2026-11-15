@@ -238,7 +238,7 @@ class _MembershipBatchesSheetState extends ConsumerState<MembershipBatchesSheet>
                       borderRadius: BorderRadius.circular(AppRadius.lg),
                       border: Border.all(color: tokens.borderColor),
                     ),
-                    child: Text('No batches yet — add the first one below.',
+                    child: Text('No batches yet. Add the first one below.',
                         style: TextStyle(color: tokens.textSecondary)),
                   )
                 else

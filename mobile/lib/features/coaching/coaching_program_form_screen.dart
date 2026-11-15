@@ -9,6 +9,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../data/models/coaching.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
+import '../../data/models/plan.dart' show autoPayFeature;
 import '../authentication/session_controller.dart';
 import '../maintenance/maintenance_court_options.dart';
 import '../staff/staff_common.dart';
@@ -64,6 +65,8 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
   late String _feeType = widget.existing?.feeType ?? 'ONE_TIME';
   // OFFLINE | ONLINE | BOTH
   late String _paymentMode = widget.existing?.paymentMode ?? 'BOTH';
+  /// Online payment collection is part of the Advanced plan; on Basic every program is collected offline.
+  bool get _onlineOk => ref.read(sessionControllerProvider).planHasFeature(autoPayFeature);
   DateTime? _startDate;
   DateTime? _endDate;
 
@@ -220,7 +223,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
           sessionsPerWeek: int.tryParse(_sessionsPerWeek.text.trim()),
           startDate: _startDate != null ? _iso(_startDate!) : null,
           endDate: _endDate != null ? _iso(_endDate!) : null,
-          paymentMode: _paymentMode,
+          paymentMode: _onlineOk ? _paymentMode : 'OFFLINE',
           earlyBirdDiscountMinor: discountMinor,
           taxPercent: taxPercent,
           feeType: feeType,
@@ -241,7 +244,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
           sessionsPerWeek: int.tryParse(_sessionsPerWeek.text.trim()),
           startDate: _iso(_startDate!),
           endDate: _endDate != null ? _iso(_endDate!) : null,
-          paymentMode: _paymentMode,
+          paymentMode: _onlineOk ? _paymentMode : 'OFFLINE',
           earlyBirdDiscountMinor: discountMinor,
           taxPercent: taxPercent,
           feeType: feeType,
@@ -383,13 +386,13 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
-            _dropdownMap('Payment mode', _paymentMode, const {
+            if (_onlineOk) _dropdownMap('Payment mode', _paymentMode, const {
               'OFFLINE': 'Offline',
               'ONLINE': 'Online',
               'BOTH': 'Offline & Online',
             }, (v) => setState(() => _paymentMode = v)),
             const SizedBox(height: 4),
-            Text('A fee is an obligation — it becomes revenue only when a payment is recorded.',
+            Text('A fee is an obligation. It becomes revenue only when a payment is recorded.',
                 style: TextStyle(fontSize: 11, color: context.tokens.textSecondary)),
             const SizedBox(height: AppSpacing.sm),
             TextField(controller: _description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description (Optional)')),
@@ -484,7 +487,7 @@ class _CoachingProgramFormScreenState extends ConsumerState<CoachingProgramFormS
       },
       child: AppSelectField(
         decoration: InputDecoration(labelText: label),
-        child: Text(value == null ? '—' : DateFormat('d MMM yyyy').format(value)),
+        child: Text(value == null ? '-' : DateFormat('d MMM yyyy').format(value)),
       ),
     );
   }

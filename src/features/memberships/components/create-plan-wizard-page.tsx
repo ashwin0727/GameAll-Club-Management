@@ -1011,7 +1011,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                   </div>
                   <div className="space-y-1.5 sm:border-l sm:border-border sm:pl-4">
                     <ReviewKeyRow label="Plan Type" value={draft.planType === "RECURRING" ? "Recurring" : "Time Based"} />
-                    <ReviewKeyRow label="Description" value={draft.description.trim() || "—"} />
+                    <ReviewKeyRow label="Description" value={draft.description.trim() || "-"} />
                     <ReviewKeyRow
                       label="Status"
                       value={
@@ -1082,7 +1082,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                           ),
                         ]
                           .filter(Boolean)
-                          .join(", ") || "—"}
+                          .join(", ") || "-"}
                       </p>
                     </div>
                   </div>
@@ -1108,7 +1108,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">—</p>
+                      <p className="text-sm text-muted-foreground">-</p>
                     )}
                   </div>
 
@@ -1117,7 +1117,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                     <div className="space-y-1.5 text-sm">
                       <p className="flex items-center gap-1.5 font-medium text-foreground">
                         <CalendarDays className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden />
-                        {draft.playingDays.length > 0 ? DAY_ABBR.filter((_, i) => draft.playingDays.includes(i)).join(", ") : "—"}
+                        {draft.playingDays.length > 0 ? DAY_ABBR.filter((_, i) => draft.playingDays.includes(i)).join(", ") : "-"}
                       </p>
                       {draft.timeWindows.length > 0 ? (
                         draft.timeWindows.map((w) => (
@@ -1127,7 +1127,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                           </p>
                         ))
                       ) : (
-                        <p className="text-muted-foreground">—</p>
+                        <p className="text-muted-foreground">-</p>
                       )}
                     </div>
                   </div>
@@ -1161,7 +1161,7 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
 
               <ReviewSection n={4} title="Final Summary" onEdit={() => setStep(1)}>
                 <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">
-                  <ReviewRow label="Membership Plan" value={fullPlanName || "—"} />
+                  <ReviewRow label="Membership Plan" value={fullPlanName || "-"} />
                   <ReviewRow
                     label="Price"
                     value={
@@ -1176,13 +1176,13 @@ function CreatePlanWizard({ onCreateAnother }: { onCreateAnother: () => void }) 
                   />
                   <ReviewRow
                     label="Court Access"
-                    value={draft.courtIds.map((id) => courts.find((c) => c.id === id)?.name).filter(Boolean).join(", ") || "—"}
+                    value={draft.courtIds.map((id) => courts.find((c) => c.id === id)?.name).filter(Boolean).join(", ") || "-"}
                   />
                   <ReviewRow
                     label="Playing Schedule"
                     value={
                       draft.playingDays.length === 0 || draft.timeWindows.length === 0
-                        ? "—"
+                        ? "-"
                         : `${DAY_ABBR.filter((_, i) => draft.playingDays.includes(i)).join(", ")}, ${draft.timeWindows
                             .map((w) => `${formatClock12(w.startTime)} – ${formatClock12(w.endTime)}`)
                             .join("; ")}`

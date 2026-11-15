@@ -47,7 +47,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
   membershipRevenue:
     "Realised membership payments in the range. Membership session usage is never revenue.",
   totalRevenue:
-    "Sum of successfully collected payments in the range (Finance gross revenue). Cash basis — a pending amount is not revenue.",
+    "Sum of successfully collected payments in the range (Finance gross revenue). Cash basis, a pending amount is not revenue.",
   totalExpenses: "Recorded facility expenses in the range (Finance). Voided expenses excluded.",
   netRevenue: "Gross revenue minus refunds minus expenses (Finance).",
   refunds: "Money returned to customers in the range (Finance). Reduces net revenue.",
@@ -66,7 +66,7 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
   newMemberships: "Memberships created within the selected range.",
   expiringMemberships: "Active memberships whose end date is within the next 30 days.",
   membershipOutstanding:
-    "Membership fees still owed on memberships created in the range — total price minus payments collected.",
+    "Membership fees still owed on memberships created in the range, total price minus payments collected.",
   membershipSessionUtilization:
     "Confirmed member + guest slots divided by total session capacity, over sessions dated in the range.",
   guestReleased:
@@ -82,4 +82,4 @@ export const KPI_DEFINITIONS: Record<KpiKey, string> = {
 };
 
 export const FRESHNESS_NOTE =
-  "Reports are real-time — every figure is read live from Bookings, Memberships and Finance when the page loads. There is no cached or delayed data.";
+  "Reports are real-time. Every figure is read live from Bookings, Memberships and Finance when the page loads. There is no cached or delayed data.";

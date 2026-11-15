@@ -117,7 +117,7 @@ export function CoachDetailsPage({ coachId }: { coachId: string }) {
             </div>
             <p className="text-sm text-muted-foreground">{c.title ?? "Coach"}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {c.email ?? "—"}
+              {c.email ?? "-"}
               {c.phone ? ` · ${c.phone}` : ""}
             </p>
             {c.bio && <p className="mt-2 max-w-prose text-sm text-muted-foreground">{c.bio}</p>}
@@ -321,7 +321,7 @@ function AvailabilityTab({
             {coach.availabilityExceptions.map((ex) => (
               <li key={ex.id} className="flex items-center justify-between py-2">
                 <span>
-                  {fmtDate(ex.date)} —{" "}
+                  {fmtDate(ex.date)}: {" "}
                   {ex.isAvailable ? `available ${ex.startTime?.slice(0, 5)}–${ex.endTime?.slice(0, 5)}` : "unavailable"}
                 </span>
                 <span className="text-muted-foreground">{ex.reason ?? ""}</span>

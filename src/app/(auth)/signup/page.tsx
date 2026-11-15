@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { SignupForm } from "@/features/auth/components/signup-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Create your account — ${PRODUCT_NAME}`,
+  title: `Create your account`,
 };
 
 export default function SignupPage() {

@@ -281,7 +281,7 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        stat(planIcon(_plan), tokens.primary, sport ?? '—', 'Sport'),
+        stat(planIcon(_plan), tokens.primary, sport ?? '-', 'Sport'),
         stat(Icons.event_repeat_outlined, tokens.warning, '${_batches.length}', 'Total Slots'),
         stat(Icons.groups_outlined, tokens.electricBlue, '${widget.members.length}', 'Active Members'),
       ],
@@ -342,7 +342,7 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
     return [
       _kv(tokens, Icons.calendar_today_outlined, 'Duration', planDurationLabel(p.durationDays)),
       _kv(tokens, Icons.schedule_outlined, 'Validity', '${p.durationDays} Days'),
-      _kv(tokens, Icons.autorenew_rounded, 'Auto Renewal', p.isRecurring ? 'Yes — renews each cycle' : 'No'),
+      _kv(tokens, Icons.autorenew_rounded, 'Auto Renewal', p.isRecurring ? 'Yes, renews each cycle' : 'No'),
       _kv(tokens, Icons.event_available_outlined, 'Created', Formatters.dateShort(p.createdAt.toLocal())),
       _kv(tokens, Icons.sell_outlined, 'Plan Type', p.isRecurring ? 'Recurring' : 'Time-based'),
       if (p.category != null && p.category!.trim().isNotEmpty) _kv(tokens, Icons.category_outlined, 'Category', p.category!.trim()),
@@ -451,7 +451,7 @@ class _MembershipPlanDetailsScreenState extends ConsumerState<MembershipPlanDeta
       ),
       const SizedBox(height: AppSpacing.md),
       _kv(tokens, Icons.schedule_outlined, 'Available Hours', '${Formatters.time12h(starts.first)} - ${Formatters.time12h(ends.last)}'),
-      _kv(tokens, Icons.grid_view_rounded, 'Applicable Courts', courts.isEmpty ? '—' : courts.join(', ')),
+      _kv(tokens, Icons.grid_view_rounded, 'Applicable Courts', courts.isEmpty ? '-' : courts.join(', ')),
       const SizedBox(height: AppSpacing.md),
       for (final b in _batches)
         Padding(

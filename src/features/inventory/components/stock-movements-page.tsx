@@ -118,9 +118,9 @@ export function StockMovementsPage() {
                     </TableCell>
                     <TableCell className="text-right">{movementQty(m.quantity)}</TableCell>
                     <TableCell className="text-right tabular-nums">{m.balanceAfter}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.referenceLabel ?? m.reason ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.performedByName ?? "—"}</TableCell>
-                    <TableCell className="max-w-[16rem] truncate text-muted-foreground">{m.notes ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.referenceLabel ?? m.reason ?? "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.performedByName ?? "-"}</TableCell>
+                    <TableCell className="max-w-[16rem] truncate text-muted-foreground">{m.notes ?? "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

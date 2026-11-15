@@ -23,7 +23,7 @@ String staffInitials(String name) {
 }
 
 String staffDate(String? iso) {
-  if (iso == null) return '—';
+  if (iso == null) return '-';
   return Formatters.dateShort(DateTime.parse(iso));
 }
 

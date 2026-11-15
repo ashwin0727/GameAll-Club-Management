@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { CourtUtilizationReport } from "@/features/reports/components/court-utilization-report";
-import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: `Court Utilization — ${APP_NAME}` };
+export const metadata: Metadata = { title: `Court Utilization` };
 
 export default function ReportsCourtUtilizationPage() {
   return (

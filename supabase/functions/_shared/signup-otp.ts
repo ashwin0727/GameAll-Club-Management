@@ -67,7 +67,7 @@ export function buildOtpEmail(opts: { name: string; code: string; logoUrl: strin
         </td></tr>
         <tr><td style="padding:0 32px 28px;">
           <p style="margin:0 0 12px;font-size:14px;line-height:22px;color:#475569;">This code expires in <strong>${OTP_TTL_MINUTES} minutes</strong> and can be used once.</p>
-          <p style="margin:0;font-size:13px;line-height:20px;color:#94a3b8;">For your security, never share this code with anyone — GameAll will never ask for it. If you didn't try to create an account, you can safely ignore this email.</p>
+          <p style="margin:0;font-size:13px;line-height:20px;color:#94a3b8;">For your security, never share this code with anyone: GameAll will never ask for it. If you didn't try to create an account, you can safely ignore this email.</p>
         </td></tr>
         <tr><td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e5e9f0;font-size:12px;color:#94a3b8;" align="center">&copy; ${new Date().getFullYear()} GameAll. All rights reserved.</td></tr>
       </table>
@@ -75,6 +75,6 @@ export function buildOtpEmail(opts: { name: string; code: string; logoUrl: strin
   </table>
 </body>
 </html>`;
-  const text = `GameAll — One Time Password\n\nHi ${first}, your verification code is ${opts.code}.\nIt expires in ${OTP_TTL_MINUTES} minutes and can be used once.\n\nNever share this code with anyone. If you didn't try to create an account, ignore this email.`;
+  const text = `GameAll: One Time Password\n\nHi ${first}, your verification code is ${opts.code}.\nIt expires in ${OTP_TTL_MINUTES} minutes and can be used once.\n\nNever share this code with anyone. If you didn't try to create an account, ignore this email.`;
   return { subject, html, text };
 }

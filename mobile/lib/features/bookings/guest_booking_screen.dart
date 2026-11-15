@@ -448,10 +448,10 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       ),
       builder: (_) => _BookingConfirmedSheet(
         sport: _sportName,
-        courts: courtNames.isEmpty ? '—' : courtNames,
+        courts: courtNames.isEmpty ? '-' : courtNames,
         date: _dateLong(_date),
         time: _startTime == null || _endTime == null
-            ? '—'
+            ? '-'
             : '${_hhmm(_startTime!)} – ${_hhmm(_endTime!)}',
         totalInr: _grandTotalMinor == null
             ? null
@@ -786,7 +786,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           icon: Icons.grid_view_rounded,
           children: [
             Text(
-              'Tap to select — pick more than one to book them together at the same time.',
+              'Tap to select. Pick more than one to book them together at the same time.',
               style: TextStyle(fontSize: 12, color: t.textSecondary),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -960,7 +960,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                         'Checking…'
                       ),
                     _CourtAvailability.pickTime =>
-                      (Icons.help_outline_rounded, t.textSecondary, '—'),
+                      (Icons.help_outline_rounded, t.textSecondary, '-'),
                   };
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 6),
@@ -1139,8 +1139,8 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       icon: Icons.fact_check_outlined,
       children: [
         _groupLabel('GUEST'),
-        _kv('Name', _name.text.trim().isEmpty ? '—' : _name.text.trim()),
-        _kv('Phone', _phone.text.trim().isEmpty ? '—' : _phone.text.trim()),
+        _kv('Name', _name.text.trim().isEmpty ? '-' : _name.text.trim()),
+        _kv('Phone', _phone.text.trim().isEmpty ? '-' : _phone.text.trim()),
         if (_email.text.trim().isNotEmpty) _kv('Email', _email.text.trim()),
         _kv('Players',
             _players.text.trim().isEmpty ? '1' : _players.text.trim()),
@@ -1153,7 +1153,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         _kv(
             'Time',
             _startTime == null || _endTime == null
-                ? '—'
+                ? '-'
                 : '${_hhmm(_startTime!)} – ${_hhmm(_endTime!)}'),
         _kv('Duration',
             '${_hours.toStringAsFixed(_hours == _hours.roundToDouble() ? 0 : 1)} hr'),
@@ -1170,7 +1170,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                               fontSize: 13, fontWeight: FontWeight.w700))),
                   Text(
                     _totalMinorFor(c.id) == null
-                        ? '—'
+                        ? '-'
                         : Formatters.currencyInr(
                             (_totalMinorFor(c.id)! / 100).round()),
                     style: TextStyle(fontSize: 13, color: t.textSecondary),
@@ -1204,7 +1204,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
           ),
           Text(
             _grandTotalMinor == null
-                ? '—'
+                ? '-'
                 : Formatters.currencyInr((_grandTotalMinor! / 100).round()),
             style: TextStyle(
                 fontWeight: FontWeight.w800,
@@ -1413,20 +1413,20 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                     color: t.textPrimary)),
           ]),
           Divider(color: t.borderColor, height: AppSpacing.lg),
-          _kv('Sport', _sportName.isEmpty ? '—' : _sportName),
+          _kv('Sport', _sportName.isEmpty ? '-' : _sportName),
           _kv('Location', _facilityName),
           _kv('Court(s)',
-              selectedCourts.isEmpty ? '—' : selectedCourts.map((c) => c.name).join(', ')),
+              selectedCourts.isEmpty ? '-' : selectedCourts.map((c) => c.name).join(', ')),
           _kv('Date', _dateLong(_date)),
           _kv(
               'Time',
               _startTime == null || _endTime == null
-                  ? '—'
+                  ? '-'
                   : '${_hhmm(_startTime!)} – ${_hhmm(_endTime!)}'),
           _kv(
               'Duration',
               _hours <= 0
-                  ? '—'
+                  ? '-'
                   : '${_hours.toStringAsFixed(_hours == _hours.roundToDouble() ? 0 : 1)} hr'),
           Divider(color: t.borderColor, height: AppSpacing.lg),
           _groupLabel('PRICE DETAILS'),
@@ -1441,7 +1441,7 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
                                 fontSize: 12, color: t.textSecondary))),
                     Text(
                         _priceMinorFor(c.id) == null
-                            ? '—'
+                            ? '-'
                             : Formatters.currencyInr(
                                 (_priceMinorFor(c.id)! / 100).round()),
                         style: const TextStyle(fontSize: 12)),
@@ -1536,7 +1536,7 @@ class _ExistingGuestBanner extends StatelessWidget {
           Icon(Icons.verified_rounded, size: 16, color: onC),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Welcome back, ${guest.name} — same phone, same guest.',
+            child: Text('Welcome back, ${guest.name}, same phone, same guest.',
                 style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -1569,7 +1569,7 @@ class _NewGuestBanner extends StatelessWidget {
               size: 16, color: t.textSecondary),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('New guest — they\'ll be added to Guest Players automatically.',
+            child: Text('New guest. They\'ll be added to Guest Players automatically.',
                 style: TextStyle(fontSize: 12.5, color: t.textSecondary)),
           ),
         ],
@@ -1693,7 +1693,7 @@ class _BookingConfirmedSheet extends StatelessWidget {
                     context,
                     'Total',
                     totalInr == null
-                        ? '—'
+                        ? '-'
                         : Formatters.currencyInr(totalInr!),
                     strong: true,
                   ),
@@ -1703,9 +1703,9 @@ class _BookingConfirmedSheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Text(
               paid
-                  ? 'Payment received online — nothing to collect at the venue.'
+                  ? 'Payment received online. Nothing to collect at the venue.'
                   : awaitingLink
-                      ? 'Waiting for the player to pay the link. The booking is confirmed automatically once they do — open it from Guest Bookings to share the link again.'
+                      ? 'Waiting for the player to pay the link. The booking is confirmed automatically once they do. Open it from Guest Bookings to share the link again.'
                       : 'Payment is to be collected offline at the venue.',
               style: TextStyle(fontSize: 12, color: t.textSecondary),
             ),

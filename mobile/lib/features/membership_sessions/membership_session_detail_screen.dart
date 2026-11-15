@@ -31,7 +31,7 @@ String _durationLabel(String start, String end) {
   final s = p(start);
   final e = p(end);
   final mins = e[0] * 60 + e[1] - (s[0] * 60 + s[1]);
-  if (mins <= 0) return '—';
+  if (mins <= 0) return '-';
   final h = mins ~/ 60;
   final m = mins % 60;
   return [if (h > 0) '$h Hour${h > 1 ? 's' : ''}', if (m > 0) '$m Min'].join(' ');
@@ -586,7 +586,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
   Widget _scheduleCard(MembershipSessionDetail d) {
     final next = d.nextOccurrenceDate != null
         ? Formatters.dateShort(d.nextOccurrenceDate!)
-        : (d.runsToday ? 'Today' : '—');
+        : (d.runsToday ? 'Today' : '-');
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,9 +854,9 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
           const SizedBox(height: AppSpacing.sm),
           _kv('Session ID', 'SES${d.batchId.substring(0, 3).toUpperCase()}'),
           _dividerRow(),
-          _kv('Facility', d.facilityName ?? '—'),
+          _kv('Facility', d.facilityName ?? '-'),
           _dividerRow(),
-          _kv('Address', d.facilityAddress ?? '—'),
+          _kv('Address', d.facilityAddress ?? '-'),
           _dividerRow(),
           _kv('Type', 'Membership protected'),
           _dividerRow(),
@@ -864,7 +864,7 @@ class _MembershipSessionDetailScreenState extends ConsumerState<MembershipSessio
           _dividerRow(),
           _kv('Payment', 'Included in membership'),
           _dividerRow(),
-          _kv('Created by', d.createdByName ?? '—'),
+          _kv('Created by', d.createdByName ?? '-'),
           _dividerRow(),
           _kv('Created', Formatters.dateTimeShort(d.createdAt)),
           _dividerRow(),

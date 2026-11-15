@@ -21,7 +21,7 @@ export function SportCard({ sport, selected, onToggle }: SportCardProps) {
       type="button"
       role="checkbox"
       aria-checked={selected}
-      aria-label={`${sport.name} — ${sport.description}`}
+      aria-label={`${sport.name}: ${sport.description}`}
       onClick={() => onToggle(sport.id)}
       className={cn(
         "flex min-h-12 w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors duration-150",

@@ -198,7 +198,7 @@ class _PurchaseOrderDetailScreenState extends ConsumerState<PurchaseOrderDetailS
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _fin('Expected delivery', invDate(po.expectedDelivery)),
-              _fin('Reference', po.reference ?? '—'),
+              _fin('Reference', po.reference ?? '-'),
               if (po.notes != null && po.notes!.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(po.notes!, style: AppTypography.secondary(context)),

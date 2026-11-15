@@ -1372,7 +1372,7 @@ class EnrollmentBilling {
         'AUTHENTICATED' => 'Mandate approved',
         'ACTIVE' => 'Active',
         'PENDING' => 'Charge pending',
-        'HALTED' => 'Halted — charge failed',
+        'HALTED' => 'Halted, charge failed',
         'PAID' => 'Paid',
         'CANCELLED' => 'Cancelled',
         'COMPLETED' => 'Completed',

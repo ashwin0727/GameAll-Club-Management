@@ -197,7 +197,7 @@ export function TransactionsList() {
       {sportIds && (
         <p className="text-xs text-muted-foreground">
           Showing payments and refunds for the sports selected in the top bar. Expenses are not split by sport, so they are
-          not listed here — see Expenses.
+          not listed here. See Expenses.
         </p>
       )}
 
@@ -348,7 +348,7 @@ export function TransactionsList() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {entry.paymentMethod ?? "—"}
+                        {entry.paymentMethod ?? "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums">
                         {entry.txnType === "INCOME" ? "" : "−"}

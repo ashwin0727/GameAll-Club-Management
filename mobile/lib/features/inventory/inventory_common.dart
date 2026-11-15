@@ -13,12 +13,12 @@ import '../../shared/widgets/misc.dart';
 String invMoney(int amountMinor) => Formatters.currencyInr((amountMinor / 100).round());
 
 String invDate(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
+  if (iso == null || iso.isEmpty) return '-';
   return Formatters.dateShort(DateTime.parse(iso));
 }
 
 String invDateTime(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
+  if (iso == null || iso.isEmpty) return '-';
   return Formatters.dateTimeShort(DateTime.parse(iso));
 }
 

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { ResetPasswordForm } from "@/features/auth/components/reset-password-form";
 import { createClient } from "@/lib/supabase/server";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Choose a new password — ${PRODUCT_NAME}`,
+  title: `Choose a new password`,
 };
 
 /**

@@ -36,7 +36,7 @@ void main() {
     });
   });
 
-  group('membershipFeeSplit — the fee is the plan price; extras are one-time', () {
+  group('membershipFeeSplit. The fee is the plan price; extras are one-time', () {
     test('the fee is always the plan price and the registration fee stays as entered', () {
       final s = membershipFeeSplit(planPriceInr: 2500, gstAmountInr: 0, registrationInr: 200, paymentAmountInr: 0);
       expect((s.feeInr, s.registrationInr), (2500, 200));

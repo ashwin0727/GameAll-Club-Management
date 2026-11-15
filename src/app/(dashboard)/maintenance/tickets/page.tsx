@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { MaintenanceTicketsPage } from "@/features/maintenance/components/maintenance-tickets-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Maintenance Tickets — ${APP_NAME}`,
+  title: `Maintenance Tickets`,
 };
 
 export default function TicketsPage() {

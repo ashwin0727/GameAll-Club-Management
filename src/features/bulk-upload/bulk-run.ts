@@ -94,7 +94,7 @@ export async function createBulkMembers(facilityId: string, members: ParsedMembe
       for (const slot of extraSlots) await svc.assignMembershipToBatch(slot.batchId, membership.memberId, membership.id);
       try {
         base.shortUrl = (await svc.createMembershipSubscription(membership.id)).shortUrl ?? null;
-        if (!base.shortUrl) base.error = "Member added, but Razorpay returned no payment link — generate it from the member's page.";
+        if (!base.shortUrl) base.error = "Member added, but Razorpay returned no payment link, generate it from the member's page.";
       } catch (err) {
         base.error = `Member added, but the payment link failed: ${message(err, "try again from the member's page.")}`;
       }
@@ -161,7 +161,7 @@ export async function createBulkStudents(facilityId: string, students: ParsedStu
       } else {
         try {
           base.shortUrl = (await coaching.createEnrollmentBilling(enrollmentId)).shortUrl ?? null;
-          if (!base.shortUrl) base.error = "Student enrolled, but Razorpay returned no payment link — generate it from the student's page.";
+          if (!base.shortUrl) base.error = "Student enrolled, but Razorpay returned no payment link, generate it from the student's page.";
         } catch (err) {
           base.error = `Student enrolled, but the payment link failed: ${message(err, "try again from the student's page.")}`;
         }

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { ExpenseDetailsPage } from "@/features/finance/components/expense-details-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Expense — ${APP_NAME}`,
+  title: `Expense`,
 };
 
 export default async function FinanceExpensePage({

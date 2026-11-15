@@ -250,7 +250,7 @@ String? addMemberComposeNotes(AddMemberDraft d) {
   final phone = d.emergencyPhone.trim();
   if (name.isEmpty && phone.isEmpty) return null;
   final number = phone.isEmpty ? '' : '${d.emergencyCountryCode} $phone'.trim();
-  return 'Emergency contact: ${[name, number].where((p) => p.isNotEmpty).join(' — ')}';
+  return 'Emergency contact: ${[name, number].where((p) => p.isNotEmpty).join(', ')}';
 }
 
 String _isoDate(DateTime d) =>
@@ -354,8 +354,8 @@ DateTime periodEndDate(DateTime start, int durationDays) {
       'created' => (label: 'Awaiting Authorisation', detail: "The member hasn't approved the payment link yet. Charging starts once they do."),
       'authenticated' => (label: 'Authorised', detail: 'The member approved AutoPay; the first charge is being processed.'),
       'active' => (label: 'Active', detail: 'Charged automatically each cycle on the same day of the month.'),
-      'pending' => (label: 'Payment failed — retrying', detail: 'The last charge failed. Razorpay is retrying; the member may need to check their account.'),
-      'halted' => (label: 'Stopped — payment failed', detail: 'Retries ran out. The member must authorise again or pay another way.'),
+      'pending' => (label: 'Payment failed, retrying', detail: 'The last charge failed. Razorpay is retrying; the member may need to check their account.'),
+      'halted' => (label: 'Stopped, payment failed', detail: 'Retries ran out. The member must authorise again or pay another way.'),
       'cancelled' => (label: 'Cancelled', detail: 'AutoPay was stopped. The membership runs to its paid-until date.'),
       'completed' => (label: 'Completed', detail: 'AutoPay ran its full course.'),
       _ => (label: status, detail: ''),

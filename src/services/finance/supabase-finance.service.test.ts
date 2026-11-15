@@ -17,7 +17,7 @@ const SUMMARY_ROW = {
 };
 
 describe("SupabaseFinanceService.getSummary", () => {
-  it("calls get_finance_summary with the resolved date-range args and maps the server's own totals — never recomputed client-side", async () => {
+  it("calls get_finance_summary with the resolved date-range args and maps the server's own totals, never recomputed client-side", async () => {
     const rpc = vi.fn(async () => ({ data: [SUMMARY_ROW], error: null }));
     const service = new SupabaseFinanceService({ rpc } as never);
 
@@ -48,7 +48,7 @@ describe("SupabaseFinanceService.getSummary", () => {
     expect(rpc).toHaveBeenCalledWith("get_finance_summary", { p_facility_id: "facility-1", p_preset: "CUSTOM", p_start_date: "2026-08-01", p_end_date: "2026-08-15", p_facility_sport_ids: null });
   });
 
-  it("maps a facility-isolation rejection to FINANCE_ACCESS_DENIED — never a fabricated zero summary", async () => {
+  it("maps a facility-isolation rejection to FINANCE_ACCESS_DENIED, never a fabricated zero summary", async () => {
     const rpc = vi.fn(async () => ({ data: null, error: { message: "Not authorized for this facility." } }));
     const service = new SupabaseFinanceService({ rpc } as never);
 
@@ -71,7 +71,7 @@ describe("SupabaseFinanceService.getSummary", () => {
 });
 
 describe("SupabaseFinanceService.getRevenueBreakdown", () => {
-  it("maps every revenue-by-source figure — spec Critical Finance Test", async () => {
+  it("maps every revenue-by-source figure, spec Critical Finance Test", async () => {
     const rpc = vi.fn(async () => ({
       data: [
         {
@@ -200,7 +200,7 @@ describe("SupabaseFinanceService.getTransaction", () => {
     await expect(service.getTransaction("txn-missing")).rejects.toMatchObject({ code: "FINANCE_DATA_ERROR" });
   });
 });
-describe("SupabaseFinanceService — Expenses / Daily Closing / P&L (0069-0071)", () => {
+describe("SupabaseFinanceService: Expenses / Daily Closing / P&L (0069-0071)", () => {
   it("getExpenseSummary maps the server KPI row", async () => {
     const row = {
       total_minor: 50000,

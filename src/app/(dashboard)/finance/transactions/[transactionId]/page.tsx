@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { TransactionDetailsPage } from "@/features/finance/components/transaction-details-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Transaction — ${APP_NAME}`,
+  title: `Transaction`,
 };
 
 export default async function FinanceTransactionPage({

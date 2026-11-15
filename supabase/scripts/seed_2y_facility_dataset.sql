@@ -71,8 +71,8 @@ begin
     ) values (
       'Smash Arena Sports Hub', 'smash-arena-' || substr(gen_random_uuid()::text, 1, 8), v_owner,
       'MULTI_SPORT', v_owner_email, '9000000000',
-      '12 Court Road', 'Indiranagar', 'Bengaluru', 'Karnataka', 'India', '560038', v_tz,
-      'Two-year demo dataset', 'COMPLETED', now(), (v_hist_start::timestamp at time zone v_tz)
+      '42 Lake View Road', 'Adyar', 'Chennai', 'Tamil Nadu', 'India', '600020', v_tz,
+      'Indoor badminton, pickleball and cricket turf in Adyar, Chennai.', 'COMPLETED', now(), (v_hist_start::timestamp at time zone v_tz)
     ) returning id into v_facility;
     insert into facility_users (facility_id, user_id, role) values (v_facility, v_owner, 'owner');
     update profiles set onboarding_completed = true where id = v_owner;
@@ -92,8 +92,11 @@ begin
   select id into v_sp_pkl from sports where key = 'pickleball';
   select id into v_sp_crk from sports where key = 'cricket';
 
-  insert into facility_sports (facility_id, sport_id) values (v_facility, v_sp_bad), (v_facility, v_sp_pkl), (v_facility, v_sp_crk)
-  on conflict (facility_id, sport_id) do update set is_active = true;
+  -- (facility_sports is unique on an expression since migration 0197, so ON CONFLICT (facility_id, sport_id) cannot be used)
+  insert into facility_sports (facility_id, sport_id)
+  select v_facility, s.sp from (values (v_sp_bad), (v_sp_pkl), (v_sp_crk)) s(sp)
+  where not exists (select 1 from facility_sports x where x.facility_id = v_facility and x.sport_id = s.sp and coalesce(x.custom_sport_name, '') = '');
+  update facility_sports set is_active = true where facility_id = v_facility and sport_id in (v_sp_bad, v_sp_pkl, v_sp_crk);
   select id into v_fs_bad from facility_sports where facility_id = v_facility and sport_id = v_sp_bad;
   select id into v_fs_pkl from facility_sports where facility_id = v_facility and sport_id = v_sp_pkl;
   select id into v_fs_crk from facility_sports where facility_id = v_facility and sport_id = v_sp_crk;
@@ -154,8 +157,8 @@ begin
   create temp table t_names (i int, first text, last text) on commit drop;
   insert into t_names
   select g,
-         (array['Aarav','Vivaan','Aditya','Vihaan','Arjun','Sai','Krishna','Ishaan','Rohan','Karthik','Ananya','Diya','Isha','Meera','Priya','Sneha','Kavya','Riya','Divya','Pooja','Rahul','Suresh','Manoj','Deepak','Naveen','Lakshmi','Swathi','Nisha','Varun','Harini'])[1 + (g % 30)],
-         (array['Sharma','Iyer','Nair','Reddy','Menon','Rao','Kumar','Pillai','Verma','Shetty','Gupta','Bhat','Joshi','Das','Krishnan','Patel','Singh','Naidu','Chandran','Murthy','Hegde','Kulkarni','Desai','Mehta','Banerjee','Ghosh','Bose','Mishra','Pandey','Saxena'])[1 + ((g * 7) % 30)]
+         (array['Arjun','Karthik','Vignesh','Surya','Harish','Prakash','Dinesh','Gokul','Naveen','Ashwin','Kavya','Divya','Harini','Lakshmi','Meena','Priya','Swathi','Nandhini','Janani','Keerthana','Sathish','Mohan','Bharath','Ganesh','Vijay','Deepika','Anitha','Sowmya','Rahul','Pooja'])[1 + (g % 30)],
+         (array['Iyer','Subramanian','Raghavan','Krishnan','Venkatesh','Narayanan','Balaji','Ramesh','Sundaram','Murugan','Pillai','Naidu','Chandran','Ravichandran','Selvam','Kannan','Thiagarajan','Srinivasan','Natarajan','Gopalan','Mohan','Rajan','Anand','Sekar','Ganesan','Mani','Vasudevan','Chidambaram','Swaminathan','Prasad'])[1 + ((g * 7) % 30)]
   from generate_series(1, 300) g;
 
   create temp table t_guests (idx int, id uuid, name text, phone text) on commit drop;
@@ -452,9 +455,9 @@ begin
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
                             created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
     values ('00000000-0000-0000-0000-000000000000', v_uid_b, 'authenticated', 'authenticated', 'coach.priya.seed2y@example.invalid', '', now(),
-            '{"provider":"email","providers":["email"]}', '{"full_name":"Priya Coach"}', now(), now(), '', '', '', ''),
+            '{"provider":"email","providers":["email"]}', '{"full_name":"Priya Raghavan"}', now(), now(), '', '', '', ''),
            ('00000000-0000-0000-0000-000000000000', v_uid_c, 'authenticated', 'authenticated', 'coach.ravi.seed2y@example.invalid', '', now(),
-            '{"provider":"email","providers":["email"]}', '{"full_name":"Ravi Coach"}', now(), now(), '', '', '', '');
+            '{"provider":"email","providers":["email"]}', '{"full_name":"Ravi Subramanian"}', now(), now(), '', '', '', '');
     insert into seed2y_log values ('auth_users', v_uid_b), ('auth_users', v_uid_c);
   exception when others then
     raise notice 'Extra coach users not added (%): you will be the only coach.', sqlerrm;
@@ -462,7 +465,7 @@ begin
   end;
 
   insert into coaches (facility_id, user_id, specialization, experience_years, hourly_rate_minor, status, joined_on, created_by)
-  values (v_facility, v_owner, 'Head coach — Badminton', 12, 90000, 'ACTIVE', current_date - 600, v_owner)
+  values (v_facility, v_owner, 'Head coach, Badminton', 12, 90000, 'ACTIVE', current_date - 600, v_owner)
   on conflict (facility_id, user_id) do nothing;
   select id into v_coach_a from coaches where facility_id = v_facility and user_id = v_owner;
   if v_uid_b <> v_owner then

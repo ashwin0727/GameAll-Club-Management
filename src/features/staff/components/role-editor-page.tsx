@@ -180,7 +180,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
               <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} disabled={existing?.isSystem} />
               {existing?.isSystem && (
                 <p className="text-xs text-muted-foreground">
-                  System role names can&apos;t be changed — you can still adjust its permissions for this facility.
+                  System role names can&apos;t be changed. You can still adjust its permissions for this facility.
                 </p>
               )}
             </div>
@@ -193,7 +193,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
             {mode === "edit" && !existing?.isSystem && (
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4" />
-                Active — staff can be assigned this role
+                Active, staff can be assigned this role
               </label>
             )}
           </div>
@@ -205,7 +205,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
           <div className="space-y-3 text-sm">
             <div>
               <p className="text-xs text-muted-foreground">Role</p>
-              <p className="font-medium">{name || "—"}</p>
+              <p className="font-medium">{name || "-"}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Page access</p>
@@ -221,7 +221,7 @@ export function RoleEditorPage({ mode, roleId }: { mode: "create" | "edit"; role
                     </li>
                   ))}
                 {ACCESS_PAGES.every((p) => editorLevelFor(p, selected) === "none") && (
-                  <li className="px-3 py-2 text-xs text-muted-foreground">No pages selected — this role can&apos;t open anything.</li>
+                  <li className="px-3 py-2 text-xs text-muted-foreground">No pages selected. This role can&apos;t open anything.</li>
                 )}
               </ul>
               {selected.has(COACHING_OWN_ONLY) && (

@@ -10,7 +10,7 @@ import type { BillingInterval } from "@/features/plans/types";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-type PlanKey = "basic" | "advanced";
+export type PlanKey = "basic" | "advanced";
 
 const PLANS: { key: PlanKey; name: string; tagline: string; popular: boolean }[] = [
   { key: "basic", name: "Basic", tagline: "For clubs getting started", popular: false },
@@ -18,7 +18,7 @@ const PLANS: { key: PlanKey; name: string; tagline: string; popular: boolean }[]
 ];
 
 /** Comparison-table sections, in order. */
-const GROUPS: { title: string; keys: string[] }[] = [
+export const GROUPS: { title: string; keys: string[] }[] = [
   { title: "Run the club", keys: ["home", "calendar", "guest-booking", "guest-players", "tournaments"] },
   { title: "Player App", keys: ["player-app"] },
   { title: "Members & coaching", keys: ["memberships", "coaching"] },
@@ -34,7 +34,7 @@ const TABLE_TEXT: Record<string, Record<PlanKey, string>> = {
   payouts: { basic: "Next working day", advanced: "Within 5 minutes" },
 };
 
-const FAQS: { q: string; a: string }[] = [
+export const FAQS: { q: string; a: string }[] = [
   {
     q: "What can players do in the Player App?",
     a: "On both plans your club is visible to players, who can book guest slots. On Advanced, players can also enrol in your memberships themselves, right from the app.",
@@ -85,7 +85,7 @@ function Toggle({ interval, onChange }: { interval: BillingInterval; onChange: (
   );
 }
 
-function Feature({ line, upgrade = false }: { line: PricingLine; upgrade?: boolean }) {
+export function Feature({ line, upgrade = false }: { line: PricingLine; upgrade?: boolean }) {
   return (
     <li className="flex gap-3">
       <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
@@ -98,19 +98,23 @@ function Feature({ line, upgrade = false }: { line: PricingLine; upgrade?: boole
   );
 }
 
+/** Advanced lists only what Basic does not already have: new pages, and the pages that get upgraded. */
+export function featureRows(plan: PlanKey): { key: string; line: PricingLine; upgrade: boolean }[] {
+  return PRICING_MODULES.flatMap((m) => {
+    const line = m[plan];
+    if (!line) return [];
+    if (plan === "basic") return [{ key: m.key, line, upgrade: false }];
+    if (m.basic === m.advanced) return [];
+    return [{ key: m.key, line, upgrade: m.basic !== null }];
+  });
+}
+
 function PlanCard({ plan, interval }: { plan: (typeof PLANS)[number]; interval: BillingInterval }) {
   const price = PRICES[plan.key][interval];
   const yearly = PRICES[plan.key].year;
   const fullYear = PRICES[plan.key].month * 12;
 
-  // Advanced lists only what Basic does not already have: new pages, and the pages that get upgraded.
-  const rows = PRICING_MODULES.flatMap((m) => {
-    const line = m[plan.key];
-    if (!line) return [];
-    if (plan.key === "basic") return [{ key: m.key, line, upgrade: false }];
-    if (m.basic === m.advanced) return [];
-    return [{ key: m.key, line, upgrade: m.basic !== null }];
-  });
+  const rows = featureRows(plan.key);
 
   return (
     <section
@@ -303,7 +307,7 @@ export function PricingPage() {
   );
 }
 
-function GroupRows({ title, keys }: { title: string; keys: string[] }) {
+export function GroupRows({ title, keys }: { title: string; keys: string[] }) {
   return (
     <>
       <tr className="border-b border-border bg-muted/20">

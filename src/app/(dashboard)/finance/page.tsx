@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { FinanceDashboard } from "@/features/finance/components/finance-dashboard";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Finance — ${APP_NAME}`,
+  title: `Finance`,
 };
 
 export default function FinancePage() {

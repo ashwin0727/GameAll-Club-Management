@@ -85,20 +85,20 @@ class PageAccessMatrix extends StatelessWidget {
                   text: 'None',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-                TextSpan(text: ' — the page is hidden completely. '),
+                TextSpan(text: '. The page is hidden completely. '),
                 TextSpan(
                   text: 'View',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 TextSpan(
-                  text: ' — can look, but not change or export anything. ',
+                  text: ', can look, but not change or export anything. ',
                 ),
                 TextSpan(
                   text: 'Edit',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 TextSpan(
-                  text: ' — can also create, change, cancel, record payments and export.',
+                  text: ', can also create, change, cancel, record payments and export.',
                 ),
               ],
             ),
@@ -312,7 +312,7 @@ class _PageRow extends StatelessWidget {
           if (!inPlan)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text('Not in your plan — upgrade to Advanced to use this page.',
+              child: Text('Not in your plan, upgrade to Advanced to use this page.',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.primary)),
             ),
           const SizedBox(height: AppSpacing.sm),

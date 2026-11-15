@@ -29,9 +29,9 @@ export function sortGuestRows(rows: GuestBookingRow[], key: GuestSortKey, dir: G
 
 /** "+91 98765 43210" → "98765 43210": the number alone, without the country code. */
 export function displayPhone(phone: string | null | undefined): string {
-  if (!phone) return "—";
+  if (!phone) return "-";
   const national = phone.replace(/\D/g, "").slice(-10);
-  if (national.length === 0) return "—";
+  if (national.length === 0) return "-";
   return national.length === 10 ? `${national.slice(0, 5)} ${national.slice(5)}` : national;
 }
 

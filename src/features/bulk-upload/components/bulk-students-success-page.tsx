@@ -19,11 +19,11 @@ export function BulkStudentsSuccessPage() {
       columns={[
         { header: "Student", cell: (r) => <span className="font-medium">{r.name}</span> },
         { header: "Program", cell: (r) => r.programName },
-        { header: "Total Sessions", className: "text-right tabular-nums", cell: (r) => r.totalSessions ?? "—" },
+        { header: "Total Sessions", className: "text-right tabular-nums", cell: (r) => r.totalSessions ?? "-" },
         {
           header: "Total Amount",
           className: "text-right tabular-nums",
-          cell: (r) => (r.totalMinor > 0 ? `₹${(r.totalMinor / 100).toLocaleString("en-IN")}` : "—"),
+          cell: (r) => (r.totalMinor > 0 ? `₹${(r.totalMinor / 100).toLocaleString("en-IN")}` : "-"),
         },
       ]}
     />

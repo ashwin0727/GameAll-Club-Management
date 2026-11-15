@@ -2146,7 +2146,7 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
             if (!_rescheduling) ...[
               _DetailField(
                 label: 'Amount',
-                value: b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '—',
+                value: b.amountMinor != null ? Formatters.currencyInr((b.amountMinor! / 100).round()) : '-',
               ),
               Row(
                 children: [
@@ -2254,11 +2254,11 @@ class _BookingDetailsSheetState extends ConsumerState<_BookingDetailsSheet> {
                   Builder(builder: (context) {
                     final status = _rescheduleAvailability;
                     final (icon, color, label) = switch (status) {
-                      _CourtAvailability.available => (Icons.check_circle, AppColors.success, 'Available — ${_rescheduleHours.toStringAsFixed(_rescheduleHours == _rescheduleHours.roundToDouble() ? 0 : 1)} hr'),
+                      _CourtAvailability.available => (Icons.check_circle, AppColors.success, 'Available: ${_rescheduleHours.toStringAsFixed(_rescheduleHours == _rescheduleHours.roundToDouble() ? 0 : 1)} hr'),
                       _CourtAvailability.conflict => (Icons.error_outline, AppColors.destructive, 'This court is already booked then'),
                       _CourtAvailability.outsideHours => (Icons.nightlight_round, AppColors.warning, 'Outside operating hours'),
                       _CourtAvailability.checking => (Icons.hourglass_empty, AppColors.muted, 'Checking…'),
-                      _CourtAvailability.pickTime => (Icons.help_outline, AppColors.muted, '—'),
+                      _CourtAvailability.pickTime => (Icons.help_outline, AppColors.muted, '-'),
                     };
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),

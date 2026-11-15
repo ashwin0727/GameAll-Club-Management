@@ -987,7 +987,7 @@ class _PayBanner extends StatelessWidget {
     final tint = failed ? AppColors.danger : AppColors.warning;
     final msg = failed
         ? 'Your payment for ${m.planName} did not go through. Please complete it so your membership is not cancelled.'
-        : 'Your payment for ${m.planName} is not complete${m.balanceInr > 0 ? ' — ${rupees(m.balanceInr)} to pay' : ''}. Please complete it so your membership is not cancelled.';
+        : 'Your payment for ${m.planName} is not complete${m.balanceInr > 0 ? ': ${rupees(m.balanceInr)} to pay' : ''}. Please complete it so your membership is not cancelled.';
     return Container(
       key: const ValueKey('mm-pay-banner'),
       padding: const EdgeInsets.all(14),
@@ -1802,7 +1802,7 @@ class _PaymentsTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    x.when == null ? '—' : fmtDate(x.when!),
+                    x.when == null ? '-' : fmtDate(x.when!),
                     style: AppTextStyles.body(p.primaryText)
                         .copyWith(fontWeight: FontWeight.w600),
                   ),

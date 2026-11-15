@@ -205,7 +205,7 @@ String coachSportLabel(CoachRow c) {
 
 /// "3" for 3.0, "2.5" for 2.5, "—" when not recorded.
 String experienceLabel(double? years) {
-  if (years == null) return '—';
+  if (years == null) return '-';
   return years == years.roundToDouble() ? years.round().toString() : years.toStringAsFixed(1);
 }
 

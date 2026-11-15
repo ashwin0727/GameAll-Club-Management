@@ -44,12 +44,12 @@ export function memberTemplateSpec(plans: MembershipPlan[]): TemplateSpec {
     columns: MEMBER_COLUMNS,
     lists: { Gender: ["Male", "Female", "Other"], "Plan Name": plans.map((p) => p.name) },
     instructions: [
-      "Bulk Upload — Members",
+      "Bulk Upload: Members",
       "Fill one member per row on the Members sheet, then upload the file. Columns marked * are mandatory.",
-      "If even one mandatory value is missing or invalid, nothing is uploaded — fix the rows listed and upload again.",
+      "If even one mandatory value is missing or invalid, nothing is uploaded. Fix the rows listed and upload again.",
       "Phone Number: 10-digit Indian mobile number starting with 6, 7, 8 or 9. Razorpay sends the payment link to this number by SMS.",
       "Plan Name: exactly as it appears in your active plans" + (plans.length ? ` (${plans.map((p) => p.name).join(", ")}).` : "."),
-      "Court: needed only when the plan covers more than one court — a member plays on one court at a time, so name the one they will use.",
+      "Court: needed only when the plan covers more than one court, a member plays on one court at a time, so name the one they will use.",
       "Start Date: yyyy-mm-dd (or dd/mm/yyyy).",
       "Gender: Male, Female or Other. Date Of Birth: yyyy-mm-dd.",
       `At most ${MAX_BULK_ROWS} members per upload.`,
@@ -138,7 +138,7 @@ export function validateMemberRows(
   if (errors.length) return { errors, members: [] };
   if (rows.length === 0) return { errors: [{ row: 0, column: "", message: "The sheet has no members in it." }], members: [] };
   if (rows.length > MAX_BULK_ROWS) {
-    return { errors: [{ row: 0, column: "", message: `A single upload can have at most ${MAX_BULK_ROWS} members — this one has ${rows.length}.` }], members: [] };
+    return { errors: [{ row: 0, column: "", message: `A single upload can have at most ${MAX_BULK_ROWS} members. This one has ${rows.length}.` }], members: [] };
   }
 
   const plansByName = new Map<string, MembershipPlan[]>();
@@ -207,7 +207,7 @@ export function validateMemberRows(
 
     let plan: MembershipPlan | undefined;
     let slots: PlanSlot[] = [];
-    let courtName = "—";
+    let courtName = "-";
     if (planName) {
       const matches = plansByName.get(planName.toLowerCase()) ?? [];
       if (matches.length === 0) add("Plan Name", `No active plan named “${planName}”.`);
@@ -225,10 +225,10 @@ export function validateMemberRows(
       const courtText = get("Court");
       if (courts.length > 1) {
         if (!courtText) {
-          add("Court", `“${plan.name}” covers ${courts.map((c) => c.courtName).join(", ")} — name the one court this member will use.`);
+          add("Court", `“${plan.name}” covers ${courts.map((c) => c.courtName).join(", ")}, name the one court this member will use.`);
         } else {
           const hit = courts.find((c) => c.courtName.trim().toLowerCase() === courtText.toLowerCase());
-          if (!hit) add("Court", `“${courtText}” is not on this plan — choose from ${courts.map((c) => c.courtName).join(", ")}.`);
+          if (!hit) add("Court", `“${courtText}” is not on this plan. Choose from ${courts.map((c) => c.courtName).join(", ")}.`);
           else {
             slots = planSlots.filter((s) => s.courtId === hit.courtId);
             courtName = hit.courtName;
@@ -236,9 +236,9 @@ export function validateMemberRows(
         }
       } else {
         slots = planSlots;
-        courtName = courts[0]?.courtName ?? "—";
+        courtName = courts[0]?.courtName ?? "-";
         if (courtText && courts[0] && courts[0].courtName.trim().toLowerCase() !== courtText.toLowerCase()) {
-          add("Court", `“${courtText}” is not on this plan — it is on ${courts[0].courtName}.`);
+          add("Court", `“${courtText}” is not on this plan. It is on ${courts[0].courtName}.`);
         }
       }
       const step2 = fieldErrors(2, draft, ctx.now);
@@ -263,7 +263,7 @@ export function validateMemberRows(
         plan,
         slots,
         courtName,
-        timings: slots.map((s) => formatSlot(s.daysOfWeek, s.startTime, s.endTime)).join("; ") || "—",
+        timings: slots.map((s) => formatSlot(s.daysOfWeek, s.startTime, s.endTime)).join("; ") || "-",
         amountInr: total,
       });
     }

@@ -52,12 +52,12 @@ function inr(v: number): string {
   return `₹${v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function fmtDate(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  return iso ? new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 }
 function fmtDateTime(iso: string | null): string {
   return iso
     ? new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
-    : "—";
+    : "-";
 }
 function ageFromDob(iso: string | null): string {
   if (!iso) return "";
@@ -307,7 +307,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
               </div>
               <div className="mt-4 grid items-start gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
                 <HeaderStat icon={IndianRupee} label="Charged Every Cycle" value={`${inr(autoPay.amountInr)} ${autoPayCadence(autoPay.intervalMonths)}`} />
-                <HeaderStat icon={CalendarDays} label="Next Charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "—"} />
+                <HeaderStat icon={CalendarDays} label="Next Charge" value={autoPayNextCharge(autoPay, detail.membership.endDate) ? fmtDate(autoPayNextCharge(autoPay, detail.membership.endDate)) : "-"} />
                 <HeaderStat icon={IdCard} label="Charges Collected" value={autoPay.chargeCount} />
                 <HeaderStat icon={IndianRupee} label="One-time, first payment only" value={autoPay.oneTimeInr > 0 ? inr(autoPay.oneTimeInr) : "None"} />
               </div>
@@ -377,7 +377,7 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
                 <span>{inr(detail.membership.totalAmountInr)}</span>
               </div>
               <div className="mt-3 border-t border-border pt-2">
-                <Row label="Payment Mode" value={detail.payment?.method ? detail.payment.method.toUpperCase() : "—"} />
+                <Row label="Payment Mode" value={detail.payment?.method ? detail.payment.method.toUpperCase() : "-"} />
                 <Row label="Payment Date" value={fmtDateTime(detail.payment?.paidAt ?? detail.payment?.createdAt ?? null)} />
                 {detail.payment?.transactionId && <Row label="Transaction ID" value={<span className="text-xs">{detail.payment.transactionId}</span>} />}
                 {detail.paymentReference && <Row label="Reference" value={<span className="text-xs">{detail.paymentReference}</span>} />}
@@ -389,8 +389,8 @@ export function MembershipDetailPage({ membershipId }: { membershipId: string })
               <h3 className="mb-3 text-sm font-semibold">Additional Information</h3>
               <Row label="Contact Number" value={detail.member.phone} />
               {detail.member.gender && <Row label="Gender" value={detail.member.gender} />}
-              <Row label="How did you find us?" value={detail.discoverySource ?? "—"} />
-              <Row label="Referral By" value={detail.referralName ?? "—"} />
+              <Row label="How did you find us?" value={detail.discoverySource ?? "-"} />
+              <Row label="Referral By" value={detail.referralName ?? "-"} />
 
               <div className="mt-4 border-t border-border pt-3">
                 <div className="flex items-center justify-between">

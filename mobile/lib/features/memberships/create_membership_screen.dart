@@ -629,7 +629,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                     ..._plans.map((p) => DropdownMenuItem(
                           value: p.id,
                           child: Text(
-                            '${p.name} — ${Formatters.currencyInr(p.priceInr)} · ${p.durationDays} days',
+                            '${p.name}: ${Formatters.currencyInr(p.priceInr)} · ${p.durationDays} days',
                             overflow: TextOverflow.ellipsis,
                           ),
                         )),
@@ -681,7 +681,7 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                       : 'Ends ${Formatters.dateShort(_endDate!)}',
               child: _planId != null && !_isEdit
                   ? _PickerField(
-                      text: _durationDays > 0 ? '$_durationDays days' : '—',
+                      text: _durationDays > 0 ? '$_durationDays days' : '-',
                       placeholder: _durationDays == 0,
                       onTap: () {},
                     )
@@ -840,14 +840,6 @@ class _CreateMembershipScreenState extends ConsumerState<CreateMembershipScreen>
                         'Generates a Razorpay mandate link; the total is charged each cycle.',
                     onTap: () => setState(() => _recurring = !_recurring),
                   )
-                else
-                  const _OptionRow(
-                    selected: false,
-                    isCheckbox: true,
-                    title: 'Recurring UPI AutoPay',
-                    subtitle: 'Auto Pay is part of the Advanced plan. On your current plan you record each payment yourself.',
-                    onTap: null,
-                  ),
               ],
             ],
           ),
@@ -1453,7 +1445,7 @@ class _MembershipSummarySheet extends StatelessWidget {
             ),
             if (mandateUrl != null) ...[
               const SizedBox(height: AppSpacing.md),
-              Text('UPI AutoPay link — send this to the member:',
+              Text('UPI AutoPay link. Send this to the member:',
                   style: TextStyle(
                       fontSize: 12, color: tokens.textSecondary)),
               const SizedBox(height: 6),
@@ -1482,7 +1474,7 @@ class _MembershipSummarySheet extends StatelessWidget {
             ] else if (mandateFailed) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
-                'The recurring AutoPay link couldn’t be generated — retry it from the members list.',
+                'The recurring AutoPay link couldn’t be generated. Retry it from the members list.',
                 style:
                     TextStyle(fontSize: 12, color: tokens.textSecondary),
               ),

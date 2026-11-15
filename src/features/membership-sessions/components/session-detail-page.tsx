@@ -62,7 +62,7 @@ function durationLabel(start: string, end: string): string {
   const mins = eh * 60 + em - (sh * 60 + sm);
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  return [h ? `${h} Hour${h > 1 ? "s" : ""}` : null, m ? `${m} Min` : null].filter(Boolean).join(" ") || "—";
+  return [h ? `${h} Hour${h > 1 ? "s" : ""}` : null, m ? `${m} Min` : null].filter(Boolean).join(" ") || "-";
 }
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -219,7 +219,7 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
         </div>
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <Meta label="Session ID" value={`SES${detail.batchId.slice(0, 3).toUpperCase()}`} />
-          <Meta label="Created By" value={detail.createdByName ?? "—"} />
+          <Meta label="Created By" value={detail.createdByName ?? "-"} />
           <Meta label="Last Updated" value={fmtDate(detail.updatedAt)} />
           <Meta label="Sport" value={detail.sportName} />
           <Meta label="Court" value={detail.courtName} />
@@ -422,12 +422,12 @@ export function SessionDetailPage({ batchId }: { batchId: string }) {
               <MapPin className="h-4 w-4" /> Session Details
             </p>
             <div className="divide-y divide-border/60">
-              <Row label="Facility" value={detail.facilityName ?? "—"} />
-              <Row label="Address" value={detail.facilityAddress ?? "—"} />
+              <Row label="Facility" value={detail.facilityName ?? "-"} />
+              <Row label="Address" value={detail.facilityAddress ?? "-"} />
               <Row label="Session Type" value="Membership Protected" />
               <Row label="Guest Release" value="Allowed" />
               <Row label="Payment Type" value="Included in Membership" />
-              <Row label="Created By" value={detail.createdByName ?? "—"} />
+              <Row label="Created By" value={detail.createdByName ?? "-"} />
               <Row label="Created On" value={fmtDateTime(detail.createdAt)} />
               <Row label="Last Updated" value={fmtDateTime(detail.updatedAt)} />
             </div>

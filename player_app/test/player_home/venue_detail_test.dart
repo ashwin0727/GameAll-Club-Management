@@ -586,7 +586,7 @@ void main() {
           findsOneWidget,
           reason: 'shown, greyed out',
         );
-        expect(find.text('—'), findsWidgets);
+        expect(find.text('-'), findsWidgets);
 
         await tester.ensureVisible(
           find.byKey(const ValueKey('book-slot-7:00 PM')),
@@ -596,7 +596,7 @@ void main() {
         expect(find.byKey(const ValueKey('summary-time')), findsOneWidget);
         expect(
           tester.widget<Text>(find.byKey(const ValueKey('summary-time'))).data,
-          '—',
+          '-',
           reason: 'a booked hour is not selectable',
         );
 
@@ -770,7 +770,7 @@ void main() {
         await tap('9:00 PM');
         expect(
           text('summary-time'),
-          '—',
+          '-',
           reason: 'with nothing chosen Book Now waits again',
         );
       },
@@ -793,7 +793,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<Text>(find.byKey(const ValueKey('summary-time'))).data,
-        '—',
+        '-',
       );
     });
 
@@ -838,7 +838,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<Text>(find.byKey(const ValueKey('summary-time'))).data,
-        '—',
+        '-',
       );
     });
 

@@ -103,11 +103,11 @@ Deno.serve(async (req) => {
 
   if (ctx.outstandingMinor <= 0) return jsonResponse({ error: "There is nothing left to collect for this enrollment." }, 400);
 
-  // Monthly Auto Pay is part of the Advanced plan (one-time payment links are in every plan).
-  if (ctx.feeType === "MONTHLY") {
-    const { data: autoPayAllowed } = await supabase.rpc("plan_has_feature", { p_facility: ctx.facilityId, p_feature: "AUTOPAY" });
-    if (autoPayAllowed === false) {
-      return jsonResponse({ error: "Auto Pay is part of the Advanced plan. Upgrade the plan to use it." }, 403);
+  // Online collection (payment links and Auto Pay) is part of the Advanced plan; Basic records payments by hand.
+  {
+    const { data: onlineAllowed } = await supabase.rpc("plan_has_feature", { p_facility: ctx.facilityId, p_feature: "AUTOPAY" });
+    if (onlineAllowed === false) {
+      return jsonResponse({ error: "Online payments are part of the Advanced plan. Upgrade the plan to use them." }, 403);
     }
   }
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
       currency: "INR",
       accept_partial: false,
       reference_id: ctx.enrollmentId,
-      description: `${ctx.programName} — coaching fee`,
+      description: `${ctx.programName}, coaching fee`,
       customer: {
         ...(ctx.memberName ? { name: ctx.memberName } : {}),
         ...(contact ? { contact } : {}),

@@ -215,7 +215,7 @@ class StaffDetail {
       phone: j['phone'] as String?,
       avatarUrl: j['avatarUrl'] as String?,
       roleId: a?['roleId'] as String?,
-      roleName: (a?['roleName'] as String?) ?? '—',
+      roleName: (a?['roleName'] as String?) ?? '-',
       baseRole: (a?['baseRole'] as String?) ?? 'staff',
       status: StaffStatus.fromJson((a?['status'] as String?) ?? 'ACTIVE'),
       title: a?['title'] as String?,

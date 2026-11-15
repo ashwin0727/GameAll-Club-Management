@@ -107,7 +107,7 @@ export function validateSlotEdit(input: {
   if (input.startTime >= input.endTime) return "The end time must be after the start time.";
   if (input.capacity === null || input.capacity < 1) return "Slot capacity must be at least 1.";
   if (input.capacity < input.enrolled) {
-    return `${input.enrolled} ${input.enrolled === 1 ? "member is" : "members are"} already on this slot — capacity can't be lower than that.`;
+    return `${input.enrolled} ${input.enrolled === 1 ? "member is" : "members are"} already on this slot, capacity can't be lower than that.`;
   }
   return null;
 }

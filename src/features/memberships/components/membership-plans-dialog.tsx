@@ -95,7 +95,7 @@ export function MembershipPlansDialog({
         ) : (
           <div className="space-y-4">
             {plans.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No plans yet — add the first one below.</p>
+              <p className="text-sm text-muted-foreground">No plans yet. Add the first one below.</p>
             ) : (
               <div className="divide-y rounded-md border border-border">
                 {plans.map((plan) => (

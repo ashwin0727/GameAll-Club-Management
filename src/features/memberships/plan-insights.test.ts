@@ -215,7 +215,7 @@ describe("billingIntervalLabel", () => {
   });
 });
 
-describe("nextBillingDate / currentBillingPeriod — calendar months", () => {
+describe("nextBillingDate / currentBillingPeriod, calendar months", () => {
   it("is the same day next month: 14 Oct → 14 Nov → 14 Dec → 14 Jan", () => {
     expect(nextBillingDate("2026-10-14", 30)).toBe("2026-11-14");
     expect(nextBillingDate("2026-11-14", 30)).toBe("2026-12-14");

@@ -106,12 +106,12 @@ export function VendorDetailsPage({ vendorId }: { vendorId: string }) {
         <Card className="p-4">
           <h2 className="text-sm font-semibold">Contact Information</h2>
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <Row label="Contact Person" value={d.contactPerson ?? "—"} />
-            <Row label="Phone" value={d.phone ?? "—"} />
-            <Row label="Email" value={d.email ?? "—"} />
-            <Row label="Address" value={d.address ?? "—"} />
-            <Row label="GST" value={d.gstNumber ?? "—"} />
-            <Row label="PAN" value={d.panNumber ?? "—"} />
+            <Row label="Contact Person" value={d.contactPerson ?? "-"} />
+            <Row label="Phone" value={d.phone ?? "-"} />
+            <Row label="Email" value={d.email ?? "-"} />
+            <Row label="Address" value={d.address ?? "-"} />
+            <Row label="GST" value={d.gstNumber ?? "-"} />
+            <Row label="PAN" value={d.panNumber ?? "-"} />
             <Row label="Last Order" value={fmtDate(d.summary.lastOrderDate)} />
             <Row label="Added" value={fmtDate(d.createdAt)} />
           </dl>
@@ -131,7 +131,7 @@ export function VendorDetailsPage({ vendorId }: { vendorId: string }) {
                 </Link>,
                 i.sku,
                 `${i.currentStock} ${i.unit}`,
-                i.lastUnitCostMinor != null ? money(i.lastUnitCostMinor) : "—",
+                i.lastUnitCostMinor != null ? money(i.lastUnitCostMinor) : "-",
               ])}
             />
           )}
@@ -184,9 +184,9 @@ export function VendorDetailsPage({ vendorId }: { vendorId: string }) {
               head={["Date", "PO", "Method", "Reference", "Amount"]}
               rows={d.payments.map((p) => [
                 fmtDate(p.paidOn),
-                p.poNumber ?? "—",
-                p.method ?? "—",
-                p.reference ?? "—",
+                p.poNumber ?? "-",
+                p.method ?? "-",
+                p.reference ?? "-",
                 money(p.amountMinor),
               ])}
             />

@@ -700,7 +700,7 @@ class _StatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    String n(int? v) => loading ? '' : (v == null ? '—' : '$v');
+    String n(int? v) => loading ? '' : (v == null ? '-' : '$v');
 
     Widget cell(
       String key,

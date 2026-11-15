@@ -292,7 +292,7 @@ export function EditMemberPage({ membershipId }: { membershipId: string }) {
       <Card className="space-y-5 rounded-xl p-5">
         <div>
           <h2 className="text-base font-bold text-black dark:text-foreground">Membership Plan</h2>
-          <p className="text-xs text-muted-foreground">The plan can&apos;t be changed here — its court and timings come with it.</p>
+          <p className="text-xs text-muted-foreground">The plan can&apos;t be changed here. Its court and timings come with it.</p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Plan">
@@ -314,7 +314,7 @@ export function EditMemberPage({ membershipId }: { membershipId: string }) {
           <Field label="Plan End Date">
             <ReadOnly>
               <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-              {endDate ? format(endDate, "dd MMM yyyy") : "—"}
+              {endDate ? format(endDate, "dd MMM yyyy") : "-"}
             </ReadOnly>
           </Field>
         </div>

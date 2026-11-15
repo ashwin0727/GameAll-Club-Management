@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { OnboardingPlanStep } from "@/features/plans/components/onboarding-plan-step";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Choose Your Plan — ${PRODUCT_NAME}`,
+  title: `Choose Your Plan`,
 };
 
 export default function OnboardingPlanPage() {

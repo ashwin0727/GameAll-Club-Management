@@ -175,7 +175,7 @@ export function MemberSchedulePage() {
   return (
     <div className="space-y-4">
       {/* This exact structure — single element, two background layers (image + gradient), a
-          separate feather div for the join, breadcrumb inside the title block — is copied
+          separate feather div for the join, breadcrumb inside the title block, is copied
           verbatim from the Add Member wizard's hero (add-member-wizard-page.tsx), itself copied
           from the Membership Dashboard hero. Both are already live and confirmed correct. */}
       <div className="flex flex-col overflow-hidden rounded-2xl bg-card lg:h-[120px] lg:flex-row lg:items-stretch">

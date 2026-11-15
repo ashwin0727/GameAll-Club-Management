@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { SetupSummaryPage } from "@/features/onboarding-summary/components/setup-summary-page";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Setup Complete — ${PRODUCT_NAME}`,
+  title: `Setup Complete`,
 };
 
 export default function OnboardingCompletePage() {

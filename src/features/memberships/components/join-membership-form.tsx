@@ -166,7 +166,7 @@ export function JoinMembershipForm({ facilityId }: { facilityId: string }) {
                 batchId === "" ? "border-primary bg-primary/5" : "border-input hover:bg-accent"
               }`}
             >
-              No fixed slot — I&apos;ll book each time
+              No fixed slot: I&apos;ll book each time
             </button>
             {batches.map((b) => (
               <button
@@ -191,7 +191,7 @@ export function JoinMembershipForm({ facilityId }: { facilityId: string }) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Paying by UPI? You&apos;ll set up an AutoPay mandate on the next screen — the monthly amount is then charged
+        Paying by UPI? You&apos;ll set up an AutoPay mandate on the next screen. The monthly amount is then charged
         automatically. You can cancel anytime.
       </p>
 

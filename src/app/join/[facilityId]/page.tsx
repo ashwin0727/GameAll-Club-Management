@@ -4,7 +4,7 @@ import { APP_NAME } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: `Join a membership — ${APP_NAME}`,
+  title: `Join a membership`,
 };
 
 /** Whether the club's plan lets players enrol in memberships themselves (Advanced). A failed check keeps the form open. */

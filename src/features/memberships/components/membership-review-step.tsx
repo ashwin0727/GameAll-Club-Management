@@ -162,7 +162,7 @@ export function MembershipReviewStep({
 
   const emergency = [draft.emergencyName, draft.emergencyPhone && `${draft.emergencyCountryCode} ${draft.emergencyPhone}`]
     .filter(Boolean)
-    .join(" — ");
+    .join(": ");
 
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">

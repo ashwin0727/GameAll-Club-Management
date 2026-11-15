@@ -14,6 +14,7 @@ import '../../data/models/playing_area.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../data/models/plan.dart' show autoPayFeature;
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
 import 'program_wizard.dart';
@@ -87,6 +88,8 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
   bool _perSession = false;
   final _fee = TextEditingController();
   String _paymentMode = 'BOTH';
+  /// Online payment collection is part of the Advanced plan; on Basic every program is collected offline.
+  bool get _onlineOk => ref.read(sessionControllerProvider).planHasFeature(autoPayFeature);
   final _earlyBird = TextEditingController();
   DateTime? _discountTill;
   bool _tax = false;
@@ -194,7 +197,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
 
   String _iso(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
   String _hhmm(TimeOfDay t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-  String _date(DateTime? d) => d == null ? '—' : DateFormat('d MMM yyyy').format(d);
+  String _date(DateTime? d) => d == null ? '-' : DateFormat('d MMM yyyy').format(d);
   String _inr(num v) => Formatters.currencyInr(v.round());
 
   String? get _batchDuplicate => _batchName.text.trim().isEmpty || _courtId == null
@@ -298,7 +301,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
             imageUrl: imageUrl,
             // Stored as the base per-student fee (before discount / tax), a per-session fee already multiplied out.
             defaultPriceMinor: f.baseInr > 0 ? (f.baseInr * 100).round() : null,
-            paymentMode: _paymentMode,
+            paymentMode: _onlineOk ? _paymentMode : 'OFFLINE',
             feeType: _feeType,
             earlyBirdDiscountMinor: _discount > 0 ? (_discount * 100).round() : null,
             discountValidTill: _discountTill == null ? null : _iso(_discountTill!),
@@ -529,10 +532,10 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
         _label('Program Type', required: true),
         for (final p in programTypes) _optionCard(t, p.label, p.hint, _programType == p.value, () => setState(() => _programType = p.value)),
         _gap(AppSpacing.sm),
-        _label('Target Audience — Age Group', required: true),
+        _label('Target Audience: Age Group', required: true),
         Wrap(spacing: AppSpacing.sm, children: [for (final a in programAgeGroups) _choice(t, a, _ageGroup == a, () => setState(() => _ageGroup = a))]),
         _gap(),
-        _label('Target Audience — Skill Level', required: true),
+        _label('Target Audience: Skill Level', required: true),
         Wrap(spacing: AppSpacing.sm, children: [for (final l in programSkillLevels) _choice(t, l, _level == l, () => setState(() => _level = l))]),
         _gap(),
         _label('Key Highlights'),
@@ -614,7 +617,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
     return [
       if (_batches.isEmpty) ...[
         _label('Weekly Schedule', required: true),
-        _hint(t, "A program has exactly one batch — its day / time / court / coach schedule."),
+        _hint(t, "A program has exactly one batch. Its day / time / court / coach schedule."),
         _gap(AppSpacing.sm),
         Wrap(spacing: AppSpacing.xs, runSpacing: AppSpacing.xs, children: [
           for (var d = 0; d < 7; d++)
@@ -661,7 +664,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
       ],
       _label('Batches', required: true),
       if (_batches.isEmpty)
-        Text('No batch added yet — a batch is required before you can continue.', style: TextStyle(color: t.textSecondary))
+        Text('No batch added yet, a batch is required before you can continue.', style: TextStyle(color: t.textSecondary))
       else
         for (var i = 0; i < _batches.length; i++)
           Container(
@@ -674,7 +677,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
                   Text(_batches[i].name, style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(
                     '${_batches[i].daysOfWeek.map((d) => dayLabelsShort[d]).join(', ')} · ${_batches[i].startTime}–${_batches[i].endTime} · '
-                    '${_areas.where((a) => a.id == _batches[i].courtId).map((a) => a.name).firstOrNull ?? '—'}'
+                    '${_areas.where((a) => a.id == _batches[i].courtId).map((a) => a.name).firstOrNull ?? '-'}'
                     '${_coaches.where((c) => c.id == _batches[i].coachId).map((c) => ' · ${c.name}').firstOrNull ?? ''} · Capacity ${_batches[i].capacity}',
                     style: TextStyle(fontSize: 12, color: t.textSecondary),
                   ),
@@ -703,7 +706,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
       _gap(AppSpacing.sm),
       _num(_fee, monthly ? 'Fee per Month (₹)' : (_perSession ? 'Fee per Session (₹)' : 'Total Program Fee (₹)'), decimal: true),
       _gap(AppSpacing.sm),
-      AppDropdown<String>(
+      if (_onlineOk) AppDropdown<String>(
         initialValue: _paymentMode,
         decoration: const InputDecoration(labelText: 'Payment Mode'),
         items: const [
@@ -819,7 +822,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
               Text(_name.text.trim().isEmpty ? 'Untitled Program' : _name.text.trim(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
               Text(_description.text.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: t.textSecondary)),
               const SizedBox(height: 4),
-              Text('${_sportName ?? '—'} · $_level · Ages $_ageGroup · ${_maxCapacity.text} students', style: TextStyle(fontSize: 11, color: t.textSecondary)),
+              Text('${_sportName ?? '-'} · $_level · Ages $_ageGroup · ${_maxCapacity.text} students', style: TextStyle(fontSize: 11, color: t.textSecondary)),
             ]),
           ),
         ]),
@@ -827,7 +830,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
       _reviewSection(t, 1, 'Basic Information', 0, [
         _row(t, 'Program Name', _name.text.trim()),
         _row(t, 'Description', _description.text.trim()),
-        _row(t, 'Sport', _sportName ?? '—'),
+        _row(t, 'Sport', _sportName ?? '-'),
         _row(t, 'Program Type', typeLabel),
         if (_highlights.isNotEmpty) _row(t, 'Key Highlights', _highlights.join(', ')),
       ]),
@@ -836,7 +839,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
         _row(t, 'Skill Level', _level),
         _row(t, 'Session Duration', '$_effectiveDuration minutes'),
         _row(t, 'Sessions per Week', '$_sessionsPerWeek'),
-        _row(t, 'Program Duration', _weeks > 0 ? '$_weeks Weeks' : '—'),
+        _row(t, 'Program Duration', _weeks > 0 ? '$_weeks Weeks' : '-'),
         _row(t, 'Start Date', _date(_startDate)),
         _row(t, 'End Date', _date(DateTime.tryParse(_endIso))),
         _row(t, 'Max Capacity', '${_maxCapacity.text} Students'),
@@ -849,8 +852,8 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
           _row(t, 'Batch', b.name),
           _row(t, 'Days', b.daysOfWeek.map((d) => dayLabelsShort[d]).join(', ')),
           _row(t, 'Time', '${b.startTime}–${b.endTime}'),
-          _row(t, 'Court', _areas.where((a) => a.id == b.courtId).map((a) => a.name).firstOrNull ?? '—'),
-          _row(t, 'Coach', _coaches.where((c) => c.id == b.coachId).map((c) => c.name).firstOrNull ?? '—'),
+          _row(t, 'Court', _areas.where((a) => a.id == b.courtId).map((a) => a.name).firstOrNull ?? '-'),
+          _row(t, 'Coach', _coaches.where((c) => c.id == b.coachId).map((c) => c.name).firstOrNull ?? '-'),
         ],
       ]),
       _reviewSection(t, 4, 'Pricing & Settings', 3, [
@@ -859,7 +862,7 @@ class _CoachingProgramWizardScreenState extends ConsumerState<CoachingProgramWiz
         if (_perSession) ...[_row(t, 'Per Session Fee', _inr(_price)), _row(t, 'Total Sessions', '${f.totalSessions}')] else _row(t, monthly ? 'Fee per Month' : 'Program Fee', _inr(_price)),
         if (_discount > 0) _row(t, 'Early Bird Discount', '${_inr(_discount)}${_discountTill != null ? ' (till ${_date(_discountTill)})' : ''}'),
         _row(t, 'Tax Applicable', _tax ? 'Yes (${_taxPercent.text}% GST)' : 'No'),
-        _row(t, 'Payment Mode', const {'OFFLINE': 'Offline', 'ONLINE': 'Online', 'BOTH': 'Offline & Online'}[_paymentMode]!),
+        _row(t, 'Payment Mode', _onlineOk ? const {'OFFLINE': 'Offline', 'ONLINE': 'Online', 'BOTH': 'Offline & Online'}[_paymentMode]! : 'Offline'),
         _row(t, 'Allow Waitlist', _waitlist ? 'Yes' : 'No'),
         _row(t, 'Allow Trial Session', _trial ? 'Yes' : 'No'),
         _row(t, 'Auto Enroll Next Batch', _autoEnroll ? 'Yes' : 'No'),

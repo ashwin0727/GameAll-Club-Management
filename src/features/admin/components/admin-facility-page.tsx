@@ -57,12 +57,12 @@ export function AdminFacilityPage({ facilityId }: { facilityId: string }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <Section title="Owner and contact">
           <dl className="divide-y divide-border">
-            <Row label="Owner" value={owner.name ?? "—"} />
-            <Row label="Owner email" value={owner.email ?? "—"} />
-            <Row label="Owner phone" value={owner.phone ?? "—"} />
-            <Row label="Business email" value={f.businessEmail ?? "—"} />
-            <Row label="Business phone" value={f.businessPhone ?? "—"} />
-            <Row label="Address" value={f.address || "—"} />
+            <Row label="Owner" value={owner.name ?? "-"} />
+            <Row label="Owner email" value={owner.email ?? "-"} />
+            <Row label="Owner phone" value={owner.phone ?? "-"} />
+            <Row label="Business email" value={f.businessEmail ?? "-"} />
+            <Row label="Business phone" value={f.businessPhone ?? "-"} />
+            <Row label="Address" value={f.address || "-"} />
           </dl>
         </Section>
 
@@ -108,7 +108,7 @@ export function AdminFacilityPage({ facilityId }: { facilityId: string }) {
                 <li key={`${court.name}-${i}`} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span>
                     <span className="font-medium">{court.name}</span>
-                    <span className="text-muted-foreground"> · {court.sport ?? "—"}</span>
+                    <span className="text-muted-foreground"> · {court.sport ?? "-"}</span>
                   </span>
                   <span className="text-muted-foreground">
                     {inr(court.hourlyRateInr)}/hr{court.status !== "ACTIVE" || !court.bookingEnabled ? " · not bookable" : ""}

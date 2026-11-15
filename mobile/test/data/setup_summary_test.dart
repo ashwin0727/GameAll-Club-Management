@@ -41,7 +41,7 @@ const _area = PlayingArea(
 );
 
 void main() {
-  group('SetupSummary — missing-requirement detection', () {
+  group('SetupSummary, missing-requirement detection', () {
     test('flags every missing area when nothing is configured', () {
       final summary = SetupSummary(
         facility: _facility(),
@@ -116,7 +116,7 @@ void main() {
       expect(summary.missingOperatingHours, isTrue);
     });
 
-    test('isReady is true only once every requirement — including operating hours — is satisfied', () {
+    test('isReady is true only once every requirement, including operating hours, is satisfied', () {
       final summary = SetupSummary(
         facility: _facility(),
         facilitySports: const [_facilitySport],

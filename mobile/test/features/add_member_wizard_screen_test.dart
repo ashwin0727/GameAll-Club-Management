@@ -108,7 +108,7 @@ class _FakeSessions implements MembershipSessionRepository {
 }
 
 void main() {
-  testWidgets('the member joins only the plan timings they pick (at least one is required) — no schedule step', (tester) async {
+  testWidgets('the member joins only the plan timings they pick (at least one is required). No schedule step', (tester) async {
     final membership = _FakeMembership();
     final sessions = _FakeSessions();
     tester.view.physicalSize = const Size(390 * 3, 2400 * 3);

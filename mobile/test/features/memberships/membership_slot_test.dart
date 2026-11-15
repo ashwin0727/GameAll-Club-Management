@@ -111,7 +111,7 @@ void main() {
     });
   });
 
-  group('MembershipRepository — batch args on the wire', () {
+  group('MembershipRepository, batch args on the wire', () {
     late String source;
     setUpAll(() {
       source = File('lib/data/repositories/membership_repository.dart')

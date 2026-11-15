@@ -189,7 +189,7 @@ export function CreateTicketWizard() {
                   <option value="">Select court</option>
                   {courts.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} — {c.sportName}
+                      {c.name}: {c.sportName}
                     </option>
                   ))}
                 </DropdownSelect>
@@ -272,7 +272,7 @@ export function CreateTicketWizard() {
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                     <div>
                       <p className="font-medium">{affected.length} existing booking{affected.length > 1 ? "s" : ""} will be affected</p>
-                      <p className="text-xs">This window overlaps existing bookings. They will not be cancelled automatically — handle them from the ticket after creation.</p>
+                      <p className="text-xs">This window overlaps existing bookings. They will not be cancelled automatically, handle them from the ticket after creation.</p>
                     </div>
                   </div>
                 )}
@@ -308,17 +308,17 @@ export function CreateTicketWizard() {
 
         {step === 3 && (
           <div className="space-y-3 text-sm">
-            <ReviewRow label="Court" value={selectedCourt ? `${selectedCourt.name} — ${selectedCourt.sportName}` : "—"} />
-            <ReviewRow label="Issue" value={selectedCategory?.name ?? "—"} />
+            <ReviewRow label="Court" value={selectedCourt ? `${selectedCourt.name}: ${selectedCourt.sportName}` : "-"} />
+            <ReviewRow label="Issue" value={selectedCategory?.name ?? "-"} />
             <ReviewRow label="Priority" value={PRIORITY_LABEL[priority]} />
             <ReviewRow label="Title" value={title} />
             <ReviewRow label="Description" value={description} />
             <ReviewRow label="Schedule" value={shouldSchedule ? `${formatDateTime(new Date(scheduledStart).toISOString())} → ${formatDateTime(new Date(scheduledEnd).toISOString())}` : "Not scheduled"} />
             <ReviewRow label="Assigned Staff" value={selectedStaff?.fullName ?? "Unassigned"} />
-            <ReviewRow label="Estimated Cost" value={estimatedCost ? formatMoney(Math.round(Number(estimatedCost) * 100)) : "—"} />
+            <ReviewRow label="Estimated Cost" value={estimatedCost ? formatMoney(Math.round(Number(estimatedCost) * 100)) : "-"} />
             {affected.length > 0 && shouldSchedule && (
               <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <AlertTriangle className="h-3.5 w-3.5" /> {affected.length} booking(s) overlap this schedule — review them after creating the ticket.
+                <AlertTriangle className="h-3.5 w-3.5" /> {affected.length} booking(s) overlap this schedule. Review them after creating the ticket.
               </p>
             )}
           </div>

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { TransactionsList } from "@/features/finance/components/transactions-list";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Transactions — ${APP_NAME}`,
+  title: `Transactions`,
 };
 
 export default function FinanceTransactionsPage() {

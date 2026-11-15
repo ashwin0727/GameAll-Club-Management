@@ -98,7 +98,7 @@ export function useDeleteMemberFlow({ onDeleted, onChanged }: { onDeleted: () =>
         description={
           <>
             <span className="font-semibold text-foreground">{target?.name}</span> has AutoPay running, so they can&apos;t be deleted yet. Cancelling stops all
-            future charges and cancels their membership — the member is <span className="font-semibold text-foreground">not</span> deleted. You can delete
+            future charges and cancels their membership. The member is <span className="font-semibold text-foreground">not</span> deleted. You can delete
             them afterwards.
           </>
         }

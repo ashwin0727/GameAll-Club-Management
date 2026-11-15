@@ -63,7 +63,7 @@ function weeksBetween(p: ProgramRow): number | null {
 
 function durationWeeks(p: ProgramRow): string {
   const weeks = weeksBetween(p);
-  return weeks != null ? `${weeks} Weeks` : "—";
+  return weeks != null ? `${weeks} Weeks` : "-";
 }
 
 /** The program's real total sessions — sessions per week × the number of weeks it runs — falling
@@ -72,7 +72,7 @@ function durationWeeks(p: ProgramRow): string {
 function totalSessions(p: ProgramRow): string {
   const weeks = weeksBetween(p);
   if (p.sessionsPerWeek && weeks != null) return String(p.sessionsPerWeek * weeks);
-  return p.sessionCount != null ? String(p.sessionCount) : "—";
+  return p.sessionCount != null ? String(p.sessionCount) : "-";
 }
 
 function levelBadgeVariant(level: string): "success" | "secondary" | "destructive" | "outline" {
@@ -191,7 +191,7 @@ export function ProgramsPage() {
 
   if (!facilityId) return null;
 
-  const sportName = (id: string | null) => sportsQuery.data?.find((s) => s.facilitySportId === id)?.name ?? "—";
+  const sportName = (id: string | null) => sportsQuery.data?.find((s) => s.facilitySportId === id)?.name ?? "-";
 
   return (
     <div className="space-y-4">
@@ -235,7 +235,7 @@ export function ProgramsPage() {
                 icon={CheckCircle2}
                 iconBg="bg-blue-500/15"
                 iconColor="text-blue-600 dark:text-blue-400"
-                value={insights.activePrograms === undefined ? "—" : String(insights.activePrograms)}
+                value={insights.activePrograms === undefined ? "-" : String(insights.activePrograms)}
                 label="Active Programs"
                 sub="Currently running"
                 index={1}
@@ -255,7 +255,7 @@ export function ProgramsPage() {
                 icon={Armchair}
                 iconBg="bg-purple-500/15"
                 iconColor="text-purple-600 dark:text-purple-400"
-                value={insights.availableSeats === undefined ? "—" : String(insights.availableSeats)}
+                value={insights.availableSeats === undefined ? "-" : String(insights.availableSeats)}
                 label="Available Seats"
                 sub="Remaining capacity"
                 index={3}
@@ -445,7 +445,7 @@ export function ProgramsPage() {
             ) : (
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <InsightTile icon={Users} iconBg="bg-purple-500/15" iconColor="text-purple-600 dark:text-purple-400" label="Total Enrolled" value={String(insights.enrolledStudents)} />
-                <InsightTile icon={Percent} iconBg="bg-success/15" iconColor="text-success" label="Completion Rate" value={insights.avgCompletionPct != null ? `${insights.avgCompletionPct}%` : "—"} />
+                <InsightTile icon={Percent} iconBg="bg-success/15" iconColor="text-success" label="Completion Rate" value={insights.avgCompletionPct != null ? `${insights.avgCompletionPct}%` : "-"} />
                 <InsightTile icon={ClipboardList} iconBg="bg-warning/15" iconColor="text-warning" label="Active Batches" value={String(insights.activeBatches)} />
               </div>
             )}

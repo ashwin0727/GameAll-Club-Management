@@ -675,7 +675,7 @@ void main() {
 
   group('signed-in Home', () {
     testWidgets(
-      'wide: welcome, summary cards, schedule, courts today, quick actions — every active membership and coaching listed',
+      'wide: welcome, summary cards, schedule, courts today, quick actions. Every active membership and coaching listed',
       (tester) async {
         final auth = FakeAuth(
           signedIn: true,

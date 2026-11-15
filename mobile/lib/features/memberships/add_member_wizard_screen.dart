@@ -14,6 +14,7 @@ import '../../data/models/membership.dart';
 import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_dropdown.dart';
+import '../../data/models/plan.dart' show autoPayFeature;
 import '../authentication/session_controller.dart';
 import 'add_member_wizard.dart';
 import 'duplicate_guards.dart';
@@ -78,6 +79,8 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
 
   bool get _locked => _link != null;
   bool get _planIsRecurring => _selectedPlan?.planType == 'RECURRING';
+  /// Auto Pay (a verified subscription link) is part of the Advanced plan; Basic records payments by hand.
+  bool get _autoPayAllowed => ref.read(sessionControllerProvider).planHasFeature(autoPayFeature);
 
   MembershipPlan? get _selectedPlan {
     for (final p in _plans) {
@@ -246,7 +249,11 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
         _d.receivedFrom = _receivedFrom.text;
       }
     }
-    if (_planIsRecurring) _d.paymentTab = AddMemberPaymentTab.link;
+    if (_planIsRecurring && _autoPayAllowed) {
+      _d.paymentTab = AddMemberPaymentTab.link;
+    } else if (!_autoPayAllowed && _d.paymentTab == AddMemberPaymentTab.link) {
+      _d.paymentTab = AddMemberPaymentTab.offline;
+    }
   }
 
   void _back() {
@@ -723,7 +730,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
           children: [
             const Icon(Icons.calendar_today_outlined, size: 16),
             const SizedBox(width: 8),
-            Text(_endDate == null ? '—' : Formatters.dateShort(_endDate!)),
+            Text(_endDate == null ? '-' : Formatters.dateShort(_endDate!)),
           ],
         ),
       ),
@@ -998,7 +1005,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     final charges = addMemberCharges(_d);
     final emergency = [_d.emergencyName.trim(), if (_d.emergencyPhone.trim().isNotEmpty) '${_d.emergencyCountryCode} ${_d.emergencyPhone.trim()}']
         .where((p) => p.isNotEmpty)
-        .join(' — ');
+        .join(': ');
     return [
       _reviewSection(1, 'Member Details', 0, [
         _kv('Name', _d.fullName.trim()),
@@ -1043,7 +1050,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     final tab = _d.paymentTab;
     final referenceRequired = _d.paymentMethod == 'UPI' || _d.paymentMethod == 'Bank Transfer';
     return [
-      for (final t in AddMemberPaymentTab.values) ...[
+      for (final t in AddMemberPaymentTab.values.where((t) => _autoPayAllowed || t != AddMemberPaymentTab.link)) ...[
         _paymentTabTile(t),
         _gap(AppSpacing.sm),
       ],
@@ -1064,7 +1071,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
       _gap(),
       if (tab == AddMemberPaymentTab.link) ...[
         _banner(
-          'A secure Razorpay payment link will be generated for this month, and the same amount will auto-collect on this day every month after — the member only has to approve it once. You can share this link via WhatsApp, SMS, or Email.',
+          'A secure Razorpay payment link will be generated for this month, and the same amount will auto-collect on this day every month after. The member only has to approve it once. You can share this link via WhatsApp, SMS, or Email.',
         ),
         if (_link != null) ...[
           _gap(),
@@ -1113,7 +1120,10 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
     final selected = _d.paymentTab == t;
     // A recurring plan must go through a verified subscription; and once a link exists, recording
     // a separate offline payment on top of a live mandate would double up.
-    final disabled = (_planIsRecurring && t != AddMemberPaymentTab.link) || (_locked && t == AddMemberPaymentTab.offline);
+    final autoPayOk = _autoPayAllowed;
+    final disabled = (_planIsRecurring && autoPayOk && t != AddMemberPaymentTab.link) ||
+        (!autoPayOk && t == AddMemberPaymentTab.link) ||
+        (_locked && t == AddMemberPaymentTab.offline);
     final icon = switch (t) {
       AddMemberPaymentTab.link => Icons.link,
       AddMemberPaymentTab.offline => Icons.credit_card,
@@ -1149,7 +1159,11 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
                   children: [
                     Text(t.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                     Text(
-                      _planIsRecurring && t != AddMemberPaymentTab.link ? 'Not available for a recurring plan' : t.subtitle,
+                      !_autoPayAllowed && t == AddMemberPaymentTab.link
+                          ? 'Auto Pay is part of the Advanced plan'
+                          : _planIsRecurring && t != AddMemberPaymentTab.link
+                              ? 'Not available for a recurring plan'
+                              : t.subtitle,
                       style: AppTypography.caption(context),
                     ),
                   ],
@@ -1179,7 +1193,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                url == null ? 'Member created — the payment link could not be generated' : 'Member created — payment link ready',
+                url == null ? 'Member created. The payment link could not be generated' : 'Member created, payment link ready',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: tokens.success),
               ),
             ),
@@ -1199,7 +1213,7 @@ class _AddMemberWizardScreenState extends ConsumerState<AddMemberWizardScreen> {
           ],
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'The member is already created (Payment Incomplete) — share this link and their status updates once they pay.',
+            'The member is already created (Payment Incomplete). Share this link and their status updates once they pay.',
             style: AppTypography.caption(context),
           ),
         ],

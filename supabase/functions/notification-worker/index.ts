@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   const sa = parseServiceAccount(Deno.env.get("FIREBASE_SERVICE_ACCOUNT"));
   if (!sa) {
     // Nothing is claimed, so the in-app list and any later push are unaffected.
-    console.warn("[notification-worker] FIREBASE_SERVICE_ACCOUNT is not set — in-app notifications only");
+    console.warn("[notification-worker] FIREBASE_SERVICE_ACCOUNT is not set, in-app notifications only");
     return json({ pushed: 0, push: "not configured" });
   }
 

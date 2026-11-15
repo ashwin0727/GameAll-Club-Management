@@ -60,7 +60,7 @@ class _CancelMembershipSheetState extends ConsumerState<CancelMembershipSheet> {
         setState(() {
           _refundNote = refund.status == RefundStatus.failed
               ? 'The membership was cancelled, but the refund could not be submitted. Please retry from Refunds.'
-              : 'Refund submitted — it will show as processed once Razorpay confirms it.';
+              : 'Refund submitted. It will show as processed once Razorpay confirms it.';
         });
       }
       if (mounted) Navigator.of(context).pop(true);

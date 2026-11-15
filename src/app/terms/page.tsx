@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL_CONTACT_EMAIL, LegalPage, type LegalSection } from "@/features/legal/legal-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Terms & Conditions — ${APP_NAME}`,
+  title: `Terms & Conditions`,
   description: "The terms for using GameAll Venue and GameAll Play.",
 };
 

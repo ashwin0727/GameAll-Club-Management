@@ -200,7 +200,7 @@ class _VendorsScreenState extends ConsumerState<VendorsScreen> {
                     children: [
                       Text(v.name, style: AppTypography.rowTitle(context)),
                       Text(
-                        '${v.contactPerson ?? v.phone ?? v.email ?? '—'} · ${v.poCount} POs · ${invMoney(v.outstandingMinor)} due',
+                        '${v.contactPerson ?? v.phone ?? v.email ?? '-'} · ${v.poCount} POs · ${invMoney(v.outstandingMinor)} due',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption(context),

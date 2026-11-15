@@ -118,7 +118,7 @@ describe("settlementState", () => {
   });
 });
 
-describe("spec §43 — guest booking through to finance", () => {
+describe("spec §43, guest booking through to finance", () => {
   const bookingMinor = 40000;
 
   it("shows nothing earned and the full amount outstanding before payment", () => {

@@ -10,9 +10,9 @@ export function autoPayStatusLabel(status: MembershipAutoPay["status"]): { label
     case "active":
       return { label: "Active", detail: "Charged automatically each cycle on the same day of the month." };
     case "pending":
-      return { label: "Payment failed — retrying", detail: "The last charge failed. Razorpay is retrying; the member may need to check their account." };
+      return { label: "Payment failed, retrying", detail: "The last charge failed. Razorpay is retrying; the member may need to check their account." };
     case "halted":
-      return { label: "Stopped — payment failed", detail: "Retries ran out. The member must authorise again or pay another way." };
+      return { label: "Stopped, payment failed", detail: "Retries ran out. The member must authorise again or pay another way." };
     case "cancelled":
       return { label: "Cancelled", detail: "AutoPay was stopped. The membership runs to its paid-until date." };
     case "completed":

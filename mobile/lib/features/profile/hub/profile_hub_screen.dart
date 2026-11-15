@@ -649,7 +649,7 @@ class _PlanCard extends StatelessWidget {
                     ),
                   ),
               const SizedBox(height: AppSpacing.sm),
-              Text('GameAll charges a flat membership fee — never a commission on your bookings or payments.',
+              Text('GameAll charges a flat membership fee, never a commission on your bookings or payments.',
                   style: TextStyle(fontSize: 12, color: t.textSecondary, height: 1.4)),
             ],
           ),

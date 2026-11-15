@@ -89,7 +89,7 @@ void main() {
       expect(result, hasLength(1));
     });
 
-    test('merges into computeUtilization exactly like a real booking — spec\'s 80% partial-release scenario', () {
+    test('merges into computeUtilization exactly like a real booking, spec\'s 80% partial-release scenario', () {
       final period = DateRange(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 25));
       // Capacity 5, 3 members + 1 guest confirmed (1 released slot still
       // unused) — the session occupies its single 1h slot out of a 5h open
@@ -165,7 +165,7 @@ void main() {
       expect(result.newThisMonth, 1);
     });
 
-    test('is all zero for an empty facility — a valid empty state', () {
+    test('is all zero for an empty facility, a valid empty state', () {
       final result = DashboardCalculator.summarizeMemberships(const [], DateTime(2026, 8, 24));
       expect(result.active, 0);
       expect(result.expiringSoon, 0);

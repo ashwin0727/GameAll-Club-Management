@@ -217,7 +217,7 @@ export function composeNotes(
   const phone = draft.emergencyPhone.trim();
   if (!name && !phone) return undefined;
   const number = phone ? `${draft.emergencyCountryCode} ${phone}`.trim() : "";
-  return `Emergency contact: ${[name, number].filter(Boolean).join(" — ")}`;
+  return `Emergency contact: ${[name, number].filter(Boolean).join(", ")}`;
 }
 
 /**

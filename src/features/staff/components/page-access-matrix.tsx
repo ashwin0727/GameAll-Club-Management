@@ -80,9 +80,9 @@ export function PageAccessMatrix({
     <div className="space-y-5">
       <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
         <p>
-          <span className="font-medium text-foreground">None</span> — the page is hidden completely.{" "}
-          <span className="font-medium text-foreground">View</span> — can look, but not change or export anything.{" "}
-          <span className="font-medium text-foreground">Edit</span> — can also create, change, cancel, record payments and export.
+          <span className="font-medium text-foreground">None</span>. The page is hidden completely.{" "}
+          <span className="font-medium text-foreground">View</span>, can look, but not change or export anything.{" "}
+          <span className="font-medium text-foreground">Edit</span>, can also create, change, cancel, record payments and export.
         </p>
       </div>
 

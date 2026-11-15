@@ -163,12 +163,12 @@ void main() {
   });
 
   group('PaymentRepository.getPaymentOrderStatus', () {
-    test('reads status via the existing RLS-scoped get_payment_order RPC — never a new privileged read path', () {
+    test('reads status via the existing RLS-scoped get_payment_order RPC, never a new privileged read path', () {
       expect(source, contains("_client.rpc('get_payment_order', params: {'p_payment_order_id': paymentOrderId})"));
     });
   });
 
-  group('verify/reconcile error handling mirrors createPaymentOrder — every thrown error is the app\'s own AppException type', () {
+  group('verify/reconcile error handling mirrors createPaymentOrder. Every thrown error is the app\'s own AppException type', () {
     test('every thrown error across the whole file is AppException, never a raw object', () {
       final throwStatements = RegExp(r'throw ([A-Za-z_][\w.]*)').allMatches(source).map((m) => m.group(1)).toSet();
       expect(throwStatements, {'AppException'});

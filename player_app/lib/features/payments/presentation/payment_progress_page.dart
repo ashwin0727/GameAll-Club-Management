@@ -552,7 +552,7 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
                                 _stage == _Stage.timedOut) ...[
                               GameAllButton.gradient(
                                 key: const ValueKey('pay-check-now'),
-                                label: "I've paid — check now",
+                                label: "I've paid. Check now",
                                 expand: true,
                                 onPressed: () => _check(manual: true),
                               ),

@@ -134,12 +134,12 @@ class _VendorDetailScreenState extends ConsumerState<VendorDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _kv('Contact person', v.contactPerson ?? '—'),
-            _kv('Phone', v.phone ?? '—'),
-            _kv('Email', v.email ?? '—'),
-            _kv('Address', v.address ?? '—'),
-            _kv('GST', v.gstNumber ?? '—'),
-            _kv('PAN', v.panNumber ?? '—'),
+            _kv('Contact person', v.contactPerson ?? '-'),
+            _kv('Phone', v.phone ?? '-'),
+            _kv('Email', v.email ?? '-'),
+            _kv('Address', v.address ?? '-'),
+            _kv('GST', v.gstNumber ?? '-'),
+            _kv('PAN', v.panNumber ?? '-'),
             _kv('Last order', invDate(v.lastOrderDate)),
             _kv('Added', invDate(v.createdAt)),
           ],

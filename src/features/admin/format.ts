@@ -4,17 +4,17 @@ export function inr(value: number | null | undefined): string {
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function placeLabel(city: string | null, state?: string | null): string {
-  return [city, state].filter(Boolean).join(", ") || "—";
+  return [city, state].filter(Boolean).join(", ") || "-";
 }
 
 /** "COMPLETED" → "Completed", "OPERATING_HOURS" → "Operating hours". */

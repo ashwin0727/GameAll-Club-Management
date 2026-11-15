@@ -69,7 +69,7 @@ export function TournamentAppPreview({
               <img
                 key={img.src}
                 src={img.src}
-                alt={`GameAll Tournament Management — ${img.label}`}
+                alt={`GameAll Tournament Management: ${img.label}`}
                 loading={i === 0 ? "eager" : "lazy"}
                 decoding="async"
                 aria-hidden={!active}

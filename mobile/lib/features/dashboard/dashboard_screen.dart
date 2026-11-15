@@ -2742,7 +2742,7 @@ class _RevenueBreakdownChart extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        s.unavailable ? '—' : Formatters.currencyInr(s.amountInr),
+                        s.unavailable ? '-' : Formatters.currencyInr(s.amountInr),
                         style: TextStyle(fontSize: 10, color: tokens.textSecondary),
                       ),
                       const SizedBox(width: 6),

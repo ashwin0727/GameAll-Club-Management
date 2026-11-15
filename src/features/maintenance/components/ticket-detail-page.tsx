@@ -100,10 +100,10 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
           </span>
           <div>
             <h1 className="text-xl font-semibold">
-              {ticket.code} <span className="font-normal text-muted-foreground">— {ticket.title}</span>
+              {ticket.code} <span className="font-normal text-muted-foreground">: {ticket.title}</span>
             </h1>
             <p className="text-sm text-muted-foreground">
-              {ticket.court.name} · {ticket.sportName ?? "—"} · {ticket.category.name}
+              {ticket.court.name} · {ticket.sportName ?? "-"} · {ticket.category.name}
             </p>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                     </tbody>
                   </table>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Reschedule, cancel or refund these from the Bookings page — Maintenance never changes a booking automatically.
+                    Reschedule, cancel or refund these from the Bookings page: Maintenance never changes a booking automatically.
                   </p>
                 </div>
               )}
@@ -247,7 +247,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                 <li key={e.id} className="text-sm">
                   <p>
                     <span className="font-medium">{activityLabel(e.eventType)}</span>
-                    {e.note ? <span className="text-muted-foreground"> — {e.note}</span> : null}
+                    {e.note ? <span className="text-muted-foreground">: {e.note}</span> : null}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {formatDateTime(e.createdAt)} {e.actorName ? `· ${e.actorName}` : ""}

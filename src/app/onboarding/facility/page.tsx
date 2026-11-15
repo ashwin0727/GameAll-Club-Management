@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { FacilityDetailsForm } from "@/features/onboarding/components/facility-details-form";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
 import { SetupStepper } from "@/features/onboarding/components/setup-stepper";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Facility Information — ${PRODUCT_NAME}`,
+  title: `Facility Information`,
 };
 
 export default function FacilityDetailsPage() {

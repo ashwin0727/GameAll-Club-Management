@@ -42,27 +42,27 @@ Deno.test("computeGrossRevenue: only 'paid' payments count", () => {
   assertEquals(computeGrossRevenue(payments), 80000);
 });
 
-Deno.test("computeProcessedRefunds: only PROCESSED refunds count — spec §Critical Failed/Pending Refund Test", () => {
+Deno.test("computeProcessedRefunds: only PROCESSED refunds count, spec §Critical Failed/Pending Refund Test", () => {
   const refunds = [refund(80000, "PROCESSED"), refund(80000, "FAILED"), refund(80000, "PENDING"), refund(80000, "REQUESTED"), refund(80000, "PROCESSING")];
   assertEquals(computeProcessedRefunds(refunds), 80000);
 });
 
-Deno.test("computeNetRevenue: full refund test — spec §Full Refunds", () => {
+Deno.test("computeNetRevenue: full refund test, spec §Full Refunds", () => {
   assertEquals(computeNetRevenue(80000, 80000), 0);
 });
 
-Deno.test("computeNetRevenue: partial refund test — spec §Partial Refunds", () => {
+Deno.test("computeNetRevenue: partial refund test, spec §Partial Refunds", () => {
   assertEquals(computeNetRevenue(80000, 30000), 50000);
 });
 
-Deno.test("computeNetRevenue: failed refund never reduces net revenue — spec §Critical Failed Refund Test", () => {
+Deno.test("computeNetRevenue: failed refund never reduces net revenue, spec §Critical Failed Refund Test", () => {
   const gross = computeGrossRevenue([payment(80000)]);
   const refunded = computeProcessedRefunds([refund(80000, "FAILED")]);
   assertEquals(refunded, 0);
   assertEquals(computeNetRevenue(gross, refunded), 80000);
 });
 
-Deno.test("computeNetRevenue: pending refund never reduces net revenue yet — spec §Critical Pending Refund Test", () => {
+Deno.test("computeNetRevenue: pending refund never reduces net revenue yet, spec §Critical Pending Refund Test", () => {
   const gross = computeGrossRevenue([payment(80000)]);
   const refunded = computeProcessedRefunds([refund(80000, "PENDING")]);
   assertEquals(refunded, 0);
@@ -90,14 +90,14 @@ Deno.test("computeRevenueBreakdown: the spec's own worked example (§Critical Fi
   assertEquals(result.netRevenueMinor, 270000);
 });
 
-Deno.test("computeRevenueBreakdown: membership revenue + refund — spec §Membership Revenue + Refund", () => {
+Deno.test("computeRevenueBreakdown: membership revenue + refund, spec §Membership Revenue + Refund", () => {
   const result = computeRevenueBreakdown([payment(150000, "paid", "MEMBERSHIP")], [refund(50000, "PROCESSED")]);
   assertEquals(result.membershipRevenueMinor, 150000);
   assertEquals(result.refundsMinor, 50000);
   assertEquals(result.netRevenueMinor, 100000);
 });
 
-Deno.test("computeRevenueBreakdown: guest revenue + full refund — spec §Guest Revenue + Refund", () => {
+Deno.test("computeRevenueBreakdown: guest revenue + full refund, spec §Guest Revenue + Refund", () => {
   const result = computeRevenueBreakdown([payment(80000, "paid", "GUEST_BOOKING")], [refund(80000, "PROCESSED")]);
   assertEquals(result.guestBookingRevenueMinor, 80000);
   assertEquals(result.netRevenueMinor, 0);
@@ -130,12 +130,12 @@ Deno.test("countPaymentOrdersByOutcome: empty input is all zeros", () => {
 
 // ─── Duplicate protection ─────────────────────────────────────────────────
 
-Deno.test("hasDuplicatePaymentId: a repeated razorpay_payment_id is flagged — spec §Critical Duplicate Transaction Test", () => {
+Deno.test("hasDuplicatePaymentId: a repeated razorpay_payment_id is flagged, spec §Critical Duplicate Transaction Test", () => {
   assertEquals(hasDuplicatePaymentId(["pay_123", "pay_456"]), false);
   assertEquals(hasDuplicatePaymentId(["pay_123", "pay_123"]), true);
 });
 
-Deno.test("hasDuplicateRefundId: a repeated razorpay_refund_id is flagged — spec §Critical Duplicate Refund Test", () => {
+Deno.test("hasDuplicateRefundId: a repeated razorpay_refund_id is flagged, spec §Critical Duplicate Refund Test", () => {
   assertEquals(hasDuplicateRefundId(["rfnd_123", "rfnd_456"]), false);
   assertEquals(hasDuplicateRefundId(["rfnd_123", "rfnd_123"]), true);
 });

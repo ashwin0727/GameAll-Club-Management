@@ -15,7 +15,7 @@ String? validateSlotEdit({
   if (startTime.compareTo(endTime) >= 0) return 'The end time must be after the start time.';
   if (capacity == null || capacity < 1) return 'Slot capacity must be at least 1.';
   if (capacity < enrolled) {
-    return '$enrolled ${enrolled == 1 ? 'member is' : 'members are'} already on this slot — capacity can\'t be lower than that.';
+    return '$enrolled ${enrolled == 1 ? 'member is' : 'members are'} already on this slot, capacity can\'t be lower than that.';
   }
   return null;
 }

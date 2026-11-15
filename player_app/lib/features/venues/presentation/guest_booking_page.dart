@@ -394,7 +394,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     final timeBody = courts.isEmpty
         ? Text(
             venue.sports.isEmpty
-                ? '—'
+                ? '-'
                 : 'Pick a court once slots are available.',
             style: AppTextStyles.body(p.mutedText),
           )
@@ -1336,7 +1336,7 @@ class _Summary extends StatelessWidget {
           row(
             Icons.sports_rounded,
             'Sport',
-            sport ?? '—',
+            sport ?? '-',
             key: const ValueKey('summary-sport'),
             leading: SportIcon(sport, size: 22, color: p.primaryText),
           ),
@@ -1344,7 +1344,7 @@ class _Summary extends StatelessWidget {
           row(
             Icons.grid_view_rounded,
             'Court',
-            court ?? '—',
+            court ?? '-',
             key: const ValueKey('summary-court'),
           ),
           Container(height: 1, color: p.border),
@@ -1374,7 +1374,7 @@ class _Summary extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  amount ?? (s == null ? '—' : 'At the venue'),
+                  amount ?? (s == null ? '-' : 'At the venue'),
                   key: const ValueKey('summary-amount'),
                   style: AppTextStyles.desktopHeroHeading(p.primaryText)
                       .copyWith(fontSize: 34),
@@ -1730,14 +1730,14 @@ class _PhoneSummary extends StatelessWidget {
             row(
               SportIcon(sport, size: 22, color: p.primaryText),
               'Sport',
-              sport ?? '—',
+              sport ?? '-',
               const ValueKey('summary-sport'),
             ),
             Container(height: 1, color: p.border),
             row(
               Icon(Icons.grid_view_rounded, size: 22, color: p.primaryText),
               'Court',
-              court ?? '—',
+              court ?? '-',
               const ValueKey('summary-court'),
             ),
             Container(height: 1, color: p.border),
@@ -1850,7 +1850,7 @@ class _PhoneSummary extends StatelessWidget {
 /// The chosen hours as the booking will read: hours that follow one another merge ("7:00 PM – 9:00 PM"), separate ones are listed,
 /// with the total ("(3 hr)").
 String describeSlots(List<CourtSlot> picked) {
-  if (picked.isEmpty) return '—';
+  if (picked.isEmpty) return '-';
   final sorted = [...picked]..sort((a, b) => a.start.compareTo(b.start));
   final ranges = <(DateTime, DateTime)>[];
   for (final s in sorted) {

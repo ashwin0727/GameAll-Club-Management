@@ -121,7 +121,7 @@ class _BatchMembersSheetState extends ConsumerState<BatchMembersSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('${widget.batch.name} — Members', style: Theme.of(context).textTheme.headlineSmall),
+                Text('${widget.batch.name}: Members', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Capacity ${widget.batch.capacity} · members eligible to book this batch\'s sessions.',

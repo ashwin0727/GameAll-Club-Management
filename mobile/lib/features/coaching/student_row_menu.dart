@@ -75,14 +75,14 @@ Future<DeleteStudentOutcome> runDeleteStudentFlow(
         context,
         title: 'Cancel Coaching & AutoPay?',
         body: "$studentName still has an active payment or coaching, so they can't be deleted yet. Cancelling stops any online "
-            'payment or AutoPay and cancels their coaching — the student is not deleted. You can delete them afterwards.',
+            'payment or AutoPay and cancels their coaching. The student is not deleted. You can delete them afterwards.',
         confirm: 'Cancel Coaching',
         cancel: 'Keep Coaching',
       );
       if (!cancel) return DeleteStudentOutcome.none;
       await repo.setEnrollmentStatus(enrollmentId, 'CANCELLED', reason: 'Cancelled before deleting the student');
       if (context.mounted) {
-        showTopNotice(context, 'Coaching and AutoPay cancelled. $studentName was not deleted — choose Delete Student again to remove them.');
+        showTopNotice(context, 'Coaching and AutoPay cancelled. $studentName was not deleted. Choose Delete Student again to remove them.');
       }
       return DeleteStudentOutcome.coachingCancelled;
     }

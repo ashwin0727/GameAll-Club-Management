@@ -75,7 +75,7 @@ export function MemberScheduleDetailsPanel({ member }: { member: MemberScheduleS
       else setNotice("This member has no linked membership yet.");
       return;
     }
-    setNotice("Per-slot editing is coming soon — for now, use Edit Schedule to change the member's whole weekly pattern.");
+    setNotice("Per-slot editing is coming soon, for now, use Edit Schedule to change the member's whole weekly pattern.");
   }
 
   return (
@@ -121,28 +121,28 @@ export function MemberScheduleDetailsPanel({ member }: { member: MemberScheduleS
             <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div>
               <p className="text-muted-foreground">Membership Plan</p>
-              <p className="font-medium text-foreground">{detail?.membership.name ?? "—"}</p>
+              <p className="font-medium text-foreground">{detail?.membership.name ?? "-"}</p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div>
               <p className="text-muted-foreground">Valid Till</p>
-              <p className="font-medium text-foreground">{detail ? formatValidTill(detail.membership.endDate) : "—"}</p>
+              <p className="font-medium text-foreground">{detail ? formatValidTill(detail.membership.endDate) : "-"}</p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div>
               <p className="text-muted-foreground">Assigned Courts</p>
-              <p className="font-medium text-foreground">{courts.length > 0 ? courts.join(", ") : "—"}</p>
+              <p className="font-medium text-foreground">{courts.length > 0 ? courts.join(", ") : "-"}</p>
             </div>
           </div>
           <div className="flex items-start gap-2">
             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <div>
               <p className="text-muted-foreground">Preferred Time</p>
-              <p className="font-medium text-foreground">{preferredTime || "—"}</p>
+              <p className="font-medium text-foreground">{preferredTime || "-"}</p>
             </div>
           </div>
         </div>

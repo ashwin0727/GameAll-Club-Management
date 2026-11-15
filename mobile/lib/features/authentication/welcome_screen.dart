@@ -88,7 +88,7 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             const Text(
-                              'Manage bookings, memberships, courts, and payouts — all in one place.',
+                              'Manage bookings, memberships, courts, and payouts, all in one place.',
                               textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 16, height: 1.4, color: Color(0xFF2B2B2B)),
                             ),

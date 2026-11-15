@@ -345,11 +345,11 @@ class _CoachingTabState extends State<_CoachingTab> {
       HubSummaryCard(
         icon: Icons.person_pin_outlined,
         title: 'Total coaches',
-        value: o.totalCoaches == null ? '—' : '${o.totalCoaches}',
+        value: o.totalCoaches == null ? '-' : '${o.totalCoaches}',
         statusText: o.coachesOnLeave > 0 ? '${o.activeCoaches} active · ${o.coachesOnLeave} on leave' : '${o.activeCoaches} active',
         left: HubSummaryCell(
           label: 'Coach Expenses',
-          value: o.coachingExpenseMinor == null ? '—' : _rupees(o.coachingExpenseMinor!),
+          value: o.coachingExpenseMinor == null ? '-' : _rupees(o.coachingExpenseMinor!),
           sub: 'This month',
           onTap: () {},
         ),
@@ -686,7 +686,7 @@ class _ProgramsTabState extends State<_ProgramsTab> {
         ),
         right: HubSummaryCell(
           label: 'Available Seats',
-          value: widget.cardStats == null ? '—' : '${widget.cardStats!.availableSeats}',
+          value: widget.cardStats == null ? '-' : '${widget.cardStats!.availableSeats}',
           sub: 'Remaining capacity',
           onTap: () {},
         ),
@@ -796,13 +796,13 @@ class _StudentsTabState extends State<_StudentsTab> {
         statusText: '${widget.cardStats == null ? stats.active : widget.cardStats!.enrolledStudents} enrolled',
         left: HubSummaryCell(
           label: 'Revenue',
-          value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.revenueMinor),
+          value: widget.cardStats == null ? '-' : _rupees(widget.cardStats!.revenueMinor),
           sub: 'This month',
           onTap: () {},
         ),
         right: HubSummaryCell(
           label: 'Pending Payments',
-          value: widget.cardStats == null ? '—' : _rupees(widget.cardStats!.pendingMinor),
+          value: widget.cardStats == null ? '-' : _rupees(widget.cardStats!.pendingMinor),
           valueColor: (widget.cardStats?.pendingMinor ?? 0) > 0 ? tokens.warning : null,
           sub: (widget.cardStats?.pendingMinor ?? 0) > 0 ? 'Needs follow-up' : 'Nothing pending',
           subColor: (widget.cardStats?.pendingMinor ?? 0) > 0 ? const Color(0xFFFFFFFF).withValues(alpha: 0.75) : null,

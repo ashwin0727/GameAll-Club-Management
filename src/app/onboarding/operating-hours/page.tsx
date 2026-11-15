@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
 import { SetupStepper } from "@/features/onboarding/components/setup-stepper";
 import { OperatingHoursSetupForm } from "@/features/operating-hours/setup/operating-hours-setup-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Operating Hours — ${PRODUCT_NAME}`,
+  title: `Operating Hours`,
 };
 
 export default function OperatingHoursPage() {

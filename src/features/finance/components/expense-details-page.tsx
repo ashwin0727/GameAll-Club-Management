@@ -28,7 +28,7 @@ import type { ExpenseCategory, ExpenseDetail, ExpenseRow } from "@/features/fina
 import { EditOnly } from "@/features/access/edit-only";
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -167,15 +167,15 @@ export function ExpenseDetailsPage({ expenseId }: { expenseId: string }) {
             <Detail label="Paid" value={formatCurrency(expense.amountPaidMinor, expense.currency)} />
             <Detail
               label="Outstanding"
-              value={outstanding > 0 ? formatCurrency(outstanding, expense.currency) : "—"}
+              value={outstanding > 0 ? formatCurrency(outstanding, expense.currency) : "-"}
               accent={outstanding > 0 ? "text-warning" : undefined}
             />
-            <Detail label="Tax / GST" value={expense.taxMinor ? formatCurrency(expense.taxMinor, expense.currency) : "—"} />
-            <Detail label="Payment Method" value={expense.paymentMethod ?? "—"} />
+            <Detail label="Tax / GST" value={expense.taxMinor ? formatCurrency(expense.taxMinor, expense.currency) : "-"} />
+            <Detail label="Payment Method" value={expense.paymentMethod ?? "-"} />
             <Detail label="Due Date" value={fmtDate(expense.dueOn)} />
-            <Detail label="Vendor / Payee" value={expense.vendor ?? "—"} />
-            <Detail label="Reference" value={expense.reference ?? "—"} />
-            <Detail label="Recorded By" value={expense.createdByName ?? "—"} />
+            <Detail label="Vendor / Payee" value={expense.vendor ?? "-"} />
+            <Detail label="Reference" value={expense.reference ?? "-"} />
+            <Detail label="Recorded By" value={expense.createdByName ?? "-"} />
             <Detail label="Recorded At" value={fmtDate(expense.createdAt)} />
           </dl>
           {expense.notes && (

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { BookingOperationsView } from "@/features/bookings/components/booking-operations-view";
 import { PageHero } from "@/components/shared/page-hero";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Calendar — ${APP_NAME}`,
+  title: `Calendar`,
 };
 
 export default function BookingsPage() {

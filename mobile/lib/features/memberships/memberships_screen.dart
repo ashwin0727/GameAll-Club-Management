@@ -431,7 +431,7 @@ class _MembershipsScreenState extends ConsumerState<MembershipsScreen> {
                             EmptyStateView(
                               message: _search.isNotEmpty || _status != null
                                   ? 'No memberships match these filters.'
-                                  : 'No memberships yet — create your first one.',
+                                  : 'No memberships yet. Create your first one.',
                               actionLabel: _search.isEmpty && _status == null && ref.read(sessionControllerProvider).canEditPage(accessPageMembershipDashboard) ? 'Create Membership' : null,
                               onAction: _search.isEmpty && _status == null && ref.read(sessionControllerProvider).canEditPage(accessPageMembershipDashboard) ? _openCreate : null,
                             )

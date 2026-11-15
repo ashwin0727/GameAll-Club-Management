@@ -151,7 +151,7 @@ export function CoachingOverviewPage() {
               icon={Users}
               iconBg="bg-blue-500/15"
               iconColor="text-blue-600 dark:text-blue-400"
-              value={data.kpis.totalCoaches === undefined ? "—" : String(data.kpis.totalCoaches)}
+              value={data.kpis.totalCoaches === undefined ? "-" : String(data.kpis.totalCoaches)}
               label="Total Coaches"
               sub="All coaches"
               index={0}
@@ -171,7 +171,7 @@ export function CoachingOverviewPage() {
               icon={IndianRupee}
               iconBg="bg-warning/15"
               iconColor="text-warning"
-              value={data.kpis.coachingExpenseMinor === undefined ? "—" : money(data.kpis.coachingExpenseMinor)}
+              value={data.kpis.coachingExpenseMinor === undefined ? "-" : money(data.kpis.coachingExpenseMinor)}
               label="Coaching Expense"
               sub="This month"
               index={2}

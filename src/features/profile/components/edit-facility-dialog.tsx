@@ -163,7 +163,7 @@ export function EditFacilityDialog({ facility, onClose }: { facility: Facility; 
           <DialogHeader>
             <DialogTitle>Edit facility details</DialogTitle>
             <DialogDescription>
-              You can update your address, map link, venue type, amenities and photos. The other details are fixed — contact GameAll support if they need to change.
+              You can update your address, map link, venue type, amenities and photos. The other details are fixed. Contact GameAll support if they need to change.
             </DialogDescription>
           </DialogHeader>
 

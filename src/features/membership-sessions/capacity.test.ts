@@ -8,7 +8,7 @@ describe("deriveMembershipCapacity", () => {
     expect(capacity.guestAvailableCapacity).toBe(0);
   });
 
-  it("distinguishes allocated capacity from actual usage — never conflates the two (spec §41)", () => {
+  it("distinguishes allocated capacity from actual usage, never conflates the two (spec §41)", () => {
     const capacity = deriveMembershipCapacity({ capacity: 5, releasedCapacity: 2, memberBookedCount: 3, guestBookedCount: 2 });
     expect(capacity.capacity).toBe(5);
     expect(capacity.memberBookedCount).toBe(3);
@@ -88,7 +88,7 @@ describe("computeSlotDisplayState", () => {
  * Champz Turf · Badminton · Court 1 · Mon/Wed/Fri 6–7pm
  * Capacity 5 · 3 members assigned · 2 released for guest play.
  */
-describe("spec §36 — Evening Badminton, end to end", () => {
+describe("spec §36: Evening Badminton, end to end", () => {
   const session = (guestBookedCount: number, releasedCapacity = 2) =>
     deriveMembershipCapacity({
       capacity: 5,

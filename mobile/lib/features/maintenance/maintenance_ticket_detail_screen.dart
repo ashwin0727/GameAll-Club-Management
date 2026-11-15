@@ -81,7 +81,7 @@ class _MaintenanceTicketDetailScreenState extends ConsumerState<MaintenanceTicke
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text('${t.courtName} · ${t.sportName ?? '—'} · ${t.categoryName}', style: Theme.of(context).textTheme.bodySmall),
+                        Text('${t.courtName} · ${t.sportName ?? '-'} · ${t.categoryName}', style: Theme.of(context).textTheme.bodySmall),
                         const SizedBox(height: AppSpacing.sm),
                         maintenanceStatusBadge(t.status),
                         const SizedBox(height: AppSpacing.lg),
@@ -139,7 +139,7 @@ class _MaintenanceTicketDetailScreenState extends ConsumerState<MaintenanceTicke
                                   ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Reschedule, cancel or refund these from the Bookings page — Maintenance never changes a booking automatically.',
+                                  'Reschedule, cancel or refund these from the Bookings page: Maintenance never changes a booking automatically.',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],

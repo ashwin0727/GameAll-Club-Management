@@ -1168,27 +1168,27 @@ class _SummaryPanel extends StatelessWidget {
                 row(
                   Icons.schedule_rounded,
                   'Time Slot',
-                  slotsLabel ?? slot?.label ?? '—',
+                  slotsLabel ?? slot?.label ?? '-',
                   key: const ValueKey('summary-slot'),
                 ),
               row(
                 Icons.workspace_premium_outlined,
                 'Plan',
                 pl == null
-                    ? '—'
+                    ? '-'
                     : '${pl.name} (${pl.validFor.replaceFirst('Valid for ', '')})',
                 key: const ValueKey('summary-plan'),
               ),
               row(
                 Icons.event_outlined,
                 'Start Date',
-                pl == null ? '—' : _date(today),
+                pl == null ? '-' : _date(today),
                 key: const ValueKey('summary-start'),
               ),
               row(
                 Icons.event_available_outlined,
                 'End Date',
-                pl == null ? '—' : _date(pl.endFrom(today)),
+                pl == null ? '-' : _date(pl.endFrom(today)),
                 key: const ValueKey('summary-end'),
               ),
               const SizedBox(height: 6),
@@ -1196,7 +1196,7 @@ class _SummaryPanel extends StatelessWidget {
               const SizedBox(height: 8),
               money(
                 'Plan Amount',
-                pl == null ? '—' : rupees(pl.priceInr),
+                pl == null ? '-' : rupees(pl.priceInr),
                 key: const ValueKey('summary-plan-amount'),
               ),
               if (fee > 0)
@@ -1212,7 +1212,7 @@ class _SummaryPanel extends StatelessWidget {
               ),
               money(
                 'Total Payable',
-                total == null ? '—' : rupees(total),
+                total == null ? '-' : rupees(total),
                 key: const ValueKey('summary-total'),
                 big: true,
               ),

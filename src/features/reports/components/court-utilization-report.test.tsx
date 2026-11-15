@@ -83,7 +83,7 @@ describe("CourtUtilizationReport", () => {
     expect(bodyText.indexOf("Court 2")).toBeLessThan(bodyText.indexOf("Court 1"));
   });
 
-  it("filters by From / To dates only — no facility, month, sport or court pickers", async () => {
+  it("filters by From / To dates only. No facility, month, sport or court pickers", async () => {
     const reports = setup();
     reports.overallUtilization = { openMinutes: 6000, bookedMinutes: 4080, utilizationPct: 68 };
     reports.courtUtilization = TWO_COURTS;

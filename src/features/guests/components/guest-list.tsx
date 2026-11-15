@@ -153,7 +153,7 @@ export function GuestList() {
                   onClick={() => setSelectedGuest(g)}
                 >
                   <td className="p-3 font-medium">{g.name}</td>
-                  <td className="p-3 text-muted-foreground">{g.phone ?? "—"}</td>
+                  <td className="p-3 text-muted-foreground">{g.phone ?? "-"}</td>
                   <td className="p-3 text-muted-foreground">{g.status === "ACTIVE" ? "Active" : "Inactive"}</td>
                   <td className="p-3 text-muted-foreground">{new Date(g.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</td>
                 </tr>

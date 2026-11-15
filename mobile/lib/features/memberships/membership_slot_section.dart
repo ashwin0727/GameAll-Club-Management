@@ -178,7 +178,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
                   fontWeight: FontWeight.w800,
                   color: tokens.textPrimary)),
           const SizedBox(height: 2),
-          Text('Optional — reserves a recurring court and time for this member.',
+          Text('Optional, reserves a recurring court and time for this member.',
               style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
           const SizedBox(height: AppSpacing.md),
           AppDropdown<String>(
@@ -206,7 +206,7 @@ class _MembershipSlotSectionState extends ConsumerState<MembershipSlotSection> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Text(
-                  'No sessions for this plan and sport yet — create one below.',
+                  'No sessions for this plan and sport yet. Create one below.',
                   style: TextStyle(fontSize: 12, color: tokens.textSecondary),
                 ),
               )

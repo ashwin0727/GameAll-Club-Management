@@ -76,7 +76,7 @@ export function canRefund(input: {
     return { ok: false, reason: "Enter an amount greater than zero." };
   }
   if (input.paidMinor <= 0) {
-    return { ok: false, reason: "There's nothing to refund — no payment was taken." };
+    return { ok: false, reason: "There's nothing to refund. No payment was taken." };
   }
   if (refundable <= 0) {
     return { ok: false, reason: "This payment has already been fully refunded." };

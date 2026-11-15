@@ -644,7 +644,7 @@ class _OperatingHoursSetupScreenState extends ConsumerState<OperatingHoursSetupS
               child: Row(
                 children: [
                   SizedBox(width: 48, child: Text(shortDay[p.dayOfWeek]!, style: setupText(size: 14, weight: FontWeight.w600))),
-                  Expanded(child: Text(p.isOpen ? describePlan(p) : '—', style: setupText(size: 14, color: p.isOpen ? SetupColors.text : SetupColors.secondary))),
+                  Expanded(child: Text(p.isOpen ? describePlan(p) : '-', style: setupText(size: 14, color: p.isOpen ? SetupColors.text : SetupColors.secondary))),
                   _statusPill(p.isOpen),
                 ],
               ),

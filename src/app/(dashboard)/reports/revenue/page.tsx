@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { RevenueReport } from "@/features/reports/components/revenue-report";
-import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: `Revenue Report — ${APP_NAME}` };
+export const metadata: Metadata = { title: `Revenue Report` };
 
 export default function ReportsRevenuePage() {
   return (

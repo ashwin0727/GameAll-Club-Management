@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { LoginForm } from "@/features/auth/components/login-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Sign in — ${PRODUCT_NAME}`,
+  title: `Sign in`,
 };
 
 export default function LoginPage() {

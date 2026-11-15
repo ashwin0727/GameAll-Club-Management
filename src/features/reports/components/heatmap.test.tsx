@@ -17,7 +17,7 @@ describe("Heatmap", () => {
 
   it("labels each cell with a descriptive title", () => {
     render(<Heatmap cells={cells} />);
-    expect(screen.getByTitle(/Mon 18:00 — 90% demand/)).toBeInTheDocument();
+    expect(screen.getByTitle(/Mon 18:00: 90% demand/)).toBeInTheDocument();
   });
 
   it("shows an empty message with no cells", () => {

@@ -26,7 +26,7 @@ describe("buildBookingMenu", () => {
     ]);
   });
 
-  it("cancelled booking: view, reason, refund, duplicate — nothing that changes it", () => {
+  it("cancelled booking: view, reason, refund, duplicate. Nothing that changes it", () => {
     expect(buildBookingMenu({ ...base, status: "cancelled" })).toEqual([
       ["view", "cancellation-reason", "payment-refund", "duplicate"],
     ]);

@@ -32,7 +32,7 @@ export function FacilityVenueProfile({ facility }: { facility: Facility }) {
       <dl className="grid gap-4 sm:grid-cols-2">
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Venue type</dt>
-          <dd className="mt-0.5 text-sm font-medium">{facility.venueType === "INDOOR" ? "Indoor" : facility.venueType === "OUTDOOR" ? "Outdoor" : "—"}</dd>
+          <dd className="mt-0.5 text-sm font-medium">{facility.venueType === "INDOOR" ? "Indoor" : facility.venueType === "OUTDOOR" ? "Outdoor" : "-"}</dd>
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Amenities</dt>
@@ -52,7 +52,7 @@ export function FacilityVenueProfile({ facility }: { facility: Facility }) {
                 </div>
               </>
             ) : (
-              "—"
+              "-"
             )}
           </dd>
         </div>

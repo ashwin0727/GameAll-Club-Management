@@ -154,7 +154,7 @@ export function missingColumnErrors(headers: string[], columns: Pick<TemplateCol
   const have = new Set(headers);
   return columns
     .filter((c) => c.required && !have.has(normaliseHeader(c.header)))
-    .map((c) => ({ row: 0, column: c.header, message: `The "${c.header}" column is missing — download the sample and use its headings.` }));
+    .map((c) => ({ row: 0, column: c.header, message: `The "${c.header}" column is missing. Download the sample and use its headings.` }));
 }
 
 /** Accepts yyyy-mm-dd, dd/mm/yyyy and dd-mm-yyyy; returns yyyy-mm-dd or null. */

@@ -148,8 +148,8 @@ export function ItemDetailsPage({ itemId }: { itemId: string }) {
           <Card className="p-4">
             <h2 className="text-sm font-semibold">Details</h2>
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <Row label="Preferred Vendor" value={d.preferredVendorName ?? "—"} />
-              <Row label="Default Cost" value={d.defaultUnitCostMinor != null ? money(d.defaultUnitCostMinor) : "—"} />
+              <Row label="Preferred Vendor" value={d.preferredVendorName ?? "-"} />
+              <Row label="Default Cost" value={d.defaultUnitCostMinor != null ? money(d.defaultUnitCostMinor) : "-"} />
               <Row label="Created" value={fmtDate(d.createdAt)} />
               <Row label="Updated" value={fmtDate(d.updatedAt)} />
             </dl>
@@ -191,8 +191,8 @@ export function ItemDetailsPage({ itemId }: { itemId: string }) {
                       <TableCell>{MOVEMENT_LABEL[m.movementType]}</TableCell>
                       <TableCell className="text-right">{movementQty(m.quantity)}</TableCell>
                       <TableCell className="text-right tabular-nums">{m.balanceAfter}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.referenceLabel ?? m.reason ?? "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.performedByName ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.referenceLabel ?? m.reason ?? "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.performedByName ?? "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

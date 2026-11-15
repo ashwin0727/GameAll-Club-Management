@@ -50,22 +50,22 @@ export const COURT_STATUS_DOT_CLASS: Record<CourtMaintenanceStatus, string> = {
 export const STATUS_ORDER: MaintenanceStatus[] = ["REPORTED", "ASSIGNED", "SCHEDULED", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 
 export function formatMoney(minor: number | null | undefined, currency = "INR"): string {
-  if (minor === null || minor === undefined) return "—";
+  if (minor === null || minor === undefined) return "-";
   const symbol = currency === "INR" ? "₹" : `${currency} `;
   return `${symbol}${(minor / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function formatTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
 }

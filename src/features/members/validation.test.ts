@@ -16,7 +16,7 @@ describe("validateMemberName", () => {
 });
 
 describe("validateMemberPhone", () => {
-  it("requires a mobile number — a Member has no auth account, so phone is the primary identity", () => {
+  it("requires a mobile number, a Member has no auth account, so phone is the primary identity", () => {
     expect(validateMemberPhone("")).toBe("Mobile number is required.");
   });
 

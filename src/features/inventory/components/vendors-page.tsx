@@ -145,8 +145,8 @@ export function VendorsPage() {
                       </Link>
                       {v.email && <span className="block text-xs text-muted-foreground">{v.email}</span>}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{v.contactPerson ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{v.phone ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{v.contactPerson ?? "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">{v.phone ?? "-"}</TableCell>
                     <TableCell className="text-right tabular-nums">{v.poCount}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(v.totalPurchasesMinor)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(v.outstandingMinor)}</TableCell>

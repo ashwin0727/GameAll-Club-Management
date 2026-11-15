@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { PendingPaymentsPage } from "@/features/finance/components/pending-payments-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Pending Payments — ${APP_NAME}`,
+  title: `Pending Payments`,
 };
 
 export default function FinancePendingPaymentsPage() {

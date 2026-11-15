@@ -136,7 +136,7 @@ void main() {
       expect(coachSportLabel(coach('x', 'X', sports: [])), 'Coach');
       expect(experienceLabel(3), '3');
       expect(experienceLabel(7.5), '7.5');
-      expect(experienceLabel(null), '—');
+      expect(experienceLabel(null), '-');
       expect(const CoachFilters().isActive, isFalse);
       expect(const CoachFilters(sport: 'Tennis').isActive, isTrue);
     });

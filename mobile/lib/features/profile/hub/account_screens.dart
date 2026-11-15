@@ -216,7 +216,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 ],
                 if (_sent) ...[
                   const SizedBox(height: AppSpacing.md),
-                  Text("Thanks — your request is with our team. We'll get back to you by email.",
+                  Text("Thanks. Your request is with our team. We'll get back to you by email.",
                       style: TextStyle(color: t.success, fontSize: 13, fontWeight: FontWeight.w600)),
                 ],
                 const SizedBox(height: AppSpacing.lg),

@@ -110,7 +110,7 @@ export function CourtTimeSlotSection({
   return (
     <div className="space-y-3 rounded-md border border-border p-3">
       <p className="text-xs font-medium text-muted-foreground">
-        Court Time Slot <span className="font-normal">(optional — reserves this court/time for the member)</span>
+        Court Time Slot <span className="font-normal">(optional, reserves this court/time for the member)</span>
       </p>
 
       <DropdownSelect
@@ -158,8 +158,8 @@ export function CourtTimeSlotSection({
                 />
                 <span className={disabled ? "text-muted-foreground" : undefined}>
                   {b.courtName} · {describeBatchOption(b)}
-                  {isCurrent && " — current slot"}
-                  {disabled && " — full, raise its capacity in Membership Sessions"}
+                  {isCurrent && ", current slot"}
+                  {disabled && ", full, raise its capacity in Membership Sessions"}
                 </span>
               </label>
             );
@@ -254,7 +254,7 @@ export function CourtTimeSlotSection({
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                How many membership players share this court/time. Owner&apos;s choice — no limit.
+                How many membership players share this court/time. Owner&apos;s choice. No limit.
               </p>
             </div>
           )}

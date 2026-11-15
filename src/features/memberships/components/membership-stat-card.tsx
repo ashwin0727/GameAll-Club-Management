@@ -106,7 +106,7 @@ export function MembershipStatCard({
       </div>
 
       {/* mt-auto keeps this on the card's bottom edge when the row stretches the card taller
-          than its content — otherwise it strands the line mid-card with white space beneath. */}
+          than its content. Otherwise it strands the line mid-card with white space beneath. */}
       {sub && <p className={cn("mt-auto line-clamp-2 text-xs leading-snug", subTone ?? "text-muted-foreground")}>{sub}</p>}
     </Card>
   );

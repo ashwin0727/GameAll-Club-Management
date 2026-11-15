@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { ProfitLossPage } from "@/features/finance/components/profit-loss-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Profit & Loss — ${APP_NAME}`,
+  title: `Profit & Loss`,
 };
 
 export default function FinanceProfitLossPage() {

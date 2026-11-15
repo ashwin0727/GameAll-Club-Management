@@ -27,7 +27,7 @@ void main() {
     expect(container.read(themeModeControllerProvider), ThemeMode.dark);
   });
 
-  test('a persisted preference is restored on the next controller instance — the Appearance setting survives a restart', () async {
+  test('a persisted preference is restored on the next controller instance. The Appearance setting survives a restart', () async {
     final first = ProviderContainer();
     await first.read(themeModeControllerProvider.notifier).setMode(ThemeMode.dark);
     first.dispose();
@@ -46,7 +46,7 @@ void main() {
     expect(second.read(themeModeControllerProvider), ThemeMode.dark);
   });
 
-  test('never crashes if the platform storage is unavailable — falls back to Light', () async {
+  test('never crashes if the platform storage is unavailable, falls back to Light', () async {
     // No SharedPreferences.setMockInitialValues call in this test at all —
     // simulates a platform where the channel genuinely isn't wired up.
     // (setUp above already ran though, so this mostly documents the

@@ -248,7 +248,7 @@ export function CourtAccessStep({
           <div className="mt-3 space-y-2.5">
             {draft.timeWindows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-input p-4 text-center text-xs text-muted-foreground">
-                {draft.courtIds.length === 0 ? "Select a court above, then add a time slot." : "No time slots yet — add one above."}
+                {draft.courtIds.length === 0 ? "Select a court above, then add a time slot." : "No time slots yet. Add one above."}
               </p>
             ) : (
               draft.timeWindows.map((w) => {
@@ -318,7 +318,7 @@ export function CourtAccessStep({
                     {overlap && (
                       <p className="flex items-center gap-1.5 text-xs text-warning">
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        Overlaps another slot on the same court and day — allowed (courts can share capacity), just flagging it.
+                        Overlaps another slot on the same court and day, allowed (courts can share capacity), just flagging it.
                       </p>
                     )}
                     {outsideHours && (
@@ -387,7 +387,7 @@ export function CourtAccessStep({
         <p className="text-sm font-semibold text-foreground">Membership Reserved Time</p>
         <p className="mt-1 text-xs leading-relaxed text-foreground/80">
           Selected court capacity is reserved for members on this plan. Guest bookings cannot use this reserved capacity unless the
-          owner explicitly releases it, from the same Release Member Time to Guest workflow already used elsewhere — this rule applies
+          owner explicitly releases it, from the same Release Member Time to Guest workflow already used elsewhere. This rule applies
           the same way for Time Based and Recurring plans.
         </p>
       </div>

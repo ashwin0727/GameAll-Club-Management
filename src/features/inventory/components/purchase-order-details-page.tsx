@@ -206,7 +206,7 @@ export function PurchaseOrderDetailsPage({ poId }: { poId: string }) {
               <h2 className="text-sm font-semibold">Details</h2>
               <dl className="mt-3 space-y-1 text-sm">
                 <Fin label="Expected Delivery" value={fmtDate(po.expectedDelivery)} />
-                <Fin label="Reference" value={po.reference ?? "—"} />
+                <Fin label="Reference" value={po.reference ?? "-"} />
               </dl>
               {po.invoicePath && (
                 <InvoiceLink path={po.invoicePath} />

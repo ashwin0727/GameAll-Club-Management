@@ -39,7 +39,7 @@ Deno.test("refundPercentForPolicy: defaults match the spec's own worked example"
 
 // ─── refundableAmount ────────────────────────────────────────────────────
 
-Deno.test("refundableAmount: no refunds yet — full amount refundable", () => {
+Deno.test("refundableAmount: no refunds yet, full amount refundable", () => {
   assertEquals(refundableAmount(80000, []), 80000);
 });
 
@@ -55,13 +55,13 @@ Deno.test("refundableAmount: multiple partials, spec §6 worked example", () => 
   assertEquals(refundableAmount(100000, refunds), 50000);
 });
 
-Deno.test("refundableAmount: in-flight (REQUESTED/PROCESSING/PENDING) refunds also reduce the refundable amount — concurrent refund protection", () => {
+Deno.test("refundableAmount: in-flight (REQUESTED/PROCESSING/PENDING) refunds also reduce the refundable amount, concurrent refund protection", () => {
   assertEquals(refundableAmount(80000, [{ amountMinor: 80000, status: "REQUESTED" }]), 0);
   assertEquals(refundableAmount(80000, [{ amountMinor: 80000, status: "PROCESSING" }]), 0);
   assertEquals(refundableAmount(80000, [{ amountMinor: 80000, status: "PENDING" }]), 0);
 });
 
-Deno.test("refundableAmount: a FAILED or CANCELLED refund does not consume refundable amount — retry allowed", () => {
+Deno.test("refundableAmount: a FAILED or CANCELLED refund does not consume refundable amount. Retry allowed", () => {
   assertEquals(refundableAmount(80000, [{ amountMinor: 80000, status: "FAILED" }]), 80000);
   assertEquals(refundableAmount(80000, [{ amountMinor: 80000, status: "CANCELLED" }]), 80000);
 });

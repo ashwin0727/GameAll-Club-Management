@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { GuestList } from "@/features/guests/components/guest-list";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Guest Players — ${APP_NAME}`,
+  title: `Guest Players`,
 };
 
 export default function GuestsPage() {

@@ -233,11 +233,11 @@ function CourtActivityCard({ rows, delay }: { rows: CourtNow[]; delay: number })
               key={court.courtId}
               className="grid min-h-[2.5rem] grid-cols-[3.25rem_minmax(0,1.6fr)_minmax(0,1fr)_auto_auto] items-center gap-2 py-2 text-xs"
             >
-              <span className="tabular-nums text-muted-foreground">{block ? formatMinute(block.startMinute) : "—"}</span>
+              <span className="tabular-nums text-muted-foreground">{block ? formatMinute(block.startMinute) : "-"}</span>
               <span title={court.courtName} className="truncate text-xs font-medium">
                 {court.courtName}
               </span>
-              <span className="truncate text-foreground">{block?.label ?? "—"}</span>
+              <span className="truncate text-foreground">{block?.label ?? "-"}</span>
               <span className="flex">
                 {block && (
                   <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", TYPE_TAG[block.type])}>
@@ -382,7 +382,7 @@ function TodaysBookingsCard({ blocks, delay }: { blocks: { block: ScheduleBlock;
                       {pay ? (
                         <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-medium", pay.cls)}>{pay.label}</span>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="py-2 pr-2">
@@ -693,7 +693,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
             icon={GraduationCap}
             tone="bg-warning/15 text-warning"
             label="Active Students"
-            value={studentStats ? String(studentStats.enrolledStudents) : "—"}
+            value={studentStats ? String(studentStats.enrolledStudents) : "-"}
             sub="Enrolled in programs"
             subClass="text-warning"
             href="/coaching/students"
@@ -939,7 +939,7 @@ function RevenueBreakdownList({
               <span className="truncate text-foreground">{seg.label}</span>
             </span>
             <span className="flex shrink-0 items-center gap-2">
-              <span className="text-muted-foreground">{seg.unavailable ? "—" : formatCurrencyINR(seg.amountInr)}</span>
+              <span className="text-muted-foreground">{seg.unavailable ? "-" : formatCurrencyINR(seg.amountInr)}</span>
               <span className="w-7 text-right font-medium text-foreground">{pct}%</span>
             </span>
           </li>

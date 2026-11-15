@@ -90,7 +90,7 @@ Deno.test("nextPaymentOrderStatus advances forward along the normal happy path",
   assertEquals(nextPaymentOrderStatus("PAYMENT_ATTEMPTED", "CAPTURED"), "CAPTURED");
 });
 
-Deno.test("nextPaymentOrderStatus never downgrades CAPTURED — duplicate/out-of-order events are no-ops", () => {
+Deno.test("nextPaymentOrderStatus never downgrades CAPTURED, duplicate/out-of-order events are no-ops", () => {
   assertEquals(nextPaymentOrderStatus("CAPTURED", "AUTHORIZED"), null);
   assertEquals(nextPaymentOrderStatus("CAPTURED", "PAYMENT_VERIFIED"), null);
   assertEquals(nextPaymentOrderStatus("CAPTURED", "CAPTURED"), null);

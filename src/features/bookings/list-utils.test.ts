@@ -50,7 +50,7 @@ describe("maskPhone", () => {
   });
   it("never reveals a too-short value and handles missing numbers", () => {
     expect(maskPhone("12345")).toBe("••••••");
-    expect(maskPhone(null)).toBe("—");
+    expect(maskPhone(null)).toBe("-");
   });
 });
 

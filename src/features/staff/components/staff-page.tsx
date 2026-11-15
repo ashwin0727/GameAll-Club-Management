@@ -35,12 +35,12 @@ export function initials(name: string): string {
 }
 
 export function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function fmtRelative(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const diff = Date.now() - new Date(iso).getTime();
   const h = diff / 3_600_000;
   if (h < 1) return "Just now";
@@ -234,7 +234,7 @@ export function StaffPage() {
                       </TableCell>
                       <TableCell>{s.roleName}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {s.facilityCount > 1 ? `${s.facilityCount} Facilities` : perms?.facilityName ?? "—"}
+                        {s.facilityCount > 1 ? `${s.facilityCount} Facilities` : perms?.facilityName ?? "-"}
                       </TableCell>
                       <TableCell>{statusBadge(s.status)}</TableCell>
                       <TableCell className="text-muted-foreground">{fmtRelative(s.lastLoginAt)}</TableCell>

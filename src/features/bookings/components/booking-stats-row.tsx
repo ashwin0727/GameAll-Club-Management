@@ -69,7 +69,7 @@ export function BookingStatsRow({
       icon: Users,
       tone: "bg-success/15 text-success",
       label: "Active Members",
-      value: activeMembers === undefined ? "—" : String(activeMembers),
+      value: activeMembers === undefined ? "-" : String(activeMembers),
       sub: "With an active membership",
     },
     {
@@ -84,7 +84,7 @@ export function BookingStatsRow({
       icon: BadgeIndianRupee,
       tone: "bg-success/15 text-success",
       label: "Overall Revenue",
-      value: revenueInr === undefined ? "—" : formatCurrencyINR(revenueInr),
+      value: revenueInr === undefined ? "-" : formatCurrencyINR(revenueInr),
       sub: revenueSub,
       delta: revenueDelta,
     },

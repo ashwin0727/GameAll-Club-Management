@@ -76,7 +76,7 @@ export function BulkSuccessView<T extends { error: string | null; rowNumber: num
         </span>
         <h1 className="text-xl font-bold text-foreground">{title}</h1>
         <p className="text-sm text-muted-foreground">
-          {created} of {rows.length} {noun.toLowerCase()} added. Razorpay is sending each a payment link by SMS — you can also copy any link below, or later from their details page.
+          {created} of {rows.length} {noun.toLowerCase()} added. Razorpay is sending each a payment link by SMS. You can also copy any link below, or later from their details page.
         </p>
       </Card>
 
@@ -117,7 +117,7 @@ export function BulkSuccessView<T extends { error: string | null; rowNumber: num
                       {c.cell(r)}
                     </td>
                   ))}
-                  <td className="px-4 py-2.5">{r.shortUrl ? <CopyLinkButton url={r.shortUrl} /> : <span className="text-xs text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-2.5">{r.shortUrl ? <CopyLinkButton url={r.shortUrl} /> : <span className="text-xs text-muted-foreground">-</span>}</td>
                 </tr>
               ))}
             </tbody>

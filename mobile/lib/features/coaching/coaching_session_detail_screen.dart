@@ -364,7 +364,7 @@ class _CoachingSessionDetailScreenState extends ConsumerState<CoachingSessionDet
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('The session record is kept — its status becomes Cancelled.'),
+            const Text('The session record is kept. Its status becomes Cancelled.'),
             const SizedBox(height: AppSpacing.sm),
             TextField(controller: controller, decoration: const InputDecoration(labelText: 'Reason'), maxLines: 2),
           ],
@@ -576,7 +576,7 @@ class _ProgressNoteSheetState extends State<_ProgressNoteSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Progress note — ${widget.studentName}', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Progress note: ${widget.studentName}', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
             TextField(controller: _skill, decoration: const InputDecoration(labelText: 'Skill or Goal (Optional)')),
             const SizedBox(height: AppSpacing.sm),

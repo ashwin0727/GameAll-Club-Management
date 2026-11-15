@@ -143,7 +143,7 @@ export function RecordPaymentPage({ sourceId }: { sourceId: string }) {
       setError(
         e instanceof ServiceError
           ? e.message
-          : "Unable to record this payment. The balance may have changed — reload and check.",
+          : "Unable to record this payment. The balance may have changed. Reload and check.",
       );
       setBusy(false);
     }

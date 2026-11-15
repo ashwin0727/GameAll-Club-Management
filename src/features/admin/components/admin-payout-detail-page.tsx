@@ -15,7 +15,7 @@ function Field({ label, value, mono = false }: { label: string; value: string | 
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={mono ? "mt-0.5 select-all font-mono text-sm" : "mt-0.5 text-sm font-medium"}>{value || "—"}</dd>
+      <dd className={mono ? "mt-0.5 select-all font-mono text-sm" : "mt-0.5 text-sm font-medium"}>{value || "-"}</dd>
     </div>
   );
 }
@@ -115,7 +115,7 @@ export function AdminPayoutDetailPage({ facilityId }: { facilityId: string }) {
       <PageTitle
         back={{ href: "/admin/payouts", label: "All payouts" }}
         title={f?.name ?? "Facility"}
-        subtitle={f ? `${f.ownerName ?? "—"} · ${f.ownerEmail ?? "—"} · ${f.ownerPhone ?? "—"}` : undefined}
+        subtitle={f ? `${f.ownerName ?? "-"} · ${f.ownerEmail ?? "-"} · ${f.ownerPhone ?? "-"}` : undefined}
       />
       {review.error && <ErrorNote error={review.error} />}
       {data.methods.length === 0 ? (

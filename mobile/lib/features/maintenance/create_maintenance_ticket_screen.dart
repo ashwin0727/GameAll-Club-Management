@@ -248,7 +248,7 @@ class _CreateMaintenanceTicketScreenState extends ConsumerState<CreateMaintenanc
                 hint: const Text('Select Court'),
                 items: [
                   for (final c in _courts)
-                    DropdownMenuItem(value: c.id, child: Text('${c.name} — ${c.sportName}'))
+                    DropdownMenuItem(value: c.id, child: Text('${c.name}: ${c.sportName}'))
                 ],
                 onChanged: (v) {
                   setState(() => _courtId = v);

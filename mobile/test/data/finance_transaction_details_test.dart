@@ -146,7 +146,7 @@ void main() {
       expect(source, contains('Uint8List'));
     });
 
-    test('the receipt is built server-side — no PDF library is imported here', () {
+    test('the receipt is built server-side. No PDF library is imported here', () {
       expect(source, isNot(contains('pdf')));
     });
   });

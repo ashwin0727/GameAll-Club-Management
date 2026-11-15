@@ -33,7 +33,7 @@ void main() {
         spare: 6,
       );
 
-  group('planPeriodLabel — the unit after the price', () {
+  group('planPeriodLabel. The unit after the price', () {
     test('a month', () => expect(planPeriodLabel(30), '/ month'));
     test('a few months', () => expect(planPeriodLabel(90), '/ 3 months'));
     test('a year', () => expect(planPeriodLabel(365), '/ year'));

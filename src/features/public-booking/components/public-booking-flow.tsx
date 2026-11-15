@@ -279,7 +279,7 @@ export function PublicBookingFlow({
 
     bookingPhone.current = guest.phone;
     const note = failure
-      ? `${failure instanceof SlotUnavailableError ? "One of the courts was taken just now." : failure.message} ${made.length} of ${summary.requests.length} bookings were made — the rest were not.`
+      ? `${failure instanceof SlotUnavailableError ? "One of the courts was taken just now." : failure.message} ${made.length} of ${summary.requests.length} bookings were made. The rest were not.`
       : null;
     setPartialNote(note);
     const advance = made.filter((c) => c.advanceRequired);
@@ -329,7 +329,7 @@ export function PublicBookingFlow({
           receipt: checkout.receipt ?? "",
         },
         {
-          description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName} — ${first.paymentOption === "FULL" ? "payment" : "50% advance"}`,
+          description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName}: ${first.paymentOption === "FULL" ? "payment" : "50% advance"}`,
           prefill: { name: first.guestName, contact: phone },
         },
       );
@@ -458,7 +458,7 @@ export function PublicBookingFlow({
     <div className={cn("mx-auto w-full max-w-5xl px-4", embedded ? "py-4" : "py-6 sm:py-10")}>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {/* The embed sits inside the club's own site, which already carries
-            their branding and contact details — repeating ours would be
+            their branding and contact details, repeating ours would be
             noise. On our hosted page the header belongs. */}
         {!embedded && (
           <PublicBookingHeader
@@ -490,7 +490,7 @@ export function PublicBookingFlow({
           {/* Two columns only when the summary panel is actually there.
               Declaring the second column unconditionally left an empty
               18rem reserved beside step 1, which the slot rail stopped
-              short of — dead space to the right of the times. */}
+              short of, dead space to the right of the times. */}
           <div
             className={cn(
               "mt-5 gap-6",
@@ -676,7 +676,7 @@ function SelectStep({
   return (
     <div className="space-y-6">
       {/* Sport / facility / date. The facility is fixed by the link, so it
-          renders as a disabled control rather than being hidden — the player
+          renders as a disabled control rather than being hidden. The player
           should still see which venue they are booking. */}
       <div className="grid gap-3 sm:grid-cols-3">
         <Picker id="sport" label="Sport" icon={LayoutGrid}>
@@ -1581,7 +1581,7 @@ function Confirmed({
       action: "TEMPLATE",
       text: `${confirmation.sportName} at ${confirmation.facilityName}`,
       dates: `${stamp(confirmation.startTime)}/${stamp(confirmation.endTime)}`,
-      details: `Booking ${confirmation.code} — ${confirmation.courtName}.`,
+      details: `Booking ${confirmation.code}: ${confirmation.courtName}.`,
       location: confirmation.facilityName,
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -1591,7 +1591,7 @@ function Confirmed({
 
   async function share() {
     const text = confirmations
-      .map((c) => `Booking ${c.code} — ${c.sportName} at ${c.facilityName}, ${c.courtName}, ${formatBookingDate(c.startTime)} ${formatSlotRange(c.startTime, c.endTime)}`)
+      .map((c) => `Booking ${c.code}: ${c.sportName} at ${c.facilityName}, ${c.courtName}, ${formatBookingDate(c.startTime)} ${formatSlotRange(c.startTime, c.endTime)}`)
       .join("\n");
     if (navigator.share) {
       try {
@@ -1966,7 +1966,7 @@ function PayStep({
         <p className="mt-1 text-sm text-muted-foreground">
           {full
             ? "Your court is held while you pay, and confirmed as soon as the payment is done."
-            : "Your court is held while you pay. It is confirmed once 50% is paid online — the balance is paid at the venue before your booking ends."}
+            : "Your court is held while you pay. It is confirmed once 50% is paid online. The balance is paid at the venue before your booking ends."}
         </p>
       </div>
 
@@ -1990,7 +1990,7 @@ function PayStep({
                     <CircleCheck className="h-4 w-4" aria-hidden /> {full ? "Paid" : "Advance paid"}
                   </span>
                 ) : item.state === "expired" ? (
-                  <span className="text-sm font-medium text-destructive">Expired — the court was released</span>
+                  <span className="text-sm font-medium text-destructive">Expired. The court was released</span>
                 ) : (
                   <>
                     <p className="text-sm font-semibold">{formatMoney(c.advanceMinor ?? 0, c.currency)} {full ? "to pay now" : "advance"}</p>
@@ -2041,7 +2041,7 @@ function PayStep({
             <Lock className="h-4 w-4" aria-hidden />
             {paying ? "Opening Razorpay…" : `Proceed to Pay ${formatMoney(dueNow, cur)}`}
           </Button>
-          <p className="text-xs text-muted-foreground">You&apos;ll pay securely with Razorpay — UPI, cards, net banking and wallets.</p>
+          <p className="text-xs text-muted-foreground">You&apos;ll pay securely with Razorpay: UPI, cards, net banking and wallets.</p>
         </div>
       )}
     </div>

@@ -384,7 +384,7 @@ export function ExpensesPage() {
                         </Link>
                         {e.reference && <span className="block text-xs text-muted-foreground">{e.reference}</span>}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{e.paymentMethod ?? "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{e.paymentMethod ?? "-"}</td>
                       <td className="px-4 py-3">
                         {e.status === "VOID" ? (
                           <Badge variant="secondary">Void</Badge>

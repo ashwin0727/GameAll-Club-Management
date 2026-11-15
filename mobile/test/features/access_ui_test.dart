@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Memberships'), findsNothing);
   });
 
-  testWidgets('a coach-style role sees Coaching only — Today is not on the bar when Home is not granted', (tester) async {
+  testWidgets('a coach-style role sees Coaching only: Today is not on the bar when Home is not granted', (tester) async {
     await _pumpNav(tester, 'staff', {'COACHING_VIEW', 'COACHING_OWN_ONLY'});
     expect(find.text('Coaching'), findsOneWidget);
     expect(find.text('Today'), findsNothing);

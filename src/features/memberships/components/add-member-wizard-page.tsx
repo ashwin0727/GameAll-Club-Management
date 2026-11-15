@@ -560,7 +560,7 @@ export function AddMemberWizardPage() {
           // Guards against a stale dev-server Fast Refresh carrying over an older shape of this
           // state (before membershipId was added here) — a hard refresh and re-generating the
           // link clears it. Shouldn't be reachable outside that.
-          throw new ServiceError("DATABASE_ERROR", "Something went wrong with this payment link — please regenerate it and try again.");
+          throw new ServiceError("DATABASE_ERROR", "Something went wrong with this payment link. Please regenerate it and try again.");
         }
         await getMembershipService().recordMembershipPayment(linkResult.membershipId, draft.paymentMethod);
         await getMembershipService().cancelMembershipSubscription(linkResult.membershipId);
@@ -633,7 +633,7 @@ export function AddMemberWizardPage() {
   return (
     <div className="space-y-5">
       {/* This exact structure — single element, two background layers (image + gradient), a
-          separate feather div for the join — is copied verbatim from the Membership Dashboard
+          separate feather div for the join, is copied verbatim from the Membership Dashboard
           hero (membership-dashboard-hero.tsx), which is already live and confirmed correct.
           Every previous version of this panel was a new, unproven guess; this one isn't. */}
       <div className="flex flex-col overflow-hidden rounded-2xl bg-card lg:h-[120px] lg:flex-row lg:items-stretch">
@@ -646,7 +646,7 @@ export function AddMemberWizardPage() {
             <span className="font-medium text-foreground">Add New Member</span>
           </nav>
           <h1 className="mt-1 truncate text-2xl font-bold text-black dark:text-foreground">Add New Member</h1>
-          <p className="text-sm text-muted-foreground">Create a new member and assign a plan — its court and timings come with it.</p>
+          <p className="text-sm text-muted-foreground">Create a new member and assign a plan. Its court and timings come with it.</p>
         </div>
 
         {/* Hidden on mobile/tablet — decorative only; desktop (lg+) is unaffected. */}
@@ -670,7 +670,7 @@ export function AddMemberWizardPage() {
           />
 
           {/* A percentage margin (not ml-auto, which would push all the way to the padding
-              edge — right onto the shuttlecock, since that's roughly where the artwork's
+              edge, right onto the shuttlecock, since that's roughly where the artwork's
               visible content starts too) shifts this proportionally, regardless of the
               container's actual pixel width, landing it in the gap rather than on the artwork. */}
           <div className="relative z-10 min-w-0 max-w-[46%]" style={{ marginLeft: "20%" }}>
@@ -680,7 +680,7 @@ export function AddMemberWizardPage() {
         </div>
       </div>
 
-      {step === 1 && (
+      {step === 1 && (planPerms ? planPerms.planHasFeature("AUTOPAY") : true) && (
         <MemberBulkUpload facilityId={facilityId} plans={plans} batches={batches} courtNames={courtNames} existingRows={membershipRows} />
       )}
 
@@ -908,7 +908,7 @@ export function AddMemberWizardPage() {
                     schedule is a separate action once the membership exists. */}
                 <div className="flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
                   <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
-                  {planEndDate ? format(planEndDate, "dd MMM yyyy") : "—"}
+                  {planEndDate ? format(planEndDate, "dd MMM yyyy") : "-"}
                 </div>
               </Field>
             </div>

@@ -181,7 +181,7 @@ export function DailyClosingPage() {
             </dl>
             {s.pendingPaymentCount > 0 && (
               <p className="text-xs text-muted-foreground">
-                {s.pendingPaymentCount} booking(s) on this date are still unpaid — collect them before closing.
+                {s.pendingPaymentCount} booking(s) on this date are still unpaid, collect them before closing.
               </p>
             )}
           </Card>
@@ -350,13 +350,13 @@ export function DailyClosingPage() {
                       </button>
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {h.totalCollectedMinor != null ? formatCurrency(h.totalCollectedMinor, "INR") : "—"}
+                      {h.totalCollectedMinor != null ? formatCurrency(h.totalCollectedMinor, "INR") : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {h.expectedCashMinor != null ? formatCurrency(h.expectedCashMinor, "INR") : "—"}
+                      {h.expectedCashMinor != null ? formatCurrency(h.expectedCashMinor, "INR") : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {h.actualCashMinor != null ? formatCurrency(h.actualCashMinor, "INR") : "—"}
+                      {h.actualCashMinor != null ? formatCurrency(h.actualCashMinor, "INR") : "-"}
                     </td>
                     <td
                       className={cn(
@@ -365,12 +365,12 @@ export function DailyClosingPage() {
                         (h.varianceMinor ?? 0) > 0 && "text-warning",
                       )}
                     >
-                      {h.varianceMinor != null ? formatCurrency(h.varianceMinor, "INR") : "—"}
+                      {h.varianceMinor != null ? formatCurrency(h.varianceMinor, "INR") : "-"}
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge variant={h.status === "CLOSED" ? "success" : "warning"}>{h.status}</Badge>
                     </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{h.closedByName ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{h.closedByName ?? "-"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -170,7 +170,7 @@ class _ReportsOverviewScreenState extends ConsumerState<ReportsOverviewScreen> {
 
       final sel = _def(_selected);
       final rows = <List<Object?>>[
-        ['GameAll Reports & Analytics — Overview'],
+        ['GameAll Reports & Analytics: Overview'],
         ['Period', '${_filter.startDate} to ${_filter.endDate}'],
         [],
         ['Metric', 'Unit', 'Value'],

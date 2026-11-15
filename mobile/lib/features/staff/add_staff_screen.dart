@@ -175,7 +175,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                             keyboardType: TextInputType.emailAddress,
                             decoration: const InputDecoration(
                               labelText: 'Email address *',
-                              helperText: 'For contact only — staff sign in with a login we generate.',
+                              helperText: 'For contact only, staff sign in with a login we generate.',
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
@@ -220,13 +220,13 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                           const SizedBox(height: AppSpacing.sm),
                           _review('Full name', _fullName),
                           _review('Contact email', _email.text),
-                          _review('Phone', _phone.text.isEmpty ? '—' : _phone.text),
-                          _review('Role', selectedRole?.name ?? '—'),
+                          _review('Phone', _phone.text.isEmpty ? '-' : _phone.text),
+                          _review('Role', selectedRole?.name ?? '-'),
                           _review('Facility', facilityName),
                           _review('Primary facility', _isPrimary ? 'Yes' : 'No'),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'A sign-in will be created for them — a @gameall.co login and a default password, shown to '
+                            'A sign-in will be created for them, a @gameall.co login and a default password, shown to '
                             'you once the staff member is added. They must set their own password on first sign-in.',
                             style: AppTypography.caption(context),
                           ),
@@ -302,7 +302,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Lost the password? Open the staff member and choose Reset Password to generate and reveal a new '
-                    'one — the old one stops working.',
+                    'one. The old one stops working.',
                     textAlign: TextAlign.center,
                     style: AppTypography.caption(context),
                   ),

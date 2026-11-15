@@ -63,7 +63,7 @@ const PROGRAM_TYPES = [
 const PROGRAM_TYPE_LABEL: Record<string, string> = { GROUP: "Group Program", ONE_ON_ONE: "One-on-One", TRIAL: "Trial Program" };
 
 function fmtReviewDate(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const [y, m, d] = iso.split("-");
   return `${d} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m) - 1]} ${y}`;
 }
@@ -118,9 +118,14 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
  */
 export function ProgramWizardPage() {
   const perms = usePermissionContext();
+  // Online payment collection is part of the Advanced plan; on Basic every program is collected offline.
+  const onlineOk = perms ? perms.planHasFeature("AUTOPAY") : true;
   const router = useRouter();
   const facilityId = perms?.facilityId ?? null;
   const form = useProgramWizardForm(facilityId);
+  useEffect(() => {
+    if (!onlineOk && form.paymentMode !== "OFFLINE") form.setPaymentMode("OFFLINE");
+  }, [onlineOk, form]);
 
   const sportsQuery = useFacilitySportOptions(facilityId ?? undefined);
   const areasQuery = usePlayingAreasList(facilityId);
@@ -300,14 +305,14 @@ export function ProgramWizardPage() {
                 </div>
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Target Audience — Age Group" required>
+                <Field label="Target Audience: Age Group" required>
                   <div className="flex flex-wrap gap-2">
                     {AGE_GROUPS.map((a) => (
                       <Chip key={a} label={a} selected={form.ageGroup === a} onToggle={() => form.setAgeGroup(a)} />
                     ))}
                   </div>
                 </Field>
-                <Field label="Target Audience — Skill Level" required>
+                <Field label="Target Audience: Skill Level" required>
                   <div className="flex flex-wrap gap-2">
                     {SKILL_LEVELS.map((l) => (
                       <Chip key={l} label={l} selected={form.level === l} onToggle={() => form.setLevel(l)} />
@@ -446,7 +451,7 @@ export function ProgramWizardPage() {
           {form.step === "Schedule & Batches" && (
             <>
               {form.batches.length === 0 && (
-                <Field label="Weekly Schedule" required hint="A program has exactly one batch — its day/time/court/coach schedule.">
+                <Field label="Weekly Schedule" required hint="A program has exactly one batch. Its day/time/court/coach schedule.">
                   <div className="space-y-3 rounded-xl border border-border p-3">
                     <div className="flex flex-wrap gap-2">
                       {DAY_LABELS_SHORT.map((d, i) => (
@@ -525,7 +530,7 @@ export function ProgramWizardPage() {
 
               <Field label="Batches" required>
                 {form.batches.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No batch added yet — a batch is required before you can continue.</p>
+                  <p className="text-sm text-muted-foreground">No batch added yet, a batch is required before you can continue.</p>
                 ) : (
                   <ul className="space-y-2">
                     {form.batches.map((b, i) => {
@@ -536,7 +541,7 @@ export function ProgramWizardPage() {
                           <div className="min-w-0">
                             <p className="font-medium">{b.name}</p>
                             <p className="truncate text-xs text-muted-foreground">
-                              {b.daysOfWeek.map((d) => DAY_LABELS_SHORT[d]).join(", ")} · {b.startTime}–{b.endTime} · {court?.name ?? "—"}
+                              {b.daysOfWeek.map((d) => DAY_LABELS_SHORT[d]).join(", ")} · {b.startTime}–{b.endTime} · {court?.name ?? "-"}
                               {coach ? ` · ${coach.name}` : ""} · Capacity {b.capacity}
                             </p>
                           </div>
@@ -596,6 +601,7 @@ export function ProgramWizardPage() {
                 <Field label={form.feeType === "MONTHLY" ? "Fee per Month (₹)" : "Total Program Fee (₹)"}>
                   <Input type="number" min="0" onWheel={blurOnWheel} className={NO_SPINNER_INPUT} value={form.programFee} onChange={(e) => form.setProgramFee(e.target.value)} />
                 </Field>
+                {onlineOk && (
                 <Field label="Payment Mode">
                   <Select value={form.paymentMode} onValueChange={(v) => form.setPaymentMode(v as typeof form.paymentMode)}>
                     <SelectTrigger>
@@ -608,6 +614,7 @@ export function ProgramWizardPage() {
                     </SelectContent>
                   </Select>
                 </Field>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Early Bird Discount (₹, optional)">
@@ -675,10 +682,10 @@ export function ProgramWizardPage() {
                       <p className="font-semibold">{form.name.trim() || "Untitled Program"}</p>
                       <Badge variant="success">Active</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{form.description.trim() || "—"}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{form.description.trim() || "-"}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        <Tag className="h-3.5 w-3.5" aria-hidden /> {sportName ?? "—"}
+                        <Tag className="h-3.5 w-3.5" aria-hidden /> {sportName ?? "-"}
                       </span>
                       <span className="flex items-center gap-1">
                         <GraduationCap className="h-3.5 w-3.5" aria-hidden /> {form.level}
@@ -697,9 +704,9 @@ export function ProgramWizardPage() {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <ReviewSection n={1} title="Basic Information" onEdit={() => form.setStep("Basic Information")}>
                   <div className="space-y-2">
-                    <ReviewRow icon={BookOpen} label="Program Name" value={form.name.trim() || "—"} />
-                    <ReviewRow icon={Tag} label="Description" value={form.description.trim() || "—"} />
-                    <ReviewRow icon={Tag} label="Sport" value={sportName ?? "—"} />
+                    <ReviewRow icon={BookOpen} label="Program Name" value={form.name.trim() || "-"} />
+                    <ReviewRow icon={Tag} label="Description" value={form.description.trim() || "-"} />
+                    <ReviewRow icon={Tag} label="Sport" value={sportName ?? "-"} />
                     <ReviewRow icon={BookOpen} label="Program Type" value={PROGRAM_TYPE_LABEL[form.programType]!} />
                     {form.highlights.length > 0 && <ReviewRow icon={Tag} label="Key Highlights" value={form.highlights.join(", ")} />}
                   </div>
@@ -711,7 +718,7 @@ export function ProgramWizardPage() {
                     <ReviewRow icon={GraduationCap} label="Skill Level" value={form.level} />
                     <ReviewRow icon={Clock} label="Session Duration" value={`${form.effectiveSessionDuration} minutes`} />
                     <ReviewRow icon={Repeat} label="Sessions per Week" value={String(form.sessionsPerWeek)} />
-                    <ReviewRow icon={Calendar} label="Program Duration" value={form.weeksInProgram > 0 ? `${form.weeksInProgram} Weeks` : "—"} />
+                    <ReviewRow icon={Calendar} label="Program Duration" value={form.weeksInProgram > 0 ? `${form.weeksInProgram} Weeks` : "-"} />
                     <ReviewRow icon={Calendar} label="Start Date" value={fmtReviewDate(form.startDate)} />
                     <ReviewRow icon={Calendar} label="End Date" value={fmtReviewDate(form.endDate)} />
                     <ReviewRow icon={UsersIcon} label="Max Capacity" value={`${form.maxCapacity} Students`} />
@@ -747,8 +754,8 @@ export function ProgramWizardPage() {
                                 <td className="py-2 pr-3 text-muted-foreground">
                                   {b.startTime}–{b.endTime}
                                 </td>
-                                <td className="py-2 pr-3 text-muted-foreground">{court?.name ?? "—"}</td>
-                                <td className="py-2 pr-3 text-muted-foreground">{coach?.name ?? "—"}</td>
+                                <td className="py-2 pr-3 text-muted-foreground">{court?.name ?? "-"}</td>
+                                <td className="py-2 pr-3 text-muted-foreground">{coach?.name ?? "-"}</td>
                               </tr>
                             );
                           }),

@@ -72,7 +72,7 @@ class _FakeSession extends SessionController {
 }
 
 void main() {
-  testWidgets('Pending Payments — filter chips and Record button receive taps', (tester) async {
+  testWidgets('Pending Payments, filter chips and Record button receive taps', (tester) async {
     final router = GoRouter(
       initialLocation: '/finance/pending-payments',
       routes: [

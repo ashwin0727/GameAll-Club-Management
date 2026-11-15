@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile, hasDashboardAccess } from "@/features/auth/api/auth.api";
 import { MembershipDashboardPage } from "@/features/memberships/components/membership-dashboard-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Membership Dashboard — ${APP_NAME}`,
+  title: `Membership Dashboard`,
 };
 
 // The sidebar's "Memberships" item lands here by default. The searchable/filterable member

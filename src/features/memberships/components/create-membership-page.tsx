@@ -361,7 +361,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             </div>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Recurring link could not be generated — you can retry from the list.</p>
+          <p className="text-sm text-muted-foreground">Recurring link could not be generated. You can retry from the list.</p>
         )}
         <Button type="button" onClick={() => router.push("/memberships/v1")}>
           Back to Memberships
@@ -437,7 +437,7 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
                 <option value="">Custom (no plan)</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — ₹{p.priceInr.toLocaleString("en-IN")} · {p.durationDays} days
+                    {p.name}, ₹{p.priceInr.toLocaleString("en-IN")} · {p.durationDays} days
                   </option>
                 ))}
               </DropdownSelect>
@@ -591,23 +591,25 @@ export function CreateMembershipPage({ membershipId }: { membershipId?: string }
             <Field label="Payment Reference (Optional)">
               <Input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="Enter transaction / reference number" />
             </Field>
+            {autoPayAllowed && (
             <label className="flex items-start gap-2 text-sm sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={recurring && autoPayAllowed}
-                disabled={!autoPayAllowed}
-                onChange={(e) => setRecurring(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                Recurring UPI AutoPay
-                <span className="block text-xs text-muted-foreground">
-                  {autoPayAllowed
-                    ? "Generates a Razorpay mandate link — the total is then charged automatically each cycle."
-                    : "Auto Pay is part of the Advanced plan. On your current plan you record each payment yourself."}
+                <input
+                  type="checkbox"
+                  checked={recurring && autoPayAllowed}
+                  disabled={!autoPayAllowed}
+                  onChange={(e) => setRecurring(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Recurring UPI AutoPay
+                  <span className="block text-xs text-muted-foreground">
+                    {autoPayAllowed
+                      ? "Generates a Razorpay mandate link. The total is then charged automatically each cycle."
+                      : "Auto Pay is part of the Advanced plan. On your current plan you record each payment yourself."}
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+            )}
           </div>
         )}
       </Card>

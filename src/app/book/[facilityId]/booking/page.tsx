@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { PublicBookingFlow } from "@/features/public-booking/components/public-booking-flow";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Book a court — ${APP_NAME}`,
+  title: `Book a court`,
   description: "Pick a court and time, and book in a few taps. Pay at the venue.",
 };
 

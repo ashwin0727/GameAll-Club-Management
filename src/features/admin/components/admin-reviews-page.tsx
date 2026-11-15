@@ -69,7 +69,7 @@ export function AdminReviewsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{r.name}</p>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {r.ownerName ?? "—"} · {r.ownerEmail ?? "—"} · {placeLabel(r.city, r.state)}
+                    {r.ownerName ?? "-"} · {r.ownerEmail ?? "-"} · {placeLabel(r.city, r.state)}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {r.status === "PENDING" ? `Submitted ${formatDateTime(r.submittedAt)}` : `Reviewed ${formatDateTime(r.reviewedAt)}`}

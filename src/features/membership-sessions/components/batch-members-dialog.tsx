@@ -102,7 +102,7 @@ export function BatchMembersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{batch.name} — Members</DialogTitle>
+          <DialogTitle>{batch.name}: Members</DialogTitle>
           <DialogDescription>Capacity {batch.capacity} · members eligible to book this batch&apos;s sessions.</DialogDescription>
         </DialogHeader>
 

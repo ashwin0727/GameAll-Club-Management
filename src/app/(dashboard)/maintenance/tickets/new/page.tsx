@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { CreateTicketWizard } from "@/features/maintenance/components/create-ticket-wizard";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Create Maintenance Ticket — ${APP_NAME}`,
+  title: `Create Maintenance Ticket`,
 };
 
 export default function NewTicketPage() {

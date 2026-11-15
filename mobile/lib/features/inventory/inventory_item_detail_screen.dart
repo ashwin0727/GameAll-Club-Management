@@ -172,8 +172,8 @@ class _InventoryItemDetailScreenState extends ConsumerState<InventoryItemDetailS
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _kv('Preferred vendor', d.preferredVendorName ?? '—'),
-              _kv('Default cost', d.defaultUnitCostMinor != null ? invMoney(d.defaultUnitCostMinor!) : '—'),
+              _kv('Preferred vendor', d.preferredVendorName ?? '-'),
+              _kv('Default cost', d.defaultUnitCostMinor != null ? invMoney(d.defaultUnitCostMinor!) : '-'),
               _kv('Total in', '${d.stats.totalInQty}'),
               _kv('Total out', '${d.stats.totalOutQty}'),
               _kv('Last stock in', invDate(d.stats.lastStockInAt)),

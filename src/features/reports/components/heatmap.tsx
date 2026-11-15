@@ -129,8 +129,8 @@ export function Heatmap({ cells }: { cells: HeatmapCell[] }) {
                       }}
                       title={
                         cell
-                          ? `${day} ${String(h).padStart(2, "0")}:00 — ${pct}% demand (${Math.round(cell.bookedMinutes)}/${Math.round(cell.openMinutes)} min)`
-                          : `${day} ${String(h).padStart(2, "0")}:00 — closed`
+                          ? `${day} ${String(h).padStart(2, "0")}:00: ${pct}% demand (${Math.round(cell.bookedMinutes)}/${Math.round(cell.openMinutes)} min)`
+                          : `${day} ${String(h).padStart(2, "0")}:00, closed`
                       }
                     >
                       {/* a quiet cell is blank to the eye but still reads "0" to a screen reader */}

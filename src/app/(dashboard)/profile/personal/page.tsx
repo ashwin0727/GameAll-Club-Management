@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/features/auth/api/auth.api";
 import { PersonalInfoPage } from "@/features/profile/components/personal-info-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Personal Information — ${APP_NAME}`,
+  title: `Personal Information`,
 };
 
 export default async function PersonalPage() {

@@ -3,7 +3,7 @@ import { SupabasePaymentService } from "@/services/payments/supabase-payment.ser
 import { ServiceError } from "@/services/shared/service-error";
 
 describe("SupabasePaymentService", () => {
-  it("createPaymentOrder invokes create-razorpay-order with exactly the source fields — never an amount", async () => {
+  it("createPaymentOrder invokes create-razorpay-order with exactly the source fields, never an amount", async () => {
     const invoke = vi.fn(async () => ({
       data: { keyId: "rzp_test_abc", razorpayOrderId: "order_1", amount: 50000, currency: "INR", paymentOrderId: "po-1", receipt: "GAMEALL-MEMBERBOOKING-abc" },
       error: null,
@@ -115,7 +115,7 @@ describe("SupabasePaymentService.verifyPaymentOrder", () => {
     expect(result).toEqual({ paymentOrderId: "po-1", status: "CAPTURED" });
   });
 
-  it("never reports a client-claimed success on its own — a gateway failure throws instead of returning a fabricated status", async () => {
+  it("never reports a client-claimed success on its own, a gateway failure throws instead of returning a fabricated status", async () => {
     const invoke = vi.fn(async () => ({ data: null, error: { message: "network down" } }));
     const service = new SupabasePaymentService({ functions: { invoke } } as never);
 
@@ -147,7 +147,7 @@ describe("SupabasePaymentService.reconcilePaymentOrder", () => {
 });
 
 describe("SupabasePaymentService.getPaymentOrderStatus", () => {
-  it("reads status via the existing RLS-scoped get_payment_order RPC — never a new privileged read path", async () => {
+  it("reads status via the existing RLS-scoped get_payment_order RPC, never a new privileged read path", async () => {
     const rpc = vi.fn(async () => ({ data: { id: "po-1", status: "AUTHORIZED" }, error: null }));
     const service = new SupabasePaymentService({ rpc } as never);
 

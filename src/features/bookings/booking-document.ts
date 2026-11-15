@@ -18,7 +18,7 @@ export function buildBookingDocument(kind: "invoice" | "receipt", row: GuestBook
   const rows: [string, string][] = [
     ["Booking ID", row.code],
     ["Guest", `${row.guestName}${row.guestPhone ? ` · ${row.guestPhone}` : ""}`],
-    ["Sport / Court", `${row.sportName ?? "—"} · ${row.courtName}`],
+    ["Sport / Court", `${row.sportName ?? "-"} · ${row.courtName}`],
     ["Date", fmtDate(row.startTime)],
     ["Time", `${fmtTime(row.startTime)} – ${fmtTime(row.endTime)}`],
     ["Players", String(row.partySize)],
@@ -51,7 +51,7 @@ export function buildBookingDocument(kind: "invoice" | "receipt", row: GuestBook
 }
 
 function money(minor: number | null, currency: string): string {
-  return minor == null ? "—" : formatCurrency(minor, currency);
+  return minor == null ? "-" : formatCurrency(minor, currency);
 }
 function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();

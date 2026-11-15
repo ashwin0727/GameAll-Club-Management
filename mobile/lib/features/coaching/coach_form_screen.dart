@@ -301,7 +301,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                   const SizedBox(height: AppSpacing.lg),
                   _heading(context, 3, 'Availability & Settings', "Set the coach's status and defaults."),
                   Text(
-                    "The weekly recurring schedule is set up next, from the coach's profile — this just covers status and defaults.",
+                    "The weekly recurring schedule is set up next, from the coach's profile. This just covers status and defaults.",
                     style: TextStyle(fontSize: 12, color: context.tokens.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -335,7 +335,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
                     controller: _bio,
                     maxLines: 3,
                     maxLength: 500,
-                    decoration: const InputDecoration(labelText: 'Coach Bio (Optional)', hintText: 'A short bio — achievements and coaching style'),
+                    decoration: const InputDecoration(labelText: 'Coach Bio (Optional)', hintText: 'A short bio, achievements and coaching style'),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: AppSpacing.sm),
@@ -492,7 +492,7 @@ class _CoachFormScreenState extends ConsumerState<CoachFormScreen> {
         onChanged: (v) => setState(() => _roleId = v),
       ),
       const SizedBox(height: 4),
-      Text('This creates a new staff account for this person — coaches are always staff members.',
+      Text('This creates a new staff account for this person, coaches are always staff members.',
           style: TextStyle(fontSize: 11, color: t.textSecondary)),
     ];
   }

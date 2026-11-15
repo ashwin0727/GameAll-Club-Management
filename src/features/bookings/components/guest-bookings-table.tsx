@@ -147,7 +147,7 @@ export function GuestBookingsTable({
                     <span aria-hidden className="text-lg leading-none">
                       {sportIcon}
                     </span>
-                    {r.sportName ?? "—"}
+                    {r.sportName ?? "-"}
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-foreground/80">{r.courtName}</td>
@@ -158,7 +158,7 @@ export function GuestBookingsTable({
                   </p>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums text-foreground">
-                  {r.amountMinor == null ? "—" : formatCurrency(r.amountMinor, r.currency)}
+                  {r.amountMinor == null ? "-" : formatCurrency(r.amountMinor, r.currency)}
                 </td>
                 <td className="px-4 py-3">
                   <PaymentBadge status={r.paymentStatus} />

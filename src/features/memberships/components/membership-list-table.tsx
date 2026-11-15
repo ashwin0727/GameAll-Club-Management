@@ -410,14 +410,14 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
                           </p>
                         </>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {row.slot?.courtName ? (
                         <Pill tone="bg-muted text-foreground">{row.slot.courtName}</Pill>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{fmtDate(row.startDate)}</td>

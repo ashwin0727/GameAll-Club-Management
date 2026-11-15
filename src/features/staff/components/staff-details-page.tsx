@@ -140,10 +140,10 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
               <h1 className="text-xl font-semibold">{detail.fullName}</h1>
               {a && statusBadge(a.status)}
             </div>
-            <p className="text-sm text-muted-foreground">{a?.roleName ?? "—"}</p>
+            <p className="text-sm text-muted-foreground">{a?.roleName ?? "-"}</p>
             <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
               <Row label="Login Email" value={detail.loginEmail} />
-              <Row label="Phone" value={detail.phone ?? "—"} />
+              <Row label="Phone" value={detail.phone ?? "-"} />
               <Row label="Joined" value={fmtDate(a?.joinedAt ?? null)} />
               <Row label="Last Active" value={fmtDate(a?.lastLoginAt ?? null)} />
             </dl>
@@ -202,9 +202,9 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
               <Row label="Full Name" value={detail.fullName} />
               <Row label="Login Email" value={detail.loginEmail} />
               {detail.email && detail.email !== detail.loginEmail && <Row label="Contact Email" value={detail.email} />}
-              <Row label="Phone" value={detail.phone ?? "—"} />
-              <Row label="Role" value={a?.roleName ?? "—"} />
-              <Row label="Status" value={a?.status ?? "—"} />
+              <Row label="Phone" value={detail.phone ?? "-"} />
+              <Row label="Role" value={a?.roleName ?? "-"} />
+              <Row label="Status" value={a?.status ?? "-"} />
               <Row label="Joined" value={fmtDate(a?.joinedAt ?? null)} />
             </dl>
           </Card>
@@ -237,7 +237,7 @@ export function StaffDetailsPage({ userId }: { userId: string }) {
 
       {tab === "Access & Permissions" && (
         <Card className="space-y-4 p-4">
-          <h2 className="text-sm font-semibold">Effective permissions — {a?.roleName}</h2>
+          <h2 className="text-sm font-semibold">Effective permissions: {a?.roleName}</h2>
           {permsByModule.map(([mod, g]) => (
             <div key={mod}>
               <p className="text-xs font-semibold text-muted-foreground">{mod}</p>

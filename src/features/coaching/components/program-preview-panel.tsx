@@ -121,7 +121,7 @@ export function ProgramPreviewPanel({ form, sportName }: { form: ProgramWizardFo
 }
 
 function fmt(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const [y, m, d] = iso.split("-");
   return `${d} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(m) - 1]} ${y}`;
 }

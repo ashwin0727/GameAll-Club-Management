@@ -20,7 +20,7 @@ export function money(minor: number | null | undefined): string {
 }
 
 export function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
@@ -29,7 +29,7 @@ export function fmtTime(iso: string): string {
 }
 
 export function fmtDateTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return `${fmtDate(iso)} · ${fmtTime(iso)}`;
 }
 

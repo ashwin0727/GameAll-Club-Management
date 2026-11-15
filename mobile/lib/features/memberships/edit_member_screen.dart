@@ -286,12 +286,12 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
             ),
             FormSection(
               title: 'Membership',
-              subtitle: "The plan and its fees can't be changed here — only the start date.",
+              subtitle: "The plan and its fees can't be changed here, only the start date.",
               icon: Icons.card_membership_outlined,
               children: [
                 InfoRow('Plan', d.membership.name),
                 InfoRow('Type', _titleCase(d.membership.membershipType)),
-                InfoRow('Duration', d.membership.durationDays == null ? '—' : _duration(d.membership.durationDays!)),
+                InfoRow('Duration', d.membership.durationDays == null ? '-' : _duration(d.membership.durationDays!)),
                 const SizedBox(height: AppSpacing.sm),
                 DateField(
                   label: 'Plan start date *',
@@ -301,7 +301,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
                   format: Formatters.dateShort,
                   onPick: (v) => setState(() => _startDate = v),
                 ),
-                InfoRow('Plan end date', _endDate == null ? '—' : Formatters.dateShort(_endDate!)),
+                InfoRow('Plan end date', _endDate == null ? '-' : Formatters.dateShort(_endDate!)),
                 const Divider(height: AppSpacing.lg),
                 InfoRow('Membership fee', Formatters.currencyInr(d.membership.membershipFeeInr)),
                 if (d.membership.registrationFeeInr > 0) InfoRow('Registration fee', Formatters.currencyInr(d.membership.registrationFeeInr)),
@@ -397,7 +397,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow('Court', s.courtName ?? '—'),
+        InfoRow('Court', s.courtName ?? '-'),
         InfoRow('Time', '${Formatters.time12h(s.startTime)} - ${Formatters.time12h(s.endTime)}'),
         const SizedBox(height: AppSpacing.sm),
         Wrap(

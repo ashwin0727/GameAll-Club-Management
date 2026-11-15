@@ -146,7 +146,7 @@ describe("SupabaseMembershipService", () => {
     expect(insertCall).toMatchObject({ facility_id: "facility-1", name: "Monthly", price_inr: 1500, duration_days: 30 });
   });
 
-  describe("Member creation is a plain customer record — never a Supabase Auth account", () => {
+  describe("Member creation is a plain customer record, never a Supabase Auth account", () => {
     it("createMember with an email creates only a members row via the create_member RPC, never auth.signUp/admin.createUser", async () => {
       const rpc = vi.fn(async () => ({ data: MEMBER_ROW, error: null }));
       const from = vi.fn(() => fakeQueryBuilder({ data: null, error: null })); // duplicate pre-check: no existing row
@@ -174,7 +174,7 @@ describe("SupabaseMembershipService", () => {
       expect(auth.admin.inviteUserByEmail).not.toHaveBeenCalled();
     });
 
-    it("createMember without an email still succeeds — email is optional contact info, not a login identifier", async () => {
+    it("createMember without an email still succeeds, email is optional contact info, not a login identifier", async () => {
       const rpc = vi.fn(async () => ({ data: { ...MEMBER_ROW, email: null }, error: null }));
       const from = vi.fn(() => fakeQueryBuilder({ data: null, error: null }));
       const service = new SupabaseMembershipService({ rpc, from } as never);
@@ -196,7 +196,7 @@ describe("SupabaseMembershipService", () => {
       expect(rpc).not.toHaveBeenCalled();
     });
 
-    it("updateMember creates no auth account either — it only calls the update_member RPC", async () => {
+    it("updateMember creates no auth account either. It only calls the update_member RPC", async () => {
       const from = vi.fn(() => fakeQueryBuilder({ data: MEMBER_ROW, error: null }));
       const rpc = vi.fn(async () => ({ data: { ...MEMBER_ROW, full_name: "Arun K." }, error: null }));
       const auth = { admin: { createUser: vi.fn() } };

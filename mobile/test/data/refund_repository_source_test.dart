@@ -52,7 +52,7 @@ void main() {
   });
 
   group('RefundRepository.cancelMembership', () {
-    test('invokes cancel-membership with an explicit refund amount field — never policy-derived', () {
+    test('invokes cancel-membership with an explicit refund amount field, never policy-derived', () {
       expect(source, contains("_invoke('cancel-membership',"));
       final match = RegExp(r"'cancel-membership', \{([\s\S]*?)\}\);").firstMatch(source);
       expect(match, isNotNull);

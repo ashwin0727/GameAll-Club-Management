@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/day_chip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/app_exception.dart';
@@ -76,10 +77,10 @@ class _MembershipAccessDaysSheetState extends ConsumerState<MembershipAccessDays
               runSpacing: AppSpacing.sm,
               children: [
                 for (final d in allDays)
-                  FilterChip(
-                    label: Text(dayLabel(d)),
+                  DayChip(
+                    label: dayLabel(d),
                     selected: _days.contains(d),
-                    onSelected: (_) => setState(() => _days = toggleDay(_days, d)),
+                    onChanged: (_) => setState(() => _days = toggleDay(_days, d)),
                   ),
               ],
             ),

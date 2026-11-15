@@ -189,14 +189,14 @@ export function ItemWizardPage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <Review label="Name" value={name} />
             <Review label="SKU" value={sku} />
-            <Review label="Brand" value={brand || "—"} />
+            <Review label="Brand" value={brand || "-"} />
             <Review label="Category" value={categoryName} />
             <Review label="Unit" value={unit} />
             <Review label="Reorder Level" value={reorderLevel} />
             <Review label="Opening Stock" value={openingStock} />
-            <Review label="Default Cost" value={defaultCost ? money(toMinorUnits(defaultCost, "INR")) : "—"} />
+            <Review label="Default Cost" value={defaultCost ? money(toMinorUnits(defaultCost, "INR")) : "-"} />
             <Review label="Preferred Vendor" value={vendorName} />
-            <Review label="Description" value={description || "—"} />
+            <Review label="Description" value={description || "-"} />
           </dl>
         )}
 

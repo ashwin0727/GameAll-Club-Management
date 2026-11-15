@@ -45,7 +45,7 @@ describe("MembershipReport", () => {
     };
     reports.membershipsByType = [
       { membershipType: "INDIVIDUAL", planName: "Monthly", count: 8, revenueMinor: 4_000_000 },
-      { membershipType: "FAMILY", planName: "—", count: 1, revenueMinor: 2_000_000 },
+      { membershipType: "FAMILY", planName: "-", count: 1, revenueMinor: 2_000_000 },
     ];
     reports.guestReleaseAnalytics = { released: 100, booked: 75, remaining: 25, revenueMinor: 3_800_000 };
 

@@ -200,7 +200,7 @@ export function BookingTable({
                     </td>
                     <td className="px-3 py-3">
                       <p className="whitespace-nowrap tabular-nums">
-                        {r.amountMinor === null ? "—" : formatCurrency(r.amountMinor, r.currency)}
+                        {r.amountMinor === null ? "-" : formatCurrency(r.amountMinor, r.currency)}
                       </p>
                       {r.amountSub && <p className="whitespace-nowrap text-xs text-muted-foreground">{r.amountSub}</p>}
                     </td>

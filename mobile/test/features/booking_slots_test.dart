@@ -96,7 +96,7 @@ void main() {
       expect(match, isNull);
     });
 
-    test('treats the window as [start, end) — a cell starting exactly at the batch end is not covered', () {
+    test('treats the window as [start, end), a cell starting exactly at the batch end is not covered', () {
       final cellAtEnd = BookingTimeSlot(
         startTime: DateTime(2026, 1, 5, 19),
         endTime: DateTime(2026, 1, 5, 20),

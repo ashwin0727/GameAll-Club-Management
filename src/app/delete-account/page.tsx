@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DeleteAccountPanel } from "@/features/account/delete-account";
 import { LEGAL_CONTACT_EMAIL, LegalPage, type LegalSection } from "@/features/legal/legal-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Delete your account — ${APP_NAME}`,
+  title: `Delete your account`,
   description: "How to delete your GameAll account and the data linked to it.",
 };
 

@@ -21,7 +21,7 @@ describe("HOUR_BLOCKS", () => {
     expect(HOUR_BLOCKS[23]).toEqual({ start: "23:00", end: "24:00", label: "11 PM - 12 AM" });
   });
 
-  it("has no gaps — each block's end is the next block's start", () => {
+  it("has no gaps. Each block's end is the next block's start", () => {
     for (let i = 0; i < HOUR_BLOCKS.length - 1; i++) {
       expect(HOUR_BLOCKS[i]!.end).toBe(HOUR_BLOCKS[i + 1]!.start);
     }
@@ -122,7 +122,7 @@ describe("findMatchingBatch", () => {
     expect(found?.batchId).toBe("batch-1");
   });
 
-  it("doesn't care about day order — [5,1,3,2,4] matches [1,2,3,4,5]", () => {
+  it("doesn't care about day order, [5,1,3,2,4] matches [1,2,3,4,5]", () => {
     const found = findMatchingBatch([batch({ daysOfWeek: [5, 1, 3, 2, 4] })], {
       courtId: "court-1",
       daysOfWeek: [1, 2, 3, 4, 5],

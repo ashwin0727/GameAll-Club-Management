@@ -966,7 +966,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${r.guestName} · ${r.amountMinor == null ? '—' : Formatters.currencyInr((r.amountMinor! / 100).round())}',
+              '${r.guestName} · ${r.amountMinor == null ? '-' : Formatters.currencyInr((r.amountMinor! / 100).round())}',
               style: TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -1026,7 +1026,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
         'Guest',
         '${r.guestName}${r.guestPhone != null ? ' · ${r.guestPhone}' : ''}',
       ),
-      ('Sport / Court', '${r.sportName ?? '—'} · ${r.courtName}'),
+      ('Sport / Court', '${r.sportName ?? '-'} · ${r.courtName}'),
       ('Date', Formatters.dateShort(r.startTime)),
       (
         'Time',
@@ -1036,7 +1036,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       (
         'Amount',
         r.amountMinor == null
-            ? '—'
+            ? '-'
             : Formatters.currencyInr((r.amountMinor! / 100).round()),
       ),
       (
@@ -1046,7 +1046,7 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
       ('Status', r.status),
     ];
     final text = [
-      'GameAll — Invoice',
+      'GameAll: Invoice',
       ...lines.map((e) => '${e.$1}: ${e.$2}'),
     ].join('\n');
     await showDialog<void>(
@@ -1235,7 +1235,7 @@ class _OverviewCard extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    s == null ? '—' : '${s.total}',
+                    s == null ? '-' : '${s.total}',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
@@ -1301,7 +1301,7 @@ class _OverviewCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         s == null
-                            ? '—'
+                            ? '-'
                             : Formatters.currencyInr(
                                 (s.totalRevenueMinor / 100).round(),
                               ),
@@ -1528,7 +1528,7 @@ class _BookingCard extends StatelessWidget {
                                   Text(
                                     row.isSession
                                         ? 'Session seat · ${row.courtName}'
-                                        : '${row.sportName ?? '—'} · ${row.courtName}',
+                                        : '${row.sportName ?? '-'} · ${row.courtName}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -1556,7 +1556,7 @@ class _BookingCard extends StatelessWidget {
                           children: [
                             Text(
                               row.amountMinor == null
-                                  ? '—'
+                                  ? '-'
                                   : Formatters.currencyInr(
                                       (row.amountMinor! / 100).round(),
                                     ),

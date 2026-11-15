@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../authentication/session_controller.dart';
+import '../../data/models/plan.dart' show autoPayFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -182,6 +184,8 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
     final b = _billing;
     // Nothing to show: no online billing and nothing left to collect (or no right to start one).
     if (b == null && (!widget.canManage || widget.outstandingMinor <= 0)) return const SizedBox.shrink();
+    // Online payments are part of the Advanced plan: on Basic there is nothing to offer (an existing link still shows).
+    if (b == null && !ref.watch(sessionControllerProvider).planHasFeature(autoPayFeature)) return const SizedBox.shrink();
 
     final repo = ref.read(coachingRepositoryProvider);
     return Padding(
@@ -218,7 +222,7 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
               ),
               if (b.isSubscription) ...[
                 const SizedBox(height: AppSpacing.sm),
-                _fact(context, 'Next payment', nextPaymentDate(b) == null ? '—' : coachDate(nextPaymentDate(b))),
+                _fact(context, 'Next payment', nextPaymentDate(b) == null ? '-' : coachDate(nextPaymentDate(b))),
                 _fact(context, 'Charges left', '${chargesLeft(b)} of ${b.totalCycles}'),
                 _fact(context, 'Total for the program', coachMoney(b.amountMinor * b.totalCycles)),
                 for (final d in upcomingCharges(b)) _fact(context, 'Due ${coachDate(d.toIso8601String())}', 'Not paid yet'),
@@ -262,7 +266,7 @@ class _CoachingBillingCardState extends ConsumerState<CoachingBillingCard> with 
                 ),
             ] else ...[
               Text(
-                'Collect ${coachMoney(widget.outstandingMinor)} online. Sends a Razorpay payment link — or, for a monthly '
+                'Collect ${coachMoney(widget.outstandingMinor)} online. Sends a Razorpay payment link, or, for a monthly '
                 'program, sets up monthly auto-pay.',
                 style: AppTypography.secondary(context),
               ),

@@ -17,7 +17,7 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('a booked slot never invokes onTap — it is not a selectable control', (tester) async {
+  testWidgets('a booked slot never invokes onTap. It is not a selectable control', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
       _wrap(BookingSlotChip(label: '10:00 AM', available: false, selected: false, onTap: () => tapped = true)),

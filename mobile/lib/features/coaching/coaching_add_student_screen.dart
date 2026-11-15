@@ -206,7 +206,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
       return;
     }
     if (program.isMonthly && (program.endDate == null || _cycles == null)) {
-      setState(() => _error = "This monthly program's total cannot be worked out — it needs an end date.");
+      setState(() => _error = "This monthly program's total cannot be worked out. It needs an end date.");
       return;
     }
 
@@ -397,7 +397,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
         },
         child: AppSelectField(
           decoration: const InputDecoration(labelText: 'Date of Birth'),
-          child: Text(_dateOfBirth == null ? '—' : DateFormat('d MMM yyyy').format(_dateOfBirth!)),
+          child: Text(_dateOfBirth == null ? '-' : DateFormat('d MMM yyyy').format(_dateOfBirth!)),
         ),
       ),
       const SizedBox(height: AppSpacing.sm),
@@ -519,9 +519,9 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
       AppCard(
         child: Column(
           children: [
-            _sumRow('Program length', programLengthLabel(_startDate, p.endDate == null ? null : DateTime.tryParse(p.endDate!)) ?? '—'),
-            _sumRow('Sessions', p.sessionCount == null ? '—' : '${p.sessionCount}'),
-            _sumRow('Program ends', p.endDate == null ? '—' : coachDate(p.endDate)),
+            _sumRow('Program length', programLengthLabel(_startDate, p.endDate == null ? null : DateTime.tryParse(p.endDate!)) ?? '-'),
+            _sumRow('Sessions', p.sessionCount == null ? '-' : '${p.sessionCount}'),
+            _sumRow('Program ends', p.endDate == null ? '-' : coachDate(p.endDate)),
           ],
         ),
       ),
@@ -529,7 +529,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
       _heading('Payment Summary'),
       AppCard(
         child: p.isMembershipIncluded
-            ? Text('Included — no fee', style: AppTypography.rowTitle(context))
+            ? Text('Included. No fee', style: AppTypography.rowTitle(context))
             : Column(
                 children: [
                   _sumRow(p.isMonthly ? 'Program fee (per month)' : 'Program fee', coachMoney(base)),
@@ -575,7 +575,7 @@ class _CoachingAddStudentScreenState extends ConsumerState<CoachingAddStudentScr
       Text(
         p.isMembershipIncluded
             ? 'Nothing to collect for this program.'
-            : 'You will collect this on the next screen — record a payment, or send a payment link.',
+            : 'You will collect this on the next screen, record a payment, or send a payment link.',
         style: AppTypography.caption(context),
       ),
     ];

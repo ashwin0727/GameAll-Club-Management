@@ -109,7 +109,7 @@ describe("planIdsForSport / plansForSport", () => {
     expect(plansForSport(plans, [], null)).toHaveLength(2);
   });
 
-  it("keeps a plan with no batches at all, even once a sport filter is active — batches are the only signal a plan's sport is tracked by, but a plan can have real members before any Court Access time window is ever set up for it", () => {
+  it("keeps a plan with no batches at all, even once a sport filter is active, batches are the only signal a plan's sport is tracked by, but a plan can have real members before any Court Access time window is ever set up for it", () => {
     const plans = [plan({ id: "plan-1" })];
     expect(plansForSport(plans, [], "badminton")).toHaveLength(1);
   });
@@ -128,7 +128,7 @@ describe("membershipRowsForSport", () => {
     expect(membershipRowsForSport(rows, batches, "badminton").map((r) => r.membershipId)).toEqual(["m1"]);
   });
 
-  it("keeps a row whose plan has no batches at all — a member can exist before any Court Access slot is set up for their plan", () => {
+  it("keeps a row whose plan has no batches at all, a member can exist before any Court Access slot is set up for their plan", () => {
     const rows = [membershipRow({ membershipId: "m1", planId: "plan-1" })];
     expect(membershipRowsForSport(rows, [], "badminton").map((r) => r.membershipId)).toEqual(["m1"]);
   });

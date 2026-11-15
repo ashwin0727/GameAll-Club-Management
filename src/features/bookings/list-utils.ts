@@ -51,7 +51,7 @@ export interface BookingRow {
 /** The text for the Court(s) column. */
 export function courtText(r: BookingRow, courtName: (courtId: string) => string): string {
   if (r.courtLabel) return r.courtLabel;
-  return r.courtIds.length > 0 ? r.courtIds.map(courtName).join(", ") : "—";
+  return r.courtIds.length > 0 ? r.courtIds.map(courtName).join(", ") : "-";
 }
 
 export type SortKey = "date" | "customer" | "court" | "type" | "duration" | "amount" | "status";
@@ -76,7 +76,7 @@ export function bookingReference(id: string, kind: ListKind): string {
  * enough to copy their number off a screen. Too-short values are fully hidden.
  */
 export function maskPhone(phone: string | null | undefined): string {
-  if (!phone) return "—";
+  if (!phone) return "-";
   const digits = phone.replace(/\D/g, "");
   if (digits.length < 7) return "••••••";
   const national = digits.slice(-10);

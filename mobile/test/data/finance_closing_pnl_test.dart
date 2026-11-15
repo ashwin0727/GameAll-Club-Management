@@ -151,7 +151,7 @@ void main() {
     });
   });
 
-  group('FinanceRepository — closing & P&L RPC contract', () {
+  group('FinanceRepository, closing & P&L RPC contract', () {
     test('daily-closing methods call the 0070 RPCs by name', () {
       for (final rpc in const [
         "'get_daily_closing_summary'",

@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { DailyClosingPage } from "@/features/finance/components/daily-closing-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Daily Closing — ${APP_NAME}`,
+  title: `Daily Closing`,
 };
 
 export default function FinanceDailyClosingPage() {

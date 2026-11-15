@@ -131,7 +131,7 @@ function RaiseTicketForm({ facilityId }: { facilityId: string }) {
       )}
       {sent && (
         <p role="status" className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-          Thanks — your request is with our team. We&apos;ll get back to you by email.
+          Thanks. Your request is with our team. We&apos;ll get back to you by email.
         </p>
       )}
       <Button type="submit" disabled={create.isPending}>

@@ -33,7 +33,7 @@ export function PlanWizardStepper({
                 between items is this padding, not a margin outside the li's own box, the line
                 now actually reaches the next circle instead of stopping short of it. */}
             {/* Horizontally centered on the circle: button padding (6px) + half the circle's
-                width (18px) = 24px. Starts right at the circle's own bottom edge — the button's
+                width (18px) = 24px. Starts right at the circle's own bottom edge. The button's
                 6px top padding pushes the circle down that far too, so top-9 (36px) alone
                 would've landed inside the circle, overlapping the number/tick. */}
             {i < PLAN_WIZARD_STEPS.length - 1 && <span className="absolute bottom-0 left-[23.5px] top-[42px] w-px bg-border" aria-hidden />}

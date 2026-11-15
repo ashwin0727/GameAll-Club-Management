@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       from: resendFrom,
       to: [email],
       subject: `Your booking receipt · ${code}`,
-      html: `<p>Hi ${b.guest_name ?? "there"},</p><p>Your receipt for booking <strong>${code}</strong> at ${facility?.name ?? "our venue"} is attached.</p><p>${sportName || "Court"} · ${court?.name ?? ""}<br/>${fmt(b.start_time)}<br/>${inr(b.amount_minor)} · ${b.payment_status}</p><p>— GameAll</p>`,
+      html: `<p>Hi ${b.guest_name ?? "there"},</p><p>Your receipt for booking <strong>${code}</strong> at ${facility?.name ?? "our venue"} is attached.</p><p>${sportName || "Court"} · ${court?.name ?? ""}<br/>${fmt(b.start_time)}<br/>${inr(b.amount_minor)} · ${b.payment_status}</p><p>: GameAll</p>`,
       attachments: [{ filename: `receipt-${code}.pdf`, content: pdfBase64 }],
     }),
   });

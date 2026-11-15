@@ -119,7 +119,7 @@ export function evaluatePasswordStrength(password: string): PasswordStrengthResu
       label: "Medium",
       hint:
         password.length < 12
-          ? "Longer passwords are harder to guess — try 12+ characters"
+          ? "Longer passwords are harder to guess. Try 12+ characters"
           : "Add a number or symbol to strengthen it",
     };
   }

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { RefundsPanel } from "@/features/refunds/components/refunds-panel";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Refunds — ${APP_NAME}`,
+  title: `Refunds`,
 };
 
 export default function RefundsPage() {

@@ -12,7 +12,7 @@ async function sheetFrom(file: File) {
   }
 }
 
-const NOT_A_SHEET: BulkError = { row: 0, column: "", message: "That file couldn't be read — upload the .xlsx sample after filling it in." };
+const NOT_A_SHEET: BulkError = { row: 0, column: "", message: "That file couldn't be read. Upload the .xlsx sample after filling it in." };
 
 export interface PreparedMembers {
   errors: BulkError[];

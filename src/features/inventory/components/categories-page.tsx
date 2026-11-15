@@ -85,7 +85,7 @@ export function CategoriesPage() {
                 {rows.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.description ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.description ?? "-"}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.itemCount}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(c.inventoryValueMinor)}</TableCell>
                     <TableCell>

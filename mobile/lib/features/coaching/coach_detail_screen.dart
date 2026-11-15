@@ -162,10 +162,10 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _kv('Specialization', c.specialization ?? '—'),
-              _kv('Experience', c.experienceYears != null ? '${c.experienceYears} years' : '—'),
-              _kv('Certifications', c.certifications ?? '—'),
-              _kv('Hourly rate', c.hourlyRateMinor != null ? '${coachMoney(c.hourlyRateMinor)} / hour' : '—'),
+              _kv('Specialization', c.specialization ?? '-'),
+              _kv('Experience', c.experienceYears != null ? '${c.experienceYears} years' : '-'),
+              _kv('Certifications', c.certifications ?? '-'),
+              _kv('Hourly rate', c.hourlyRateMinor != null ? '${coachMoney(c.hourlyRateMinor)} / hour' : '-'),
               _kv('Joined', coachDate(c.joinedOn)),
             ],
           ),

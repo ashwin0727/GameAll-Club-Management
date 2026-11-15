@@ -140,7 +140,7 @@ export function AccessHistoryPage() {
                         minute: "2-digit",
                       })}
                     </TableCell>
-                    <TableCell>{e.targetName ?? "—"}</TableCell>
+                    <TableCell>{e.targetName ?? "-"}</TableCell>
                     <TableCell>{EVENT_LABELS[e.event] ?? e.event}</TableCell>
                     <TableCell className="max-w-[20rem] truncate text-muted-foreground">{e.summary}</TableCell>
                     <TableCell className="text-muted-foreground">{e.actorName ?? "System"}</TableCell>

@@ -216,7 +216,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
             { label: "End Date", value: p.endDate ? fmtDate(p.endDate) : null },
             { label: "Max Capacity", value: String(p.defaultCapacity) },
             { label: "Minimum Students", value: p.minCapacity != null ? String(p.minCapacity) : null },
-            { label: "Total Sessions", value: totalSessions(p) === "—" ? null : totalSessions(p) },
+            { label: "Total Sessions", value: totalSessions(p) === "-" ? null : totalSessions(p) },
             { label: "Session Format", value: p.sessionFormat },
             { label: "Created", value: fmtDate(p.createdAt) },
           ].filter((f): f is { label: string; value: string } => Boolean(f.value));
@@ -259,7 +259,7 @@ export function ProgramDetailsPage({ programId }: { programId: string }) {
             <>
               <div className="mt-3 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
                 <dl className="text-sm">
-                  <IconRow icon={IndianRupee} label="Program Fee" value={p.isMembershipIncluded ? "Included" : p.defaultPriceMinor != null ? money(p.defaultPriceMinor) : "—"} />
+                  <IconRow icon={IndianRupee} label="Program Fee" value={p.isMembershipIncluded ? "Included" : p.defaultPriceMinor != null ? money(p.defaultPriceMinor) : "-"} />
                   {p.earlyBirdDiscountMinor != null && (
                     <IconRow
                       icon={Percent}
@@ -805,7 +805,7 @@ function EditPricingDialog({ program, onClose, onSaved }: { program: ProgramDeta
 /** Real total sessions — sessions per week × the weeks the program runs — falling back to the
  *  legacy `sessionCount` ("sessions per package") field only when that can't be computed. */
 function durationWeeksLabel(p: ProgramDetail): string {
-  if (!p.startDate || !p.endDate) return "—";
+  if (!p.startDate || !p.endDate) return "-";
   const weeks = Math.max(1, Math.round((new Date(p.endDate).getTime() - new Date(p.startDate).getTime()) / (7 * 86_400_000)));
   return `${weeks} Weeks`;
 }
@@ -815,7 +815,7 @@ function totalSessions(p: ProgramDetail): string {
     const weeks = Math.max(1, Math.round((new Date(p.endDate).getTime() - new Date(p.startDate).getTime()) / (7 * 86_400_000)));
     return String(p.sessionsPerWeek * weeks);
   }
-  return p.sessionCount != null ? String(p.sessionCount) : "—";
+  return p.sessionCount != null ? String(p.sessionCount) : "-";
 }
 
 function Back() {

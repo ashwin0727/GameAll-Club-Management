@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile, hasDashboardAccess } from "@/features/auth/api/auth.api";
 import { GuestBookingEditPage } from "@/features/bookings/components/guest-booking-edit-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Edit Guest Booking — ${APP_NAME}`,
+  title: `Edit Guest Booking`,
 };
 
 export default async function Page({ params }: { params: Promise<{ bookingId: string }> }) {

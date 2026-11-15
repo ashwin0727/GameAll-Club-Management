@@ -342,7 +342,7 @@ class ReportDataTable extends StatelessWidget {
                       child: Row(
                         children: [
                           for (var j = 0; j < columns.length; j++)
-                            cell(i, j, j < rows[i].length ? rows[i][j] : '—', heading: false),
+                            cell(i, j, j < rows[i].length ? rows[i][j] : '-', heading: false),
                         ],
                       ),
                     ),

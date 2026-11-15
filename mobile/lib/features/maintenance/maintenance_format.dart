@@ -3,12 +3,12 @@ import '../../core/utils/formatters.dart';
 /// `amountMinor` (paise) → the app's INR display format. Mirrors
 /// src/features/maintenance/status.ts's formatMoney.
 String maintenanceAmount(int? amountMinor) {
-  if (amountMinor == null) return '—';
+  if (amountMinor == null) return '-';
   return Formatters.currencyInr((amountMinor / 100).round());
 }
 
 String maintenanceDateTime(DateTime? dt) {
-  if (dt == null) return '—';
+  if (dt == null) return '-';
   final local = dt.toLocal();
   final h = local.hour % 12 == 0 ? 12 : local.hour % 12;
   final ampm = local.hour < 12 ? 'AM' : 'PM';

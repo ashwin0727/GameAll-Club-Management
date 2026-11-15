@@ -155,7 +155,7 @@ void main() {
       }
     });
 
-    test('never sends an amount the client computed — the minor-unit value is passed straight through', () {
+    test('never sends an amount the client computed. The minor-unit value is passed straight through', () {
       // The caller hands createExpense an already-computed minor-unit int; the
       // repository must not do rupee<->paise arithmetic of its own.
       expect(source, isNot(contains('* 100')));
@@ -170,7 +170,7 @@ void main() {
       expect(source, contains("'p_reason':"));
     });
 
-    test('voids, never deletes — no delete path exists in the repository', () {
+    test('voids, never deletes. No delete path exists in the repository', () {
       expect(source, isNot(contains('.delete()')));
     });
   });

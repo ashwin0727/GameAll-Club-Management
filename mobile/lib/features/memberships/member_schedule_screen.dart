@@ -333,7 +333,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
 
   Widget _detailsCard(MemberScheduleSummary m) {
     final detail = _detail;
-    String kv(String? v) => (v == null || v.isEmpty) ? '—' : v;
+    String kv(String? v) => (v == null || v.isEmpty) ? '-' : v;
     Widget row(String k, String v) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Row(
@@ -369,7 +369,7 @@ class _MemberScheduleScreenState extends ConsumerState<MemberScheduleScreen> {
           ),
           const Divider(height: AppSpacing.xl),
           row('Membership plan', kv(detail?.membership.name)),
-          row('Valid till', detail == null ? '—' : DateFormat('d MMM yyyy').format(detail.membership.endDate)),
+          row('Valid till', detail == null ? '-' : DateFormat('d MMM yyyy').format(detail.membership.endDate)),
           row('Assigned courts', kv(m.courts.map((c) => c.name).join(', '))),
           row('Preferred time', kv(m.preferredTime)),
           if (m.membershipId != null) ...[

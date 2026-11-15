@@ -19,7 +19,7 @@ void main() {
         endDate: end,
       );
 
-  group('ProgramOption.chargeMinor — (fee − early-bird discount) + tax, same as the web wizard', () {
+  group('ProgramOption.chargeMinor: (fee − early-bird discount) + tax, same as the web wizard', () {
     test('plain fee', () => expect(option().chargeMinor, 10000));
     test('discount comes off before tax', () => expect(option(discount: 1000).chargeMinor, 9000));
     test('tax is rounded to whole rupees (₹90 × 18% = ₹16.20 → ₹16)', () {

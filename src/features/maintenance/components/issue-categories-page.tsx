@@ -158,7 +158,7 @@ export function IssueCategoriesPage() {
                           {c.isShared && <Badge variant="outline" className="text-[10px]">Default</Badge>}
                         </div>
                       </td>
-                      <td className="max-w-[280px] truncate px-4 py-2.5 text-muted-foreground">{c.description || "—"}</td>
+                      <td className="max-w-[280px] truncate px-4 py-2.5 text-muted-foreground">{c.description || "-"}</td>
                       <td className="px-4 py-2.5">{c.issueCount}</td>
                       <td className="px-4 py-2.5">
                         <Badge className={c.isActive ? "border-transparent bg-success/15 text-success" : "border-transparent bg-secondary text-muted-foreground"}>

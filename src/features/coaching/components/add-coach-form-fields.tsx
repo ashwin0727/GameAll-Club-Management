@@ -217,7 +217,7 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
               {form.rolesError && <p className="mt-1 text-xs text-destructive">{form.rolesError}</p>}
             </div>
             <p className="text-xs text-muted-foreground sm:col-span-2">
-              This creates a new staff account for this person — coaches are always staff members.
+              This creates a new staff account for this person, coaches are always staff members.
             </p>
           </div>
         )}
@@ -289,7 +289,7 @@ export function AddCoachFormFields({ facilityId, form }: { facilityId: string | 
       <section className="space-y-3">
         <SectionHeading n={3} title="Availability & Settings" subtitle="Set the coach's availability and status." />
         <p className="text-xs text-muted-foreground">
-          The weekly recurring schedule is set up next, from the coach&apos;s profile — this just covers status and defaults.
+          The weekly recurring schedule is set up next, from the coach&apos;s profile. This just covers status and defaults.
         </p>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

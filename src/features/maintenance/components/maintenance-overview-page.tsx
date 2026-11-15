@@ -187,7 +187,7 @@ export function MaintenanceOverviewPage() {
                 <li key={`${s.ticketId}-${i}`} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
                   <div>
                     <p className="font-medium">
-                      {s.courtName} — {s.title}
+                      {s.courtName}: {s.title}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDateTime(s.startTime)} → {formatDateTime(s.endTime)}
@@ -209,7 +209,7 @@ export function MaintenanceOverviewPage() {
                 <li key={a.id} className="border-b border-border pb-2 last:border-0">
                   <p>
                     <span className="font-medium">{a.eventType.replaceAll("_", " ").toLowerCase()}</span>
-                    {a.note ? ` — ${a.note}` : ""}
+                    {a.note ? `: ${a.note}` : ""}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {formatDateTime(a.createdAt)} {a.actorName ? `· ${a.actorName}` : ""}

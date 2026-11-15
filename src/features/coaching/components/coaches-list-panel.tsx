@@ -208,7 +208,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                   </Avatar>
                   <div className="min-w-0">
                     <p className="truncate font-medium">{c.fullName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{c.phone ?? c.email ?? "—"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{c.phone ?? c.email ?? "-"}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -257,7 +257,7 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {c.sports.length === 0 ? (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         ) : (
                           c.sports.map((s) => (
                             <Badge key={s.id} variant="outline" className="text-[11px]">
@@ -267,9 +267,9 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{c.expertiseLevels.join(", ") || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{c.expertiseLevels.join(", ") || "-"}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {c.experienceYears != null ? `${c.experienceYears} yrs` : "—"}
+                      {c.experienceYears != null ? `${c.experienceYears} yrs` : "-"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{c.sessionCount}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.studentCount}</TableCell>

@@ -52,7 +52,7 @@ Deno.test("idempotency: an order already at SETTLEMENT_EXCEPTION is never re-set
   assertEquals(outcome, { kind: "ALREADY_SETTLED" });
 });
 
-Deno.test("settlement never runs before CAPTURED — an AUTHORIZED (or any pre-capture) order is NOT_READY, not settled", () => {
+Deno.test("settlement never runs before CAPTURED, an AUTHORIZED (or any pre-capture) order is NOT_READY, not settled", () => {
   const outcome = decideSettlement({ ...base, paymentOrderStatus: "AUTHORIZED", sourceType: "MEMBER_BOOKING", bookingId: "b-1", bookingStillConfirmable: true });
   assertEquals(outcome, { kind: "NOT_READY" });
 });

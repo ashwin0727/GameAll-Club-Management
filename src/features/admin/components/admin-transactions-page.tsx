@@ -15,7 +15,7 @@ export function AdminTransactionsPage() {
     <div>
       <PageTitle
         title="Transactions"
-        subtitle="Online payments only — Razorpay, UPI, UPI AutoPay, cards and bank transfers. Cash and other offline entries are not listed."
+        subtitle="Online payments only: Razorpay, UPI, UPI AutoPay, cards and bank transfers. Cash and other offline entries are not listed."
       />
       {error ? (
         <ErrorNote error={error} />

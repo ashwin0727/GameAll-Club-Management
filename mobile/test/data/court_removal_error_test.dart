@@ -6,7 +6,7 @@ void main() {
   test('a refused court removal reaches the owner with its own explanation', () {
     final e = mapSupabaseError(
       const PostgrestException(
-        message: 'Court 3 has 2 upcoming bookings — move or cancel them before removing or switching it off.',
+        message: 'Court 3 has 2 upcoming bookings, move or cancel them before removing or switching it off.',
         code: '23514',
       ),
     );

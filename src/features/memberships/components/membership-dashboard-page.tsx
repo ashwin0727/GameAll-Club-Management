@@ -137,7 +137,7 @@ export function MembershipDashboardPage() {
               icon={IndianRupee}
               iconBg="bg-warning/15"
               iconColor="text-warning"
-              value={overallRevenue !== undefined ? inrFmt(overallRevenue) : "—"}
+              value={overallRevenue !== undefined ? inrFmt(overallRevenue) : "-"}
               countTo={overallRevenue}
               format={inrFmt}
               label="Overall Revenue"
@@ -148,7 +148,7 @@ export function MembershipDashboardPage() {
               icon={Wallet}
               iconBg="bg-purple-500/15"
               iconColor="text-purple-600 dark:text-purple-400"
-              value={pending !== undefined ? inrFmt(pending.amountInr) : "—"}
+              value={pending !== undefined ? inrFmt(pending.amountInr) : "-"}
               countTo={pending?.amountInr}
               format={inrFmt}
               label="Payment Pending"

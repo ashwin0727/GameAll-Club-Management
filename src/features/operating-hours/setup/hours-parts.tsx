@@ -209,7 +209,7 @@ export function WeeklyPreview({ plans, brk }: { plans: DayPlan[]; brk?: BreakTim
           {orderedPlans(plans).map((p) => (
             <li key={p.dayOfWeek} className="grid grid-cols-[64px_1fr_90px] items-center border-t border-[#EFECF6] px-3 py-2 text-sm sm:grid-cols-[80px_1fr_110px]">
               <span className="font-medium">{SHORT_DAY[p.dayOfWeek]}</span>
-              <span className={cn(!p.isOpen && "text-[#666666]")}>{p.isOpen ? describePlan(p) : "—"}</span>
+              <span className={cn(!p.isOpen && "text-[#666666]")}>{p.isOpen ? describePlan(p) : "-"}</span>
               <span className="flex items-center gap-1.5">
                 <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", p.isOpen ? "bg-[#2E7D32]" : "bg-[#C62828]")} />
                 <span className={cn(p.isOpen ? "text-[#2E7D32]" : "text-[#C62828]")}>{p.isOpen ? "Open" : "Closed"}</span>

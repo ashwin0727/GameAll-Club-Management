@@ -51,7 +51,7 @@ const WHY_SEPARATE = [
   {
     icon: Rocket,
     title: "Built for Match Day",
-    body: "A focused organizer tool with draws, live scoring and brackets — designed for the pace of a live event.",
+    body: "A focused organizer tool with draws, live scoring and brackets, designed for the pace of a live event.",
   },
   {
     icon: ShieldCheck,
@@ -158,7 +158,7 @@ export function TournamentManagementPage() {
           </h1>
           <p className="max-w-prose text-base text-muted-foreground">
             Tournament Management is a dedicated GameAll application for organizers and players. Run draws,
-            registrations, schedules and live results from a tool built for competition — your facility operations
+            registrations, schedules and live results from a tool built for competition. Your facility operations
             stay right here.
           </p>
 

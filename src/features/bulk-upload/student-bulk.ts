@@ -30,12 +30,12 @@ export function studentTemplateSpec(programs: Pick<ProgramDetail, "name" | "batc
     columns: STUDENT_COLUMNS,
     lists: { Gender: ["Male", "Female", "Other"], "Program Name": programs.map((p) => p.name) },
     instructions: [
-      "Bulk Upload — Students",
+      "Bulk Upload: Students",
       "Fill one student per row on the Students sheet, then upload the file. Columns marked * are mandatory.",
-      "If even one mandatory value is missing or invalid, nothing is uploaded — fix the rows listed and upload again.",
+      "If even one mandatory value is missing or invalid, nothing is uploaded. Fix the rows listed and upload again.",
       "Phone Number: 10-digit Indian mobile number starting with 6, 7, 8 or 9. Razorpay sends the payment link to this number by SMS.",
       "Program Name: exactly as it appears in your active programs" + (programs.length ? ` (${programs.map((p) => p.name).join(", ")}).` : "."),
-      "Batch: needed when the program has batches — the batch name exactly as it appears on the program.",
+      "Batch: needed when the program has batches. The batch name exactly as it appears on the program.",
       "Start Date: yyyy-mm-dd (or dd/mm/yyyy). Gender: Male, Female or Other. Date Of Birth: yyyy-mm-dd.",
       `At most ${MAX_BULK_ROWS} students per upload.`,
     ],
@@ -94,7 +94,7 @@ export function validateStudentRows(
   if (errors.length) return { errors, students: [] };
   if (rows.length === 0) return { errors: [{ row: 0, column: "", message: "The sheet has no students in it." }], students: [] };
   if (rows.length > MAX_BULK_ROWS) {
-    return { errors: [{ row: 0, column: "", message: `A single upload can have at most ${MAX_BULK_ROWS} students — this one has ${rows.length}.` }], students: [] };
+    return { errors: [{ row: 0, column: "", message: `A single upload can have at most ${MAX_BULK_ROWS} students. This one has ${rows.length}.` }], students: [] };
   }
   const now = ctx.now ?? new Date();
 
@@ -156,23 +156,23 @@ export function validateStudentRows(
     }
 
     let batchId: string | null = null;
-    let batchName = "—";
+    let batchName = "-";
     let totalMinor = 0;
     if (program) {
       const batchText = get("Batch");
       const activeBatches = program.batches.filter((b) => b.status === "ACTIVE");
       if (activeBatches.length > 0) {
-        if (!batchText) add("Batch", `“${program.name}” has batches (${activeBatches.map((b) => b.name).join(", ")}) — name the one this student joins.`);
+        if (!batchText) add("Batch", `“${program.name}” has batches (${activeBatches.map((b) => b.name).join(", ")}), name the one this student joins.`);
         else {
           const hit = activeBatches.find((b) => b.name.trim().toLowerCase() === batchText.toLowerCase());
-          if (!hit) add("Batch", `“${batchText}” is not a batch of this program — choose from ${activeBatches.map((b) => b.name).join(", ")}.`);
+          if (!hit) add("Batch", `“${batchText}” is not a batch of this program. Choose from ${activeBatches.map((b) => b.name).join(", ")}.`);
           else {
             batchId = hit.id;
             batchName = hit.name;
           }
         }
       } else if (batchText) {
-        add("Batch", "This program has no batches — leave the Batch cell empty.");
+        add("Batch", "This program has no batches. Leave the Batch cell empty.");
       }
 
       const monthly = program.feeType === "MONTHLY" && !program.isMembershipIncluded;
@@ -222,7 +222,7 @@ export function validateStudentRows(
 /** The member note the single Add Student form writes for an emergency contact. */
 export function studentNotes(s: Pick<ParsedStudent, "emergencyName" | "emergencyPhone">): string | null {
   if (!s.emergencyName && !s.emergencyPhone) return null;
-  return `Emergency Contact: ${s.emergencyName || "—"}${s.emergencyPhone ? ` (${s.emergencyPhone})` : ""}`;
+  return `Emergency Contact: ${s.emergencyName || "-"}${s.emergencyPhone ? ` (${s.emergencyPhone})` : ""}`;
 }
 
 export type { TemplateSpec };

@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
 import { SetupStepper } from "@/features/onboarding/components/setup-stepper";
 import { PricingSetupForm } from "@/features/pricing/setup/pricing-setup-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Pricing — ${PRODUCT_NAME}`,
+  title: `Pricing`,
 };
 
 export default function PricingPage() {

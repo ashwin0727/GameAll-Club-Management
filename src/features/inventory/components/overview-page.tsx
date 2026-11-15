@@ -171,8 +171,8 @@ export function InventoryOverviewPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-right">{movementQty(m.quantity)}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.referenceLabel ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{m.performedByName ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.referenceLabel ?? "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">{m.performedByName ?? "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

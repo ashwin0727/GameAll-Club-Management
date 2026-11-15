@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { EnrollmentDetailsPage } from "@/features/coaching/components/enrollment-details-page";
-import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: `Enrollment — ${APP_NAME}` };
+export const metadata: Metadata = { title: `Enrollment` };
 
 export default async function Page({ params }: { params: Promise<{ enrollmentId: string }> }) {
   const { enrollmentId } = await params;

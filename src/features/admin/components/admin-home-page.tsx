@@ -90,7 +90,7 @@ export function AdminHomePage() {
                       {f.planName && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{f.planName}</span>}
                     </div>
                     <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                      {f.ownerName ?? "—"} · {f.ownerEmail ?? "—"} · {placeLabel(f.city, f.state)}
+                      {f.ownerName ?? "-"} · {f.ownerEmail ?? "-"} · {placeLabel(f.city, f.state)}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">Registered {formatDate(f.createdAt)}</p>
                   </div>

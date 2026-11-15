@@ -113,7 +113,7 @@ export function BookingTimeGrid({
                 key={col.key}
                 role={onEmptyClick ? "button" : undefined}
                 tabIndex={-1}
-                aria-label={onEmptyClick ? "Empty time — click to book" : undefined}
+                aria-label={onEmptyClick ? "Empty time. Click to book" : undefined}
                 onClick={(e) => {
                   if (!onEmptyClick) return;
                   const rect = e.currentTarget.getBoundingClientRect();

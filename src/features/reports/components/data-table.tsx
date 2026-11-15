@@ -27,7 +27,7 @@ export function DataTable({
   href?: (row: Row) => string;
 }) {
   const format = (value: string | number | undefined) =>
-    typeof value === "number" ? value.toLocaleString("en-IN") : (value ?? "—");
+    typeof value === "number" ? value.toLocaleString("en-IN") : (value ?? "-");
 
   return (
     <div className="overflow-x-auto">

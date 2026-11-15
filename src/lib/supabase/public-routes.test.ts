@@ -4,7 +4,7 @@ import { routeAction } from "./public-routes";
 const SIGNED_OUT = false;
 const SIGNED_IN = true;
 
-describe("routeAction — public booking and membership links", () => {
+describe("routeAction, public booking and membership links", () => {
   it("lets a signed-out player open a booking link", () => {
     expect(routeAction("/book/facility-123", SIGNED_OUT)).toBe("allow");
   });
@@ -33,7 +33,7 @@ describe("routeAction — public booking and membership links", () => {
   });
 });
 
-describe("routeAction — management pages stay guarded", () => {
+describe("routeAction, management pages stay guarded", () => {
   it.each([
     "/dashboard",
     "/guest-bookings",
@@ -49,7 +49,7 @@ describe("routeAction — management pages stay guarded", () => {
   });
 });
 
-describe("routeAction — auth screens", () => {
+describe("routeAction, auth screens", () => {
   it("lets a signed-out visitor reach login and signup", () => {
     expect(routeAction("/login", SIGNED_OUT)).toBe("allow");
     expect(routeAction("/signup", SIGNED_OUT)).toBe("allow");

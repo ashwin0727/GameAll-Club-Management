@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/day_chip.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -188,7 +189,7 @@ class _MembershipSlotEditScreenState extends ConsumerState<MembershipSlotEditScr
               subtitle: '${Formatters.time12h(b.startTime)} - ${Formatters.time12h(b.endTime)}',
               icon: Icons.event_note_outlined,
               children: [
-                InfoRow('Sport', b.sportName.isEmpty ? '—' : b.sportName),
+                InfoRow('Sport', b.sportName.isEmpty ? '-' : b.sportName),
                 InfoRow('Days', _daysLabel(b.daysOfWeek)),
                 InfoRow('Members on this slot', '${b.enrolledCount}'),
                 InfoRow('Capacity', '${b.capacity}'),
@@ -214,10 +215,10 @@ class _MembershipSlotEditScreenState extends ConsumerState<MembershipSlotEditScr
                     runSpacing: 6,
                     children: [
                       for (final d in _weekOrder)
-                        FilterChip(
-                          label: Text(planDayAbbr[d]),
+                        DayChip(
+                          label: planDayAbbr[d],
                           selected: _days.contains(d),
-                          onSelected: (on) => setState(() => on ? _days = {..._days, d} : _days = _days.where((x) => x != d).toSet()),
+                          onChanged: (on) => setState(() => on ? _days = {..._days, d} : _days = _days.where((x) => x != d).toSet()),
                         ),
                     ],
                   ),
@@ -234,7 +235,7 @@ class _MembershipSlotEditScreenState extends ConsumerState<MembershipSlotEditScr
             FormSection(
               title: 'Capacity',
               subtitle: b.enrolledCount > 0
-                  ? 'How many members can hold this slot — ${b.enrolledCount} already on it, so it can\'t go lower.'
+                  ? 'How many members can hold this slot: ${b.enrolledCount} already on it, so it can\'t go lower.'
                   : 'How many members can hold this slot.',
               icon: Icons.groups_outlined,
               children: [

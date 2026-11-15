@@ -227,7 +227,7 @@ describe("SupabaseCoachingService", () => {
   });
 });
 
-describe("SupabaseCoachingService — online billing", () => {
+describe("SupabaseCoachingService, online billing", () => {
   it("getBillingCycles asks the database for the cycle count", async () => {
     const rpc = vi.fn(async () => ({ data: 3, error: null }));
     const cycles = await new SupabaseCoachingService({ rpc } as never).getBillingCycles("2026-01-15", "2026-03-15");

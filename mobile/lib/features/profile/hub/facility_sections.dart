@@ -104,9 +104,9 @@ class FacilityInfoCard extends ConsumerWidget {
           HubInfoRow('Business phone', facility.businessPhone),
           HubInfoRow('City', a.city),
           HubInfoRow('Address', address),
-          HubInfoRow('Venue type', facility.venueType?.label ?? '—'),
+          HubInfoRow('Venue type', facility.venueType?.label ?? '-'),
           HubInfoRow('Amenities', facility.amenities.labels.isEmpty ? 'None' : facility.amenities.labels.join(', ')),
-          HubInfoRow('Google Maps location', (facility.locationUrl ?? '').isEmpty ? '—' : facility.locationUrl),
+          HubInfoRow('Google Maps location', (facility.locationUrl ?? '').isEmpty ? '-' : facility.locationUrl),
           if ((facility.locationUrl ?? '').isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -354,7 +354,7 @@ class _EditAddressSheetState extends ConsumerState<_EditAddressSheet> {
               children: [
                 Text('Edit facility details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: t.textPrimary)),
                 const SizedBox(height: 2),
-                Text('You can update your address, map link, venue type, amenities and photos. The other details are fixed — contact GameAll support if they need to change.',
+                Text('You can update your address, map link, venue type, amenities and photos. The other details are fixed. Contact GameAll support if they need to change.',
                     style: TextStyle(fontSize: 12.5, color: t.textSecondary, height: 1.4)),
                 const SizedBox(height: AppSpacing.lg),
                 _Locked('Facility name', f.name),
@@ -448,7 +448,7 @@ class _Locked extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label, style: TextStyle(fontSize: 11, color: t.textSecondary)),
-                  Text(value.isEmpty ? '—' : value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.textSecondary)),
+                  Text(value.isEmpty ? '-' : value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: t.textSecondary)),
                 ],
               ),
             ),

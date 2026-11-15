@@ -43,7 +43,7 @@ export function ActiveInactiveBarChart({ points }: { points: MonthTrendPoint[] |
         <div>
           <div className="relative h-48">
             {/* Gridlines, each labelled with its figure in the gutter. The row is nudged down by
-                half its own height so the line lands exactly on its tick — without that, the zero
+                half its own height so the line lands exactly on its tick, without that, the zero
                 line floats above the baseline and the bars appear to overshoot it. */}
             {ticks.map((t) => (
               <div

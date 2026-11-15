@@ -77,7 +77,7 @@ void main() {
       expect(source, contains('..._dateRangeArgs('));
     });
 
-    test('maps rows straight from the server — never summed from a transaction list', () {
+    test('maps rows straight from the server, never summed from a transaction list', () {
       expect(source, contains('PaymentMethodSlice.fromJson('));
       for (final forbidden in const ['fold(', 'reduce(', '.sum', 'amount_minor +']) {
         expect(source, isNot(contains(forbidden)),

@@ -52,7 +52,7 @@ void main() {
   });
 
   group('Validators.optionalPhone', () {
-    test('is optional — empty is valid', () {
+    test('is optional, empty is valid', () {
       expect(Validators.optionalPhone(''), isNull);
       expect(Validators.optionalPhone(null), isNull);
     });

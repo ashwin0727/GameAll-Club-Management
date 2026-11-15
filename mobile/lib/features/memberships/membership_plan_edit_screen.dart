@@ -209,8 +209,8 @@ class _MembershipPlanEditScreenState extends ConsumerState<MembershipPlanEditScr
             children: [
               cell('Duration', planWizardDurationLabel(plan.durationDays)),
               cell('Price', Formatters.currencyInr(plan.priceInr)),
-              cell('Members', widget.memberCount?.toString() ?? '—'),
-              cell('Slots', widget.slotCount?.toString() ?? '—'),
+              cell('Members', widget.memberCount?.toString() ?? '-'),
+              cell('Slots', widget.slotCount?.toString() ?? '-'),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

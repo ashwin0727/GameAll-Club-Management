@@ -79,7 +79,7 @@ void main() {
 
     testWidgets('a long label wraps/ellipsizes instead of overflowing at 320dp', (tester) async {
       await tester.pumpWidget(wrap(
-        const SizedBox(width: 100, child: StatusBadge(label: 'Membership Protected — 3 of 5 Occupied', tone: StatusTone.info)),
+        const SizedBox(width: 100, child: StatusBadge(label: 'Membership Protected: 3 of 5 Occupied', tone: StatusTone.info)),
       ));
       expect(tester.takeException(), isNull);
     });

@@ -15,12 +15,12 @@ describe("maintenance status helpers", () => {
   it("formats money from minor units, em-dash for null", () => {
     expect(formatMoney(1850000)).toBe("₹18,500");
     expect(formatMoney(0)).toBe("₹0");
-    expect(formatMoney(null)).toBe("—");
-    expect(formatMoney(undefined)).toBe("—");
+    expect(formatMoney(null)).toBe("-");
+    expect(formatMoney(undefined)).toBe("-");
   });
 
   it("formatDate is em-dash for null/undefined", () => {
-    expect(formatDate(null)).toBe("—");
+    expect(formatDate(null)).toBe("-");
     expect(formatDate("2026-09-01T10:30:00Z")).toMatch(/2026/);
   });
 
@@ -35,7 +35,7 @@ describe("maintenance status helpers", () => {
     }
   });
 
-  it("REPORTED renders as 'Open' — the web/Flutter shared convention", () => {
+  it("REPORTED renders as 'Open'. The web/Flutter shared convention", () => {
     expect(STATUS_LABEL.REPORTED).toBe("Open");
   });
 

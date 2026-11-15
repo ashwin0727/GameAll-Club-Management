@@ -1,4 +1,5 @@
 import '../../core/utils/batch_name.dart';
+import '../../shared/widgets/day_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -854,11 +855,10 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
               runSpacing: AppSpacing.sm,
               children: [
                 for (var i = 0; i < 7; i++)
-                  FilterChip(
-                    label: Text(planDayAbbr[i]),
+                  DayChip(
+                    label: planDayAbbr[i],
                     selected: _d.playingDays.contains(i),
-                    showCheckmark: false,
-                    onSelected: (on) => setState(() {
+                    onChanged: (on) => setState(() {
                       if (on) {
                         _d.playingDays = [..._d.playingDays, i]..sort();
                       } else {
@@ -897,7 +897,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
                   border: Border.all(color: tokens.borderColor),
                 ),
                 child: Text(
-                  _d.courtIds.isEmpty ? 'Select a court above, then add a time slot.' : 'No time slots yet — add one above.',
+                  _d.courtIds.isEmpty ? 'Select a court above, then add a time slot.' : 'No time slots yet. Add one above.',
                   textAlign: TextAlign.center,
                   style: AppTypography.caption(context),
                 ),
@@ -1030,12 +1030,11 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
             children: [
               for (var i = 0; i < 7; i++)
                 if (_d.playingDays.contains(i) || w.daysOfWeek.contains(i))
-                  FilterChip(
-                    label: Text(planDayAbbr[i]),
+                  DayChip(
+                    label: planDayAbbr[i],
+                    compact: true,
                     selected: w.daysOfWeek.contains(i),
-                    showCheckmark: false,
-                    visualDensity: VisualDensity.compact,
-                    onSelected: (on) => setState(() {
+                    onChanged: (on) => setState(() {
                       w.daysOfWeek = on ? ([...w.daysOfWeek, i]..sort()) : w.daysOfWeek.where((d) => d != i).toList();
                     }),
                   ),
@@ -1050,7 +1049,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Overlaps another slot on the same court and day — allowed (courts can share capacity), just flagging it.',
+                    'Overlaps another slot on the same court and day, allowed (courts can share capacity), just flagging it.',
                     style: TextStyle(fontSize: 12, color: tokens.warning),
                   ),
                 ),
@@ -1147,7 +1146,7 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         Text(_d.category, style: AppTypography.caption(context)),
         const SizedBox(height: AppSpacing.sm),
         _kv('Plan Type', recurring ? 'Recurring' : 'Time Based'),
-        _kv('Description', _d.description.trim().isEmpty ? '—' : _d.description.trim()),
+        _kv('Description', _d.description.trim().isEmpty ? '-' : _d.description.trim()),
         _kv('Status', 'Active (after creation)'),
       ]),
       _reviewSection(2, 'Plan Configuration', 1, [
@@ -1159,10 +1158,10 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
         _kv('Security Deposit', _d.securityDepositInr > 0 ? '${_inr(_d.securityDepositInr)} (Refundable)' : 'No Security Deposit'),
       ]),
       _reviewSection(3, 'Court Access', 2, [
-        _kv('Sport', sports.isEmpty ? '—' : sports),
-        _kv('Selected Courts', selectedCourts.isEmpty ? '—' : selectedCourts.map((c) => '${c.name} (${c.indoor ? 'Indoor' : 'Outdoor'})').join(', ')),
-        _kv('Playing Days', days.isEmpty ? '—' : days),
-        _kv('Time Slots', slotTimes.isEmpty ? '—' : slotTimes.join('\n')),
+        _kv('Sport', sports.isEmpty ? '-' : sports),
+        _kv('Selected Courts', selectedCourts.isEmpty ? '-' : selectedCourts.map((c) => '${c.name} (${c.indoor ? 'Indoor' : 'Outdoor'})').join(', ')),
+        _kv('Playing Days', days.isEmpty ? '-' : days),
+        _kv('Time Slots', slotTimes.isEmpty ? '-' : slotTimes.join('\n')),
       ]),
       _note(
         Icons.info_outline,
@@ -1179,12 +1178,12 @@ class _MembershipPlanWizardScreenState extends ConsumerState<MembershipPlanWizar
       ),
       const SizedBox(height: AppSpacing.md),
       _reviewSection(4, 'Final Summary', 0, [
-        _kv('Membership Plan', _fullPlanName.isEmpty ? '—' : _fullPlanName),
+        _kv('Membership Plan', _fullPlanName.isEmpty ? '-' : _fullPlanName),
         _kv('Price', priceText),
         _kv(recurring ? 'Billing Interval' : 'Membership Duration',
             recurring ? planBillingIntervalLabel(_d.durationDays) : planWizardDurationLabel(_d.durationDays)),
-        _kv('Court Access', selectedCourts.isEmpty ? '—' : selectedCourts.map((c) => c.name).join(', ')),
-        _kv('Playing Schedule', days.isEmpty || slotTimes.isEmpty ? '—' : '$days, ${slotTimes.join('; ')}'),
+        _kv('Court Access', selectedCourts.isEmpty ? '-' : selectedCourts.map((c) => c.name).join(', ')),
+        _kv('Playing Schedule', days.isEmpty || slotTimes.isEmpty ? '-' : '$days, ${slotTimes.join('; ')}'),
         if (_d.joiningFeeInr > 0) _kv('Joining Fee', _inr(_d.joiningFeeInr)),
         if (_d.securityDepositInr > 0) _kv('Security Deposit', _inr(_d.securityDepositInr)),
       ], editable: false),

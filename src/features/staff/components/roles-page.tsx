@@ -108,7 +108,7 @@ export function RolesPage() {
                           {r.name}
                           {r.isSystem && <Badge variant="outline" className="ml-2">System</Badge>}
                         </TableCell>
-                        <TableCell className="max-w-[22rem] truncate text-muted-foreground">{r.description ?? "—"}</TableCell>
+                        <TableCell className="max-w-[22rem] truncate text-muted-foreground">{r.description ?? "-"}</TableCell>
                         <TableCell className="text-right tabular-nums">{r.staffCount}</TableCell>
                         <TableCell>
                           <Badge variant={r.isActive ? "success" : "destructive"}>{r.isActive ? "Active" : "Inactive"}</Badge>

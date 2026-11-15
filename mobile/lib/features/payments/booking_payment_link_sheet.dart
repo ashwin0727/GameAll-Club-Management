@@ -206,7 +206,7 @@ class _LinkSheetState extends ConsumerState<_LinkSheet> with WidgetsBindingObser
         children: [
           Text(
             'Share this link with ${widget.guestName.trim().isEmpty ? 'the player' : widget.guestName.trim()}. They pay $_amountLabel on their own '
-            'phone — the booking is confirmed automatically once the payment goes through.',
+            'phone. The booking is confirmed automatically once the payment goes through.',
             style: TextStyle(color: tokens.textSecondary),
           ),
           const SizedBox(height: AppSpacing.md),

@@ -124,7 +124,7 @@ export function GuestProfileDialog({
                               {b.status} · {b.paymentStatus.toLowerCase()}
                             </p>
                           </div>
-                          <p>{b.amountMinor != null ? formatCurrency(b.amountMinor, b.currency) : "—"}</p>
+                          <p>{b.amountMinor != null ? formatCurrency(b.amountMinor, b.currency) : "-"}</p>
                         </div>
                       ))}
                     </div>

@@ -206,7 +206,7 @@ describe("validatePricingRules (aggregate)", () => {
 });
 
 describe("copy pricing logic (clonePeriods)", () => {
-  it("produces an independent deep copy — editing the clone doesn't mutate the source", () => {
+  it("produces an independent deep copy, editing the clone doesn't mutate the source", () => {
     const source = [defaultPeriod("400")];
     const copy = clonePeriods(source);
     copy[0]!.amountInput = "999";

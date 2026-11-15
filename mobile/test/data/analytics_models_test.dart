@@ -113,7 +113,7 @@ void main() {
     expect(cell.demandPct, 90.0);
   });
 
-  test('revenue models — RevenueSummary defaults missing expenses/outstanding to 0', () {
+  test('revenue models: RevenueSummary defaults missing expenses/outstanding to 0', () {
     final s = RevenueSummary.fromJson({'gross_revenue_minor': 100, 'refunds_minor': 0, 'net_revenue_minor': 100});
     expect(s.expensesMinor, 0);
     expect(s.outstandingMinor, 0);

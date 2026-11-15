@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile, hasDashboardAccess } from "@/features/auth/api/auth.api";
 import { AddMemberWizardPage } from "@/features/memberships/components/add-member-wizard-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Add New Member — ${APP_NAME}`,
+  title: `Add New Member`,
 };
 
 // The Memberships section's own add-member flow: /memberships/v1 is the dashboard, this is

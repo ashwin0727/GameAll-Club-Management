@@ -27,7 +27,7 @@ function titleCase(s: string): string {
 
 /** "Individual · Monthly", or just "Family" when the membership has no plan. */
 function typeLabel(r: MembershipTypeRow): string {
-  return r.planName === "—" ? titleCase(r.membershipType) : `${titleCase(r.membershipType)} · ${r.planName}`;
+  return (r.planName === "-" || r.planName === "\u2014") ? titleCase(r.membershipType) : `${titleCase(r.membershipType)} · ${r.planName}`;
 }
 
 export function MembershipReport() {
@@ -114,8 +114,8 @@ export function MembershipReport() {
       { section: "Payments", label: "Partially Paid", value: analytics.partiallyPaidCount },
       { section: "Payments", label: "Pending", value: analytics.pendingCount },
       ...byType.flatMap((r) => [
-        { section: "Membership Types", label: `${typeLabel(r)} — members`, value: r.count },
-        { section: "Membership Types", label: `${typeLabel(r)} — revenue (INR)`, value: (r.revenueMinor / 100).toFixed(2) },
+        { section: "Membership Types", label: `${typeLabel(r)}, members`, value: r.count },
+        { section: "Membership Types", label: `${typeLabel(r)}, revenue (INR)`, value: (r.revenueMinor / 100).toFixed(2) },
       ]),
       ...batches.map((b) => ({
         section: "Members by sport, court and timing",

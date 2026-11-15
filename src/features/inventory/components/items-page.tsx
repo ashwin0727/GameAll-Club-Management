@@ -175,7 +175,7 @@ export function ItemsPage() {
                       {i.brand && <span className="block text-xs text-muted-foreground">{i.brand}</span>}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{i.sku}</TableCell>
-                    <TableCell className="text-muted-foreground">{i.categoryName ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{i.categoryName ?? "-"}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {i.currentStock} {i.unit}
                       <span className="ml-2">{stockStatusBadge(i.stockStatus)}</span>

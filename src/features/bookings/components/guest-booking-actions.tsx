@@ -29,7 +29,7 @@ const METHODS = ["Cash", "UPI", "Card", "Bank Transfer", "Other"];
 type Action = "complete" | "cancel" | "receipt" | "duplicate" | "delete" | "record-payment" | null;
 
 function money(minor: number | null, currency: string) {
-  return minor == null ? "—" : formatCurrency(minor, currency);
+  return minor == null ? "-" : formatCurrency(minor, currency);
 }
 function localDatetimeValue(iso: string): string {
   const d = new Date(iso);
@@ -136,7 +136,7 @@ export function GuestBookingActions({
       {action === "delete" && (
         <ConfirmDialog
           title="Delete Booking"
-          description="Permanently delete this booking. This cannot be undone. Bookings with a settled payment can't be deleted — cancel & refund instead."
+          description="Permanently delete this booking. This cannot be undone. Bookings with a settled payment can't be deleted. Cancel & refund instead."
           confirmLabel="Delete"
           danger
           busy={busy}
@@ -388,7 +388,7 @@ function CompleteDialog({
         <DialogHeader>
           <DialogTitle>Mark as Completed</DialogTitle>
           <DialogDescription>
-            {alreadyPaid ? "This booking is paid — it will be marked completed." : "Collect the payment, then the booking is marked completed."}
+            {alreadyPaid ? "This booking is paid. It will be marked completed." : "Collect the payment, then the booking is marked completed."}
           </DialogDescription>
         </DialogHeader>
 
@@ -425,7 +425,7 @@ function CompleteDialog({
                 <input type="radio" className="mt-0.5" checked={mode === "online"} onChange={() => setMode("online")} />
                 <span>
                   Pay Online
-                  <span className="block text-xs text-muted-foreground">Send the player a payment link — {money(row.amountMinor, row.currency)}</span>
+                  <span className="block text-xs text-muted-foreground">Send the player a payment link: {money(row.amountMinor, row.currency)}</span>
                 </span>
               </label>
             </div>
@@ -592,7 +592,7 @@ function ReceiptDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Send Receipt</DialogTitle>
-          <DialogDescription>Send booking receipt to guest — a PDF receipt is emailed to this address.</DialogDescription>
+          <DialogDescription>Send booking receipt to guest, a PDF receipt is emailed to this address.</DialogDescription>
         </DialogHeader>
         {sent ? (
           <p className="text-sm text-success">Receipt sent to {email}.</p>

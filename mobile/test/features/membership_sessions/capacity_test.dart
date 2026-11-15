@@ -13,7 +13,7 @@ void main() {
       expect(capacity.guestAvailableCapacity, 0);
     });
 
-    test('distinguishes allocated capacity from actual usage — never conflates the two (spec §41)', () {
+    test('distinguishes allocated capacity from actual usage, never conflates the two (spec §41)', () {
       final capacity =
           deriveMembershipCapacity(capacity: 5, releasedCapacity: 2, memberBookedCount: 3, guestBookedCount: 2);
       expect(capacity.capacity, 5);

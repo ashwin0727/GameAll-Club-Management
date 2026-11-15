@@ -11,7 +11,7 @@ void main() {
       PlanTimeWindow(id: 'w1', courtId: 'c1', daysOfWeek: [1, 2, 3]),
     ];
 
-  group('step 1 — Plan Details', () {
+  group('step 1: Plan Details', () {
     test('a name is required', () {
       expect(planFieldErrors(0, PlanWizardDraft())['name'], 'Plan name is required.');
       expect(planFieldErrors(0, PlanWizardDraft()..name = '   ')['name'], isNotNull);
@@ -35,7 +35,7 @@ void main() {
     });
   });
 
-  group('step 2 — Plan Configuration', () {
+  group('step 2: Plan Configuration', () {
     test('the price must be above zero', () {
       expect(planFieldErrors(1, PlanWizardDraft())['priceInr'], 'Price must be greater than 0.');
       expect(planFieldErrors(1, PlanWizardDraft()..priceInr = 100), isEmpty);
@@ -55,7 +55,7 @@ void main() {
     });
   });
 
-  group('step 3 — Court Access', () {
+  group('step 3: Court Access', () {
     test('needs a court, a playing day and a time slot', () {
       final errors = planFieldErrors(2, PlanWizardDraft()..playingDays = []);
       expect(errors.keys, containsAll(['courtIds', 'playingDays', 'timeWindows']));

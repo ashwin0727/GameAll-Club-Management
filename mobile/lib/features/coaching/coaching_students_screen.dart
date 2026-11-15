@@ -354,7 +354,7 @@ class _CoachingStudentsScreenState extends ConsumerState<CoachingStudentsScreen>
                         style: AppTypography.body(context),
                       ),
                       Text(
-                        '${e.studentPhone ?? '—'} · ${coachDate(e.startDate)}',
+                        '${e.studentPhone ?? '-'} · ${coachDate(e.startDate)}',
                         style: AppTypography.caption(context),
                       ),
                       const SizedBox(height: AppSpacing.xs),

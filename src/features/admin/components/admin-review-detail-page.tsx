@@ -32,13 +32,13 @@ function Item({ label, children, wide }: { label: string; children: React.ReactN
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 break-words text-sm font-medium">{children || "—"}</dd>
+      <dd className="mt-0.5 break-words text-sm font-medium">{children || "-"}</dd>
     </div>
   );
 }
 
 const time = (t: string | null) => (t ? t.slice(0, 5) : "");
-const mask = (n: string | null) => (n ? `${"•".repeat(Math.max(n.length - 4, 0))}${n.slice(-4)}` : "—");
+const mask = (n: string | null) => (n ? `${"•".repeat(Math.max(n.length - 4, 0))}${n.slice(-4)}` : "-");
 
 function dayLabel(r: AdminSetupReview["pricing"]["rules"][number]): string {
   const when = r.dayType === "ALL_DAYS" ? "Every day" : r.dayType === "WEEKDAYS" ? "Mon – Fri" : r.dayType === "WEEKENDS" ? "Sat – Sun" : "Chosen days";
@@ -70,7 +70,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
       <PageTitle
         back={{ href: "/admin/reviews", label: "All approvals" }}
         title={f.name}
-        subtitle={`${data.owner.name ?? "—"} · ${data.owner.email ?? "—"} · ${data.owner.phone ?? "—"}`}
+        subtitle={`${data.owner.name ?? "-"} · ${data.owner.email ?? "-"} · ${data.owner.phone ?? "-"}`}
       />
       {failure && <ErrorNote error={failure} />}
 
@@ -152,7 +152,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
               f.allowCancellations && "Cancellations allowed",
             ]
               .filter(Boolean)
-              .join(", ") || "—"}
+              .join(", ") || "-"}
           </Item>
         </dl>
       </Section>
@@ -174,7 +174,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">—</p>
+          <p className="text-sm text-muted-foreground">-</p>
         )}
       </Section>
 
@@ -209,7 +209,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
       <Section title="2 · Sports & courts">
         <p className="mb-3 text-sm">
           <span className="font-medium">Sports: </span>
-          {data.sports.filter((x) => x.active).map((x) => x.name).join(", ") || "—"}
+          {data.sports.filter((x) => x.active).map((x) => x.name).join(", ") || "-"}
         </p>
         <ul className="divide-y divide-border rounded-lg border border-border text-sm">
           {data.courts.map((c, i) => (
@@ -245,7 +245,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
           <ul className="divide-y divide-border rounded-lg border border-border text-sm">
             {data.pricing.rules.map((r, i) => (
               <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-                <span className="font-medium">{r.court ? `${r.sport ?? ""} · ${r.court}` : (r.sport ?? "—")}</span>
+                <span className="font-medium">{r.court ? `${r.sport ?? ""} · ${r.court}` : (r.sport ?? "-")}</span>
                 <span className="text-muted-foreground">
                   {dayLabel(r)} · <span className="font-semibold text-foreground">{inr(r.amountMinor / 100)}</span> / {r.unit === "PER_SESSION" ? "session" : r.unit === "PER_MATCH" ? "match" : r.unit === "PER_30_MINUTES" ? "30 min" : "hour"}
                 </span>
@@ -321,7 +321,7 @@ export function AdminReviewDetailPage({ facilityId }: { facilityId: string }) {
               <li key={i} className="flex flex-wrap justify-between gap-2">
                 <span>
                   <span className="font-medium">{humanize(e.action)}</span>
-                  {e.note ? ` — ${e.note}` : ""}
+                  {e.note ? `: ${e.note}` : ""}
                 </span>
                 <span className="text-muted-foreground">{formatDateTime(e.at)}</span>
               </li>

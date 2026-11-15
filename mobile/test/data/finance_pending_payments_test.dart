@@ -140,7 +140,7 @@ void main() {
       expect(page.totalCount, 12);
     });
 
-    test('an empty page is a real zero — never "all caught up" on a failed query', () {
+    test('an empty page is a real zero, never "all caught up" on a failed query', () {
       final page = PendingPaymentsPage.fromRows(const []);
       expect(page.obligations, isEmpty);
       expect(page.totalCount, 0);
@@ -193,7 +193,7 @@ void main() {
   });
 
   group('FinanceRepository.getPaymentObligation', () {
-    test('is the same list, asked for one source id — never a second definition of "outstanding"', () {
+    test('is the same list, asked for one source id, never a second definition of "outstanding"', () {
       expect(source, contains('listPendingPayments('));
       expect(source, contains('sourceId:'));
     });
@@ -224,7 +224,7 @@ void main() {
       }
     });
 
-    test('passes the minor-unit amount straight through — no rupee arithmetic', () {
+    test('passes the minor-unit amount straight through. No rupee arithmetic', () {
       expect(source, isNot(contains('* 100')));
       expect(source, isNot(contains('/ 100')));
     });

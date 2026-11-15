@@ -42,7 +42,7 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
       </div>
       {/* Polite: strength updates as the user types and must not interrupt. */}
       <p className="text-xs text-muted-foreground" aria-live="polite">
-        {hint ?? "Strong password — good to go."}
+        {hint ?? "Strong password, good to go."}
       </p>
     </div>
   );

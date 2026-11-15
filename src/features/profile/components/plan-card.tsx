@@ -160,7 +160,7 @@ export function PlanCard({
                 <p className="text-sm text-muted-foreground">The details of this plan haven&apos;t been added yet.</p>
               )}
               <p className="text-xs text-muted-foreground">
-                GameAll charges a flat membership fee — never a commission on your bookings or payments.
+                GameAll charges a flat membership fee, never a commission on your bookings or payments.
               </p>
             </DialogContent>
           </Dialog>

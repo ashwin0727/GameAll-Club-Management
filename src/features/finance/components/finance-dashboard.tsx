@@ -221,7 +221,7 @@ export function FinanceDashboard() {
             size="sm"
             className="min-h-9"
             disabled={exporting || dirty || !summary}
-            title={dirty ? "Apply the new dates first — the export is for the dates on screen." : "Export the dates on screen"}
+            title={dirty ? "Apply the new dates first. The export is for the dates on screen." : "Export the dates on screen"}
             onClick={() => void exportCsv()}
           >
             <Download className="h-4 w-4" aria-hidden /> {exporting ? "Exporting…" : "Export"}
@@ -343,7 +343,7 @@ export function FinanceDashboard() {
               {breakdown.membershipIncludedUsageCount > 0 && (
                 <p className="mt-3 text-[11px] text-muted-foreground">
                   Plus {breakdown.membershipIncludedUsageCount} included membership session
-                  {breakdown.membershipIncludedUsageCount === 1 ? "" : "s"} — usage, not revenue.
+                  {breakdown.membershipIncludedUsageCount === 1 ? "" : "s"}, usage, not revenue.
                 </p>
               )}
             </>
@@ -417,7 +417,7 @@ export function FinanceDashboard() {
                         </Badge>
                       </td>
                       <td className="whitespace-nowrap py-2.5 pr-3 text-muted-foreground">
-                        {txn.paymentMethod ?? "—"}
+                        {txn.paymentMethod ?? "-"}
                       </td>
                       <td className="whitespace-nowrap py-2.5 pr-3 text-right font-medium tabular-nums">
                         {formatCurrency(txn.amountMinor, txn.currency)}
@@ -535,7 +535,7 @@ function sourceLabel(txn: FinanceTransaction): string {
 /** What the money was for, in the words an owner would use. */
 function describe(txn: FinanceTransaction): string {
   const source = sourceLabel(txn).replace(/^./, (c) => c.toUpperCase());
-  return txn.customerName ? `${source} — ${txn.customerName}` : source;
+  return txn.customerName ? `${source}: ${txn.customerName}` : source;
 }
 
 function EmptyPanel({ message }: { message: string }) {

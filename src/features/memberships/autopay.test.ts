@@ -27,7 +27,7 @@ describe("effectiveAutoPayStatus / autoPayNextCharge", () => {
     expect(effectiveAutoPayStatus({ status: "cancelled", chargeCount: 3 })).toBe("cancelled");
   });
 
-  it("shows the next charge once AutoPay is running — Razorpay's date first, else the membership's", () => {
+  it("shows the next charge once AutoPay is running: Razorpay's date first, else the membership's", () => {
     expect(autoPayNextCharge({ status: "authenticated", chargeCount: 1, nextChargeDate: null }, "2026-11-14")).toBe("2026-11-14");
     expect(autoPayNextCharge({ status: "active", chargeCount: 2, nextChargeDate: "2026-12-14" }, "2026-11-14")).toBe("2026-12-14");
     expect(autoPayNextCharge({ status: "pending", chargeCount: 2, nextChargeDate: null }, "2026-11-14")).toBe("2026-11-14");

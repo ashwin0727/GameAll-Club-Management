@@ -88,7 +88,7 @@ class _TournamentAppPreviewState extends State<TournamentAppPreview> {
                       current.asset,
                       key: ValueKey(current.asset),
                       fit: BoxFit.contain,
-                      semanticLabel: 'GameAll Tournament Management — ${current.label}',
+                      semanticLabel: 'GameAll Tournament Management: ${current.label}',
                       errorBuilder: (context, error, stack) =>
                           const _Fallback(key: ValueKey('fallback'), label: 'App Preview Coming Soon'),
                     ),

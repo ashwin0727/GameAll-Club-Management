@@ -463,8 +463,8 @@ export function PaymentDetailsDialog({
     >
       <div className="grid grid-cols-2 gap-3">
         <Row label="Payment Status" value={<span className="capitalize">{booking.paymentStatus.toLowerCase()}</span>} />
-        <Row label="Amount" value={booking.amountMinor != null ? formatCurrency(booking.amountMinor, booking.currency) : "—"} />
-        <Row label="Method" value={booking.paymentMethod ?? "—"} />
+        <Row label="Amount" value={booking.amountMinor != null ? formatCurrency(booking.amountMinor, booking.currency) : "-"} />
+        <Row label="Method" value={booking.paymentMethod ?? "-"} />
         <Row label="Booking Status" value={<span className="capitalize">{booking.status}</span>} />
       </div>
       {refundView && paid && (
@@ -518,7 +518,7 @@ export function CustomerDialog({ row, onClose }: { row: BookingRow; onClose: () 
       <div className="grid grid-cols-2 gap-3">
         <Row label="Name" value={row.customerName} />
         <Row label="Type" value={TYPE_LABEL[row.kind]} />
-        <Row label="Phone" value={row.customerPhone ?? "—"} />
+        <Row label="Phone" value={row.customerPhone ?? "-"} />
         <Row label="Reference" value={row.reference} />
       </div>
     </DialogShell>

@@ -174,7 +174,7 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
           <Stat label="Fee" value={e.pricingType === "MEMBERSHIP_INCLUDED" ? "Included" : money(e.priceMinor)} />
           <Stat label="Paid" value={money(e.paidMinor)} />
           <Stat label="Outstanding" value={money(e.outstandingMinor)} />
-          <Stat label="Sessions" value={e.sessionsTotal != null ? String(e.sessionsTotal) : "—"} />
+          <Stat label="Sessions" value={e.sessionsTotal != null ? String(e.sessionsTotal) : "-"} />
         </div>
       </Card>
 
@@ -186,8 +186,8 @@ export function EnrollmentDetailsPage({ enrollmentId }: { enrollmentId: string }
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-4 text-sm md:grid-cols-3">
             <Row label="Student" value={`${e.studentName}${e.studentPhone ? ` · ${e.studentPhone}` : ""}`} />
             <Row label="Program" value={e.programName} />
-            <Row label="Batch" value={e.batchName ?? "—"} />
-            <Row label="Coach" value={e.coachName ?? "—"} />
+            <Row label="Batch" value={e.batchName ?? "-"} />
+            <Row label="Coach" value={e.coachName ?? "-"} />
             <Row label="Start Date" value={fmtDate(e.startDate)} />
             <Row label="End Date" value={fmtDate(e.endDate)} />
             <Row label="Pricing" value={e.pricingType} />

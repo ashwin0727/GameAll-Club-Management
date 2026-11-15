@@ -36,7 +36,7 @@ export function AdminVenuesPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{v.name}</p>
                     <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                      {v.ownerName ?? "—"} · {v.ownerEmail ?? "—"} · {placeLabel(v.city)}
+                      {v.ownerName ?? "-"} · {v.ownerEmail ?? "-"} · {placeLabel(v.city)}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap justify-end gap-1.5 text-xs font-semibold">

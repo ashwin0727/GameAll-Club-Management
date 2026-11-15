@@ -1071,7 +1071,7 @@ class _ProgressCard extends StatelessWidget {
                 child: fact(
                   Icons.calendar_month_outlined,
                   'Started On',
-                  c.startDate == null ? '—' : fmtDate(c.startDate!),
+                  c.startDate == null ? '-' : fmtDate(c.startDate!),
                   const ValueKey('mc-started'),
                 ),
               ),
@@ -1089,7 +1089,7 @@ class _ProgressCard extends StatelessWidget {
                 child: fact(
                   Icons.view_list_outlined,
                   'Total Sessions',
-                  pr.total == null ? '—' : '${pr.total}',
+                  pr.total == null ? '-' : '${pr.total}',
                   const ValueKey('mc-total-sessions'),
                 ),
               ),
@@ -1127,7 +1127,7 @@ class _PayBanner extends StatelessWidget {
     final what = c.isMonthly ? 'AutoPay' : 'payment';
     final msg = failed
         ? 'Your $what for ${c.programName} did not go through. Please complete it so you keep your place.'
-        : 'Your $what for ${c.programName} is not complete${c.balanceInr > 0 ? ' — ${rupees(c.balanceInr)} to pay' : ''}. Please complete it to keep your place.';
+        : 'Your $what for ${c.programName} is not complete${c.balanceInr > 0 ? ': ${rupees(c.balanceInr)} to pay' : ''}. Please complete it to keep your place.';
     return Container(
       key: const ValueKey('mc-pay-banner'),
       padding: const EdgeInsets.all(14),
@@ -1791,7 +1791,7 @@ class _AttendanceTab extends StatelessWidget {
                   ),
                   stat(
                     'Total sessions',
-                    pr.total == null ? '—' : '${pr.total}',
+                    pr.total == null ? '-' : '${pr.total}',
                     const ValueKey('mc-att-total'),
                   ),
                   stat(

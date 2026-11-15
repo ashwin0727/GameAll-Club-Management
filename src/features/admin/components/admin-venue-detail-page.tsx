@@ -38,7 +38,7 @@ export function AdminVenueDetailPage({ facilityId }: { facilityId: string }) {
       <PageTitle
         back={{ href: "/admin/venues", label: "All venues" }}
         title={f.name}
-        subtitle={`${f.ownerName ?? "—"} · ${f.ownerEmail ?? "—"} · ${f.ownerPhone ?? "—"}`}
+        subtitle={`${f.ownerName ?? "-"} · ${f.ownerEmail ?? "-"} · ${f.ownerPhone ?? "-"}`}
       />
       {failure && <ErrorNote error={failure} />}
 
@@ -56,17 +56,17 @@ export function AdminVenueDetailPage({ facilityId }: { facilityId: string }) {
                   {f.location.url} <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 </a>
               ) : (
-                "—"
+                "-"
               )}
             </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Address on the facility (compare it with the map)</dt>
-            <dd className="mt-0.5 text-sm font-medium">{f.address || "—"}</dd>
+            <dd className="mt-0.5 text-sm font-medium">{f.address || "-"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Venue type</dt>
-            <dd className="mt-0.5 text-sm font-medium">{f.venueType === "INDOOR" ? "Indoor" : f.venueType === "OUTDOOR" ? "Outdoor" : "—"}</dd>
+            <dd className="mt-0.5 text-sm font-medium">{f.venueType === "INDOOR" ? "Indoor" : f.venueType === "OUTDOOR" ? "Outdoor" : "-"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Amenities</dt>

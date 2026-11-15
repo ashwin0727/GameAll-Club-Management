@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
 import { SetupStepper } from "@/features/onboarding/components/setup-stepper";
 import { SportsCourtsForm } from "@/features/sports-courts/components/sports-courts-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Sports & Courts — ${PRODUCT_NAME}`,
+  title: `Sports & Courts`,
 };
 
 export default function SportsAndCourtsPage() {

@@ -318,8 +318,8 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
               {(
                 [
                   ["Plan Name", plan.name],
-                  ["Description", plan.description || "—"],
-                  ["Sport", sportLabel || "—"],
+                  ["Description", plan.description || "-"],
+                  ["Sport", sportLabel || "-"],
                   ["Plan Type", planCategoryLabel(plan.category) ?? (plan.planType === "RECURRING" ? "Recurring" : "Time based")],
                   ["Duration", durationLabel(plan.durationDays)],
                   ["Price", `${inr(plan.priceInr)} / ${months === 1 ? "month" : durationLabel(plan.durationDays)}`],
@@ -359,7 +359,7 @@ export function PlanDetailsPage({ planId }: { planId: string }) {
                   </li>
                 ))}
               </ul>
-              {features.length > 4 && <p className="text-xs text-muted-foreground">+{features.length - 4} more — see Benefits.</p>}
+              {features.length > 4 && <p className="text-xs text-muted-foreground">+{features.length - 4} more. See Benefits.</p>}
             </Card>
 
           </div>
@@ -696,7 +696,7 @@ function PlanPaymentsTab({
               <tbody className="divide-y divide-border">
                 {recent.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 font-medium">{p.customerName ?? "—"}</td>
+                    <td className="px-4 py-3 font-medium">{p.customerName ?? "-"}</td>
                     <td className="px-4 py-3 tabular-nums">{inr(p.amountMinor / 100)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{fmtDate(p.paidAt ?? p.createdAt)}</td>
                     <td className="px-4 py-3">

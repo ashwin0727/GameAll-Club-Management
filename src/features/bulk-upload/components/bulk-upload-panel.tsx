@@ -126,7 +126,7 @@ export function BulkUploadPanel({ noun, disabledReason, onDownloadTemplate, onVa
             <div className="space-y-2" role="alert">
               <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
                 <AlertTriangle className="h-4 w-4" aria-hidden />
-                Nothing was uploaded — fix {errors.length === 1 ? "this problem" : `these ${errors.length} problems`} and choose the file again.
+                Nothing was uploaded. Fix {errors.length === 1 ? "this problem" : `these ${errors.length} problems`} and choose the file again.
               </p>
               <div className="max-h-56 overflow-auto rounded-lg border border-border">
                 <table className="w-full text-left text-xs">
@@ -140,8 +140,8 @@ export function BulkUploadPanel({ noun, disabledReason, onDownloadTemplate, onVa
                   <tbody className="divide-y divide-border/60">
                     {errors.map((e, i) => (
                       <tr key={i}>
-                        <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{e.row > 0 ? e.row : "—"}</td>
-                        <td className="whitespace-nowrap px-3 py-1.5">{e.column || "—"}</td>
+                        <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{e.row > 0 ? e.row : "-"}</td>
+                        <td className="whitespace-nowrap px-3 py-1.5">{e.column || "-"}</td>
                         <td className="px-3 py-1.5 text-destructive">{e.message}</td>
                       </tr>
                     ))}

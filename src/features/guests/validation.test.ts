@@ -8,7 +8,7 @@ describe("validateGuestName", () => {
 });
 
 describe("validateGuestPhone", () => {
-  it("is optional — null/empty is valid", () => {
+  it("is optional, null/empty is valid", () => {
     expect(validateGuestPhone(null)).toBeNull();
     expect(validateGuestPhone("")).toBeNull();
   });

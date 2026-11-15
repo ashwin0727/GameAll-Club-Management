@@ -117,13 +117,13 @@ describe("detectMissingPricing", () => {
     const missing = detectMissingPricing([FACILITY_SPORT], [SPORT], [rule()]);
     expect(missing).toEqual([]);
   });
-  it("ignores a playing-area-only override — the sport still needs its own default", () => {
+  it("ignores a playing-area-only override. The sport still needs its own default", () => {
     const missing = detectMissingPricing([FACILITY_SPORT], [SPORT], [rule({ playingAreaId: "area-1" })]);
     expect(missing).toEqual(["Badminton"]);
   });
 });
 
-describe("detectMissingPricing — rates per court", () => {
+describe("detectMissingPricing, rates per court", () => {
   const area = (id: string): PlayingArea => ({ id, facilityId: "f1", facilitySportId: FACILITY_SPORT.id, name: id, status: "ACTIVE" } as unknown as PlayingArea);
 
   it("accepts a sport whose every court has its own rate, with no default", () => {

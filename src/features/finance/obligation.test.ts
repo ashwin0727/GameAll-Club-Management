@@ -57,12 +57,12 @@ describe("isOutstanding", () => {
     expect(isOutstanding({ totalMinor: 80000, paidMinor: 40000 })).toBe(true);
   });
 
-  it("drops settled ones — they belong to payment history", () => {
+  it("drops settled ones. They belong to payment history", () => {
     expect(isOutstanding({ totalMinor: 80000, paidMinor: 80000 })).toBe(false);
   });
 });
 
-describe("spec §50 record 1 — John Doe, guest booking ₹800", () => {
+describe("spec §50 record 1: John Doe, guest booking ₹800", () => {
   const total = 80000;
 
   it("appears as pending with the full amount outstanding", () => {
@@ -78,7 +78,7 @@ describe("spec §50 record 1 — John Doe, guest booking ₹800", () => {
   });
 });
 
-describe("spec §50 record 2 — Sarah Kumar, membership ₹10,000", () => {
+describe("spec §50 record 2: Sarah Kumar, membership ₹10,000", () => {
   const total = 1000000;
 
   it("starts partially paid with ₹7,000 outstanding", () => {

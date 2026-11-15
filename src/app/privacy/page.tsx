@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LEGAL_CONTACT_EMAIL, LEGAL_CONTACT_PHONE, LEGAL_WEBSITE, LegalPage, type LegalSection } from "@/features/legal/legal-page";
-import { APP_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Privacy Policy — ${APP_NAME}`,
+  title: `Privacy Policy`,
   description: "What GameAll collects in the Venue app, the Play app and on the website, why, who it is shared with, and how to delete your account.",
 };
 
@@ -19,8 +18,8 @@ const sections: LegalSection[] = [
           GameAll is a service for sports venues and the people who play at them: bookings, memberships, coaching and payments. This one policy covers all of it:
         </p>
         <ul className="list-disc space-y-1.5 pl-5">
-          <li><strong>GameAll Venue</strong> — the app (and website) a venue owner or staff member uses to run the venue.</li>
-          <li><strong>GameAll Play</strong> — the app (and website) a player uses to find venues, book courts, join memberships and coaching, and pay.</li>
+          <li><strong>GameAll Venue</strong>. The app (and website) a venue owner or staff member uses to run the venue.</li>
+          <li><strong>GameAll Play</strong>. The app (and website) a player uses to find venues, book courts, join memberships and coaching, and pay.</li>
           <li>The public booking and membership pages a venue shares with its customers.</li>
         </ul>
         <p>
@@ -84,11 +83,11 @@ const sections: LegalSection[] = [
       <>
         <p>We do not sell personal data and we do not show advertising. We use these providers to run the service, and they handle data only for that purpose:</p>
         <ul className="list-disc space-y-1.5 pl-5">
-          <li><strong>Supabase</strong> — database, sign-in and file storage.</li>
-          <li><strong>Razorpay</strong> — online payments, refunds and Auto Pay mandates.</li>
-          <li><strong>Google Firebase</strong> — push notifications and crash reports.</li>
-          <li><strong>Resend</strong> — verification emails.</li>
-          <li><strong>2Factor</strong> — one-time codes by SMS and automated calls.</li>
+          <li><strong>Supabase</strong>, database, sign-in and file storage.</li>
+          <li><strong>Razorpay</strong>, online payments, refunds and Auto Pay mandates.</li>
+          <li><strong>Google Firebase</strong>, push notifications and crash reports.</li>
+          <li><strong>Resend</strong>, verification emails.</li>
+          <li><strong>2Factor</strong>, one-time codes by SMS and automated calls.</li>
         </ul>
         <p>Within a venue, an owner decides which staff can see which pages. We may also disclose information when the law requires it.</p>
       </>

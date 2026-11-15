@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
 import type { BillingStatus, EnrollmentBilling } from "@/features/coaching/types";
@@ -17,7 +18,7 @@ const STATUS_LABEL: Record<BillingStatus, string> = {
   AUTHENTICATED: "Mandate approved",
   ACTIVE: "Active",
   PENDING: "Charge pending",
-  HALTED: "Halted — charge failed",
+  HALTED: "Halted, charge failed",
   PAID: "Paid",
   CANCELLED: "Cancelled",
   COMPLETED: "Completed",
@@ -44,6 +45,8 @@ export function EnrollmentBillingCard({
   /** Called after a link is created or cancelled so the parent can refresh. */
   onChanged: () => void;
 }) {
+  const perms = usePermissionContext();
+  const onlineOk = perms ? perms.planHasFeature("AUTOPAY") : true;
   const [billing, setBilling] = useState<EnrollmentBilling | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +138,8 @@ export function EnrollmentBillingCard({
   }
 
   if (billing === undefined) return null;
+  // Online payments are part of the Advanced plan: on Basic there is nothing to offer (an existing link still shows).
+  if (!billing && !onlineOk) return null;
   // Nothing to show: no online billing and nothing left to collect (or no right to start one).
   if (!billing && (!canManage || outstandingMinor <= 0)) return null;
 
@@ -161,7 +166,7 @@ export function EnrollmentBillingCard({
             <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
               <div>
                 <dt className="text-xs text-muted-foreground">Next payment</dt>
-                <dd className="font-medium">{nextPaymentDate(billing) ? fmtDate(nextPaymentDate(billing)!) : "—"}</dd>
+                <dd className="font-medium">{nextPaymentDate(billing) ? fmtDate(nextPaymentDate(billing)!) : "-"}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Charges left</dt>
@@ -233,7 +238,7 @@ export function EnrollmentBillingCard({
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Collect {money(outstandingMinor)} online. Sends a Razorpay payment link — or, for a monthly program, sets up monthly auto-pay.
+            Collect {money(outstandingMinor)} online. Sends a Razorpay payment link, or, for a monthly program, sets up monthly auto-pay.
           </p>
           <Button
             type="button"

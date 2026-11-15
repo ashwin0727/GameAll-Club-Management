@@ -14,7 +14,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import type { TransactionDetails } from "@/features/finance/types";
 
 function when(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   // Pinned to IST so this always matches the PDF receipt, which renders
   // server-side (in UTC) and can't infer the viewer's own timezone.
   return new Date(iso).toLocaleString("en-IN", {
@@ -147,7 +147,7 @@ export function TransactionDetailsPage({ transactionId }: { transactionId: strin
           />
           <Row label="Category" value={details.category} />
           <Row label="Amount" value={formatCurrency(details.amountMinor, details.currency)} />
-          <Row label="Payment Mode" value={details.paymentMethod ?? "—"} />
+          <Row label="Payment Mode" value={details.paymentMethod ?? "-"} />
           <Row
             label="Status"
             value={
@@ -157,9 +157,9 @@ export function TransactionDetailsPage({ transactionId }: { transactionId: strin
             }
           />
           <Row label="Transaction Date" value={when(details.occurredAt)} />
-          <Row label="Reference" value={details.sourceReference ?? "—"} />
+          <Row label="Reference" value={details.sourceReference ?? "-"} />
           <Row label="Description" value={details.description} className="sm:col-span-2" />
-          <Row label="Recorded By" value={details.recordedBy ?? "—"} />
+          <Row label="Recorded By" value={details.recordedBy ?? "-"} />
           <Row label="Created At" value={when(details.createdAt)} />
           {details.refundedMinor > 0 && (
             <>
@@ -189,10 +189,10 @@ export function TransactionDetailsPage({ transactionId }: { transactionId: strin
           )}
           <RelatedRow
             label="Customer"
-            value={details.customerName ?? "—"}
+            value={details.customerName ?? "-"}
             href={details.bookingId ? "/guests" : undefined}
           />
-          <RelatedRow label="Facility" value={details.facilityName ?? "—"} />
+          <RelatedRow label="Facility" value={details.facilityName ?? "-"} />
         </dl>
       </Card>
 
@@ -224,8 +224,8 @@ export function TransactionDetailsPage({ transactionId }: { transactionId: strin
                   <td className="whitespace-nowrap px-4 py-3 text-right font-medium tabular-nums">
                     {formatCurrency(h.amountMinor, details.currency)}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">{h.paymentMethod ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{h.reference ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{h.paymentMethod ?? "-"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{h.reference ?? "-"}</td>
                   <td className="px-4 py-3">
                     <Badge variant={statusTone(h.status)} className="capitalize">
                       {h.status}

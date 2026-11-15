@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/features/auth/components/brand-mark";
-import { PRODUCT_NAME, SUPPORTED_SPORTS } from "@/lib/constants";
+import { SUPPORTED_SPORTS } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Get started — ${PRODUCT_NAME}`,
+  title: `Get started`,
   description: "Run bookings, members, courts and payments for your sports facility.",
 };
 
@@ -19,7 +19,7 @@ export default function WelcomePage() {
       </h1>
 
       <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-        Manage bookings, members, payments, courts, tournaments, expenses and more — without Excel
+        Manage bookings, members, payments, courts, tournaments, expenses and more, without Excel
         or manual tracking.
       </p>
 

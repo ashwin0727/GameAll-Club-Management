@@ -39,7 +39,7 @@ describe("sidebar menu structure", () => {
     expect(NAV_ITEMS.some((i) => i.href === "/maintenance/court-schedule")).toBe(false);
   });
 
-  it("every section is flat — Finance Management and Report & Analytics Management list their pages directly", () => {
+  it("every section is flat: Finance Management and Report & Analytics Management list their pages directly", () => {
     for (const item of NAV_ITEMS) expect(item.children).toBeUndefined();
   });
 
@@ -55,7 +55,7 @@ describe("sidebar menu structure", () => {
   });
 });
 
-describe("activeHrefFor — the most specific entry wins", () => {
+describe("activeHrefFor. The most specific entry wins", () => {
   // Inventory is listed explicitly so this rule stays covered while the module is switched off.
   const hrefs = [
     ...NAV_ITEMS.flatMap((i) => [i.href, ...(i.children ?? []).map((c) => c.href)]),

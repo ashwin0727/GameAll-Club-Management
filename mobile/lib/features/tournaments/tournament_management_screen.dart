@@ -75,7 +75,7 @@ class _TournamentManagementScreenState extends State<TournamentManagementScreen>
                 style: AppTypography.sectionTitle(context).copyWith(fontSize: 26, height: 1.2, fontWeight: FontWeight.w700)),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Tournament Management is a dedicated GameAll app for organizers and players — '
+              'Tournament Management is a dedicated GameAll app for organizers and players: '
               'draws, registrations, schedules and live results. Your facility operations stay right here.',
               style: AppTypography.body(context).copyWith(color: t.textSecondary),
             ),
@@ -181,7 +181,7 @@ const _features = <(IconData, String, String)>[
 
 const _whySeparate = <(IconData, String, String)>[
   (Icons.rocket_launch_outlined, 'Built for match day',
-      'A focused organizer tool with draws, live scoring and brackets — designed for the pace of a live event.'),
+      'A focused organizer tool with draws, live scoring and brackets, designed for the pace of a live event.'),
   (Icons.verified_user_outlined, 'Your facility stays clean',
       'Bookings, memberships and finance keep working exactly as they do today, with no tournament clutter.'),
   (Icons.alt_route_outlined, 'Independent updates',

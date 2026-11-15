@@ -242,7 +242,7 @@ class _ManagePlanSlotsScreenState extends ConsumerState<ManagePlanSlotsScreen> {
             _rule(tokens, 'Slot Validity', 'Within the plan validity period', first: true),
             _rule(tokens, 'Applicable Days', _days(usedDays)),
             _rule(tokens, 'Available Hours', '${Formatters.time12h(starts.first)} - ${Formatters.time12h(ends.last)}'),
-            _rule(tokens, 'Applicable Courts', courts.isEmpty ? '—' : courts.join(', ')),
+            _rule(tokens, 'Applicable Courts', courts.isEmpty ? '-' : courts.join(', ')),
             _rule(tokens, 'Number of Slots', '${_batches.length}'),
           ],
         ),

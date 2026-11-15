@@ -13,7 +13,7 @@ export type SetupSection = "sports" | "courts" | "hours" | "pricing";
 const COPY: Record<SetupSection, { title: string; description: string }> = {
   sports: { title: "Edit sports", description: "Choose the sports your facility offers." },
   courts: { title: "Edit courts & turfs", description: "Add, rename, switch on or off, or remove the courts and turfs under each sport." },
-  hours: { title: "Edit court timings", description: "Set when your facility — and individual courts — are open." },
+  hours: { title: "Edit court timings", description: "Set when your facility, and individual courts, are open." },
   pricing: { title: "Edit pricing", description: "Set a default rate for a sport, or a rate for each court." },
 };
 

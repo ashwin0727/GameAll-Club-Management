@@ -45,7 +45,7 @@ void main() {
       expect(source, contains("'p_granularity':"));
     });
 
-    test('maps rows straight from the server — the widget never sums a headline itself in the repo', () {
+    test('maps rows straight from the server. The widget never sums a headline itself in the repo', () {
       expect(source, contains('MembershipRevenuePoint.fromJson('));
     });
   });

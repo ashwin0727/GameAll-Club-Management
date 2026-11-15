@@ -135,7 +135,7 @@ describe("validateStep", () => {
   });
 });
 
-describe("fieldErrors — Indian phone / name / pincode / GST rules", () => {
+describe("fieldErrors: Indian phone / name / pincode / GST rules", () => {
   it("requires an Indian mobile number to start with 6, 7, 8 or 9 and be exactly 10 digits", () => {
     expect(fieldErrors(1, draft({ phone: "5876543210" })).phone).toMatch(/phone number is invalid/i);
     expect(fieldErrors(1, draft({ phone: "0876543210" })).phone).toMatch(/phone number is invalid/i);
@@ -208,7 +208,7 @@ describe("composeAddress / composeNotes", () => {
 
   it("records the emergency contact as a note", () => {
     expect(composeNotes(draft({ emergencyName: "Suresh Sharma", emergencyPhone: "9876512345" }))).toBe(
-      "Emergency contact: Suresh Sharma — +91 9876512345",
+      "Emergency contact: Suresh Sharma, +91 9876512345",
     );
   });
 
@@ -243,7 +243,7 @@ describe("composePaymentNotes", () => {
     );
   });
 
-  it("is undefined for the payment-link tab — there's nothing collected yet to record", () => {
+  it("is undefined for the payment-link tab, there's nothing collected yet to record", () => {
     expect(composePaymentNotes(draft({ paymentTab: "link" }))).toBeUndefined();
   });
 });

@@ -109,7 +109,7 @@ export function AddStaffPage() {
             <StaffCredentialsCard loginEmail={result.loginEmail} password={result.temporaryPassword} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Lost the password? Open the staff member and choose “Reset Password” to generate and reveal a new one — the
+            Lost the password? Open the staff member and choose “Reset Password” to generate and reveal a new one. The
             old one stops working.
           </p>
 
@@ -223,13 +223,13 @@ export function AddStaffPage() {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
               <Review label="Full Name" value={fullName} />
               <Review label="Contact Email" value={email} />
-              <Review label="Phone" value={phone || "—"} />
-              <Review label="Role" value={selectedRole?.name ?? "—"} />
+              <Review label="Phone" value={phone || "-"} />
+              <Review label="Role" value={selectedRole?.name ?? "-"} />
               <Review label="Facility" value={perms.facilityName} />
               <Review label="Primary Facility" value={isPrimary ? "Yes" : "No"} />
             </dl>
             <p className="text-xs text-muted-foreground">
-              A sign-in will be created for them — a @gameall.co login and a default password, shown to you once the staff
+              A sign-in will be created for them, a @gameall.co login and a default password, shown to you once the staff
               member is added. They must set their own password on first sign-in. The email above is kept as a contact
               email only.
             </p>

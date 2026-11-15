@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { AuthCard } from "@/features/auth/components/auth-card";
 import { VerifyMobilePanel } from "@/features/mobile-otp/components/verify-mobile-panel";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Verify your mobile — ${PRODUCT_NAME}`,
+  title: `Verify your mobile`,
 };
 
 export default function VerifyMobilePage() {

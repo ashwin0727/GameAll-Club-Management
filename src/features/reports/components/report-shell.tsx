@@ -54,7 +54,7 @@ export function ReportShell({
             className="min-h-9"
             onClick={onExportCsv}
             disabled={exportDisabled}
-            title={exportDisabled ? "Apply the new dates first — the export is for the dates on screen." : undefined}
+            title={exportDisabled ? "Apply the new dates first. The export is for the dates on screen." : undefined}
           >
             <Download className="h-4 w-4" aria-hidden /> Download CSV
           </Button>

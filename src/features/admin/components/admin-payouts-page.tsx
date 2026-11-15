@@ -28,7 +28,7 @@ export function AdminPayoutsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{f.name}</p>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {f.ownerName ?? "—"} · {f.ownerEmail ?? "—"} · {placeLabel(f.city)}
+                    {f.ownerName ?? "-"} · {f.ownerEmail ?? "-"} · {placeLabel(f.city)}
                   </p>
                   {f.updatedAt && <p className="mt-0.5 text-xs text-muted-foreground">Last updated {formatDate(f.updatedAt)}</p>}
                 </div>

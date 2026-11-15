@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
 
   // ── verify ───────────────────────────────────────────────────────────────────────────────────────────
   if (action === "verify") {
-    const failed = () => json({ error: "We couldn't verify that payment. If money was taken it will be reconciled — please contact the venue." }, 400);
+    const failed = () => json({ error: "We couldn't verify that payment. If money was taken it will be reconciled. Please contact the venue." }, 400);
     if (!body.paymentOrderId || !body.razorpayOrderId || !body.razorpayPaymentId || !body.razorpaySignature) return failed();
 
     // The order must be this booking's own.

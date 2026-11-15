@@ -85,7 +85,7 @@ export function buildOverviewCsv(input: {
   };
 
   const lines = [
-    "GameAll Reports & Analytics — Overview",
+    "GameAll Reports & Analytics: Overview",
     `Period,${input.range.from} to ${input.range.to}`,
     `Sports,${csvCell(input.sportsLabel ?? "All sports")}`,
     "",

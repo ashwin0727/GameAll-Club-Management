@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { OnboardingShell } from "@/features/onboarding/components/onboarding-shell";
 import { SetupStepper } from "@/features/onboarding/components/setup-stepper";
 import { PayoutSetupForm } from "@/features/onboarding/components/payout-setup-form";
-import { PRODUCT_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: `Payout — ${PRODUCT_NAME}`,
+  title: `Payout`,
 };
 
 export default function PaymentsPage() {

@@ -61,7 +61,7 @@ describe("computeKpiValue (KPI calculation)", () => {
     expect(kpi.changePercent).toBe(-20);
   });
 
-  it("never divides by zero — a zero previous value has no percent change, not Infinity", () => {
+  it("never divides by zero, a zero previous value has no percent change, not Infinity", () => {
     const kpi = computeKpiValue(50, 0);
     expect(kpi.changePercent).toBeNull();
   });
@@ -132,7 +132,7 @@ describe("toUtilizationBookings (membership session usage feeds utilization, all
     expect(result).toHaveLength(1);
   });
 
-  it("merges into computeUtilization exactly like a real booking — spec's 80% partial-release scenario", () => {
+  it("merges into computeUtilization exactly like a real booking, spec's 80% partial-release scenario", () => {
     const period = { from: "2026-08-24T00:00:00.000Z", to: "2026-08-25T00:00:00.000Z" };
     // Capacity 5, 3 members + 1 guest confirmed (1 released slot still unused) — the
     // session occupies its single 1h slot out of a 5h open window = 20% for
@@ -321,7 +321,7 @@ describe("summarizeMemberships (member count calculation)", () => {
     expect(result).toEqual({ active: 2, expiringSoon: 1, expired: 1, newThisMonth: 1 });
   });
 
-  it("is all zero for an empty facility — a valid empty state, not an error", () => {
+  it("is all zero for an empty facility, a valid empty state, not an error", () => {
     expect(summarizeMemberships([], now)).toEqual({ active: 0, expiringSoon: 0, expired: 0, newThisMonth: 0 });
   });
 });
@@ -337,7 +337,7 @@ describe("summarizePayments (payment status calculation)", () => {
     expect(result).toEqual({ collectedInr: 1000, pendingInr: 500, refundsInr: 200 });
   });
 
-  it("does not assume every booking/payment is paid — a failed payment counts toward nothing", () => {
+  it("does not assume every booking/payment is paid, a failed payment counts toward nothing", () => {
     const result = summarizePayments([{ status: "failed", amount_inr: 900 }]);
     expect(result).toEqual({ collectedInr: 0, pendingInr: 0, refundsInr: 0 });
   });

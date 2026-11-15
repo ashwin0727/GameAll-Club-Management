@@ -196,7 +196,7 @@ export function BookingDetailsDialog({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Amount</p>
-                <p>{booking.amountMinor != null ? formatCurrency(booking.amountMinor, booking.currency) : "—"}</p>
+                <p>{booking.amountMinor != null ? formatCurrency(booking.amountMinor, booking.currency) : "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Payment</p>

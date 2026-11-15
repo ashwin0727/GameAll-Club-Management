@@ -241,7 +241,7 @@ class _StaffDetailsScreenState extends ConsumerState<StaffDetailsScreen> {
                   _kv('Full name', d.fullName),
                   _kv('Login email', d.loginEmail),
                   if (d.email.isNotEmpty && d.email != d.loginEmail) _kv('Contact email', d.email),
-                  _kv('Phone', d.phone ?? '—'),
+                  _kv('Phone', d.phone ?? '-'),
                   _kv('Role', d.roleName),
                   _kv('Status', d.status.label),
                   _kv('Joined', staffDate(d.joinedAt)),

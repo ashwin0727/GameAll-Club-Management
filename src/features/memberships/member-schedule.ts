@@ -191,5 +191,5 @@ export function slotsOutsideRange(
   const played = [...new Set(own.flatMap((s) => s.daysOfWeek))].sort((a, b) => a - b);
   const names = played.map((d) => WEEKDAY_NAMES[d]).filter(Boolean).join(", ");
   const times = preferredTimeRanges(own).map((t) => `${clock(t.startTime)}–${clock(t.endTime)}`).join(", ");
-  return `This member's slot is on ${names} (${times}) — none of those days fall in the selected dates. Pick a range that includes them.`;
+  return `This member's slot is on ${names} (${times}). None of those days fall in the selected dates. Pick a range that includes them.`;
 }

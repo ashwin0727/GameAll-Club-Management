@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { BookingReport } from "@/features/reports/components/booking-report";
-import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: `Booking Report — ${APP_NAME}` };
+export const metadata: Metadata = { title: `Booking Report` };
 
 export default function ReportsBookingsPage() {
   return (

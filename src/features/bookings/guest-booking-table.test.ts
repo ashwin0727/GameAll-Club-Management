@@ -75,8 +75,8 @@ describe("displayPhone", () => {
   });
   it("leaves a short number as it is and shows a dash for none", () => {
     expect(displayPhone("12345")).toBe("12345");
-    expect(displayPhone(null)).toBe("—");
-    expect(displayPhone("")).toBe("—");
+    expect(displayPhone(null)).toBe("-");
+    expect(displayPhone("")).toBe("-");
   });
 });
 

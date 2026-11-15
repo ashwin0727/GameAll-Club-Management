@@ -42,7 +42,7 @@ describe("PricingSummary", () => {
   });
 });
 
-describe("PricingSummary — courts with the same price", () => {
+describe("PricingSummary, courts with the same price", () => {
   const same = () => [{ ...defaultPeriod("300"), dayType: "WEEKDAYS" as const }, { ...defaultPeriod("350"), dayType: "WEEKENDS" as const }];
 
   it("shows identical customized courts once, as 'All 3 Courts', without the unused default", () => {

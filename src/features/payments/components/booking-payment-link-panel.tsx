@@ -189,7 +189,7 @@ export function BookingPaymentLinkPanel({
       ) : (
         <>
           <p className="text-muted-foreground">
-            Share this link with {guestName.trim() || "the player"}. They pay {amountLabel} on their own phone — the booking is confirmed automatically once
+            Share this link with {guestName.trim() || "the player"}. They pay {amountLabel} on their own phone. The booking is confirmed automatically once
             the payment goes through.
           </p>
           {link.shortUrl && (

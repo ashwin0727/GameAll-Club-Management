@@ -174,10 +174,10 @@ class _RoleEditorScreenState extends ConsumerState<RoleEditorScreen> {
                             controlAffinity: ListTileControlAffinity.leading,
                             value: _isActive,
                             onChanged: (v) => setState(() => _isActive = v ?? true),
-                            title: const Text('Active — staff can be assigned this role'),
+                            title: const Text('Active, staff can be assigned this role'),
                           ),
                         if (_existing?.isSystem == true)
-                          Text('System role names can’t be changed — you can still adjust its permissions here.',
+                          Text('System role names can’t be changed. You can still adjust its permissions here.',
                               style: AppTypography.caption(context)),
                       ],
                     ),

@@ -92,7 +92,7 @@ describe("SupabaseRefundService.cancelMembershipSlot", () => {
 });
 
 describe("SupabaseRefundService.cancelMembership", () => {
-  it("invokes cancel-membership with an explicit refund amount — never policy-derived", async () => {
+  it("invokes cancel-membership with an explicit refund amount, never policy-derived", async () => {
     const invoke = vi.fn(async () => ({ data: { membership: {}, refund: { refundId: "r-3", status: "PROCESSING" } }, error: null }));
     const service = new SupabaseRefundService({ functions: { invoke } } as never);
 

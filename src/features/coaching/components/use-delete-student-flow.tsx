@@ -104,7 +104,7 @@ export function useDeleteStudentFlow({ onDeleted, onChanged }: { onDeleted: () =
         description={
           <>
             <span className="font-semibold text-foreground">{target?.studentName}</span> still has an active payment or coaching, so they can&apos;t be deleted
-            yet. Cancelling stops any online payment or AutoPay and cancels their coaching — the student is{" "}
+            yet. Cancelling stops any online payment or AutoPay and cancels their coaching. The student is{" "}
             <span className="font-semibold text-foreground">not</span> deleted. You can delete them afterwards.
           </>
         }

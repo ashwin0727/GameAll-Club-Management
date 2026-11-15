@@ -23,7 +23,7 @@ const court = (id: string, ...blocks: ScheduleBlock[]): ScheduleCourtRow => ({
 const status = (rows: ReturnType<typeof courtsNow>) => Object.fromEntries(rows.map((r) => [r.court.courtId, r.status]));
 
 describe("courtsNow", () => {
-  it("marks every court with a booking still to come as Booked — no matter which starts first", () => {
+  it("marks every court with a booking still to come as Booked. No matter which starts first", () => {
     const rows = courtsNow([court("c1", block("late", 22, 23)), court("c2", block("early", 20, 21))], 9 * 60, true);
     expect(status(rows)).toEqual({ c1: "booked", c2: "booked" });
   });

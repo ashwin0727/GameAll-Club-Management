@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { TournamentManagementPage } from "@/features/tournaments/components/tournament-management-page";
-import { APP_NAME } from "@/lib/constants";
 
-export const metadata: Metadata = { title: `Tournament Management — ${APP_NAME}` };
+export const metadata: Metadata = { title: `Tournament Management` };
 
 export default function Page() {
   return <TournamentManagementPage />;

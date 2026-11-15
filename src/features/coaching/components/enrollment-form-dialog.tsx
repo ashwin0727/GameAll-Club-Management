@@ -226,7 +226,7 @@ export function EnrollmentFormDialog({
           </div>
           {program && !program.isMembershipIncluded && (
             <p className="text-xs text-muted-foreground">
-              The fee is an obligation of {money(rupeesToMinor(price) ?? 0)} — record a payment against it from Pending Payments.
+              The fee is an obligation of {money(rupeesToMinor(price) ?? 0)}, record a payment against it from Pending Payments.
             </p>
           )}
 

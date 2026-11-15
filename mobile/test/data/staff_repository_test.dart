@@ -106,7 +106,7 @@ void main() {
     });
   });
 
-  group('StaffRepository — RPC contract', () {
+  group('StaffRepository: RPC contract', () {
     test('calls the 0075/0076 RPCs by name', () {
       for (final rpc in const [
         "'list_staff'", "'get_staff'", "'list_roles'", "'get_role'",
@@ -135,7 +135,7 @@ void main() {
       expect(source, contains('AppErrorCode.roleInUse'));
     });
 
-    test('the repository does no authorization of its own — every check is an RPC', () {
+    test('the repository does no authorization of its own. Every check is an RPC', () {
       expect(source, isNot(contains('facility_users')), reason: 'no direct role table reads');
       expect(source, isNot(contains('has_permission(')), reason: 'the RPCs enforce, not the client');
     });

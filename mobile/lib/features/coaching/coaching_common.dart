@@ -13,7 +13,7 @@ import '../../shared/widgets/misc.dart';
 String coachMoney(int? amountMinor) => Formatters.currencyInr(((amountMinor ?? 0) / 100).round());
 
 String coachDate(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
+  if (iso == null || iso.isEmpty) return '-';
   return Formatters.dateShort(DateTime.parse(iso));
 }
 

@@ -46,7 +46,7 @@ export function CancelMembershipDialog({
         overrideReason: refundAmountMinor ? "Owner-decided membership cancellation refund" : undefined,
       });
       if (refund) {
-        setRefundNote(refund.status === "FAILED" ? "The membership was cancelled, but the refund could not be submitted. Please retry from Refunds." : "Refund submitted — it will show as processed once Razorpay confirms it.");
+        setRefundNote(refund.status === "FAILED" ? "The membership was cancelled, but the refund could not be submitted. Please retry from Refunds." : "Refund submitted. It will show as processed once Razorpay confirms it.");
       }
       onCancelled();
       onOpenChange(false);

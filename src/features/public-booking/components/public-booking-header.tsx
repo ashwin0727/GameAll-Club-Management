@@ -30,7 +30,7 @@ export function PublicBookingHeader({
       </div>
 
       {/* Hidden on phones, where the logo and the help number already fill
-          the row — the flow names the venue in its Facility field anyway. */}
+          the row. The flow names the venue in its Facility field anyway. */}
       {facilityName ? (
         <div className="hidden min-w-0 text-center md:block">
           <p className="truncate text-sm font-semibold">{facilityName}</p>

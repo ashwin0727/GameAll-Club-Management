@@ -74,7 +74,7 @@ Future<DeleteMemberOutcome> runDeleteMemberFlow(
         context,
         title: 'Cancel AutoPay?',
         body: "$name has AutoPay running, so they can't be deleted yet. Cancelling stops all future charges and cancels "
-            'their membership — the member is not deleted. You can delete them afterwards.',
+            'their membership. The member is not deleted. You can delete them afterwards.',
         confirm: 'Cancel AutoPay',
         cancel: 'Keep AutoPay',
       );
@@ -82,7 +82,7 @@ Future<DeleteMemberOutcome> runDeleteMemberFlow(
       await repo.cancelMembershipSubscription(membershipId!);
       await repo.cancelMembership(membershipId);
       if (context.mounted) {
-        showTopNotice(context, 'AutoPay and membership cancelled. $name was not deleted — choose Delete Member again to remove them.');
+        showTopNotice(context, 'AutoPay and membership cancelled. $name was not deleted. Choose Delete Member again to remove them.');
       }
       return DeleteMemberOutcome.autoPayCancelled;
     }

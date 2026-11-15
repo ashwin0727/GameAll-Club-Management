@@ -102,7 +102,7 @@ void main() {
       ..emergencyName = 'Suresh'
       ..emergencyPhone = '9876512345';
     expect(addMemberComposeAddress(d), '12 MG Road, Chennai - 600040');
-    expect(addMemberComposeNotes(d), 'Emergency contact: Suresh — +91 9876512345');
+    expect(addMemberComposeNotes(d), 'Emergency contact: Suresh, +91 9876512345');
     expect(addMemberComposePhone('+91', '98765 43210'), '9876543210');
     expect(addMemberComposePhone('+44', '7700 900123'), '+44 7700900123');
   });

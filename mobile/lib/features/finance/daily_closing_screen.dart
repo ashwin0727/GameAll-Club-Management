@@ -493,8 +493,8 @@ class _DailyClosingScreenState extends ConsumerState<DailyClosingScreen> {
                       Text(Formatters.dateShort(DateTime.parse(h.closingDate)),
                           style: AppTypography.rowTitle(context)),
                       Text(
-                        'Expected ${h.expectedCashMinor != null ? financeAmount(h.expectedCashMinor!) : '—'} · '
-                        'Actual ${h.actualCashMinor != null ? financeAmount(h.actualCashMinor!) : '—'}',
+                        'Expected ${h.expectedCashMinor != null ? financeAmount(h.expectedCashMinor!) : '-'} · '
+                        'Actual ${h.actualCashMinor != null ? financeAmount(h.actualCashMinor!) : '-'}',
                         style: AppTypography.caption(context),
                       ),
                     ],

@@ -182,7 +182,7 @@ export function FacilityDetailsPage() {
   const header = (
     <SubPageHeader
       title="Manage Facility Details"
-      description="Your courts, sports, timings and pricing — everything you set up for your facility."
+      description="Your courts, sports, timings and pricing, everything you set up for your facility."
     />
   );
 

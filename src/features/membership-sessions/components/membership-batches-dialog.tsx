@@ -166,7 +166,7 @@ export function MembershipBatchesDialog({
           ) : (
             <div className="space-y-4">
               {batches.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No batches yet — add the first one below.</p>
+                <p className="text-sm text-muted-foreground">No batches yet. Add the first one below.</p>
               ) : (
                 <div className="divide-y rounded-md border border-border">
                   {batches.map((batch) => (

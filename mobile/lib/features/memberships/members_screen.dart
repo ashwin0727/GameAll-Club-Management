@@ -381,13 +381,13 @@ class _MembersSummaryCard extends StatelessWidget {
       statusText: '$active active',
       left: HubSummaryCell(
         label: 'Overall Revenue',
-        value: revenue == null ? '—' : Formatters.currencyInr(revenue!),
+        value: revenue == null ? '-' : Formatters.currencyInr(revenue!),
         sub: revenue == null ? null : 'All collected',
         onTap: onRevenueTap,
       ),
       right: HubSummaryCell(
         label: 'Payment Pending',
-        value: pending == null ? '—' : Formatters.currencyInr(pending!.amountInr),
+        value: pending == null ? '-' : Formatters.currencyInr(pending!.amountInr),
         valueColor: hasPending ? tokens.warning : null,
         sub: pending == null ? null : (hasPending ? '${pending!.count} unpaid' : 'Nothing pending'),
         subColor: hasPending ? const Color(0xFFFFFFFF).withValues(alpha: 0.75) : null,

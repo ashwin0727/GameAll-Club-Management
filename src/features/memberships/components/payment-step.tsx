@@ -154,16 +154,8 @@ export function PaymentStep({
 
   return (
     <div className="space-y-5">
-      {!autoPayAllowed && (
-        <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-          Auto Pay and payment links are part of the Advanced plan. On your current plan you record each payment yourself.{" "}
-          <a href="/plans" className="font-medium text-primary hover:underline">
-            See plans
-          </a>
-        </p>
-      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {PAYMENT_TABS.map((t) => {
+        {PAYMENT_TABS.filter((t) => autoPayAllowed || t.tab !== "link").map((t) => {
           const tabLocked = (locked && t.tab === "offline") || (forceLink && t.tab !== "link") || (!autoPayAllowed && t.tab === "link");
           return (
           <button
@@ -175,9 +167,9 @@ export function PaymentStep({
               !autoPayAllowed && t.tab === "link"
                 ? "Auto Pay is part of the Advanced plan."
                 : forceLink && t.tab !== "link"
-                  ? "This is a recurring plan — payment must go through a verified subscription, not an offline record."
+                  ? "This is a recurring plan, payment must go through a verified subscription, not an offline record."
                   : tabLocked
-                  ? "A payment link has already been generated — record offline payment is unavailable."
+                  ? "A payment link has already been generated, record offline payment is unavailable."
                   : undefined
             }
             className={cn(
@@ -261,7 +253,7 @@ export function PaymentStep({
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
               <p className="text-xs leading-relaxed text-foreground/80">
                 A secure Razorpay payment link will be generated for this month, and the same amount will auto-collect on
-                this day every month after — the member only has to approve it once. You can share this link via
+                this day every month after. The member only has to approve it once. You can share this link via
                 WhatsApp, SMS, or Email.
               </p>
             </div>
@@ -270,7 +262,7 @@ export function PaymentStep({
               <div className="space-y-2 rounded-xl border border-success/30 bg-success/10 p-4">
                 <p className="flex items-center gap-1.5 text-sm font-semibold text-success">
                   <Check className="h-4 w-4" aria-hidden />
-                  Member created — payment link ready
+                  Member created, payment link ready
                 </p>
                 <div className="flex items-center gap-2">
                   <Input readOnly value={linkResult.shortUrl} className="flex-1 bg-card text-xs" />
@@ -284,7 +276,7 @@ export function PaymentStep({
                   </button>
                 </div>
                 <p className="text-xs text-foreground/80">
-                  The member is already created (Payment Incomplete) — share this link and their status updates once
+                  The member is already created (Payment Incomplete). Share this link and their status updates once
                   they pay.
                 </p>
               </div>
@@ -472,7 +464,7 @@ export function PaymentStep({
                 </li>
                 {locked && (
                   <li className="font-medium text-foreground">
-                    A payment link was already generated for this member — confirming here cancels it, so it stops
+                    A payment link was already generated for this member, confirming here cancels it, so it stops
                     working immediately.
                   </li>
                 )}

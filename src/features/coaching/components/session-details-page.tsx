@@ -419,7 +419,7 @@ function CancelDialog({ sessionId, onClose, onDone }: { sessionId: string; onClo
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Cancel Session</DialogTitle>
-          <DialogDescription>The session record is kept — its status becomes Cancelled.</DialogDescription>
+          <DialogDescription>The session record is kept. Its status becomes Cancelled.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <Field label="Reason">
@@ -615,7 +615,7 @@ function ProgressDialog({
     <Dialog open onOpenChange={(v) => !v && !busy && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Progress note — {studentName}</DialogTitle>
+          <DialogTitle>Progress note: {studentName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <Field label="Skill or Goal (Optional)">

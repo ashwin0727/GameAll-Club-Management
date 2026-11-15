@@ -117,7 +117,7 @@ export function MembershipSlotCard({
         )}
       </p>
 
-      {state === "MEMBERSHIP_FULL" && <p className="text-xs text-muted-foreground">Guest Play Unavailable — no unused capacity to release.</p>}
+      {state === "MEMBERSHIP_FULL" && <p className="text-xs text-muted-foreground">Guest Play Unavailable. No unused capacity to release.</p>}
       {(state === "MEMBERSHIP_ALLOCATED" || state === "MEMBERSHIP_PARTIALLY_USED") && (
         <p className="text-xs text-muted-foreground">{capacity.unusedCapacity} unused membership slot{capacity.unusedCapacity === 1 ? "" : "s"}.</p>
       )}

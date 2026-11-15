@@ -197,7 +197,7 @@ class _CoachingProgramDetailScreenState extends ConsumerState<CoachingProgramDet
               children: [
                 _kv('Default duration', '${p.defaultDurationMinutes} min'),
                 _kv('Default capacity', '${p.defaultCapacity}'),
-                _kv('Sessions / package', p.sessionCount != null ? '${p.sessionCount}' : '—'),
+                _kv('Sessions / package', p.sessionCount != null ? '${p.sessionCount}' : '-'),
                 _kv('Start date', coachDate(p.startDate)),
                 _kv('End date', coachDate(p.endDate)),
                 if (p.sessionsPerWeek != null) _kv('Sessions / week', '${p.sessionsPerWeek}'),

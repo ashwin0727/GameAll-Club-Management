@@ -1714,45 +1714,45 @@ class _SummaryPanel extends StatelessWidget {
               row(
                 Icons.sports_rounded,
                 'Sport',
-                sport ?? '—',
+                sport ?? '-',
                 key: const ValueKey('summary-sport'),
                 leading: SportIcon(sport, size: 20, color: p.primaryText),
               ),
               row(
                 Icons.person_outline_rounded,
                 'Coach',
-                coach?.name ?? '—',
+                coach?.name ?? '-',
                 key: const ValueKey('summary-coach'),
               ),
               row(
                 Icons.layers_outlined,
                 'Program',
-                pr?.name ?? '—',
+                pr?.name ?? '-',
                 key: const ValueKey('summary-program'),
               ),
               row(
                 Icons.schedule_rounded,
                 'Time Slot',
-                slot?.label ?? (pr == null ? '—' : 'As per the club'),
+                slot?.label ?? (pr == null ? '-' : 'As per the club'),
                 key: const ValueKey('summary-slot'),
               ),
               row(
                 Icons.calendar_month_outlined,
                 'Duration',
-                pr?.durationLabel ?? '—',
+                pr?.durationLabel ?? '-',
                 key: const ValueKey('summary-duration'),
               ),
               row(
                 Icons.event_outlined,
                 'Start Date',
-                pr?.startDate == null ? '—' : _fullDate(pr!.startDate!),
+                pr?.startDate == null ? '-' : _fullDate(pr!.startDate!),
                 key: const ValueKey('summary-start'),
               ),
               row(
                 Icons.event_available_outlined,
                 'End Date',
                 pr == null
-                    ? '—'
+                    ? '-'
                     : (pr.endDate == null ? 'Ongoing' : _fullDate(pr.endDate!)),
                 key: const ValueKey('summary-end'),
               ),
@@ -1765,7 +1765,7 @@ class _SummaryPanel extends StatelessWidget {
                     : (pr.isMonthly
                           ? 'Program Fee (monthly)'
                           : 'Program Fee (one time)'),
-                pr == null ? '—' : rupees(pr.baseInr),
+                pr == null ? '-' : rupees(pr.baseInr),
                 key: const ValueKey('summary-fee'),
               ),
               if (pr != null && pr.discountMinor > 0)
@@ -1788,7 +1788,7 @@ class _SummaryPanel extends StatelessWidget {
               ),
               money(
                 multi ? 'Total Payable Today' : 'Total Payable',
-                pr == null ? '—' : rupees(pr.chargeInr),
+                pr == null ? '-' : rupees(pr.chargeInr),
                 key: const ValueKey('summary-total'),
                 big: true,
               ),

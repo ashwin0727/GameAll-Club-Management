@@ -46,7 +46,7 @@ void main() {
     }
   });
 
-  test('status is never written directly — no bookings/tickets table update', () {
+  test('status is never written directly. No bookings/tickets table update', () {
     expect(source.contains(".from('maintenance_tickets').update"), isFalse);
     expect(source.contains(".update({'status'"), isFalse);
   });
