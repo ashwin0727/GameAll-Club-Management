@@ -44,9 +44,9 @@ flutter_launcher_icons:
   android: "ic_launcher"
   image_path: "assets/images/app_icon.png"
   min_sdk_android: 21
-  # An adaptive icon (dark background + the GameAll / PLAY artwork): the phone's own mask (round, squircle...) is cut from it, so
-  # Android no longer puts the logo on a white backing shape.
-  adaptive_icon_background: "#050C19"
+  # The plain GameAll wordmark (white on the brand purple #4817C2), the same logo as everywhere else, with nothing added next to it.
+  # The adaptive icon keeps the wordmark inside the safe zone, so round and squircle masks never clip it.
+  adaptive_icon_background: "#4817C2"
   adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
 
 flutter:

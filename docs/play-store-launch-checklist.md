@@ -8,7 +8,7 @@ Status on **14 Nov 2026**. Nobody can promise Google's approval, but these are t
 |---|---|---|---|
 | 1 | Set `PLAYER_OTP_REQUIRED=true` on the Supabase project and keep the SMS hook function deployed | **YOU** | Without it GameAll Play signs anyone in with just a mobile number (no code). It is a data-protection problem and a Play "user data" risk. |
 | 2 | Add a reviewer **test phone number + fixed code** in Supabase (Auth → Phone → test numbers), and a reviewer login for the Venue app | **YOU** | A reviewer who cannot sign in rejects the app ("app access"). Details: `play-store-player-submission.md` Part 4, `play-store-submission.md` Part 4. |
-| 3 | Deploy the website so `/privacy`, `/terms`, `/refund-policy`, `/delete-account` are live at `https://club.gameall.co` | **YOU** | Google opens the privacy-policy and deletion URLs. A 404 is an automatic rejection. |
+| 3 | Deploy BOTH websites so the legal pages are live: the club site (`https://club.gameall.co/privacy`, `/terms`, `/refund-policy`, `/delete-account`) for GameAll Venue, and the Play site (`https://play.gameall.co/privacy`, `/terms`, `/refund-policy`, `/delete-account`, from `player_appweb`, with `player_app	ooldeploy-web.ps1 -Prod`) for GameAll Play | **YOU** | Google opens the privacy-policy and deletion URLs. A 404 is an automatic rejection. |
 | 4 | Create the **upload keys** (one per app), outside OneDrive, and back them up | **YOU** | A bundle signed with the debug key is rejected. Steps: `play-store-release.md` and `play-store-player-release.md`. |
 | 5 | Apply migrations through `0203` and deploy the changed functions: `verify-player-payment`, `create-player-booking-payment-link`, `create-player-coaching-billing`, `sync-player-payment`, `delete-account` | **YOU** | Payment sheet and player account deletion depend on them. |
 | 6 | Razorpay: live keys, webhook URL and secret set; keep **test mode** for the review build or tell the reviewer to stop at the pay sheet | **YOU** | Reviewers must never be asked to pay real money. |
@@ -22,7 +22,7 @@ Status on **14 Nov 2026**. Nobody can promise Google's approval, but these are t
 
 ## C. What is already done in the code
 
-- **Common legal pages** for both apps at `club.gameall.co`: Privacy Policy, Terms & Conditions, Cancellation & Refund Policy, Delete account; each covers both apps, payments, location, retention and deletion.
+- **Legal pages, one set per app:** GameAll Venue at `club.gameall.co`, GameAll Play at `play.gameall.co` (static pages in `player_app/web`). Each has the Privacy Policy, Terms & Conditions, Cancellation & Refund Policy and Delete account, covering payments, location, retention and deletion.
 - **Linked from inside both apps**: Venue → Profile (Privacy, Terms, Delete account) and sign-up; Play → sign-in screen (Terms, Privacy) and Profile → Support & Legal (Terms, Privacy, Refunds, Delete my account).
 - **In-app account deletion in both apps** (typed confirmation, server-side delete, cancels Auto Pay) and a public web page. For players it now also cancels the player's own Auto Pay mandates (migration `0203`).
 - **Release signing** for both apps from `android/key.properties` (Play app added); the Venue app also shrinks and obfuscates; both use `tool/build-release.ps1`.

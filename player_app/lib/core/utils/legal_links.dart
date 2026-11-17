@@ -1,7 +1,7 @@
 import '../config/app_config.dart';
 
-/// The public legal pages, hosted on the GameAll website and shared by GameAll Play and GameAll Venue (one Privacy Policy, one
-/// Terms & Conditions, one Cancellation & Refund Policy, one account-deletion page). Google Play requires them to be reachable
+/// GameAll Play's own public legal pages (Privacy Policy, Terms & Conditions, Cancellation & Refund Policy, account deletion), hosted on
+/// play.gameall.co (player_app/web). GameAll Venue has its own set on club.gameall.co. Google Play requires them to be reachable
 /// from inside the app.
 enum LegalPage {
   privacy('/privacy'),
@@ -14,6 +14,6 @@ enum LegalPage {
 }
 
 Uri legalUri(LegalPage page) {
-  final base = AppConfig.clubSiteUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  final base = AppConfig.playSiteUrl.trim().replaceAll(RegExp(r'/+$'), '');
   return Uri.parse('$base${page.path}');
 }

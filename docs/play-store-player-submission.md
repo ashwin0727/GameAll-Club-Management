@@ -12,7 +12,7 @@ App name **GameAll Play**, package id **`com.gameall.gameall_play`** (permanent 
 |---|---|
 | App or game | **App** |
 | Free or paid | **Free**. Players pay venues for courts, memberships and coaching (physical services); GameAll sells no digital goods in the app. |
-| Privacy policy URL | `https://club.gameall.co/privacy` |
+| Privacy policy URL | `https://play.gameall.co/privacy` |
 | Ads | **No** |
 | App access | **Restricted — login needed.** Give the reviewer test number and code (Part 4). |
 | Target audience | **18 and over.** Not designed for children. |
@@ -40,7 +40,7 @@ App name **GameAll Play**, package id **`com.gameall.gameall_play`** (permanent 
 | Does the app collect or share required user data types? | **Yes** |
 | Is all user data encrypted in transit? | **Yes** (HTTPS) |
 | Can users request deletion? | **Yes** |
-| Deletion link (web) | `https://club.gameall.co/delete-account` |
+| Deletion link (web) | `https://play.gameall.co/delete-account` |
 | In the app | Profile → Support & Legal → **Delete my account** |
 
 **Data types**

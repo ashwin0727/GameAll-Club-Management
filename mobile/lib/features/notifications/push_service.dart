@@ -83,11 +83,15 @@ class PushService {
     try {
       final settings = await FirebaseMessaging.instance.requestPermission();
       if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      // getToken / onTokenRefresh are marked deprecated in favour of register() / onRegistered, but those hand back a Firebase Installation ID, not the
+      // FCM registration token our push sender (FCM HTTP v1) needs. Keep these until the sender is moved to direct-send.
+      // ignore: deprecated_member_use
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
         _token = token;
         await repo.registerDeviceToken(token);
       }
+      // ignore: deprecated_member_use
       _refreshSub ??= FirebaseMessaging.instance.onTokenRefresh.listen((t) async {
         _token = t;
         try {

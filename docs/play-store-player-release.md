@@ -31,7 +31,7 @@ Raise the version before every upload: `version: 1.0.0+1` in `player_app/pubspec
 - **Set `PLAYER_OTP_REQUIRED=true`** on the project (see Part 4 of `play-store-player-submission.md`) and add the reviewer test phone number.
 - The Android app `com.gameall.gameall_play` is registered in the Firebase project and its `google-services.json` is in `player_app/android/app/` (it is, today).
 - Razorpay: keys are the live ones for production; the webhook URL and secret are set and the events listed in `supabase/functions/razorpay-webhook/index.ts` are enabled.
-- Fill in Data safety, Content rating, Target audience, App access exactly as in `play-store-player-submission.md`. Privacy policy `https://club.gameall.co/privacy`; account deletion URL `https://club.gameall.co/delete-account`.
+- Fill in Data safety, Content rating, Target audience, App access exactly as in `play-store-player-submission.md`. Privacy policy `https://play.gameall.co/privacy`; account deletion URL `https://play.gameall.co/delete-account`.
 
 ## 4. Test it on a real phone before you upload
 
