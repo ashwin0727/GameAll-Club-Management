@@ -23,9 +23,11 @@ GameAll Play signs in with a mobile number and a one-time code. For review, use 
 2. Enter 9000012345.
 3. Enter the code 000000.
 The account already has bookings, memberships and coaching so every screen has data. City: Chennai.
-Payments run in Razorpay TEST mode. Please stop at the payment sheet, no real money is needed to review the app.
+Payments are LIVE (real money). Please do not complete a payment: you can review the whole booking flow up to the Razorpay payment sheet, then close it. The demo account already has paid bookings, memberships and coaching to look at.
 Account deletion: Profile > Support & Legal > Delete my account.
 ```
+
+Razorpay is in live mode, so a reviewer who completes a payment spends real money. The wording above tells them to stop at the pay sheet. For stronger protection, run `supabase/scripts/demo_venues_bookings_off.sql` before you submit (the demo venues stay visible and bookable, but any payment at them is refused; `demo_venues_bookings_on.sql` switches payments back on), and remove or deactivate the demo venues once the review is done.
 
 Before submitting: add `919000012345=000000` under Supabase → Authentication → Providers → Phone → Test phone numbers, sign in once with it, and run `supabase/scripts/seed_playstore_screenshots.sql` with `v_player_phone := '9000012345'`.
 
@@ -39,7 +41,7 @@ Before submitting: add `919000012345=000000` under Supabase → Authentication �
 ```
 GameAll Venue is for sports venue owners and staff. Sign in with the email and password above (no one-time code).
 The account manages a demo venue in Chennai with courts, bookings, memberships, coaching, payments and reports.
-Payments run in Razorpay TEST mode. No real money is needed to review the app.
+Payments are LIVE (real money). Please do not complete a payment or start Auto Pay: you can review every screen without paying. The demo venue already has paid bookings, memberships and coaching to look at.
 Account deletion: Profile > Delete account.
 ```
 

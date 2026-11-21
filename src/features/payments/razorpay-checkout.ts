@@ -35,6 +35,8 @@ interface RazorpayOptions {
   prefill?: { name?: string; contact?: string; email?: string };
   handler: (response: RazorpaySuccessResponse) => void;
   modal?: { ondismiss?: () => void };
+  /** Seconds after which Checkout closes by itself. */
+  timeout?: number;
 }
 
 let scriptLoadPromise: Promise<void> | null = null;
@@ -80,7 +82,12 @@ export interface CheckoutFailure {
  */
 export async function openRazorpayCheckout(
   checkoutInfo: PaymentOrderCheckoutInfo,
-  options: { description?: string; prefill?: { name?: string; contact?: string; email?: string } } = {},
+  options: {
+    description?: string;
+    prefill?: { name?: string; contact?: string; email?: string };
+    /** A held court: Checkout closes itself after this many seconds, when the hold runs out. */
+    timeoutSeconds?: number;
+  } = {},
 ): Promise<CheckoutOutcome> {
   await loadRazorpayScript();
   if (!window.Razorpay) {
@@ -97,6 +104,7 @@ export async function openRazorpayCheckout(
       name: "GameAll",
       description: options.description,
       prefill: options.prefill,
+      ...(options.timeoutSeconds ? { timeout: options.timeoutSeconds } : {}),
       handler: (response) => {
         settled = true;
         resolve({ razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature });

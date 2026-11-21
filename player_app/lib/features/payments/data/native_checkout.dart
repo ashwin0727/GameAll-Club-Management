@@ -28,6 +28,7 @@ class CheckoutRequest {
     this.name,
     this.contact,
     this.email,
+    this.timeoutSeconds = 600,
   });
 
   final PaymentKind kind;
@@ -48,6 +49,9 @@ class CheckoutRequest {
   final String? contact;
   final String? email;
 
+  /// How long the sheet stays open before Razorpay closes it by itself. A held court gets the time it has left.
+  final int timeoutSeconds;
+
   bool get isSubscription => subscriptionId != null;
 
   /// The same checkout for this payer.
@@ -64,6 +68,23 @@ class CheckoutRequest {
         name: name,
         contact: contact,
         email: email,
+        timeoutSeconds: timeoutSeconds,
+      );
+
+  /// The same checkout that closes itself after [seconds].
+  CheckoutRequest withTimeout(int seconds) => CheckoutRequest(
+        kind: kind,
+        itemId: itemId,
+        keyId: keyId,
+        orderId: orderId,
+        subscriptionId: subscriptionId,
+        paymentOrderId: paymentOrderId,
+        amountMinor: amountMinor,
+        description: description,
+        name: name,
+        contact: contact,
+        email: email,
+        timeoutSeconds: seconds,
       );
 }
 
@@ -247,7 +268,7 @@ Future<CheckoutResult> _openRazorpaySheet(CheckoutRequest r) {
       'theme': {'color': '#7954F6'},
       // a failed attempt goes back to the app, which says so and lets the player try again: no second sheet of its own
       'retry': {'enabled': false},
-      'timeout': 600,
+      'timeout': r.timeoutSeconds,
     });
   } catch (_) {
     finish(const CheckoutFailed("We couldn't open the payment sheet."));

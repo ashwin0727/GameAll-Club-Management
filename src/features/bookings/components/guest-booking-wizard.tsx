@@ -17,7 +17,7 @@ import { getPricingService } from "@/services/pricing";
 import { getMembershipSessionService } from "@/services/membership-sessions";
 import { computeAvailableSlots } from "@/features/bookings/slots";
 import { hoursBetween, runsByCourt, toggleSlot } from "@/features/bookings/slot-selection";
-import { advanceSummary, needsAdvance } from "@/features/bookings/advance-payment";
+import { advanceSummary } from "@/features/bookings/advance-payment";
 import { formatCurrency } from "@/features/pricing/money";
 import { BookingPaymentLinkPanel } from "@/features/payments/components/booking-payment-link-panel";
 import { SelectField } from "@/components/shared/select-field";

@@ -38,7 +38,7 @@ function json(body: unknown, status: number): Response {
 const last10 = (phone: string | null | undefined) => (phone ?? "").replace(/\D/g, "").slice(-10);
 const HOUR_MS = 3_600_000;
 /** Time given to finish paying once Checkout is about to open. */
-const PAY_WINDOW_MS = 15 * 60_000;
+const PAY_WINDOW_MS = 5 * 60_000; // the court is held 5 minutes for a payment (migration 0205 caps every hold at 5 minutes anyway)
 
 interface OrderRow {
   id: string;

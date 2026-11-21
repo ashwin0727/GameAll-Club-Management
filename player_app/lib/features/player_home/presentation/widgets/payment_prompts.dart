@@ -9,6 +9,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/pressable.dart';
 import '../../../payments/application/payment_flow.dart';
 import '../../../payments/domain/payment_receipt.dart';
+import '../../../my_bookings/application/guest_bookings_providers.dart';
 import '../../application/player_home_controller.dart';
 import '../../domain/player_dashboard_models.dart';
 import 'payment_reminder.dart';
@@ -122,6 +123,7 @@ class _PaymentPromptsState extends ConsumerState<PaymentPrompts>
   Future<void> _pay(PendingPayment p) async {
     final key = '${p.kind.name}-${p.id}';
     setState(() => _busy = key);
+    final cancels = ref.read(guestBookingsRepositoryProvider);
     try {
       await openPaymentFlow(
         context,
@@ -135,6 +137,9 @@ class _PaymentPromptsState extends ConsumerState<PaymentPrompts>
           title: p.title,
           venueName: p.venueName,
           balance: p.isBalance,
+          releaseHold: (p.kind == PendingPaymentKind.booking && !p.isBalance)
+              ? (id) => cancels.cancel(id)
+              : null,
           prepare: () async => PaymentTarget(
             id: p.id,
             link: await ref

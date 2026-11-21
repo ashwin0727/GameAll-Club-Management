@@ -15,7 +15,7 @@ import '../application/payment_flow.dart';
 import '../domain/payment_receipt.dart';
 import 'payment_success_page.dart';
 
-enum _Stage { preparing, opening, waiting, failed, timedOut, error }
+enum _Stage { preparing, opening, waiting, failed, timedOut, error, expired }
 
 /// The full-screen "Processing your payment" page every pay button opens.
 ///
@@ -58,6 +58,14 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   DateTime? _waitingSince;
   Timer? _timer;
 
+  /// The moment the court hold runs out (only for a booking that is a hold), and the once-a-second tick that shows and enforces it.
+  DateTime? _holdUntil;
+  Timer? _ticker;
+  bool _leaving = false;
+
+  /// Razorpay's own sheet is open: the hold is not given back underneath it (the sheet closes itself when the time is up).
+  bool _sheetOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +76,7 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   @override
   void dispose() {
     _timer?.cancel();
+    _ticker?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -75,7 +84,11 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   // Back from the payment page (or the browser tab): look at once.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _stage == _Stage.waiting) {
+    if (state != AppLifecycleState.resumed || _done) return;
+    // the hold may have run out while the app was in the background
+    if (_holdLeft != null && _holdLeft! <= Duration.zero) {
+      _expire();
+    } else if (_stage == _Stage.waiting) {
       _check();
     }
   }
@@ -86,6 +99,82 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
     return widget.job.balance
         ? (r.totalInr > 0 && r.paidInr >= r.totalInr)
         : r.isPaid;
+  }
+
+  /// Time left on the court hold, or null when this payment is not a hold.
+  Duration? get _holdLeft => _holdUntil?.difference(paymentNow());
+
+  /// Whether leaving this page must give the court back: a hold that has a target and is not paid, not already released.
+  bool get _holdActive =>
+      widget.job.releaseHold != null &&
+      _target != null &&
+      !_done &&
+      _stage != _Stage.expired;
+
+  void _startHold() {
+    final window = widget.job.holdFor;
+    if (window == null || widget.job.releaseHold == null) return;
+    _holdUntil = paymentNow().add(window);
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _done || _stage == _Stage.expired) {
+        _ticker?.cancel();
+        return;
+      }
+      final left = _holdLeft;
+      if (left != null && left <= Duration.zero) {
+        if (!_sheetOpen) _expire();
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  Future<void> _release() async {
+    final target = _target;
+    final release = widget.job.releaseHold;
+    if (target == null || release == null) return;
+    try {
+      await release(target.id);
+    } catch (_) {
+      // already released, or paid in the meantime: the check that runs before this decides what the player sees
+    }
+  }
+
+  /// The time is up. One last look in case the payment arrived at the very end; otherwise the booking is cancelled for them.
+  Future<void> _expire() async {
+    if (_done || _stage == _Stage.expired || _leaving) return;
+    _leaving = true;
+    _ticker?.cancel();
+    _timer?.cancel();
+    await _check();
+    if (!mounted || _done) return;
+    await _release();
+    if (!mounted || _done) return;
+    setState(() {
+      _stage = _Stage.expired;
+      _message = null;
+      _leaving = false; // the page can be left again: the court is already free
+    });
+  }
+
+  /// "Cancel and go back" / the back button. A held court is given back at once so nobody is kept waiting for a payment the player
+  /// has chosen not to make; if the payment has just arrived, the page finishes as paid instead.
+  Future<void> _leave() async {
+    if (_leaving) return;
+    if (!_holdActive) {
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    setState(() => _leaving = true);
+    _ticker?.cancel();
+    _timer?.cancel();
+    await _check();
+    if (!mounted || _done) return;
+    await _release();
+    if (!mounted) return;
+    _done = true;
+    Navigator.of(context).pop();
   }
 
   Future<void> _run() async {
@@ -100,6 +189,7 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
       final target = await widget.job.prepare();
       if (!mounted) return;
       _target = target;
+      if (target.link != null) _startHold();
       // what is being paid, for the page (amount, name): best effort
       try {
         _receipt = await ref
@@ -161,8 +251,18 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
           ? email
           : (phone.isEmpty ? null : 'player.$phone@gameall.co'),
     );
-    final result = await ref.read(nativeCheckoutProvider)(payer);
+    // a held court: the sheet closes itself when the hold runs out (never less than a minute, Razorpay's smallest timeout)
+    final left = _holdLeft;
+    final timed = left == null
+        ? payer
+        : payer.withTimeout(left.inSeconds.clamp(60, 600));
+    _sheetOpen = true;
+    final result = await ref.read(nativeCheckoutProvider)(timed);
+    _sheetOpen = false;
     if (!mounted || _done) return;
+    if (result is! CheckoutPaid && _holdLeft != null && _holdLeft! <= Duration.zero) {
+      return _expire();
+    }
     setState(() {
       _stage = _Stage.waiting;
       _waitingSince = DateTime.now();
@@ -259,7 +359,9 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final failed = _stage == _Stage.error || _stage == _Stage.timedOut;
+    final failed = _stage == _Stage.error ||
+        _stage == _Stage.timedOut ||
+        _stage == _Stage.expired;
     final r = _receipt;
     final amount = (r != null && r.totalInr > 0)
         ? (widget.job.balance
@@ -373,9 +475,17 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
         "We couldn't start your payment",
         _message ?? 'Please try again.',
       ),
+      _Stage.expired => (
+        'Time is up',
+        'The payment was not made in time, so the booking was cancelled and the court is free again. Nothing has been charged. You can book again.',
+      ),
     };
 
     return PopScope(
+      canPop: !_holdActive && !_leaving,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
       child: Scaffold(
         key: const ValueKey('pay-progress'),
         backgroundColor: p.background,
@@ -460,6 +570,15 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
                               textAlign: TextAlign.center,
                               style: AppTextStyles.body(p.secondaryText),
                             ),
+                            if (_holdUntil != null &&
+                                _stage != _Stage.expired &&
+                                _stage != _Stage.preparing) ...[
+                              const SizedBox(height: 10),
+                              _HoldCountdown(
+                                key: const ValueKey('pay-hold-countdown'),
+                                left: _holdLeft ?? Duration.zero,
+                              ),
+                            ],
                             const SizedBox(height: 14),
                             // what is being paid
                             Container(
@@ -585,10 +704,11 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
                             if (_stage != _Stage.preparing)
                               TextButton(
                                 key: const ValueKey('pay-cancel'),
-                                onPressed: () =>
-                                    Navigator.of(context).maybePop(),
+                                onPressed: _leaving ? null : _leave,
                                 child: Text(
-                                  _stage == _Stage.waiting
+                                  _stage == _Stage.expired
+                                      ? 'Back'
+                                      : (_stage == _Stage.waiting || _holdActive)
                                       ? 'Cancel and go back'
                                       : 'Close',
                                   style: AppTextStyles.body(p.secondaryText),
@@ -629,3 +749,43 @@ class _PaymentProgressPageState extends ConsumerState<PaymentProgressPage>
 }
 
 enum _StepState { done, active, todo }
+
+/// "Complete your payment in 04:32": the court is held only for this long, so the number turns red for the last minute.
+class _HoldCountdown extends StatelessWidget {
+  const _HoldCountdown({super.key, required this.left});
+
+  final Duration left;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final secs = left.inSeconds < 0 ? 0 : left.inSeconds;
+    final text =
+        '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
+    final urgent = secs <= 60;
+    final color = urgent ? AppColors.danger : p.highlight;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.timer_outlined, size: 18, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Complete your payment in $text',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body(color).copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

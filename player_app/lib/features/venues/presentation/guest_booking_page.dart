@@ -18,6 +18,7 @@ import '../../player_home/application/player_home_controller.dart'
     show pendingPaymentRepositoryProvider;
 import '../../player_home/domain/player_dashboard_models.dart'
     show PendingPayment, PendingPaymentKind;
+import '../../my_bookings/application/guest_bookings_providers.dart';
 import '../application/venues_providers.dart';
 import '../domain/venue.dart';
 import '../domain/venue_detail.dart';
@@ -137,6 +138,7 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
     // read once, now: the page may be replaced while the payment is being prepared, and `ref` must not be used after that
     final bookings = ref.read(playerBookingRepositoryProvider);
     final links = ref.read(pendingPaymentRepositoryProvider);
+    final cancels = ref.read(guestBookingsRepositoryProvider);
     await openPaymentFlow(
       context,
       onNavigate: widget.onNavigate,
@@ -144,6 +146,9 @@ class _GuestBookingPageState extends ConsumerState<GuestBookingPage> {
         kind: PaymentKind.booking,
         title: title,
         venueName: venue.name,
+        // the court is held for 5 minutes; "Cancel and go back" or the timer gives it back (cancels the unpaid booking)
+        holdFor: const Duration(minutes: 5),
+        releaseHold: (id) => cancels.cancel(id),
         prepare: () async {
           final id = await bookings.create(
             facilityId: venue.id,

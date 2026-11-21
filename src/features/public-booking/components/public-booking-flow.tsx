@@ -319,6 +319,10 @@ export function PublicBookingFlow({
         return;
       }
       const first = items[0]!.confirmation;
+      // Checkout closes itself when the earliest hold runs out, so nobody can pay for a court that has been given back
+      const expiries = items.map((i) => (i.confirmation.holdExpiresAt ? new Date(i.confirmation.holdExpiresAt).getTime() : Infinity));
+      const secondsLeft = Math.floor((Math.min(...expiries) - Date.now()) / 1000);
+      const timeoutSeconds = Number.isFinite(secondsLeft) ? Math.min(Math.max(secondsLeft, 60), 300) : undefined;
       const outcome = await openRazorpayCheckout(
         {
           keyId: checkout.keyId!,
@@ -331,6 +335,7 @@ export function PublicBookingFlow({
         {
           description: `${sportName} · ${items.length > 1 ? `${items.length} courts` : first.courtName}: ${first.paymentOption === "FULL" ? "payment" : "50% advance"}`,
           prefill: { name: first.guestName, contact: phone },
+          timeoutSeconds,
         },
       );
       const result = await verifyPublicCheckout({
@@ -357,6 +362,36 @@ export function PublicBookingFlow({
       setPayingId(null);
     }
   }
+
+  /** The customer chose not to pay: give every held court back at once (the hold is not kept for a payment nobody wants). */
+  async function cancelHolds() {
+    const waiting = pendingRef.current.filter((i) => i.state === "waiting");
+    const phone = bookingPhone.current;
+    await Promise.allSettled(waiting.map((i) => cancelPublicBooking(i.confirmation.bookingId, phone)));
+    bookAgain();
+  }
+
+  /** When a hold's 5 minutes are up and no payment window is open, release it and say so (the server releases it too). */
+  useEffect(() => {
+    if (step !== "pay" || payingId) return;
+    const due = pending
+      .filter((i) => i.state === "waiting" && i.confirmation.holdExpiresAt)
+      .map((i) => new Date(i.confirmation.holdExpiresAt as string).getTime());
+    if (due.length === 0) return;
+    const wait = Math.max(Math.min(...due) - Date.now(), 0) + 500;
+    const t = setTimeout(() => {
+      const phone = bookingPhone.current;
+      for (const i of pendingRef.current) {
+        const at = i.confirmation.holdExpiresAt ? new Date(i.confirmation.holdExpiresAt).getTime() : null;
+        if (i.state === "waiting" && at !== null && at <= Date.now()) {
+          markPending(i.confirmation.bookingId, "expired");
+          void cancelPublicBooking(i.confirmation.bookingId, phone).catch(() => undefined);
+        }
+      }
+    }, wait);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, pending, payingId]);
 
   function bookAgain() {
     clearPending(facilityId);
@@ -535,7 +570,7 @@ export function PublicBookingFlow({
               )}
 
               {step === "pay" && (
-                <PayStep items={pending} payingId={payingId} error={payError} notice={partialNote} onPay={() => void payAdvance()} onBookAgain={bookAgain} />
+                <PayStep items={pending} payingId={payingId} error={payError} notice={partialNote} onPay={() => void payAdvance()} onBookAgain={bookAgain} onCancel={() => void cancelHolds()} />
               )}
 
               {step === "review" && summary && (
@@ -1942,6 +1977,7 @@ function PayStep({
   notice,
   onPay,
   onBookAgain,
+  onCancel,
 }: {
   items: PendingItem[];
   payingId: string | null;
@@ -1949,6 +1985,7 @@ function PayStep({
   notice: string | null;
   onPay: () => void;
   onBookAgain: () => void;
+  onCancel: () => void;
 }) {
   const waiting = items.filter((i) => i.state === "waiting");
   const allExpired = items.length > 0 && items.every((i) => i.state === "expired");
@@ -2042,6 +2079,9 @@ function PayStep({
             {paying ? "Opening Razorpay…" : `Proceed to Pay ${formatMoney(dueNow, cur)}`}
           </Button>
           <p className="text-xs text-muted-foreground">You&apos;ll pay securely with Razorpay: UPI, cards, net banking and wallets.</p>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={paying} className="min-h-11 w-full text-muted-foreground sm:w-auto">
+            Cancel and go back
+          </Button>
         </div>
       )}
     </div>

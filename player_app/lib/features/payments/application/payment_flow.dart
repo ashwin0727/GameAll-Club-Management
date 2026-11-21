@@ -11,6 +11,9 @@ final paymentReceiptRepositoryProvider = Provider<PaymentReceiptRepository>(
   (ref) => SupabasePaymentReceiptRepository(),
 );
 
+/// The time the payment page counts the court hold against. Tests replace it, because the test clock does not move DateTime.now().
+DateTime Function() paymentNow = DateTime.now;
+
 /// What the payment progress page is told to pay: the item's id and the page to pay on (null: it turned out to be paid already).
 class PaymentTarget {
   const PaymentTarget({required this.id, required this.link});
@@ -27,6 +30,8 @@ class PaymentJob {
     required this.prepare,
     this.venueName,
     this.balance = false,
+    this.releaseHold,
+    this.holdFor,
   });
 
   final PaymentKind kind;
@@ -37,6 +42,14 @@ class PaymentJob {
 
   /// Paying what is left of a booking whose advance is already paid: it only counts as paid once the whole amount is.
   final bool balance;
+
+  /// For a booking that is only a HOLD on the court until it is paid: gives the court back (cancels the unpaid booking). Called when the
+  /// player taps "Cancel and go back" and when [holdFor] runs out. Never set for a membership, coaching or a balance payment.
+  final Future<void> Function(String id)? releaseHold;
+
+  /// How long the court is held for the payment. The page counts this down from the moment the payment is ready; when it reaches zero the
+  /// payment is cancelled automatically. The server enforces the same limit (migration 0205), so this is only the visible countdown.
+  final Duration? holdFor;
 
   /// Creates what has to exist (a pending membership or enrolment, a payment link) and returns it. May throw an exception that has a
   /// `message` the player can read.

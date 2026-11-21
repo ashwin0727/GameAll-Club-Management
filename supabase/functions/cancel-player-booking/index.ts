@@ -80,6 +80,30 @@ Deno.serve(async (req) => {
     return json({ error: readable ? error!.message : "We could not cancel this booking. Please try again." }, 400);
   }
 
+  // An unpaid hold that the player gave up ("Cancel and go back", or the 5-minute timer): close its open Razorpay payment link too, so
+  // the page that is still open somewhere cannot be paid after the court has been released. Paid orders are never touched.
+  if (keyId && keySecret) {
+    try {
+      const { data: open } = await admin
+        .from("payment_orders")
+        .select("id, razorpay_payment_link_id")
+        .eq("booking_id", body.bookingId)
+        .not("razorpay_payment_link_id", "is", null)
+        .in("status", ["CREATED", "ORDER_CREATED", "PAYMENT_ATTEMPTED", "FAILED"]);
+      for (const o of (open ?? []) as { id: string; razorpay_payment_link_id: string }[]) {
+        const res = await fetch(`https://api.razorpay.com/v1/payment_links/${o.razorpay_payment_link_id}/cancel`, {
+          method: "POST",
+          headers: { Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}`, "Content-Type": "application/json" },
+          body: "{}",
+        });
+        // cancelled (200) or already paid / expired / cancelled (4xx): either way only mark ours cancelled when Razorpay agreed
+        if (res.ok) await admin.from("payment_orders").update({ status: "CANCELLED", payment_link_status: "cancelled" }).eq("id", o.id);
+      }
+    } catch (err) {
+      console.error("[cancel-player-booking] could not close the payment link", String(err));
+    }
+  }
+
   const refundIds = ((result as { refundIds?: string[] }).refundIds ?? []).filter(Boolean);
   const outcomes: { refundId: string; status: string }[] = [];
   for (const id of refundIds) {

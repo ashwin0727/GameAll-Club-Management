@@ -977,6 +977,7 @@ class _BookingDetailsPanelState extends ConsumerState<BookingDetailsPanel> {
   Future<void> _pay() async {
     final b = widget.booking;
     final links = ref.read(pendingPaymentRepositoryProvider);
+    final cancels = ref.read(guestBookingsRepositoryProvider);
     final title = '${b.sport ?? 'Court'} booking';
     setState(() => _busy = true);
     try {
@@ -988,6 +989,8 @@ class _BookingDetailsPanelState extends ConsumerState<BookingDetailsPanel> {
           title: title,
           venueName: b.venue.name,
           balance: b.paidInr > 0,
+          // an unpaid hold is given back when the player chooses to go back; a balance payment never cancels the booking
+          releaseHold: (b.status == 'pending' && b.paidInr == 0) ? (id) => cancels.cancel(id) : null,
           prepare: () async => PaymentTarget(
             id: b.id,
             link: await links.paymentLink(
