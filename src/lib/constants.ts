@@ -40,19 +40,29 @@ export type NavGroup =
   | "reports";
 
 /** Sidebar sections in display order. */
-export const NAV_GROUP_ORDER: NavGroup[] = ["main", "guest", "memberships", "coaching", "maintenance", "staff", "inventory", "finance", "reports"];
+export const NAV_GROUP_ORDER: NavGroup[] = ["main", "memberships", "coaching", "guest", "maintenance", "staff", "inventory", "finance", "reports"];
 
+/** Collapsible heading of a section; null = the group's pages are plain links. */
 export const NAV_GROUP_LABELS: Record<NavGroup, string | null> = {
   main: null,
-  guest: "Guest Management",
-  memberships: "Memberships Management",
-  coaching: "Coaching Management",
-  maintenance: "Maintenance Management",
-  staff: "Staff Management",
-  inventory: "Inventory Management",
-  finance: "Finance Management",
-  reports: "Report & Analytics Management",
+  guest: null,
+  memberships: "Memberships",
+  coaching: "Coaching",
+  maintenance: "Maintenance",
+  staff: "Staff & Roles",
+  inventory: "Inventory",
+  finance: "Finance",
+  reports: "Reports & Analytics",
 };
+
+/**
+ * The two titled blocks of the sidebar. Each lists its groups (in order) under a fixed, non-collapsing title; the groups
+ * with a heading collapse beneath it. "main" sits above both with no title.
+ */
+export const NAV_SECTIONS: { title: string; groups: NavGroup[] }[] = [
+  { title: "Management", groups: ["memberships", "coaching", "guest"] },
+  { title: "Operations", groups: ["maintenance", "staff", "inventory", "finance", "reports"] },
+];
 
 export interface NavItem {
   label: string;
@@ -93,17 +103,17 @@ const INVENTORY_NAV_ITEMS: NavItem[] = [
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", group: "main", href: "/dashboard", roles: ["admin", "staff", "member"] },
   { label: "Calendar", group: "main", href: "/calendar", roles: ["admin", "staff", "member"] },
+  { label: "Bookings", group: "main", href: "/guest-bookings", roles: STAFF_ROLES },
   { label: "Tournaments", group: "main", href: "/tournaments", roles: STAFF_ROLES },
 
-  // Guest Management
-  { label: "Guest Booking", group: "guest", href: "/guest-bookings", roles: STAFF_ROLES },
+  // Guest Players (a single page, listed under Management)
   { label: "Guest Players", group: "guest", href: "/guests", roles: STAFF_ROLES },
 
   // Memberships Management
   { label: "Dashboard", group: "memberships", href: "/memberships/v1", roles: STAFF_ROLES },
-  { label: "Membership Schedule", group: "memberships", href: "/memberships/v1/schedule", roles: STAFF_ROLES },
-  { label: "Membership Plan", group: "memberships", href: "/memberships/v1/plans", roles: STAFF_ROLES },
-  { label: "Membership Sessions", group: "memberships", href: "/membership-sessions", roles: STAFF_ROLES },
+  { label: "Schedule", group: "memberships", href: "/memberships/v1/schedule", roles: STAFF_ROLES },
+  { label: "Plan", group: "memberships", href: "/memberships/v1/plans", roles: STAFF_ROLES },
+  { label: "Sessions", group: "memberships", href: "/membership-sessions", roles: STAFF_ROLES },
 
   // Coaching Management
   { label: "Coaching", group: "coaching", href: "/coaching", roles: STAFF_ROLES, permission: "COACHING_VIEW" },

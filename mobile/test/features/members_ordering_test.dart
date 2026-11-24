@@ -65,26 +65,27 @@ void main() {
     test('an empty list stays empty', () => expect(orderMembersForDisplay(const []), isEmpty));
   });
 
-  group('isExpiringSoon', () {
-    test('an active membership ending within 30 days is expiring', () {
-      expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 10))), now), isTrue);
+  group('isExpiringSoon (due tomorrow)', () {
+    test('an active membership ending tomorrow is due tomorrow', () {
+      expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 1))), now), isTrue);
     });
-    test('ending in 31+ days is not', () {
-      expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 45))), now), isFalse);
+    test('ending today or in 2+ days is not', () {
+      expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now), now), isFalse);
+      expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 2))), now), isFalse);
     });
-    test('one that has already ended is not "expiring soon"', () {
+    test('one that has already ended is not due tomorrow', () {
       expect(isExpiringSoon(row('A', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.subtract(const Duration(days: 1))), now), isFalse);
     });
     test('only active memberships count', () {
-      expect(isExpiringSoon(row('A', MembershipListStatus.inactive, DateTime(2026, 1, 1), end: now.add(const Duration(days: 5))), now), isFalse);
+      expect(isExpiringSoon(row('A', MembershipListStatus.inactive, DateTime(2026, 1, 1), end: now.add(const Duration(days: 1))), now), isFalse);
     });
   });
 
   group('countMembers', () {
     final rows = [
-      row('A1', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 7))), // expiring
+      row('A1', MembershipListStatus.active, DateTime(2026, 1, 1), end: now.add(const Duration(days: 1))), // due tomorrow
       row('A2', MembershipListStatus.active, DateTime(2026, 2, 1), end: now.add(const Duration(days: 200))),
-      row('A3', MembershipListStatus.active, DateTime(2026, 3, 1), end: now.add(const Duration(days: 20))), // expiring
+      row('A3', MembershipListStatus.active, DateTime(2026, 3, 1), end: now.add(const Duration(days: 1))), // due tomorrow
       row('I1', MembershipListStatus.inactive, DateTime(2025, 1, 1)),
       row('U1', MembershipListStatus.paymentIncomplete, DateTime(2026, 8, 1)),
     ];

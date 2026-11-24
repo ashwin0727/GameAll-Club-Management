@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 import { BrandWordmark } from "@/features/auth/components/brand-mark";
 import { cn } from "@/lib/utils";
-import { NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, type NavItem } from "@/lib/constants";
+import { NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, NAV_SECTIONS, type NavGroup, type NavItem } from "@/lib/constants";
 import type { Role } from "@/types/database.types";
 import { useUiStore } from "@/stores/ui-store";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
@@ -86,6 +86,16 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "/tournaments": Trophy,
 };
 
+const GROUP_ICONS: Partial<Record<NavGroup, React.ComponentType<{ className?: string }>>> = {
+  memberships: Crown,
+  coaching: GraduationCap,
+  maintenance: Wrench,
+  staff: Users,
+  inventory: Boxes,
+  finance: Wallet,
+  reports: BarChart3,
+};
+
 export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname();
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
@@ -115,10 +125,51 @@ export function Sidebar({ role }: { role: Role }) {
     NAV_GROUP_ORDER.find((group) =>
       items.some((item) => item.group === group && (item.href === activeHref || item.children?.some((c) => c.href === activeHref))),
     ) ?? null;
-  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
+  // Every collapsible section starts collapsed, except the one holding the current page; each opens and closes on its own.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroup ? [activeGroup] : []));
   useEffect(() => {
-    if (activeGroup) setOpenGroup(activeGroup);
+    // Moving to a page inside a collapsed section opens it.
+    if (activeGroup) setOpenGroups((cur) => (cur.has(activeGroup) ? cur : new Set([...cur, activeGroup])));
   }, [activeGroup]);
+
+  const renderGroup = (group: NavGroup) => {
+    const groupItems = items.filter((item) => item.group === group);
+    if (groupItems.length === 0) return null;
+    const heading = NAV_GROUP_LABELS[group];
+    const nodes = groupItems.map((item) =>
+      item.children?.length ? (
+        <NavSection key={item.href} item={item} activeHref={activeHref} onNavigate={() => setSidebarOpen(false)} />
+      ) : (
+        <NavLink
+          key={item.href}
+          href={item.href}
+          label={item.label}
+          icon={ICONS[item.href] ?? LayoutDashboard}
+          active={activeHref === item.href}
+          onNavigate={() => setSidebarOpen(false)}
+        />
+      ),
+    );
+    if (!heading) return <div key={group} className="space-y-1">{nodes}</div>;
+    return (
+      <CollapsibleGroup
+        key={group}
+        label={heading}
+        icon={GROUP_ICONS[group] ?? LayoutDashboard}
+        containsActive={group === activeGroup}
+        open={openGroups.has(group)}
+        onToggle={() =>
+          setOpenGroups((cur) => {
+            const next = new Set(cur);
+            if (!next.delete(group)) next.add(group);
+            return next;
+          })
+        }
+      >
+        {nodes}
+      </CollapsibleGroup>
+    );
+  };
 
   return (
     <>
@@ -136,36 +187,15 @@ export function Sidebar({ role }: { role: Role }) {
         </div>
 
         <nav className="flex-1 space-y-1.5 overflow-y-auto p-3">
-          {NAV_GROUP_ORDER.map((group) => {
-            const groupItems = items.filter((item) => item.group === group);
-            if (groupItems.length === 0) return null;
-            const heading = NAV_GROUP_LABELS[group];
-            const nodes = groupItems.map((item) =>
-              item.children?.length ? (
-                <NavSection key={item.href} item={item} activeHref={activeHref} onNavigate={() => setSidebarOpen(false)} />
-              ) : (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={ICONS[item.href] ?? LayoutDashboard}
-                  active={activeHref === item.href}
-                  onNavigate={() => setSidebarOpen(false)}
-                />
-              ),
-            );
-            // Home, Calendar and Tournaments have no heading and stay as plain links; every management collapses.
-            if (!heading) return <div key={group} className="space-y-1">{nodes}</div>;
+          {renderGroup("main")}
+          {NAV_SECTIONS.map((section) => {
+            const rendered = section.groups.map(renderGroup).filter(Boolean);
+            if (rendered.length === 0) return null;
             return (
-              <CollapsibleGroup
-                key={group}
-                label={heading}
-                containsActive={group === activeGroup}
-                open={openGroup === group}
-                onToggle={() => setOpenGroup((cur) => (cur === group ? null : group))}
-              >
-                {nodes}
-              </CollapsibleGroup>
+              <div key={section.title} className="space-y-1 pt-4">
+                <p className="px-3 pb-1 text-[12px] font-semibold uppercase tracking-wider text-primary">{section.title}</p>
+                {rendered}
+              </div>
             );
           })}
         </nav>
@@ -189,15 +219,17 @@ export function Sidebar({ role }: { role: Role }) {
   );
 }
 
-/** A management heading that collapses its pages. Open/closed is owned by the sidebar so only one management stays open at a time. */
+/** A row (icon + name) that expands to its pages. Open/closed is owned by the sidebar; each row opens and closes on its own. */
 function CollapsibleGroup({
   label,
+  icon: Icon,
   containsActive,
   open,
   onToggle,
   children,
 }: {
   label: string;
+  icon: React.ComponentType<{ className?: string }>;
   containsActive: boolean;
   open: boolean;
   onToggle: () => void;
@@ -210,14 +242,15 @@ function CollapsibleGroup({
         onClick={onToggle}
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider transition-colors hover:bg-accent",
+          "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-accent",
           containsActive ? "text-primary" : "text-muted-foreground",
         )}
       >
-        <span>{label}</span>
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="flex-1">{label}</span>
         <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />
       </button>
-      {open && <div className="mt-1 space-y-1">{children}</div>}
+      {open && <div className="mt-1 space-y-1 pl-4">{children}</div>}
     </div>
   );
 }

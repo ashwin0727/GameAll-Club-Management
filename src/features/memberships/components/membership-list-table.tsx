@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download, MoreHorizontal, Pencil, Search, Eye, Trash2 } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useDeleteMemberFlow } from "@/features/memberships/components/use-delete-member-flow";
-import { bucketForRow, rowStatus, type PlanBucket, type RowStatus } from "@/features/memberships/dashboard-stats";
+import { bucketForRow, countsAsActiveRow, rowStatus, type PlanBucket, type RowStatus } from "@/features/memberships/dashboard-stats";
 import { formatClock, formatDayRange } from "@/features/memberships/slot-format";
 import type { MembershipListRow } from "@/features/memberships/types";
 import { useCanEditHere } from "@/features/auth/context/permission-provider";
@@ -35,7 +35,7 @@ const SORTS: { value: Sort; label: string }[] = [
 const STATUS_FILTERS: { value: "" | RowStatus; label: string }[] = [
   { value: "", label: "All Status" },
   { value: "active", label: "Active" },
-  { value: "expiring", label: "Expiring Soon" },
+  { value: "expiring", label: "Due Tomorrow" },
   { value: "payment_incomplete", label: "Payment Incomplete" },
   { value: "inactive", label: "Inactive" },
 ];
@@ -50,7 +50,7 @@ const PLAN_TONES: Record<PlanBucket, string> = {
 
 const STATUS_TONES: Record<RowStatus, { label: string; tone: string }> = {
   active: { label: "Active", tone: "bg-success/15 text-success" },
-  expiring: { label: "Expiring Soon", tone: "bg-warning/15 text-warning" },
+  expiring: { label: "Due Tomorrow", tone: "bg-warning/15 text-warning" },
   payment_incomplete: { label: "Payment Incomplete", tone: "bg-warning/15 text-warning" },
   inactive: { label: "Inactive", tone: "bg-destructive/15 text-destructive" },
 };
@@ -112,6 +112,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
   const deleteFlow = useDeleteMemberFlow({ onDeleted: refreshRows, onChanged: refreshRows });
 
   const [tab, setTab] = useState<Tab>("all");
+  const landed = useRef(false);
   const [search, setSearch] = useState("");
   const [plan, setPlan] = useState("");
   const [status, setStatus] = useState<"" | RowStatus>("");
@@ -126,7 +127,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
     const byStatus = all.map((r) => rowStatus(r, now));
     return {
       all: all.length,
-      active: byStatus.filter((s) => s === "active").length,
+      active: all.filter((r) => countsAsActiveRow(r, now)).length,
       expiring: byStatus.filter((s) => s === "expiring").length,
       inactive: byStatus.filter((s) => s === "inactive").length,
     };
@@ -137,7 +138,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
   const filtered = useMemo(() => {
     const list = all.filter((r) => {
       const s = rowStatus(r, now);
-      if (tab !== "all" && s !== tab) return false;
+      if (tab === "active" ? !countsAsActiveRow(r, now) : tab !== "all" && s !== tab) return false;
       if (status && s !== status) return false;
       if (plan && r.planName !== plan) return false;
       return matches(r, search);
@@ -198,10 +199,23 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
     URL.revokeObjectURL(url);
   }
 
+  // Arriving from a link such as Home's Active Members card (/memberships/v1?tab=active#members-list): open that tab and bring the
+  // list into view, once the rows are on screen.
+  const loaded = rows !== undefined;
+  useEffect(() => {
+    if (!loaded || landed.current) return;
+    landed.current = true;
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (wanted === "all" || wanted === "active" || wanted === "expiring" || wanted === "inactive") setTab(wanted);
+    if (wanted || window.location.hash === "#members-list") {
+      requestAnimationFrame(() => document.getElementById("members-list")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [loaded]);
+
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "all", label: "All Members", count: counts.all },
     { key: "active", label: "Active", count: counts.active },
-    { key: "expiring", label: "Expiring Soon", count: counts.expiring },
+    { key: "expiring", label: "Due Tomorrow", count: counts.expiring },
     { key: "inactive", label: "Inactive", count: counts.inactive },
   ];
 
@@ -216,7 +230,7 @@ export function MembershipListTable({ rows }: { rows: MembershipListRow[] | unde
   }
 
   return (
-    <Card className="stat-enter overflow-hidden rounded-xl p-0" style={{ "--stat-delay": "380ms" } as React.CSSProperties}>
+    <Card id="members-list" className="stat-enter scroll-mt-4 overflow-hidden rounded-xl p-0" style={{ "--stat-delay": "380ms" } as React.CSSProperties}>
       <div className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (

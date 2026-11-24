@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   addMonths,
+  differenceInCalendarDays,
   endOfMonth,
   endOfWeek,
   format,
@@ -41,6 +42,7 @@ export function DateRangePicker({
   triggerClassName,
   align = "right",
   fullLabel = false,
+  maxDays,
 }: {
   from: string;
   to: string;
@@ -52,6 +54,8 @@ export function DateRangePicker({
   align?: "left" | "right";
   /** "14 Sep 2026 – 20 Sep 2026" instead of "14 Sep – 20 Sep 2026". */
   fullLabel?: boolean;
+  /** Longest range allowed, in days (inclusive). After the first click, days that would make the range longer are disabled. */
+  maxDays?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => startOfMonth(parseISO(from)));
@@ -80,7 +84,13 @@ export function DateRangePicker({
     return out;
   }, [month]);
 
+  /** With a first click made, a day more than maxDays away from it can't be the other end. */
+  function blocked(day: Date): boolean {
+    return !!(maxDays && anchor && Math.abs(differenceInCalendarDays(day, anchor)) >= maxDays);
+  }
+
   function pick(day: Date) {
+    if (blocked(day)) return;
     if (!anchor) {
       setAnchor(day);
       return;
@@ -139,19 +149,22 @@ export function DateRangePicker({
               const inMonth = isSameMonth(day, month);
               const isEndpoint = isSameDay(day, lo) || isSameDay(day, hi);
               const inRange = !anchor && (isAfter(day, lo) || isSameDay(day, lo)) && (isBefore(day, hi) || isSameDay(day, hi));
+              const isBlocked = blocked(day);
               return (
                 <button
                   key={day.toISOString()}
                   type="button"
+                  disabled={isBlocked}
                   onClick={() => pick(day)}
                   className={cn(
                     "h-8 rounded text-xs",
                     !inMonth && "text-muted-foreground/40",
+                    isBlocked && "cursor-not-allowed text-muted-foreground/30 line-through",
                     isEndpoint
                       ? "bg-primary font-medium text-primary-foreground"
                       : inRange
                         ? "bg-primary/15"
-                        : "hover:bg-accent",
+                        : !isBlocked && "hover:bg-accent",
                   )}
                 >
                   {format(day, "d")}
@@ -161,11 +174,13 @@ export function DateRangePicker({
           </div>
 
           {anchor && (
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">Pick the end date…</p>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Pick the end date…{maxDays ? ` (up to ${maxDays} days)` : ""}
+            </p>
           )}
 
           <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-2">
-            {PRESETS.map((p) => (
+            {PRESETS.filter((p) => !maxDays || p.days <= maxDays).map((p) => (
               <button
                 key={p.label}
                 type="button"

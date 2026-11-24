@@ -101,7 +101,7 @@ class _MyMembershipPageState extends ConsumerState<MyMembershipPage>
 
   /// Razorpay may have taken the payment while our webhook was late: ask once per membership, and reload if it turns out paid.
   void _syncIfUnpaid(MembershipDetail m) {
-    if (m.isPaid || m.id.isEmpty || !_synced.add(m.id)) return;
+    if (m.isPaid || m.isOverdue || m.id.isEmpty || !_synced.add(m.id)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final r = await ref
@@ -984,8 +984,12 @@ class _PayBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final failed = m.payState == 'FAILED';
+    final overdue = m.isOverdue;
     final tint = failed ? AppColors.danger : AppColors.warning;
-    final msg = failed
+    final phone = m.venue.phone;
+    final msg = overdue
+        ? 'Your payment for ${m.planName} was due on ${m.endDate == null ? 'its due date' : fmtDate(m.endDate!)}. Please pay at ${m.venue.name.isEmpty ? 'the venue' : m.venue.name}${phone == null ? '' : ' ($phone)'}${m.graceEndsOn == null ? '' : ' by ${fmtDate(m.graceEndsOn!)}'} or your membership will be cancelled.'
+        : failed
         ? 'Your payment for ${m.planName} did not go through. Please complete it so your membership is not cancelled.'
         : 'Your payment for ${m.planName} is not complete${m.balanceInr > 0 ? ': ${rupees(m.balanceInr)} to pay' : ''}. Please complete it so your membership is not cancelled.';
     return Container(
@@ -1016,11 +1020,12 @@ class _PayBanner extends StatelessWidget {
               style: AppTextStyles.body(p.primaryText).copyWith(fontSize: 14),
             ),
           ),
-          GameAllButton.gradient(
-            key: const ValueKey('mm-pay'),
-            label: failed ? 'Retry payment' : 'Complete payment',
-            onPressed: busy ? null : onPay,
-          ),
+          if (!overdue)
+            GameAllButton.gradient(
+              key: const ValueKey('mm-pay'),
+              label: failed ? 'Retry payment' : 'Complete payment',
+              onPressed: busy ? null : onPay,
+            ),
         ],
       ),
     );
@@ -1885,7 +1890,7 @@ class _PaymentsTab extends StatelessWidget {
             )
           else
             for (final x in m.payments) row(x),
-          if (!m.isPaid) ...[
+          if (!m.isPaid && !m.isOverdue) ...[
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,

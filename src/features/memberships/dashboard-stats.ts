@@ -48,14 +48,19 @@ export function planDistribution(rows: MembershipListRow[]): PlanDistributionSli
   });
 }
 
-/**
- * Memberships due to lapse within the next 5 days — anything not already inactive whose paid
- * period ends between today and 5 days out.
- */
+/** A date as the viewer's local YYYY-MM-DD (not UTC, so it flips at local midnight). */
+function localIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function tomorrowIso(now: Date): string {
+  return localIso(addDays(now, 1));
+}
+
+/** "Due Tomorrow": memberships still running whose next payment (end) date is tomorrow, and nobody else. */
 export function expiringSoon(rows: MembershipListRow[], now: Date): MembershipListRow[] {
-  const today = iso(now);
-  const cutoff = iso(addDays(now, 5));
-  return rows.filter((r) => r.status !== "inactive" && r.endDate >= today && r.endDate <= cutoff);
+  const tomorrow = tomorrowIso(now);
+  return rows.filter((r) => r.status !== "inactive" && r.endDate === tomorrow);
 }
 
 export function inactiveMembers(rows: MembershipListRow[]): MembershipListRow[] {
@@ -94,8 +99,8 @@ export function membersDeltaAbs(current: number, changePct: number | null): numb
 export function expiringSoonChangePct(rows: MembershipListRow[], now: Date): number | null {
   const asOf = addDays(now, -30);
   const asOfIso = iso(asOf);
-  const cutoffIso = iso(addDays(asOf, 5));
-  const before = rows.filter((r) => r.startDate <= asOfIso && r.endDate >= asOfIso && r.endDate <= cutoffIso).length;
+  const dueIso = tomorrowIso(asOf);
+  const before = rows.filter((r) => r.startDate <= asOfIso && r.endDate === dueIso).length;
   const current = expiringSoon(rows, now).length;
   return before === 0 ? null : ((current - before) / before) * 100;
 }
@@ -105,6 +110,18 @@ export function inactiveChangePct(rows: MembershipListRow[], now: Date): number 
   const before = rows.filter((r) => r.endDate < asOfIso).length;
   const current = inactiveMembers(rows).length;
   return before === 0 ? null : ((current - before) / before) * 100;
+}
+
+/**
+ * Whether the "Active" tab (and the Home "Active Members" count) includes this row: running memberships, ones due tomorrow, and
+ * the 15-day grace period after a missed due date (shown as Payment Incomplete, but still counted Active).
+ */
+export function countsAsActiveRow(row: MembershipListRow, now: Date): boolean {
+  const s = rowStatus(row, now);
+  if (s === "active" || s === "expiring") return true;
+  if (s !== "payment_incomplete") return false;
+  const today = localIso(now);
+  return row.endDate < today && row.endDate >= localIso(addDays(now, -15));
 }
 
 export interface RowsSummary {
@@ -172,14 +189,12 @@ export type RowStatus = "active" | "expiring" | "payment_incomplete" | "inactive
 
 /**
  * The status shown in the members list. On top of the membership's own status, anything still
- * running but due to lapse within 5 days is called out as "expiring", as in the design.
+ * running but due tomorrow is called out as "expiring" (shown as "Due Tomorrow").
  */
 export function rowStatus(row: MembershipListRow, now: Date): RowStatus {
   if (row.status === "inactive") return "inactive";
   if (row.status === "payment_incomplete") return "payment_incomplete";
-  const today = iso(now);
-  const cutoff = iso(addDays(now, 5));
-  return row.endDate >= today && row.endDate <= cutoff ? "expiring" : "active";
+  return row.endDate === tomorrowIso(now) ? "expiring" : "active";
 }
 
 export interface MonthTrendPoint {

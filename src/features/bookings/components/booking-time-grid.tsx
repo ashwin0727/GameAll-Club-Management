@@ -108,6 +108,11 @@ export function BookingTimeGrid({
               courtOrder,
             });
             const shaded = col.open ? closedSpans(col.open, startMin, endMin) : [];
+            // Time that has already gone: the whole column for a past day, up to "now" for today. It is shaded like closed time and
+            // cannot be clicked; free time still to come stays white and clickable.
+            const colDay = new Date(col.day.getFullYear(), col.day.getMonth(), col.day.getDate()).getTime();
+            const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const pastEndMin = colDay < todayDay ? endMin : colDay === todayDay ? Math.min(Math.max(nowMin, startMin), endMin) : startMin;
             return (
               <div
                 key={col.key}
@@ -117,9 +122,11 @@ export function BookingTimeGrid({
                 onClick={(e) => {
                   if (!onEmptyClick) return;
                   const rect = e.currentTarget.getBoundingClientRect();
-                  onEmptyClick(col, startMin + (e.clientY - rect.top) / PX_PER_MIN);
+                  const clickedMin = startMin + (e.clientY - rect.top) / PX_PER_MIN;
+                  if (clickedMin < pastEndMin) return; // time that has gone is not clickable
+                  onEmptyClick(col, clickedMin);
                 }}
-                className={cn("relative border-l border-border/60", onEmptyClick && "cursor-pointer", col.today && "bg-primary/[0.03]")}
+                className={cn("relative border-l border-border/60 bg-card", onEmptyClick && "cursor-pointer")}
                 style={{
                   backgroundImage: "linear-gradient(to bottom, hsl(var(--border) / 0.7) 1px, transparent 1px)",
                   backgroundSize: `100% ${HOUR_PX}px`,
@@ -133,6 +140,14 @@ export function BookingTimeGrid({
                     style={{ top: (s.startMin - startMin) * PX_PER_MIN, height: (s.endMin - s.startMin) * PX_PER_MIN }}
                   />
                 ))}
+
+                {pastEndMin > startMin && (
+                  <div
+                    aria-hidden
+                    className="absolute inset-x-0 cursor-not-allowed bg-muted/70"
+                    style={{ top: 0, height: (pastEndMin - startMin) * PX_PER_MIN }}
+                  />
+                )}
 
                 {positioned.map(({ event, top, height, lane, lanes }) => (
                   <button

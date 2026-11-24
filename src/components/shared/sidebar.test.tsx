@@ -8,46 +8,46 @@ vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
 
 const heading = (name: RegExp) => screen.getByRole("button", { name });
 
-describe("Sidebar management sections", () => {
-  it("keeps Home, Calendar and Tournaments as plain links and starts every management collapsed", () => {
+describe("Sidebar sections", () => {
+  it("shows Home, Calendar, Bookings and Tournaments as plain links, then the Management and Operations titles", () => {
     pathname = "/dashboard";
     render(<Sidebar role="admin" />);
-    expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
-    expect(heading(/Memberships Management/i)).toHaveAttribute("aria-expanded", "false");
-    expect(heading(/Coaching Management/i)).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Membership Plan" })).not.toBeInTheDocument();
+    for (const name of ["Home", "Calendar", "Bookings", "Tournaments", "Guest Players"]) {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    }
+    expect(screen.getByText("Management")).toBeInTheDocument();
+    expect(screen.getByText("Operations")).toBeInTheDocument();
   });
 
-  it("opens one management at a time: opening another closes the first", async () => {
+  it("starts every Management and Operations section collapsed", () => {
     pathname = "/dashboard";
     render(<Sidebar role="admin" />);
-
-    await userEvent.click(heading(/Memberships Management/i));
-    expect(heading(/Memberships Management/i)).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: "Membership Plan" })).toBeInTheDocument();
-
-    await userEvent.click(heading(/Coaching Management/i));
-    expect(heading(/Coaching Management/i)).toHaveAttribute("aria-expanded", "true");
-    expect(heading(/Memberships Management/i)).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Membership Plan" })).not.toBeInTheDocument();
+    for (const name of [/Memberships/i, /Coaching/i, /Maintenance/i, /Staff & Roles/i, /Finance/i, /Reports & Analytics/i]) {
+      expect(heading(name)).toHaveAttribute("aria-expanded", "false");
+    }
+    expect(screen.queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
   });
 
-  it("clicking the open management again collapses it", async () => {
+  it("expands a section on click to show its pages, and collapses it on a second click", async () => {
     pathname = "/dashboard";
     render(<Sidebar role="admin" />);
-    await userEvent.click(heading(/Coaching Management/i));
-    await userEvent.click(heading(/Coaching Management/i));
-    expect(heading(/Coaching Management/i)).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(heading(/Memberships/i));
+    expect(heading(/Memberships/i)).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Plan" })).toBeInTheDocument();
+    expect(heading(/Coaching/i)).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(heading(/Memberships/i));
+    expect(screen.queryByRole("link", { name: "Plan" })).not.toBeInTheDocument();
   });
 
-  it("opens the management that holds the current page, and switches when you move to another one", () => {
+  it("opens the section that holds the current page, and opens another when you move to it", () => {
     pathname = "/memberships/v1/plans";
     const { rerender } = render(<Sidebar role="admin" />);
-    expect(heading(/Memberships Management/i)).toHaveAttribute("aria-expanded", "true");
+    expect(heading(/Memberships/i)).toHaveAttribute("aria-expanded", "true");
+    expect(heading(/Coaching/i)).toHaveAttribute("aria-expanded", "false");
 
     pathname = "/coaching/programs";
     rerender(<Sidebar role="admin" />);
-    expect(heading(/Coaching Management/i)).toHaveAttribute("aria-expanded", "true");
-    expect(heading(/Memberships Management/i)).toHaveAttribute("aria-expanded", "false");
+    expect(heading(/Coaching/i)).toHaveAttribute("aria-expanded", "true");
   });
 });

@@ -978,7 +978,7 @@ class _LiveNowCardState extends State<_LiveNowCard> {
 
   static String _headline(int busy, int total) {
     if (total == 0) return 'No courts\nset up yet';
-    if (busy == 0) return 'All courts\nready for action';
+    if (busy == 0) return 'All sports\nready for action';
     if (busy == total) return 'All courts\nin play right now';
     return '$busy of $total courts\nin play right now';
   }

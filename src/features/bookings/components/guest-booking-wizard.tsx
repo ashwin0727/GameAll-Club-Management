@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, Clock, MapPin, CalendarDays, Trophy, Info, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,20 @@ export function GuestBookingWizard() {
   const [areas, setAreas] = useState<PlayingArea[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Arriving from the Calendar ("Guest Booking?" → Yes): /guest-bookings/new?courtId=…&date=YYYY-MM-DD&start=HH:mm. The court, date and
+  // slot are chosen for the person; they can still change them.
+  const prefill = useRef<{ courtId: string; date: Date; start: string; slotDone: boolean } | null>(null);
+  if (prefill.current === null && typeof window !== "undefined") {
+    const q = new URLSearchParams(window.location.search);
+    const courtId = q.get("courtId");
+    const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(q.get("date") ?? "");
+    const start = q.get("start");
+    prefill.current =
+      courtId && d && start && /^\d{2}:\d{2}$/.test(start)
+        ? { courtId, date: new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3])), start, slotDone: false }
+        : { courtId: "", date: new Date(), start: "", slotDone: true };
+  }
+
   const [step, setStep] = useState(0);
   const [facilitySportId, setFacilitySportId] = useState("");
   // Any number of courts can be picked, each with its own time slots.
@@ -113,8 +127,17 @@ export function GuestBookingWizard() {
       const enabledSports = fs.filter((s) => s.enabled);
       setFacilitySports(enabledSports);
       setSports(allSports);
-      setAreas(pa.filter((a) => !a.archived && a.status === "ACTIVE" && a.bookingEnabled));
-      setFacilitySportId(enabledSports[0]?.id ?? "");
+      const bookable = pa.filter((a) => !a.archived && a.status === "ACTIVE" && a.bookingEnabled);
+      setAreas(bookable);
+      const wanted = prefill.current && !prefill.current.slotDone ? bookable.find((a) => a.id === prefill.current!.courtId) : undefined;
+      if (wanted && prefill.current) {
+        setFacilitySportId(wanted.facilitySportId);
+        setCourtIds([wanted.id]);
+        setDate(prefill.current.date);
+      } else {
+        if (prefill.current) prefill.current.slotDone = true;
+        setFacilitySportId(enabledSports[0]?.id ?? "");
+      }
       setLoading(false);
     })().catch(() => setLoading(false));
     return () => {
@@ -172,6 +195,17 @@ export function GuestBookingWizard() {
       cancelled = true;
     };
   }, [facility, courtIds, date]);
+
+  // Once that court's slots are in, tick the slot that was tapped on the Calendar.
+  useEffect(() => {
+    const p = prefill.current;
+    if (!p || p.slotDone) return;
+    const list = slotsByCourt[p.courtId];
+    if (!list) return;
+    p.slotDone = true;
+    const hit = list.find((s) => s.available && localHHMM(s.startTime) === p.start && new Date(s.startTime).getTime() > Date.now());
+    if (hit) setSelectedByCourt({ [p.courtId]: [hit] });
+  }, [slotsByCourt]);
 
   // Every (court, slot) chosen, flattened — what gets priced and totalled.
   const picks = useMemo(

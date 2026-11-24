@@ -35,10 +35,11 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// The management sections that are open. Kept here, not inside each section: the menu is a long scrolling list, and a section that
   /// scrolls out of view is thrown away by the list, which used to close it again when it came back.
-  final Set<String> _openSections = <String>{};
+  /// Every section starts open; this holds the ones the person has collapsed.
+  final Set<String> _closedSections = <String>{};
 
   void _toggleSection(String label) => setState(() {
-        if (!_openSections.remove(label)) _openSections.add(label);
+        if (!_closedSections.remove(label)) _closedSections.add(label);
       });
 
   int? _courts;
@@ -96,7 +97,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) =>
-      _OpenSections(open: _openSections, onToggle: _toggleSection, child: Builder(builder: _buildScaffold));
+      _OpenSections(closed: _closedSections, onToggle: _toggleSection, child: Builder(builder: _buildScaffold));
 
   Widget _buildScaffold(BuildContext context) {
     final t = context.tokens;
@@ -940,11 +941,11 @@ class _SignOutButton extends StatelessWidget {
   }
 }
 
-/// Hands the set of open sections (and the way to toggle one) down to the [_Section]s of the profile menu.
+/// Hands the set of collapsed sections (and the way to toggle one) down to the [_Section]s of the profile menu.
 class _OpenSections extends InheritedWidget {
-  const _OpenSections({required this.open, required this.onToggle, required super.child});
+  const _OpenSections({required this.closed, required this.onToggle, required super.child});
 
-  final Set<String> open;
+  final Set<String> closed;
   final void Function(String label) onToggle;
 
   static _OpenSections of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_OpenSections>()!;
@@ -956,8 +957,8 @@ class _OpenSections extends InheritedWidget {
 
 /// One titled group of menu rows. Rows whose page the person's role doesn't include are dropped, and a group left with
 /// no rows disappears entirely (title and spacing too). Each management (and Finance) collapses under its heading,
-/// starting closed, so the menu opens short and shows a section's pages only when asked. Sections open and close on their own:
-/// opening one leaves the others as they were.
+/// starting expanded; tapping a heading collapses it. Sections open and close on their own:
+/// changing one leaves the others as they were.
 class _Section extends ConsumerWidget {
   const _Section({required this.label, required this.children});
 
@@ -976,7 +977,7 @@ class _Section extends ConsumerWidget {
     if (visible.isEmpty) return const SizedBox.shrink();
     final t = context.tokens;
     final sections = _OpenSections.of(context);
-    final open = sections.open.contains(label);
+    final open = !sections.closed.contains(label);
     final title = Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.textSecondary));
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),

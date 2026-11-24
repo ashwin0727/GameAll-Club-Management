@@ -32,7 +32,9 @@ import '../../shared/widgets/misc.dart';
 import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../membership_sessions/membership_slot_card.dart';
+import '../../core/routing/page_transitions.dart';
 import 'booking_slots.dart';
+import 'guest_booking_screen.dart';
 import 'booking_status_presentation.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../authentication/session_controller.dart';
@@ -296,13 +298,32 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     );
   }
 
+  static String hhmm(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  /// Tapping free time that is still to come asks "Guest Booking?". Yes opens the Guest Booking page with this court, date and time
+  /// already filled in. Time that has already started (or a past day) does nothing.
   Future<void> _openQuickBooking(PlayingArea area, BookingTimeSlot slot) async {
-    final booked = await showModalBottomSheet<Booking>(
+    if (!slot.startTime.isAfter(DateTime.now())) return;
+    final yes = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => QuickBookingSheet(facilityId: _facilityId!, area: area, slot: slot),
+      builder: (context) => AlertDialog(
+        title: const Text('Guest Booking?'),
+        content: Text(
+          'Do you want to book ${area.name} on ${Formatters.dateShort(slot.startTime)}, ${Formatters.time12h(hhmm(slot.startTime))} to ${Formatters.time12h(hhmm(slot.endTime))} for a guest?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Yes, Guest Booking')),
+        ],
+      ),
     );
-    if (booked != null) _reloadGrid();
+    if (yes != true || !mounted) return;
+    final booked = await Navigator.of(context).push<bool>(
+      AppPageRoute(
+        builder: (_) => GuestBookingScreen(initialAreaId: area.id, initialStart: slot.startTime, initialEnd: slot.endTime),
+      ),
+    );
+    if (booked == true) _reloadGrid();
   }
 
   Future<void> _openBookingDetails(Booking booking, PlayingArea area) async {
@@ -342,7 +363,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       child: Scaffold(
       appBar: AppBar(
         titleSpacing: AppSpacing.lg,
-        title: const Text('Courts',
+        title: const Text('Calendar',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
         actions: [
           if (!_isToday)
@@ -740,17 +761,31 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
     DateTime? end;
     for (final r in widget.rows) {
       final d = r.day;
-      if (d == null || d.isClosed || d.slots.isEmpty) continue;
-      final s = _hm(d.slots.first.startTime);
-      final e = _hm(d.slots.last.endTime);
-      if (start == null || s.isBefore(start)) start = s;
-      if (end == null || e.isAfter(end)) end = e;
+      if (d == null || d.isClosed) continue;
+      // A 24-hour court covers the whole day; a window that ends at/after midnight runs to the end of the day (not back to its start).
+      final windows = d.is24Hours
+          ? [(_dayStart, _dayStart.add(const Duration(days: 1)))]
+          : [
+              for (final slot in d.slots)
+                (
+                  _hm(slot.startTime),
+                  slot.crossesMidnight || !_hm(slot.endTime).isAfter(_hm(slot.startTime))
+                      ? _hm(slot.endTime).add(const Duration(days: 1))
+                      : _hm(slot.endTime),
+                ),
+            ];
+      for (final (s, e) in windows) {
+        if (start == null || s.isBefore(start)) start = s;
+        if (end == null || e.isAfter(end)) end = e;
+      }
     }
     var s = start ?? _dayStart.add(const Duration(hours: 6));
     var e = end ?? _dayStart.add(const Duration(hours: 23));
     s = s.subtract(const Duration(minutes: 30));
     e = e.add(const Duration(minutes: 30));
     if (s.isBefore(_dayStart)) s = _dayStart;
+    final dayEnd = _dayStart.add(const Duration(days: 1));
+    if (e.isAfter(dayEnd)) e = dayEnd;
     if (!e.isAfter(s.add(const Duration(hours: 2)))) {
       e = s.add(const Duration(hours: 6));
     }
@@ -1045,18 +1080,32 @@ class _CourtLane extends StatelessWidget {
         int.parse(p[0]), int.parse(p[1]));
   }
 
+  /// When the court is open on this day. A 24-hour day is open the whole time, and a window that ends at or after midnight (or is marked
+  /// as crossing it) runs to the end of the day: without that, "closes at 12:00 AM" read as closing at the START of the day and the whole
+  /// row was painted as closed (and swallowed taps).
   ({DateTime? open, DateTime? close}) get _openRange {
     final d = row.day;
-    if (d == null || d.isClosed || d.slots.isEmpty) {
-      return (open: null, close: null);
+    if (d == null || d.isClosed) return (open: null, close: null);
+    if (d.is24Hours) return (open: winStart, close: winEnd);
+    if (d.slots.isEmpty) return (open: null, close: null);
+    DateTime? open;
+    DateTime? close;
+    for (final slot in d.slots) {
+      final start = _hm(slot.startTime);
+      var end = _hm(slot.endTime);
+      if (slot.crossesMidnight || !end.isAfter(start)) end = end.add(const Duration(days: 1));
+      if (open == null || start.isBefore(open)) open = start;
+      if (close == null || end.isAfter(close)) close = end;
     }
-    return (open: _hm(d.slots.first.startTime), close: _hm(d.slots.last.endTime));
+    return (open: open, close: close);
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final range = _openRange;
+    final nowTime = DateTime.now();
+    final pastEnd = nowTime.isBefore(winEnd) ? nowTime : winEnd;
 
     BookingTimeSlot? slotAt(DateTime t) => row.availableSlots
         .where((s) =>
@@ -1120,7 +1169,7 @@ class _CourtLane extends StatelessWidget {
                           final minutes = (d.localPosition.dx / _pxPerMin).round();
                           final tapped =
                               winStart.add(Duration(minutes: minutes));
-                          if (isToday && tapped.isBefore(DateTime.now())) return;
+                          if (tapped.isBefore(DateTime.now())) return;
                           final s = slotAt(tapped);
                           if (s != null) onEmptyTap(s);
                         },
@@ -1151,6 +1200,16 @@ class _CourtLane extends StatelessWidget {
                       ),
                     if (range.open == null)
                       Positioned.fill(child: _closed(tokens)),
+                    // Time that has already gone (today up to now, or a whole past day) is shaded like closed time; a booking made
+                    // there is drawn on top of it below.
+                    if (pastEnd.isAfter(winStart))
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: _x(pastEnd).clamp(0.0, totalWidth),
+                        child: _closed(tokens),
+                      ),
                     for (final b in row.bookings)
                       _block(
                         context,
@@ -1190,12 +1249,14 @@ class _CourtLane extends StatelessWidget {
     );
   }
 
-  Widget _closed(AppColorTokens tokens) => Container(
-        decoration: BoxDecoration(
-          color: tokens.isLight
-              ? tokens.surface2
-              : Colors.black.withValues(alpha: 0.28),
-          borderRadius: BorderRadius.circular(AppRadius.md),
+  Widget _closed(AppColorTokens tokens) => IgnorePointer(
+        child: Container(
+          decoration: BoxDecoration(
+            color: tokens.isLight
+                ? tokens.surface2
+                : Colors.black.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
         ),
       );
 

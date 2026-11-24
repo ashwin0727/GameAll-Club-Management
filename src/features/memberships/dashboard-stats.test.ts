@@ -4,6 +4,7 @@ import {
   activeMembersChangePct,
   axisTicks,
   bucketForRow,
+  countsAsActiveRow,
   expiringSoon,
   expiringSoonChangePct,
   inactiveChangePct,
@@ -16,7 +17,7 @@ import {
 } from "@/features/memberships/dashboard-stats";
 import type { MembershipListRow, MembershipListStatus } from "@/features/memberships/types";
 
-const NOW = new Date("2026-09-15T00:00:00Z");
+const NOW = new Date(2026, 8, 15, 12, 0, 0);
 
 function row(overrides: Partial<MembershipListRow>): MembershipListRow {
   return {
@@ -64,12 +65,14 @@ describe("bucketForRow / planDistribution", () => {
 });
 
 describe("expiringSoon", () => {
-  it("includes non-inactive rows ending within 5 days", () => {
+  it("includes only non-inactive rows whose end date is tomorrow", () => {
     const rows = [
-      row({ membershipId: "in-window", endDate: "2026-09-18" }),
+      row({ membershipId: "in-window", endDate: "2026-09-16" }),
+      row({ membershipId: "in-three-days", endDate: "2026-09-18" }),
+      row({ membershipId: "today", endDate: "2026-09-15" }),
       row({ membershipId: "too-far", endDate: "2026-09-25" }),
       row({ membershipId: "already-past", endDate: "2026-09-01" }),
-      row({ membershipId: "inactive-but-in-window", status: "inactive", endDate: "2026-09-18" }),
+      row({ membershipId: "inactive-but-in-window", status: "inactive", endDate: "2026-09-16" }),
     ];
     const result = expiringSoon(rows, NOW).map((r) => r.membershipId);
     expect(result).toEqual(["in-window"]);
@@ -91,11 +94,11 @@ describe("expiringSoonChangePct / inactiveChangePct", () => {
   });
 
   it("computes a percent change against the 30-day-ago cohort", () => {
-    // 30 days before NOW (2026-09-15) is 2026-08-16; a row already started and ending within
-    // that 5-day window, [2026-08-16, 2026-08-21], counted as "expiring soon" back then.
+    // 30 days before NOW (2026-09-15) is 2026-08-16; a row already started and ending the next day
+    // (2026-08-17) was "due tomorrow" back then.
     const rows = [
-      row({ membershipId: "was-expiring-then", startDate: "2026-08-01", endDate: "2026-08-20" }),
-      row({ membershipId: "expiring-now", startDate: "2026-08-01", endDate: "2026-09-18" }),
+      row({ membershipId: "was-expiring-then", startDate: "2026-08-01", endDate: "2026-08-17" }),
+      row({ membershipId: "expiring-now", startDate: "2026-08-01", endDate: "2026-09-16" }),
     ];
     // before: 1 ("was-expiring-then"), current: 1 ("expiring-now") -> 0% change
     expect(expiringSoonChangePct(rows, NOW)).toBe(0);
@@ -144,8 +147,9 @@ describe("membersDeltaAbs", () => {
 });
 
 describe("rowStatus", () => {
-  it("calls out a still-running membership that lapses within 5 days", () => {
-    expect(rowStatus(row({ endDate: "2026-09-18" }), NOW)).toBe("expiring");
+  it("calls out a still-running membership that is due tomorrow", () => {
+    expect(rowStatus(row({ endDate: "2026-09-16" }), NOW)).toBe("expiring");
+    expect(rowStatus(row({ endDate: "2026-09-18" }), NOW)).toBe("active");
     expect(rowStatus(row({ endDate: "2026-12-25" }), NOW)).toBe("active");
   });
 
@@ -263,5 +267,23 @@ describe("membershipPendingAmountInr", () => {
       NOW,
     );
     expect(out).toEqual({ amountInr: 500 + 1500 + 250, count: 3 });
+  });
+});
+
+describe("countsAsActiveRow (Active tab / Home Active Members)", () => {
+  it("counts running memberships and ones due tomorrow", () => {
+    expect(countsAsActiveRow(row({ endDate: "2026-12-25" }), NOW)).toBe(true);
+    expect(countsAsActiveRow(row({ endDate: "2026-09-16" }), NOW)).toBe(true);
+  });
+
+  it("keeps a paid member active for 15 days after the due date (Payment Incomplete)", () => {
+    expect(countsAsActiveRow(row({ status: "payment_incomplete", endDate: "2026-09-10" }), NOW)).toBe(true);
+    expect(countsAsActiveRow(row({ status: "payment_incomplete", endDate: "2026-08-31" }), NOW)).toBe(true);
+    expect(countsAsActiveRow(row({ status: "payment_incomplete", endDate: "2026-08-30" }), NOW)).toBe(false);
+  });
+
+  it("does not count a payment-incomplete membership that is not overdue yet, or an inactive one", () => {
+    expect(countsAsActiveRow(row({ status: "payment_incomplete", endDate: "2026-10-30" }), NOW)).toBe(false);
+    expect(countsAsActiveRow(row({ status: "inactive", endDate: "2026-12-25" }), NOW)).toBe(false);
   });
 });

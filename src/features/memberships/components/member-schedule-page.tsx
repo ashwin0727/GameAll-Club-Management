@@ -168,6 +168,8 @@ export function MemberSchedulePage() {
     { value: "", label: "All Courts" },
     ...areas.map((a) => ({ value: a.id, label: a.name })),
   ];
+  // The Court field is only as wide as its longest court name (plus room for padding and the chevron).
+  const courtFieldWidth = `calc(${Math.max(...courtOptions.map((o) => o.label.length))}ch + 3.5rem)`;
   const memberOptions = members.map((m) => ({ value: m.memberId, label: m.fullName, sublabel: m.phone }));
 
   const loading = schedulesQuery.isLoading || areasQuery.isLoading;
@@ -234,7 +236,7 @@ export function MemberSchedulePage() {
                 ariaLabel="Select member"
               />
             </div>
-            <div className="w-full sm:w-56">
+            <div className="w-full sm:w-64">
               <p className="mb-1 text-xs font-medium text-foreground/80">Date Range</p>
               <DateRangePicker
                 from={rangeFrom}
@@ -244,14 +246,15 @@ export function MemberSchedulePage() {
                   setRangeTo(t);
                 }}
                 fullLabel
-                triggerClassName={cn("flex w-full items-center gap-2", FIELD_CLASS)}
+                maxDays={7}
+                triggerClassName={cn("flex w-full items-center gap-2 whitespace-nowrap tabular-nums", FIELD_CLASS)}
               />
             </div>
             <div className="w-[calc(50%-0.375rem)] sm:w-32">
               <p className="mb-1 text-xs font-medium text-foreground/80">View By</p>
               <SelectField value={view} onValueChange={(v) => changeView(v as "week" | "day")} options={VIEW_OPTIONS} ariaLabel="View by" className={FIELD_CLASS} />
             </div>
-            <div className="w-[calc(50%-0.375rem)] sm:w-44">
+            <div className="w-[calc(50%-0.375rem)] sm:w-[var(--court-w)]" style={{ "--court-w": courtFieldWidth } as React.CSSProperties}>
               <p className="mb-1 text-xs font-medium text-foreground/80">Court</p>
               <SelectField
                 value={courtFilter}

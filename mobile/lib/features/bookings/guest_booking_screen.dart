@@ -81,7 +81,13 @@ enum _CourtAvailability { pickTime, available, conflict, outsideHours, checking 
 /// Full-screen multi-step Guest Booking wizard — mirrors the web
 /// `guest-booking-wizard.tsx`. Pops `true` when a booking was created.
 class GuestBookingScreen extends ConsumerStatefulWidget {
-  const GuestBookingScreen({super.key});
+  /// [initialAreaId] + [initialStart] / [initialEnd]: opened from the Calendar's "Guest Booking?" question, so the court, date and time
+  /// are already chosen (they can still be changed).
+  const GuestBookingScreen({super.key, this.initialAreaId, this.initialStart, this.initialEnd});
+
+  final String? initialAreaId;
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
 
   @override
   ConsumerState<GuestBookingScreen> createState() => _GuestBookingScreenState();
@@ -204,6 +210,11 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
       final plan = await ref.read(pricingRepositoryProvider).getPricingPlan(facility.id);
       if (!mounted) return;
       final enabled = fs.where((x) => x.enabled).toList();
+      final bookable = areas.where((a) => !a.archived && a.status == 'ACTIVE' && a.bookingEnabled).toList();
+      final wanted = widget.initialAreaId == null ? null : bookable.where((a) => a.id == widget.initialAreaId).firstOrNull;
+      final start = widget.initialStart;
+      final end = widget.initialEnd;
+      final prefilled = wanted != null && start != null && end != null && start.isAfter(DateTime.now());
       setState(() {
         _facilityId = facility.id;
         _facilityName = facility.name;
@@ -211,9 +222,16 @@ class _GuestBookingScreenState extends ConsumerState<GuestBookingScreen> {
         _sports = sports;
         _areas = areas.where((a) => !a.archived && a.status == 'ACTIVE' && a.bookingEnabled).toList();
         _rules = plan?.rules ?? const [];
-        _facilitySportId = enabled.isNotEmpty ? enabled.first.id : null;
+        _facilitySportId = prefilled ? wanted.facilitySportId : (enabled.isNotEmpty ? enabled.first.id : null);
+        if (prefilled) {
+          _selectedCourtIds.add(wanted.id);
+          _date = DateTime(start.year, start.month, start.day);
+          _startTime = TimeOfDay(hour: start.hour, minute: start.minute);
+          _endTime = TimeOfDay(hour: end.hour, minute: end.minute);
+        }
         _loading = false;
       });
+      if (prefilled) _loadAvailability();
     } on AppException catch (e) {
       setState(() {
         _loading = false;

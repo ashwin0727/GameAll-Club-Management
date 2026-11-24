@@ -20,9 +20,12 @@ List<MembershipListRow> orderMembersForDisplay(List<MembershipListRow> rows) {
     });
 }
 
-/// Whether an active membership runs out within the next [days] days.
-bool isExpiringSoon(MembershipListRow m, DateTime now, {int days = 30}) =>
-    m.status == MembershipListStatus.active && m.endDate.isAfter(now) && m.endDate.isBefore(now.add(Duration(days: days)));
+/// "Due Tomorrow": an active membership whose next payment (end) date is tomorrow, and nobody else.
+bool isExpiringSoon(MembershipListRow m, DateTime now) {
+  final tomorrow = DateTime(now.year, now.month, now.day + 1);
+  final end = DateTime(m.endDate.year, m.endDate.month, m.endDate.day);
+  return m.status == MembershipListStatus.active && end == tomorrow;
+}
 
 class MemberCounts {
   const MemberCounts({required this.total, required this.active, required this.inactive, required this.expiring});

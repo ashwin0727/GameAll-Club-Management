@@ -8,9 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getSportsService } from "@/services/sports";
@@ -107,6 +110,8 @@ export function BookingOperationsView() {
     slot?: TimeSlot;
     date?: Date;
   } | null>(null);
+  // Tapping free time asks "Guest Booking?" first; Yes opens the Guest Booking page with this court, date and time filled in.
+  const [guestPrompt, setGuestPrompt] = useState<{ courtId: string; slot: TimeSlot; date: Date } | null>(null);
   const [detailsBooking, setDetailsBooking] = useState<Booking | null>(null);
   const [detailsMode, setDetailsMode] = useState<"view" | "reschedule">("view");
   const [membershipSlotDialog, setMembershipSlotDialog] =
@@ -270,13 +275,29 @@ export function BookingOperationsView() {
     if (!slot?.available) return;
     const s = new Date(slot.startTime);
     const en = new Date(slot.endTime);
+    // Only time still to come: a slot that has already started (or is on a past day) never asks about a guest booking.
+    if (s.getTime() <= Date.now()) return;
     const blocker = courtEvents.find((e) => e.start < en && s < e.end);
     if (blocker) {
       if (blocker.membershipSlot)
         setMembershipSlotDialog(blocker.membershipSlot);
       return;
     }
-    setBookingDialog({ courtId: court, slot, date: col.day });
+    setGuestPrompt({ courtId: court, slot, date: col.day });
+  }
+
+  function goToGuestBooking() {
+    if (!guestPrompt) return;
+    const { courtId, slot, date } = guestPrompt;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const start = new Date(slot.startTime);
+    const params = new URLSearchParams({
+      courtId,
+      date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+      start: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+    });
+    setGuestPrompt(null);
+    router.push(`/guest-bookings/new?${params.toString()}`);
   }
 
   if (loadState === "loading") {
@@ -544,6 +565,27 @@ export function BookingOperationsView() {
           )}
         </div>
       </div>
+
+      <Dialog open={guestPrompt !== null} onOpenChange={(open) => !open && setGuestPrompt(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Guest Booking?</DialogTitle>
+            <DialogDescription>
+              {guestPrompt
+                ? `Do you want to book ${courtName(guestPrompt.courtId)} on ${guestPrompt.date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}, ${new Date(guestPrompt.slot.startTime).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })} to ${new Date(guestPrompt.slot.endTime).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })} for a guest?`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="outline" onClick={() => setGuestPrompt(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={goToGuestBooking}>
+              Yes, Guest Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {facilityId && (
         <>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INVENTORY_ENABLED, NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS } from "@/lib/constants";
+import { INVENTORY_ENABLED, NAV_GROUP_LABELS, NAV_GROUP_ORDER, NAV_ITEMS, NAV_SECTIONS } from "@/lib/constants";
 import { activeHrefFor } from "@/lib/nav-active";
 
 const labelsIn = (group: (typeof NAV_GROUP_ORDER)[number]) => NAV_ITEMS.filter((i) => i.group === group).map((i) => i.label);
@@ -8,21 +8,28 @@ describe("sidebar menu structure", () => {
   it("lists the sections in the agreed order with the agreed headings", () => {
     expect(NAV_GROUP_ORDER.map((g) => NAV_GROUP_LABELS[g])).toEqual([
       null,
-      "Guest Management",
-      "Memberships Management",
-      "Coaching Management",
-      "Maintenance Management",
-      "Staff Management",
-      "Inventory Management",
-      "Finance Management",
-      "Report & Analytics Management",
+      "Memberships",
+      "Coaching",
+      null,
+      "Maintenance",
+      "Staff & Roles",
+      "Inventory",
+      "Finance",
+      "Reports & Analytics",
+    ]);
+  });
+
+  it("splits the sections under the Management and Operations titles", () => {
+    expect(NAV_SECTIONS).toEqual([
+      { title: "Management", groups: ["memberships", "coaching", "guest"] },
+      { title: "Operations", groups: ["maintenance", "staff", "inventory", "finance", "reports"] },
     ]);
   });
 
   it("has exactly the agreed items in each section", () => {
-    expect(labelsIn("main")).toEqual(["Home", "Calendar", "Tournaments"]);
-    expect(labelsIn("guest")).toEqual(["Guest Booking", "Guest Players"]);
-    expect(labelsIn("memberships")).toEqual(["Dashboard", "Membership Schedule", "Membership Plan", "Membership Sessions"]);
+    expect(labelsIn("main")).toEqual(["Home", "Calendar", "Bookings", "Tournaments"]);
+    expect(labelsIn("guest")).toEqual(["Guest Players"]);
+    expect(labelsIn("memberships")).toEqual(["Dashboard", "Schedule", "Plan", "Sessions"]);
     expect(labelsIn("coaching")).toEqual(["Coaching", "Program", "Students", "Coaching Schedule", "Report"]);
     expect(labelsIn("maintenance")).toEqual(["Maintenance", "Maintenance Tracker", "Issue Category"]);
     expect(labelsIn("staff")).toEqual(["Staff", "Roles & Permission", "Access History"]);

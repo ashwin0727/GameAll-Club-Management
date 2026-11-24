@@ -17,6 +17,7 @@ class MembershipDetail {
     this.features = const [],
     this.startDate,
     this.endDate,
+    this.graceEndsOn,
     this.memberSince,
     this.autoRenew = false,
     this.autopayStatus,
@@ -53,6 +54,7 @@ class MembershipDetail {
       ],
       startDate: _date(j['startDate']),
       endDate: _date(j['endDate']),
+      graceEndsOn: _date(j['graceEndsOn']),
       memberSince: _date(j['memberSince']),
       autoRenew: j['autoRenew'] == true,
       autopayStatus: j['autopayStatus'] as String?,
@@ -89,6 +91,9 @@ class MembershipDetail {
   final List<String> features;
   final DateTime? startDate;
   final DateTime? endDate;
+
+  /// The last day of the 15-day grace period after the due date; after it the club cancels the membership.
+  final DateTime? graceEndsOn;
   final DateTime? memberSince;
   final bool autoRenew;
 
@@ -96,7 +101,7 @@ class MembershipDetail {
   final String? autopayStatus;
   final String? paymentMethod;
 
-  /// PAID | PENDING | FAILED
+  /// PAID | PENDING | FAILED | OVERDUE (the due date has passed; still a member until [graceEndsOn])
   final String payState;
   final MembershipVenue venue;
   final MembershipSlot? slot;
@@ -108,6 +113,9 @@ class MembershipDetail {
   final bool limited;
 
   bool get isPaid => payState == 'PAID';
+
+  /// The due date has passed and the next payment is not in: a member for [graceEndsOn], then cancelled.
+  bool get isOverdue => payState == 'OVERDUE';
   bool get hasAutopay => autopayStatus != null;
 
   /// "Monthly", "Quarterly", "Half-yearly", "Yearly" or "45 days".

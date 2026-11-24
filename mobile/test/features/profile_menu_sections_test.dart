@@ -35,50 +35,45 @@ Future<void> _toggle(WidgetTester tester, String section) async {
 }
 
 void main() {
-  testWidgets('every management starts closed, with its heading showing', (tester) async {
+  testWidgets('every management starts expanded, with its pages showing', (tester) async {
     await _open(tester);
     expect(find.text('Guest Management'), findsOneWidget);
     expect(find.text('Memberships Management'), findsOneWidget);
-    expect(find.text('Membership Plan', skipOffstage: false), findsNothing);
-    expect(find.text('Guest Booking', skipOffstage: false), findsNothing);
+    expect(find.text('Membership Plan', skipOffstage: false), findsOneWidget);
+    expect(find.text('Guest Booking', skipOffstage: false), findsOneWidget);
+    expect(find.text('Refunds', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('a section opens and closes when its heading is tapped', (tester) async {
+  testWidgets('a section collapses and expands when its heading is tapped', (tester) async {
     await _open(tester);
+    await _toggle(tester, 'Memberships Management');
+    expect(find.text('Membership Plan', skipOffstage: false), findsNothing);
+
     await _toggle(tester, 'Memberships Management');
     expect(find.text('Membership Plan'), findsOneWidget);
-
-    await _toggle(tester, 'Memberships Management');
-    expect(find.text('Membership Plan', skipOffstage: false), findsNothing);
   });
 
-  testWidgets('opening one section leaves the others open: nothing closes by itself', (tester) async {
+  testWidgets('collapsing one section leaves the others expanded', (tester) async {
     await _open(tester);
     await _toggle(tester, 'Memberships Management');
-    await _toggle(tester, 'Finance');
-    await _toggle(tester, 'Guest Management');
 
-    // all three are open at once
-    expect(find.text('Membership Plan', skipOffstage: false), findsOneWidget);
+    expect(find.text('Membership Plan', skipOffstage: false), findsNothing);
     expect(find.text('Refunds', skipOffstage: false), findsOneWidget);
     expect(find.text('Guest Booking', skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('an open section is still open after it has been scrolled out of view and back', (tester) async {
+  testWidgets('a collapsed section is still collapsed after it has been scrolled out of view and back', (tester) async {
     await _open(tester, tall: false);
     await _toggle(tester, 'Guest Management');
-    expect(find.text('Guest Booking'), findsOneWidget);
+    expect(find.text('Guest Booking', skipOffstage: false), findsNothing);
 
-    // far down the page: the open section is now well outside the list's built area and is discarded
+    // far down the page, then back up
     final list = find.byType(Scrollable).first;
     await tester.drag(list, const Offset(0, -4000));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Guest Booking', skipOffstage: true), findsNothing);
-
-    // and back up
     await tester.drag(list, const Offset(0, 4000));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Guest Management'), findsOneWidget);
-    expect(find.text('Guest Booking'), findsOneWidget, reason: 'the section closed itself while it was off-screen');
+    expect(find.text('Guest Booking', skipOffstage: false), findsNothing, reason: 'the section re-expanded while it was off-screen');
   });
 }

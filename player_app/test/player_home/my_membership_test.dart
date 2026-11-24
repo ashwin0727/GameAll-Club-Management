@@ -67,6 +67,7 @@ MembershipDetail champz({
   String? phone = '9876500000',
   int? totalInr = 3000,
   int paidInr = 3000,
+  DateTime? graceEndsOn,
 }) => MembershipDetail(
   id: 'ms1',
   ref: 'MBR-CHZ-000458',
@@ -79,6 +80,7 @@ MembershipDetail champz({
   features: const ['Dedicated court time', 'Priority court access'],
   startDate: DateTime(2026, 9, 1),
   endDate: DateTime(2026, 9, 30),
+  graceEndsOn: graceEndsOn,
   memberSince: DateTime(2026, 9, 1),
   autopayStatus: autopay,
   paymentMethod: 'UPI',
@@ -385,6 +387,24 @@ void main() {
         expect(text(tester, 'mm-pay-balance'), '₹2,000');
         expect(find.byKey(const ValueKey('mm-no-payments')), findsOneWidget);
         expect(find.byKey(const ValueKey('mm-pay-tab')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'a membership past its due date shows "Payment Incomplete", the cancel-by date and no Pay button',
+      (tester) async {
+        await pumpPage(tester, [
+          champz(
+            payState: 'OVERDUE',
+            graceEndsOn: DateTime(2026, 10, 15),
+          ),
+        ]);
+        expect(text(tester, 'mm-status-short'), 'Payment Incomplete');
+        expect(find.text('Active Membership'), findsNothing);
+        expect(find.textContaining('was due on 30 Sep 2026'), findsOneWidget);
+        expect(find.textContaining('by 15 Oct 2026'), findsOneWidget);
+        expect(find.textContaining('will be cancelled'), findsOneWidget);
+        expect(find.byKey(const ValueKey('mm-pay')), findsNothing);
       },
     );
 

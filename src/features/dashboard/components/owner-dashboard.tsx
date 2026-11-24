@@ -682,9 +682,9 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
             tone="bg-success/15 text-success"
             label="Active Members"
             value={String(summary.kpis.activeMemberships.value)}
-            sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} expiring soon` : undefined}
+            sub={summary.memberships.expiringSoon > 0 ? `${summary.memberships.expiringSoon} due tomorrow` : undefined}
             subClass="text-warning"
-            href="/memberships/v1"
+            href="/memberships/v1?tab=active#members-list"
           />
         </PageGate>
         <PageGate pages={["COACHING_STUDENTS"]}>
