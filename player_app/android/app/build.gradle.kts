@@ -79,4 +79,5 @@ dependencies {
 // saved next to this file. Without the file the app still builds and runs; it just has no phone push.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }

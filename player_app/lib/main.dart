@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,8 +52,11 @@ Future<void> main() async {
     if (saved == 'light') theme = ThemeMode.light;
   } catch (_) {}
 
-  // Phone push (not on the web); best effort, never blocks the app opening
-  if (!kIsWeb) unawaited(PushService.instance.init());
+  // Phone push and crash reports (not on the web); best effort, never block the app opening
+  if (!kIsWeb) {
+    unawaited(_startCrashReporting());
+    unawaited(PushService.instance.init());
+  }
 
   runApp(
     ProviderScope(
@@ -155,4 +161,20 @@ Route<dynamic> _routeFor(RouteSettings settings) {
     settings: settings,
     builder: (_) => playerPageForRoute(name ?? ''),
   );
+}
+
+/// Sends crashes to Firebase Crashlytics in release builds (not while developing). Best effort: a phone without Google services, or a
+/// build without the Firebase file (android/app/google-services.json), simply has no crash reports.
+Future<void> _startCrashReporting() async {
+  if (kDebugMode) return;
+  try {
+    await Firebase.initializeApp();
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  } catch (e) {
+    debugPrint('Crash reporting unavailable: $e');
+  }
 }

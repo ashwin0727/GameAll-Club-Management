@@ -23,6 +23,8 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.4.0" apply false
     // Firebase Cloud Messaging (push notifications): reads android/app/google-services.json
     id("com.google.gms.google-services") version "4.5.0" apply false
+    // Crash reports (Firebase Crashlytics); also uploads the R8 mapping so release crashes are readable
+    id("com.google.firebase.crashlytics") version "3.0.8" apply false
 }
 
 include(":app")

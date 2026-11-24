@@ -69,17 +69,22 @@ Before submitting: the reviewer account must be set up, approved and on an activ
 
 | Category → type | Collected | Purpose | Optional | Notes |
 |---|---|---|---|---|
-| Personal info → Name | Yes | App functionality, Account management | Required | Shown to the venue you book with |
-| Personal info → Phone number | Yes | App functionality, Account management | Required | It is the sign-in, verified by SMS code |
+| Personal info → Name | Yes | App functionality, Account management | Required | Shown to the venue you book with. Also the emergency contact's name (optional) |
+| Personal info → Phone number | Yes | App functionality, Account management | Required | It is the sign-in, verified by SMS code. Also the emergency contact's number (optional) |
 | Personal info → Email address | Yes | Account management | Optional | Only if the player adds it |
+| Personal info → User IDs | Yes | App functionality, Account management | Required | The account ID |
+| Personal info → Address | Yes | App functionality | Optional | Profile address (street, city, state, pincode) |
+| Personal info → Other info | Yes | App functionality | Optional | Date of birth and gender in the profile |
+| Health and fitness → Health info | Yes | App functionality | Optional | Blood group in the profile |
+| Photos and videos → Photos | Yes | App functionality | Optional | Profile picture and ID proof image |
 | Financial info → Purchase history | Yes | App functionality | Required | Bookings, memberships, coaching and their payments and refunds |
 | Financial info → Payment info | **No** | | | Card, UPI and bank details are typed on Razorpay's screen and never reach us |
-| Location → Approximate location | **Collected: No** | | | Used on the phone only to sort venues and is never sent or stored. Declare as not collected |
-| App activity → In-app actions | Yes | App functionality | Required | Bookings, schedules and attendance |
+| Location → Approximate location | Yes (recommended; on-device only) | App functionality | Optional | Read on the phone to suggest a city and sort venues. Never uploaded. Not sharing, processed ephemerally |
+| App activity → App interactions | Yes | App functionality | Required | Bookings, schedules and attendance |
 | Device or other IDs | Yes | App functionality | Required | Notification token (Firebase) |
-| App info and performance → Crash logs, Diagnostics | Yes | Analytics | Required | Basic device and crash information |
+| App info and performance → Crash logs, Diagnostics | Yes | Analytics | Required | Firebase Crashlytics (added in 1.0.0+1 build of 24 Nov 2026) |
 
-Not collected: precise location, contacts, photos or videos of the user, files, calendar, messages, audio, health, web browsing history.
+Not collected: precise location, contacts, messages, audio, files and docs, calendar, web browsing history.
 
 ### GameAll Venue: data types
 
