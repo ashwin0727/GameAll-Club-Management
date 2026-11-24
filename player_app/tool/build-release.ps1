@@ -1,4 +1,4 @@
-# Builds the signed Play Store bundle (.aab) for GameAll Play.
+# Builds the signed Play Store bundle (.aab) for GameAll.
 #
 # Why a copy? The project lives in OneDrive, and OneDrive (and editor file watchers) lock Gradle's build folder, which makes
 # release builds fail with "Unable to delete directory". This script copies the app to C:\GameAllBuild\player-src, builds there,

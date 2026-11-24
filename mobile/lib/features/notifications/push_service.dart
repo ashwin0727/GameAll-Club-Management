@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Color;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -48,7 +49,7 @@ class PushService {
     try {
       await Firebase.initializeApp();
       await _local.initialize(
-        settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+        settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_gameall')),
         onDidReceiveNotificationResponse: (r) {
           final route = r.payload;
           if (route != null && route.isNotEmpty) _open?.call(route);
@@ -125,7 +126,7 @@ class PushService {
       title: n.title,
       body: n.body,
       notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(_channelId, 'GameAll notifications', importance: Importance.high, priority: Priority.high),
+        android: AndroidNotificationDetails(_channelId, 'GameAll notifications', icon: 'ic_stat_gameall', color: Color(0xFF4817C2), importance: Importance.high, priority: Priority.high),
       ),
       payload: notificationTarget(kind),
     );

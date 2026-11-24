@@ -16,9 +16,9 @@ const sections: LegalSection[] = [
     title: "From the app (quickest)",
     body: (
       <>
-        <p><strong>GameAll Play (players)</strong></p>
+        <p><strong>GameAll (players)</strong></p>
         <ol className="list-decimal space-y-1.5 pl-5">
-          <li>Open GameAll Play and sign in.</li>
+          <li>Open GameAll and sign in.</li>
           <li>Go to <strong>Profile → Support &amp; Legal</strong>.</li>
           <li>Choose <strong>Delete my account</strong> and confirm.</li>
         </ol>

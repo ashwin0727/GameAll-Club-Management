@@ -84,7 +84,7 @@ export const DEFAULT_POLICIES: FacilityPolicies = {
 };
 
 export const POLICY_OPTIONS: { key: keyof FacilityPolicies; label: string; hint: string }[] = [
-  { key: "allowOnlineBooking", label: "Allow Online Booking", hint: "Players can book your courts from the GameAll Player app." },
+  { key: "allowOnlineBooking", label: "Allow Online Booking", hint: "Players can book your courts from the GameAll app." },
   { key: "allowWalkIn", label: "Allow Walk-in / Offline Booking", hint: "Your front desk can take bookings for players who walk in." },
   { key: "advancePaymentRequired", label: "Advance Payment Required", hint: "Players must pay in advance to confirm a booking." },
   { key: "allowCancellations", label: "Allow Cancellations", hint: "Players can cancel a booking, subject to your refund rules." },

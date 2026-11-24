@@ -726,7 +726,7 @@ class _FacilityDetailsScreenState extends ConsumerState<FacilityDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SetupCardHeading(icon: Icons.shield_outlined, title: 'Facility Policies', description: 'Set basic rules for players (shown on your facility page).'),
-                SetupCheckRow(label: 'Allow Online Booking', hint: 'Players can book your courts from the GameAll Player app.', value: _policies.allowOnlineBooking, onChanged: (v) => setState(() => _policies = _policies.copyWith(allowOnlineBooking: v))),
+                SetupCheckRow(label: 'Allow Online Booking', hint: 'Players can book your courts from the GameAll app.', value: _policies.allowOnlineBooking, onChanged: (v) => setState(() => _policies = _policies.copyWith(allowOnlineBooking: v))),
                 SetupCheckRow(label: 'Allow Walk-in / Offline Booking', hint: 'Your front desk can take bookings for players who walk in.', value: _policies.allowWalkIn, onChanged: (v) => setState(() => _policies = _policies.copyWith(allowWalkIn: v))),
                 SetupCheckRow(label: 'Advance Payment Required', hint: 'Players must pay in advance to confirm a booking.', value: _policies.advancePaymentRequired, onChanged: (v) => setState(() => _policies = _policies.copyWith(advancePaymentRequired: v))),
                 SetupCheckRow(label: 'Allow Cancellations', hint: 'Players can cancel a booking, subject to your refund rules.', value: _policies.allowCancellations, onChanged: (v) => setState(() => _policies = _policies.copyWith(allowCancellations: v))),

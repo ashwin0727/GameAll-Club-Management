@@ -31,7 +31,7 @@ const sections: LegalSection[] = [
     title: "Court bookings you have paid in full",
     body: (
       <>
-        <p>You can cancel a court booking in GameAll Play under <strong>My bookings</strong>. Before you confirm, the app shows exactly what you will get back. The amount kept depends on how long is left before the booking starts:</p>
+        <p>You can cancel a court booking in GameAll under <strong>My bookings</strong>. Before you confirm, the app shows exactly what you will get back. The amount kept depends on how long is left before the booking starts:</p>
         <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50">
@@ -79,7 +79,7 @@ const sections: LegalSection[] = [
     body: (
       <ul className="list-disc space-y-1.5 pl-5">
         <li>Each venue sets its own membership and coaching terms, shown on the plan or programme before you pay. Fees for a period already started are normally not refundable.</li>
-        <li>If you joined by Auto Pay you can stop future charges at any time from your UPI app or from GameAll Play; nothing is charged after you cancel. A charge already made is not reversed automatically.</li>
+        <li>If you joined by Auto Pay you can stop future charges at any time from your UPI app or from GameAll; nothing is charged after you cancel. A charge already made is not reversed automatically.</li>
         <li>If you were charged by mistake, or twice, write to us and we will sort it out with the venue and Razorpay.</li>
       </ul>
     ),
@@ -100,7 +100,7 @@ export default function RefundPolicyPage() {
   return (
     <LegalPage
       title="Cancellation & Refund Policy"
-      intro={<p>How cancelling works in GameAll Play, and how and when refunds are returned. It is the same schedule the app shows you before you confirm.</p>}
+      intro={<p>How cancelling works in GameAll, and how and when refunds are returned. It is the same schedule the app shows you before you confirm.</p>}
       sections={sections}
     />
   );

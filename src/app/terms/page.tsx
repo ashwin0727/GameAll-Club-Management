@@ -4,7 +4,7 @@ import { LEGAL_CONTACT_EMAIL, LegalPage, type LegalSection } from "@/features/le
 
 export const metadata: Metadata = {
   title: `Terms & Conditions`,
-  description: "The terms for using GameAll Venue and GameAll Play.",
+  description: "The terms for using GameAll Venue and GameAll.",
 };
 
 const link = "text-primary hover:underline";
@@ -16,7 +16,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           By creating an account or using GameAll you agree to these terms. GameAll is made of two apps and a website: <strong>GameAll Venue</strong>, which gives sports
-          venues tools to manage bookings, memberships, coaching and payments, and <strong>GameAll Play</strong>, which lets players find those venues, book courts, join
+          venues tools to manage bookings, memberships, coaching and payments, and <strong>GameAll</strong>, which lets players find those venues, book courts, join
           memberships and coaching, and pay. You must be at least 18 and able to enter a binding agreement. If you use GameAll for a business, you confirm you may bind it.
         </p>
         <p>GameAll is the technology. The venue, not GameAll, provides the court, the coaching and the facility you book.</p>
@@ -125,7 +125,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms & Conditions"
-      intro={<p>These are the rules for using GameAll Venue and GameAll Play. Please read them before you create an account.</p>}
+      intro={<p>These are the rules for using GameAll Venue and GameAll. Please read them before you create an account.</p>}
       sections={sections}
     />
   );

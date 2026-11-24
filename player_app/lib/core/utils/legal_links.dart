@@ -1,6 +1,6 @@
 import '../config/app_config.dart';
 
-/// GameAll Play's own public legal pages (Privacy Policy, Terms & Conditions, Cancellation & Refund Policy, account deletion), hosted on
+/// GameAll's own public legal pages (Privacy Policy, Terms & Conditions, Cancellation & Refund Policy, account deletion), hosted on
 /// play.gameall.co (player_app/web). GameAll Venue has its own set on club.gameall.co. Google Play requires them to be reachable
 /// from inside the app.
 enum LegalPage {

@@ -87,7 +87,10 @@ export async function sendPush(
         token,
         notification: { title: message.title, body: message.body },
         data: message.data,
-        android: { priority: "HIGH", notification: { channel_id: "gameall_default" } },
+        // No channel_id on purpose: both apps (Venue and Play) name their own default channel in their manifest
+        // (com.google.firebase.messaging.default_notification_channel_id) and Android uses that one. Naming a channel here would
+        // force the Venue app's channel onto the Play app, which does not have it.
+        android: { priority: "HIGH" },
       },
     }),
   });

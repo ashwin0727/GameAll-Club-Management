@@ -97,7 +97,7 @@ class _DeleteAccountDialogState extends ConsumerState<_DeleteAccountDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'This permanently removes your GameAll Play sign-in and your profile (name, email and phone), and cancels any Auto Pay you set up so nobody is charged again.',
+              'This permanently removes your GameAll sign-in and your profile (name, email and phone), and cancels any Auto Pay you set up so nobody is charged again.',
               style: AppTextStyles.body(p.secondaryText),
             ),
             const SizedBox(height: 10),

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gameall_player/core/utils/legal_links.dart';
 
-// Google Play opens these pages and compares them with the app: they must exist, be about GameAll Play only, and be served from the
+// Google Play opens these pages and compares them with the app: they must exist, be about the GameAll player app only, and be served from the
 // Play site (play.gameall.co), not the venue website.
 void main() {
   const pages = {
@@ -14,10 +14,10 @@ void main() {
   };
 
   for (final e in pages.entries) {
-    test('web/${e.key}.html is a GameAll Play page', () {
+    test('web/${e.key}.html is a GameAll player page', () {
       final html = File('web/${e.key}.html').readAsStringSync();
       expect(html, contains('<h1>${e.value}</h1>'));
-      expect(html, contains('GameAll Play'));
+      expect(html, contains('GameAll'));
       expect(html, isNot(contains('club.gameall.co')));
       expect(html, isNot(contains('Venue app')));
     });

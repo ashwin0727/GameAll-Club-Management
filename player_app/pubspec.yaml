@@ -1,5 +1,5 @@
 name: gameall_player
-description: "GameAll Play - view registrations, start memberships, book courts and follow tournaments."
+description: "GameAll - view registrations, start memberships, book courts and follow tournaments."
 # Private package — never published to pub.dev.
 publish_to: 'none'
 

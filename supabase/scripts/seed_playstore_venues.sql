@@ -1,12 +1,12 @@
 -- ═════════════════════════════════════════════════════════════════════
--- PLAY STORE SCREENSHOT VENUES — eight more believable Chennai venues so the GameAll Play venue list, search and venue pages look full.
+-- PLAY STORE SCREENSHOT VENUES — eight more believable Chennai venues so the GameAll venue list, search and venue pages look full.
 --
 -- NOT a migration. Run by hand in the Supabase SQL editor (a TEST project, never your live data).
 --
 -- WHAT IT CREATES
 --   One hidden "demo owner" account (so your own login, and the Club app, are not affected) that owns eight venues across Chennai:
 --   badminton, pickleball, cricket, football and tennis courts, with courts, prices, opening hours, amenities, an address, a verified
---   map link and a few membership plans each. Every venue is ACTIVE, approved and verified, so GameAll Play lists it.
+--   map link and a few membership plans each. Every venue is ACTIVE, approved and verified, so GameAll lists it.
 --   The venue PHOTOS are copied from the photos you uploaded to your Smash Arena venue (this script cannot create photos itself).
 --
 -- BEFORE YOU RUN IT

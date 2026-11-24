@@ -1,4 +1,4 @@
-# GameAll Play
+# GameAll
 
 The players' app: view registrations, start memberships, book courts (guest booking) and follow tournaments.
 It lives beside the club-management app (`../mobile`) in the same repo and talks to the same Supabase project.

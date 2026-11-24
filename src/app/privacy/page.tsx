@@ -19,7 +19,7 @@ const sections: LegalSection[] = [
         </p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li><strong>GameAll Venue</strong>. The app (and website) a venue owner or staff member uses to run the venue.</li>
-          <li><strong>GameAll Play</strong>. The app (and website) a player uses to find venues, book courts, join memberships and coaching, and pay.</li>
+          <li><strong>GameAll</strong>. The app (and website) a player uses to find venues, book courts, join memberships and coaching, and pay.</li>
           <li>The public booking and membership pages a venue shares with its customers.</li>
         </ul>
         <p>
@@ -33,7 +33,7 @@ const sections: LegalSection[] = [
     title: "What we collect",
     body: (
       <>
-        <p><strong>If you are a player (GameAll Play)</strong></p>
+        <p><strong>If you are a player (GameAll)</strong></p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li><strong>Your account:</strong> your mobile number (it is your sign-in, verified with a one-time code by SMS), your name and, if you choose to give it, your email address.</li>
           <li><strong>What you do in the app:</strong> the bookings you make, memberships and coaching programmes you join, their schedules and attendance, and the payments and refunds that go with them.</li>
@@ -107,7 +107,7 @@ const sections: LegalSection[] = [
     title: "Deleting your account and data",
     body: (
       <p>
-        In GameAll Play open <strong>Profile → Support &amp; Legal → Delete my account</strong>; in GameAll Venue open <strong>Profile → Delete account</strong>. You can also
+        In GameAll open <strong>Profile → Support &amp; Legal → Delete my account</strong>; in GameAll Venue open <strong>Profile → Delete account</strong>. You can also
         ask from any browser without installing an app on the{" "}
         <Link className={link} href="/delete-account">account deletion page</Link>. Deleting removes your sign-in and personal data as described above, and cancels any Auto Pay
         so nobody is charged again.
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      intro={<p>This explains what information GameAll collects, why, who it is shared with, and the choices you have. It applies to GameAll Venue and GameAll Play alike. We have kept it plain.</p>}
+      intro={<p>This explains what information GameAll collects, why, who it is shared with, and the choices you have. It applies to GameAll Venue and GameAll alike. We have kept it plain.</p>}
       sections={sections}
     />
   );

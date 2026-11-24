@@ -1,4 +1,4 @@
-# Releasing GameAll Play to Google Play
+# Releasing GameAll to Google Play
 
 Everything below is about the Android app in `player_app/` (package id **`com.gameall.gameall_play`**, permanent once published). The Venue app is in `play-store-release.md`. Support contact for the listing: admin@gameall.co · gameall.co · 9360428761.
 

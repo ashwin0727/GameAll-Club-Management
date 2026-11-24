@@ -61,7 +61,7 @@ class PushService {
     try {
       await Firebase.initializeApp();
       await _local.initialize(
-        settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+        settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_gameall')),
         onDidReceiveNotificationResponse: (r) => _goTo(r.payload),
       );
       await _local
@@ -135,7 +135,7 @@ class PushService {
       title: n.title,
       body: n.body,
       notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(_channelId, 'GameAll notifications', importance: Importance.high, priority: Priority.high),
+        android: AndroidNotificationDetails(_channelId, 'GameAll notifications', icon: 'ic_stat_gameall', color: Color(0xFF4817C2), importance: Importance.high, priority: Priority.high),
       ),
       payload: m.data['route'] as String?,
     );

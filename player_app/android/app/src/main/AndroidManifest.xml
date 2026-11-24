@@ -5,17 +5,31 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <!-- Android 13+: the app must ask before it can show notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- The screen is locked to portrait, which Play would read as "this app REQUIRES a portrait screen" and hide it from devices without one.
+         It is only a preference, so say so: the app stays portrait, and the Play Console warning goes away. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false"/>
+    <!-- Asking for the approximate location would otherwise mark location hardware as REQUIRED and hide the app from devices without it. It is only used
+         to suggest the nearest city; the player can always pick a city by hand. -->
+    <uses-feature android:name="android.hardware.location" android:required="false"/>
+    <uses-feature android:name="android.hardware.location.network" android:required="false"/>
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:label="GameAll Play"
+        android:label="GameAll"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Notifications that arrive while the app is closed use this channel (created in push_service.dart). -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="gameall_player_default" />
+        <!-- Status-bar icon and accent colour for pushes that arrive while the app is closed (without these Android shows the launcher icon as a white square). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_gameall" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

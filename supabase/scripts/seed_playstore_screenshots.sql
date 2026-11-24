@@ -7,7 +7,7 @@
 --
 -- WHAT IT DOES
 --   1. Venue "Smash Arena Sports Hub" (Adyar, Chennai): a proper description, phone, indoor venue, all five amenities, the map link and the
---      photos marked VERIFIED, and the setup marked APPROVED, so GameAll Play lists it with photos and amenities.
+--      photos marked VERIFIED, and the setup marked APPROVED, so GameAll lists it with photos and amenities.
 --   2. The player (v_player_phone) is added as a customer at Smash Arena and at the extra Chennai venues (if you created them) and gets:
 --        Smash Arena:   3 upcoming PAID bookings, 1 upcoming booking with the balance still to pay, 4 past completed bookings,
 --                       1 cancelled booking that was refunded, an active paid membership (with its batch and timings), an older expired
@@ -19,7 +19,7 @@
 --   a. Run seed_2y_facility_dataset.sql first (the Venue app screenshots: bookings, members, coaching, finance, reports come from it).
 --   b. In GameAll Venue, open Profile > Facility > Photos and upload 3 to 4 REAL photos of a court (you may use free-licence or
 --      your own photos). This script cannot create photos. It only marks the ones you uploaded as verified.
---   c. Sign in once to GameAll Play with the test number (v_player_phone) so that player exists, and give it a name.
+--   c. Sign in once to GameAll with the test number (v_player_phone) so that player exists, and give it a name.
 --   d. Optional: run seed_playstore_venues.sql so the player also has data at the extra venues. Then run THIS file after it.
 --   e. Check the three values just below.
 --
@@ -249,6 +249,6 @@ begin
     end if;
   end loop;
 
-  raise notice 'Done. Sign in to GameAll Play as % and check Home, My Bookings, Memberships and Coaching.', v_player_phone;
+  raise notice 'Done. Sign in to GameAll as % and check Home, My Bookings, Memberships and Coaching.', v_player_phone;
 end
 $shots$;

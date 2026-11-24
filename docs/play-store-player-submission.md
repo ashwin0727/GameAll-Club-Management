@@ -1,8 +1,8 @@
-# GameAll Play — Play Console answers and store listing
+# GameAll — Play Console answers and store listing
 
 Written from what the app actually does (checked against the code and the release build's permissions on 14 Nov 2026). Re-check it if the app changes. Google's forms change wording now and then, so match the meaning, not the exact words. The Venue app's version of this document is `play-store-submission.md`; the legal pages are shared by both apps.
 
-App name **GameAll Play**, package id **`com.gameall.gameall_play`** (permanent once published).
+App name **GameAll**, package id **`com.gameall.gameall_play`** (permanent once published).
 
 ---
 
@@ -69,14 +69,14 @@ App name **GameAll Play**, package id **`com.gameall.gameall_play`** (permanent 
 
 ## Part 3 — Store listing
 
-**App name** (max 30): `GameAll Play`
+**App name** (max 30): `GameAll`
 
 **Short description** (max 80): `Find sports venues near you. Book courts, join memberships and coaching.`
 
 **Full description** (max 4,000):
 
 ```
-GameAll Play helps you find and book sports venues in a few taps.
+GameAll helps you find and book sports venues in a few taps.
 
 FIND A VENUE
 Browse venues in your city, see their sports, courts, timings, photos and amenities, and sort by what is nearest.
@@ -106,7 +106,7 @@ Need help? admin@gameall.co or visit gameall.co.
 
 **Release notes for 1.0.0** (max 500):
 ```
-First release of GameAll Play: find venues, book courts, join memberships and coaching, pay by UPI or card, and see your bookings and receipts.
+First release of GameAll: find venues, book courts, join memberships and coaching, pay by UPI or card, and see your bookings and receipts.
 ```
 
 **Category:** Sports (alternative: Lifestyle). **Tags:** Sports, Booking.

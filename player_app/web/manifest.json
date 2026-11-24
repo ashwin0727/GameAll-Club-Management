@@ -1,6 +1,6 @@
 {
-  "name": "GameAll Play",
-  "short_name": "GameAll Play",
+  "name": "GameAll",
+  "short_name": "GameAll",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#050C19",

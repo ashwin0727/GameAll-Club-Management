@@ -1,6 +1,6 @@
 # Play Console: App access, Data safety and screenshot shot list
 
-Copy-paste answers for GameAll Play (`com.gameall.gameall_play`) and GameAll Venue (`gameall.venue`). They match the privacy policies on play.gameall.co and club.gameall.co and the permissions in each app. If an app changes what it collects, update this page and the policy together.
+Copy-paste answers for GameAll (`com.gameall.gameall_play`) and GameAll Venue (`gameall.venue`). They match the privacy policies on play.gameall.co and club.gameall.co and the permissions in each app. If an app changes what it collects, update this page and the policy together.
 
 Store graphics are in `store-assets/play` and `store-assets/venue` (`icon-512.png`, `feature-graphic-1024x500.png`).
 
@@ -10,7 +10,7 @@ Store graphics are in `store-assets/play` and `store-assets/venue` (`icon-512.pn
 
 Choose **"All or some functionality is restricted"** for both apps, then **Add new instructions**.
 
-### GameAll Play
+### GameAll
 
 - Name: `Reviewer login`
 - Username / phone: `9000012345`
@@ -18,7 +18,7 @@ Choose **"All or some functionality is restricted"** for both apps, then **Add n
 - Any other information:
 
 ```
-GameAll Play signs in with a mobile number and a one-time code. For review, use this test number, no SMS is sent:
+GameAll signs in with a mobile number and a one-time code. For review, use this test number, no SMS is sent:
 1. Open the app and tap Continue with mobile number.
 2. Enter 9000012345.
 3. Enter the code 000000.
@@ -65,7 +65,7 @@ Before submitting: the reviewer account must be set up, approved and on an activ
 
 "Shared" in Google's form means sent to a third party for its own purposes. Our processors (Supabase, Razorpay, Firebase) act on our behalf, so they are **not** counted as sharing. Razorpay receives payment details on its own screen. Say so in the Play Console description of the payments row.
 
-### GameAll Play: data types
+### GameAll: data types
 
 | Category → type | Collected | Purpose | Optional | Notes |
 |---|---|---|---|---|
@@ -112,7 +112,7 @@ Not collected: location (the Venue app asks for no location permission), contact
 
 Use a phone of about 1080 x 2400 (or any phone emulator). Take 6 to 8 screenshots per app, portrait, no status-bar clutter, battery full, time 9:41. Sign in as the reviewer accounts above after the seed scripts have run. The first 2 or 3 matter most because they show before a user taps "more".
 
-### GameAll Play (player)
+### GameAll (player)
 
 | # | Screen | What must be visible |
 |---|---|---|

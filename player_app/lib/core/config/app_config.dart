@@ -27,7 +27,7 @@ class AppConfig {
     defaultValue: 'https://club.gameall.co',
   );
 
-  /// GameAll Play's own website, which hosts its Privacy Policy, Terms, Refund Policy and account-deletion page
+  /// GameAll's own website, which hosts its Privacy Policy, Terms, Refund Policy and account-deletion page
   /// (static files in player_app/web, deployed with the web app).
   static const String playSiteUrl = String.fromEnvironment(
     'PLAY_SITE_URL',

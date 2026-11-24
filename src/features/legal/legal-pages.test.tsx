@@ -9,7 +9,7 @@ import { STANDALONE_PUBLIC_ROUTES } from "@/lib/supabase/public-routes";
 describe("the shared legal pages", () => {
   it("the Privacy Policy covers both apps, location, payments and deletion", () => {
     render(<PrivacyPage />);
-    expect(screen.getAllByText(/GameAll Play/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/GameAll/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/GameAll Venue/).length).toBeGreaterThan(0);
     expect(screen.getByText(/approximate location/i)).toBeTruthy();
     expect(screen.getAllByText(/Razorpay/).length).toBeGreaterThan(0);
