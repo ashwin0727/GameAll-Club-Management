@@ -418,4 +418,63 @@ void main() {
       );
     });
   });
+
+  group('guestHoursBooked (Guest Bookings · Today)', () {
+    final dayStart = DateTime(2026, 11, 25);
+    final dayEnd = DateTime(2026, 11, 26);
+    Map<String, dynamic> row(String type, String status, int startHour, int endHour, {int endMinute = 0}) => {
+          'customer_type': type,
+          'status': status,
+          'start_time': DateTime(2026, 11, 25, startHour).toUtc().toIso8601String(),
+          'end_time': DateTime(2026, 11, 25, endHour, endMinute).toUtc().toIso8601String(),
+        };
+
+    test('adds up the hours of confirmed and completed guest bookings', () {
+      final rows = [row('GUEST', 'confirmed', 18, 20), row('GUEST', 'completed', 6, 7), row('GUEST', 'confirmed', 21, 22, endMinute: 30)];
+      expect(DashboardCalculator.guestHoursBooked(rows, dayStart, dayEnd), 4.5);
+    });
+
+    test('an unpaid hold (pending) and a cancelled booking never count', () {
+      final rows = [row('GUEST', 'pending', 18, 20), row('GUEST', 'cancelled', 6, 8), row('GUEST', 'confirmed', 10, 11)];
+      expect(DashboardCalculator.guestHoursBooked(rows, dayStart, dayEnd), 1);
+    });
+
+    test('member bookings are not guest bookings', () {
+      expect(DashboardCalculator.guestHoursBooked([row('MEMBER', 'confirmed', 18, 20)], dayStart, dayEnd), 0);
+    });
+
+    test('only the part of a booking inside the day counts', () {
+      final overnight = {
+        'customer_type': 'GUEST',
+        'status': 'confirmed',
+        'start_time': DateTime(2026, 11, 25, 23).toUtc().toIso8601String(),
+        'end_time': DateTime(2026, 11, 26, 1).toUtc().toIso8601String(),
+      };
+      expect(DashboardCalculator.guestHoursBooked([overnight], dayStart, dayEnd), 1);
+    });
+
+    test('the week runs Sunday to Saturday, whatever day it is today', () {
+      for (final today in [DateTime(2026, 11, 22), DateTime(2026, 11, 25), DateTime(2026, 11, 28)]) {
+        final days = DashboardCalculator.weekDaysSundayFirst(today);
+        expect(days.length, 7);
+        expect(days.first, DateTime(2026, 11, 22)); // a Sunday
+        expect(days.last, DateTime(2026, 11, 28)); // a Saturday
+        expect(days.first.weekday, DateTime.sunday);
+        expect(days.last.weekday, DateTime.saturday);
+      }
+    });
+
+    test('a week that spans two months keeps its order', () {
+      final days = DashboardCalculator.weekDaysSundayFirst(DateTime(2026, 12, 1));
+      expect(days.first, DateTime(2026, 11, 29));
+      expect(days.last, DateTime(2026, 12, 5));
+    });
+
+    test('formats hours', () {
+      expect(DashboardCalculator.formatHours(0), '0 hrs');
+      expect(DashboardCalculator.formatHours(1), '1 hr');
+      expect(DashboardCalculator.formatHours(6), '6 hrs');
+      expect(DashboardCalculator.formatHours(4.5), '4.5 hrs');
+    });
+  });
 }

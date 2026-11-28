@@ -31,6 +31,7 @@ export function BookingToolbar({
   onNext,
   onToday,
   onGuestBooking,
+  prevDisabled = false,
 }: {
   view: CalView;
   onViewChange: (v: CalView) => void;
@@ -40,6 +41,8 @@ export function BookingToolbar({
   onToday: () => void;
   /** Opens the guest booking page. */
   onGuestBooking: () => void;
+  /** Going back any further would pass the month the venue registered. */
+  prevDisabled?: boolean;
 }) {
   const perms = usePermissionContext();
   // Without a permission context (e.g. mid-onboarding) the page's own role gate already applied.
@@ -54,7 +57,8 @@ export function BookingToolbar({
           type="button"
           aria-label="Previous"
           onClick={onPrev}
-          className={ICON_BTN}
+          disabled={prevDisabled}
+          className={cn(ICON_BTN, prevDisabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground")}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>

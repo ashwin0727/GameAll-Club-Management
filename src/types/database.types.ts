@@ -4533,6 +4533,26 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["coaches"]["Row"];
       };
+      start_coach_onboarding: {
+        Args: { p_facility_id: string; p_user_id: string; p_data: unknown };
+        Returns: string;
+      };
+      save_coach_onboarding_step: {
+        Args: { p_coach_id: string; p_step: number; p_data: unknown };
+        Returns: undefined;
+      };
+      get_coach_onboarding: {
+        Args: { p_coach_id: string };
+        Returns: unknown;
+      };
+      complete_coach_onboarding: {
+        Args: { p_coach_id: string; p_legal: unknown };
+        Returns: undefined;
+      };
+      list_coach_onboarding_drafts: {
+        Args: { p_facility_id: string };
+        Returns: { coach_id: string; full_name: string; current_step: number }[];
+      };
       update_coach: {
         Args: {
           p_coach_id: string;

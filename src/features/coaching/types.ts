@@ -185,6 +185,107 @@ export interface CoachInput {
   rating?: number | null;
 }
 
+// ── Coach onboarding (5-step Add Coach) ──────────────────────────────────────
+export const COACH_ONBOARDING_STEPS = [
+  "Identity & Basic Profile",
+  "Expertise & Credentials",
+  "Sessions & Pricing",
+  "Payments, Payouts & KYC",
+  "Review & Agreements",
+] as const;
+
+export type CoachSessionFormat = "ONE_TO_ONE" | "GROUP" | "ASYNC";
+export type CoachPayoutMethod = "BANK_TRANSFER" | "UPI";
+export type CoachPayoutFrequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY";
+
+export interface CoachCertificate {
+  name: string;
+  issuer: string;
+  year: number | null;
+  /** Storage path in the private coach-credentials bucket; empty until a file is uploaded. */
+  path: string;
+}
+
+export interface CoachOnboardingData {
+  displayName: string;
+  location: string;
+  timezone: string;
+  languages: string[];
+  shortBio: string;
+  dateOfBirth: string | null;
+  niche: string;
+  subSpecialties: string[];
+  experienceYears: number | null;
+  targetAudience: string[];
+  methodology: string;
+  certificates: CoachCertificate[];
+  sportIds: string[];
+  expertiseLevels: string[];
+  sessionFormats: CoachSessionFormat[];
+  sessionDurations: number[];
+  defaultSessionDurationMinutes: number | null;
+  perSessionRateMinor: number | null;
+  weeklyRateMinor: number | null;
+  monthlyRateMinor: number | null;
+  availability: CoachAvailabilityWindow[];
+}
+
+/** What the owner types into Step 4. A blank accountNumber / ifsc / upiId / taxId means "keep what is saved". */
+export interface CoachPayoutInput {
+  entityType: "INDIVIDUAL" | "BUSINESS";
+  legalName: string;
+  businessAddress: string;
+  taxId: string;
+  payoutMethod: CoachPayoutMethod;
+  accountHolderName: string;
+  accountNumber: string;
+  ifsc: string;
+  upiId: string;
+  payoutFrequency: CoachPayoutFrequency;
+  cancellationPolicy: string;
+}
+
+/** What the server returns for Step 4 — secrets are only ever the last 4 characters. */
+export interface CoachPayoutMasked {
+  entityType: "INDIVIDUAL" | "BUSINESS";
+  legalName: string | null;
+  businessAddress: string | null;
+  taxIdMasked: string | null;
+  payoutMethod: CoachPayoutMethod;
+  accountHolderName: string | null;
+  accountNumberMasked: string | null;
+  ifsc: string | null;
+  upiId: string | null;
+  currency: string;
+  payoutFrequency: CoachPayoutFrequency;
+  cancellationPolicy: string | null;
+}
+
+export interface CoachOnboarding {
+  coachId: string;
+  userId: string;
+  currentStep: number;
+  stepsDone: number[];
+  onboardingStatus: "DRAFT" | "COMPLETE";
+  payoutStatus: "PENDING" | "COMPLETE";
+  canManagePayouts: boolean;
+  data: CoachOnboardingData;
+  payout: CoachPayoutMasked | null;
+}
+
+export interface CoachOnboardingDraft {
+  coachId: string;
+  fullName: string;
+  currentStep: number;
+}
+
+export interface CoachLegalAgreements {
+  terms: boolean;
+  ethics: boolean;
+  privacy: boolean;
+  commission: boolean;
+}
+
 /** The Coaching landing page's "Coaching Insights" panel, for the Last 30/60/90 Days dropdown. */
 export interface CoachingInsights {
   windowDays: 30 | 60 | 90;

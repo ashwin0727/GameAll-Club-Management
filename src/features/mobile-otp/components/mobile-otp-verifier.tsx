@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sendMobileOtp, tenDigitMobile, verifyMobileOtp, type MobileOtpPurpose } from "../mobile-otp";
 
-const RESEND_SECONDS = 30;
+// The OTP is spoken on a phone call; calling again is allowed after 1 minute 30 seconds.
+const RESEND_SECONDS = 90;
+const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 /**
  * "Send OTP → enter the 6-digit code" for a mobile number that is typed elsewhere. Renders under the phone input.
@@ -114,7 +116,7 @@ export function MobileOtpVerifier({
               Verify
             </Button>
             <Button type="button" variant="ghost" size="sm" className="h-9" disabled={cooldown > 0 || busy !== null} onClick={() => void send()}>
-              {cooldown > 0 ? `Call again in ${cooldown}s` : "Call Again"}
+              {cooldown > 0 ? `Call again in ${clock(cooldown)}` : "Call again"}
             </Button>
           </div>
         </div>

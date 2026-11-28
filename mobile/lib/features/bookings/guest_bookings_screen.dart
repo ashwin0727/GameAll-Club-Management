@@ -72,7 +72,10 @@ String _iso(DateTime d) =>
 /// Guest Bookings — an overview hero with a breakdown chart on top, then a
 /// searchable / multi-filterable list of guest court bookings.
 class GuestBookingsScreen extends ConsumerStatefulWidget {
-  const GuestBookingsScreen({super.key});
+  const GuestBookingsScreen({super.key, this.todayOnly = false});
+
+  /// Start with the date filter set to today only (from the Home "Guest Bookings · Today" card).
+  final bool todayOnly;
 
   @override
   ConsumerState<GuestBookingsScreen> createState() =>
@@ -108,6 +111,12 @@ class _GuestBookingsScreenState extends ConsumerState<GuestBookingsScreen> {
   @override
   void initState() {
     super.initState();
+    // Opened from the Home "Guest Bookings · Today" card: the date filter starts as today only.
+    if (widget.todayOnly) {
+      final now = DateTime.now();
+      _from = DateTime(now.year, now.month, now.day);
+      _to = _from;
+    }
     _load();
   }
 

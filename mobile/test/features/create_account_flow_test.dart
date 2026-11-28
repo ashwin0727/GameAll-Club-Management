@@ -205,9 +205,10 @@ void main() {
 
     testWidgets('shows six boxes, the countdown, and a disabled button until all six digits are in', (tester) async {
       await openPhone(tester);
-      expect(find.text('We’ve sent a 6-digit OTP to'), findsOneWidget);
-      expect(find.textContaining('Resend OTP in ', findRichText: true), findsOneWidget);
-      expect(find.textContaining('00:30', findRichText: true), findsOneWidget);
+      expect(find.text('Please pick up our call. You will hear your 6-digit OTP on'), findsOneWidget);
+      expect(find.text('Accept the incoming call, listen to the code and enter it above.'), findsOneWidget);
+      expect(find.textContaining('Call again in ', findRichText: true), findsOneWidget);
+      expect(find.textContaining('01:30', findRichText: true), findsOneWidget);
       expect(tester.widget<Opacity>(find.descendant(of: find.byKey(const ValueKey('otp-submit')), matching: find.byType(Opacity)).first).opacity, lessThan(1));
 
       await _enterCode(tester, '52849');
@@ -218,18 +219,18 @@ void main() {
       }
     });
 
-    testWidgets('the countdown ticks down and then offers Resend OTP, which sends a fresh code', (tester) async {
+    testWidgets('the countdown ticks down and then offers Call again, which calls with a fresh code', (tester) async {
       final auth = await openPhone(tester);
       await tester.pump(const Duration(seconds: 6));
-      expect(find.textContaining('00:24', findRichText: true), findsOneWidget);
+      expect(find.textContaining('01:24', findRichText: true), findsOneWidget);
 
-      await tester.pump(const Duration(seconds: 25));
+      await tester.pump(const Duration(seconds: 85));
       expect(find.byKey(const ValueKey('otp-resend')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('otp-resend')));
       await _step(tester);
       expect(auth.calls.where((c) => c.startsWith('sendPhone')).length, 2);
-      expect(find.textContaining('00:30', findRichText: true), findsOneWidget);
-      expect(find.text('A new OTP has been sent.'), findsOneWidget);
+      expect(find.textContaining('01:30', findRichText: true), findsOneWidget);
+      expect(find.text('We are calling you again. Please pick up the call.'), findsOneWidget);
     });
 
     testWidgets('a wrong code shows the message and stays on the page', (tester) async {

@@ -224,7 +224,33 @@ class DashboardSummary {
     required this.memberships,
     required this.payments,
     required this.attentionItems,
+    this.guestHoursToday = 0,
+    this.weekCollected = const [],
   });
+
+  /// Collected (paid) revenue for each day of the CURRENT calendar week, Sunday first through Saturday (seven points; days still to come
+  /// are zero). Independent of the month shown in the revenue overview.
+  final List<RevenueTrendPoint> weekCollected;
+
+  /// Hours of guest bookings (confirmed or completed, not unpaid holds) today, midnight to 11:59 PM, for the courts in view.
+  final double guestHoursToday;
+
+  /// The same summary with only the Revenue Overview replaced (paging its month must not reload anything else).
+  DashboardSummary withRevenueOverview(RevenueOverview overview) => DashboardSummary(
+        facilityName: facilityName,
+        facilityCity: facilityCity,
+        sports: sports,
+        selectedFacilitySportId: selectedFacilitySportId,
+        kpis: kpis,
+        utilization: utilization,
+        scheduleTimeline: scheduleTimeline,
+        revenueOverview: overview,
+        memberships: memberships,
+        payments: payments,
+        attentionItems: attentionItems,
+        guestHoursToday: guestHoursToday,
+        weekCollected: weekCollected,
+      );
 
   final String facilityName;
   final String facilityCity;

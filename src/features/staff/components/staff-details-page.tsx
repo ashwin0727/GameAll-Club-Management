@@ -27,7 +27,7 @@ import { usePermissionContext } from "@/features/auth/context/permission-provide
 import { PermissionDenied } from "@/features/staff/components/permission-denied";
 import { StaffCredentialsCard } from "@/features/staff/components/staff-credentials-card";
 import { fmtDate, initials, statusBadge } from "@/features/staff/components/staff-page";
-import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from "@/features/coaching/components/use-add-coach-form";
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from "@/features/coaching/components/use-coach-onboarding";
 import type { Permission, ResetStaffPasswordResult, RoleRow, StaffDetail } from "@/features/staff/types";
 
 const TABS = ["Overview", "Access & Permissions", "Activity", "Notes"] as const;

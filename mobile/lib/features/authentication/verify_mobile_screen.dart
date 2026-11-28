@@ -10,7 +10,8 @@ import '../../data/repositories/repository_providers.dart';
 import '../../shared/widgets/app_button.dart';
 import 'session_controller.dart';
 
-const _resendCooldownSeconds = 30;
+// Calling again is allowed after 1 minute 30 seconds.
+const _resendCooldownSeconds = 90;
 
 /// Signup step 2 (after the email code): the new owner proves their mobile number with an OTP read out in a phone call. Once it checks out
 /// the session refreshes and the router sends them on to onboarding.
@@ -150,7 +151,7 @@ class _VerifyMobileScreenState extends ConsumerState<VerifyMobileScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 SecondaryButton(
-                  label: _cooldown > 0 ? 'Call again in ${_cooldown}s' : 'Call again',
+                  label: _cooldown > 0 ? 'Call again in ${(_cooldown ~/ 60).toString().padLeft(2, '0')}:${(_cooldown % 60).toString().padLeft(2, '0')}' : 'Call again',
                   onPressed: _busy || _cooldown > 0 ? null : _send,
                 ),
                 TextButton(

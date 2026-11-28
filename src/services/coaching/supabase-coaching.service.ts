@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { todaysActiveCount } from "@/features/coaching/active-sessions";
 import { ServiceError } from "@/services/shared/service-error";
+import { validateCertificateFile } from "@/features/coaching/coach-onboarding-validation";
 import type { Database } from "@/types/database.types";
 import type {
   ActiveBatchWithStudents,
@@ -12,6 +13,10 @@ import type {
   CoachDetail,
   CoachFilters,
   CoachInput,
+  CoachLegalAgreements,
+  CoachOnboarding,
+  CoachOnboardingData,
+  CoachOnboardingDraft,
   CoachOption,
   CoachPage,
   CoachSort,
@@ -269,6 +274,90 @@ export class SupabaseCoachingService {
     });
     if (error || !data) throw mapError(error);
     return data.id;
+  }
+
+  // ── Coach onboarding (5-step Add Coach) ───────────────────────────────────
+  async startCoachOnboarding(
+    facilityId: string,
+    userId: string,
+    identity: Pick<CoachOnboardingData, "displayName" | "location" | "timezone" | "languages" | "shortBio"> & { dateOfBirth: string | null },
+  ): Promise<string> {
+    const { data, error } = await this.supabase.rpc("start_coach_onboarding", {
+      p_facility_id: facilityId,
+      p_user_id: userId,
+      p_data: identity,
+    });
+    if (error || !data) throw mapError(error);
+    return data as string;
+  }
+
+  async saveCoachOnboardingStep(coachId: string, step: 1 | 2 | 3 | 4, data: Record<string, unknown>): Promise<void> {
+    const { error } = await this.supabase.rpc("save_coach_onboarding_step", { p_coach_id: coachId, p_step: step, p_data: data });
+    if (error) throw mapError(error);
+  }
+
+  async getCoachOnboarding(coachId: string): Promise<CoachOnboarding> {
+    const { data, error } = await this.supabase.rpc("get_coach_onboarding", { p_coach_id: coachId });
+    if (error || !data) throw mapError(error);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = data as any;
+    const id = g.identity ?? {};
+    const ex = g.expertise ?? {};
+    const sv = g.services ?? {};
+    return {
+      coachId: g.coachId,
+      userId: g.userId,
+      currentStep: g.currentStep,
+      stepsDone: g.stepsDone ?? [],
+      onboardingStatus: g.onboardingStatus,
+      payoutStatus: g.payoutStatus,
+      canManagePayouts: Boolean(g.canManagePayouts),
+      data: {
+        displayName: id.displayName ?? "",
+        location: id.location ?? "",
+        timezone: id.timezone ?? "Asia/Kolkata",
+        languages: id.languages ?? [],
+        shortBio: id.shortBio ?? "",
+        dateOfBirth: id.dateOfBirth ?? null,
+        niche: ex.niche ?? "",
+        subSpecialties: ex.subSpecialties ?? [],
+        experienceYears: ex.experienceYears ?? null,
+        targetAudience: ex.targetAudience ?? [],
+        methodology: ex.methodology ?? "",
+        certificates: ex.certificates ?? [],
+        sportIds: ex.sportIds ?? [],
+        expertiseLevels: ex.expertiseLevels ?? [],
+        sessionFormats: sv.sessionFormats ?? [],
+        sessionDurations: sv.sessionDurations ?? [],
+        defaultSessionDurationMinutes: sv.defaultSessionDurationMinutes ?? null,
+        perSessionRateMinor: sv.perSessionRateMinor ?? null,
+        weeklyRateMinor: sv.weeklyRateMinor ?? null,
+        monthlyRateMinor: sv.monthlyRateMinor ?? null,
+        availability: sv.availability ?? [],
+      },
+      payout: g.payout ?? null,
+    };
+  }
+
+  async completeCoachOnboarding(coachId: string, legal: CoachLegalAgreements): Promise<void> {
+    const { error } = await this.supabase.rpc("complete_coach_onboarding", { p_coach_id: coachId, p_legal: legal });
+    if (error) throw mapError(error);
+  }
+
+  async listCoachOnboardingDrafts(facilityId: string): Promise<CoachOnboardingDraft[]> {
+    const { data, error } = await this.supabase.rpc("list_coach_onboarding_drafts", { p_facility_id: facilityId });
+    if (error) throw mapError(error);
+    return (data ?? []).map((r) => ({ coachId: r.coach_id, fullName: r.full_name, currentStep: r.current_step }));
+  }
+
+  /** Uploads a certificate into the private coach-credentials bucket and returns its storage path. */
+  async uploadCoachCertificate(facilityId: string, coachId: string, file: File): Promise<string> {
+    const problem = validateCertificateFile(file);
+    if (problem) throw new ServiceError("COACHING_DATA_ERROR", problem);
+    const path = `${facilityId}/${coachId}/${crypto.randomUUID()}-${file.name.replace(/[^A-Za-z0-9._-]/g, "_")}`;
+    const { error } = await this.supabase.storage.from("coach-credentials").upload(path, file, { contentType: file.type });
+    if (error) throw new ServiceError("COACHING_DATA_ERROR", "Could not upload this certificate. Please try again.");
+    return path;
   }
 
   async updateCoach(coachId: string, input: CoachInput): Promise<void> {

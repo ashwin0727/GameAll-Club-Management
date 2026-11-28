@@ -1,4 +1,4 @@
-import type { DashboardSummary, DateRangePreset } from "@/features/dashboard/types";
+import type { DashboardSummary, DateRangePreset, RevenueOverview } from "@/features/dashboard/types";
 import type { Facility } from "@/features/onboarding/types";
 
 export interface DashboardSummaryParams {
@@ -23,4 +23,9 @@ export interface DashboardSummaryParams {
  */
 export interface DashboardService {
   getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary>;
+  /**
+   * Just the Revenue Overview panel for one month. Paging the month asks for this and nothing else, so the rest of the page
+   * (totals, schedule, utilization, memberships, ...) is not fetched again.
+   */
+  getRevenueOverview(facility: Facility, params: { facilitySportIds: string[] | null; revenueMonthOffset: number }): Promise<RevenueOverview>;
 }

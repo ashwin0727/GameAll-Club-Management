@@ -4,10 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { CoachesListPanel } from "@/features/coaching/components/coaches-list-panel";
 import { renderWithProviders } from "@/test/harness";
 import { useUiStore } from "@/stores/ui-store";
+import { routerMock, resetRouterMock } from "@/test/router-mock";
 import type { CoachRow } from "@/features/coaching/types";
 
 const listCoaches = vi.fn();
 const listCoachCandidates = vi.fn();
+const listCoachOnboardingDrafts = vi.fn();
 const addCoach = vi.fn();
 const listRoles = vi.fn();
 
@@ -23,7 +25,7 @@ vi.mock("@/features/auth/context/permission-provider", () => ({
 }));
 
 vi.mock("@/services/coaching", () => ({
-  getCoachingService: () => ({ listCoaches, listCoachCandidates, addCoach }),
+  getCoachingService: () => ({ listCoaches, listCoachCandidates, addCoach, listCoachOnboardingDrafts }),
 }));
 
 vi.mock("@/services/staff", () => ({
@@ -62,8 +64,10 @@ const COACH: CoachRow = {
 describe("CoachesListPanel", () => {
   beforeEach(() => {
     useUiStore.setState({ selectedSportIds: null });
+    resetRouterMock();
     listCoaches.mockReset().mockResolvedValue({ coaches: [COACH], totalCount: 1 });
     listCoachCandidates.mockReset().mockResolvedValue([]);
+    listCoachOnboardingDrafts.mockReset().mockResolvedValue([]);
     addCoach.mockReset().mockResolvedValue("coach-2");
     listRoles.mockReset().mockResolvedValue([]);
   });
@@ -129,24 +133,20 @@ describe("CoachesListPanel", () => {
     expect(await screen.findByText(/no coaches/i)).toBeInTheDocument();
   });
 
-  it("opens the Add Coach slide-over from its own button and refreshes the roster once a coach is added", async () => {
-    listCoachCandidates.mockResolvedValue([{ userId: "u2", fullName: "Priya Sharma", email: null, phone: null, avatarUrl: null, title: null }]);
+  it("goes to the full Add Coach page from its own button (no slide-over)", async () => {
     const user = userEvent.setup();
     renderWithProviders(<CoachesListPanel facilityId="f1" showAddButton />);
     await screen.findByText("Arjun V");
 
     await user.click(screen.getByRole("button", { name: "Add Coach" }));
-    expect(await screen.findByRole("heading", { name: "Add Coach" })).toBeInTheDocument();
+    expect(routerMock.push).toHaveBeenCalledWith("/coaching/coaches/add");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole("combobox", { name: /staff member/i }));
-    await user.click(await screen.findByText(/Priya Sharma/i));
-    await user.click(screen.getByRole("button", { name: "Badminton" }));
-    await user.click(screen.getByRole("button", { name: "Beginner" }));
-
-    listCoaches.mockClear();
-    await user.click(screen.getByRole("button", { name: "+ Add Coach" }));
-
-    expect(await screen.findByText("Coach Added Successfully!")).toBeInTheDocument();
-    await waitFor(() => expect(listCoaches).toHaveBeenCalled()); // roster refreshed via onCoachAdded
+  it("lists onboarding drafts with their step and a Resume link", async () => {
+    listCoachOnboardingDrafts.mockResolvedValue([{ coachId: "c9", fullName: "Ravi Kumar", currentStep: 3 }]);
+    renderWithProviders(<CoachesListPanel facilityId="f1" showAddButton />);
+    expect(await screen.findByText("Draft – step 3 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Resume" })).toHaveAttribute("href", "/coaching/coaches/add?coach=c9");
   });
 });

@@ -100,6 +100,15 @@ class DashboardRepository {
           .where((b) => playingAreaIds.contains(b['court_id']))
           .toList();
       final membershipSessionRows = (fetched[4] as List<dynamic>).cast<Map<String, dynamic>>();
+      final guestHoursToday = DashboardCalculator.guestHoursBooked(todayBookingMaps, dayStart, dayEnd);
+      final weekCollected = await _fetchWeekCollected(
+        facilityId: facilityId,
+        now: now,
+        sportId: facilitySportId,
+        playingAreasAll: playingAreasAll,
+        viewed: revenueOverview,
+        viewedMonthOffset: revenueMonthOffset,
+      );
 
       final utilizationPlayingAreas = playingAreas
           .map((a) => (id: a.id, name: a.name, facilitySportId: a.facilitySportId))
@@ -210,6 +219,8 @@ class DashboardRepository {
       );
 
       return DashboardSummary(
+        guestHoursToday: guestHoursToday,
+        weekCollected: weekCollected,
         facilityName: facility.name,
         facilityCity: facility.address.city,
         sports: facilitySportsAll.map((fs) {
@@ -486,6 +497,57 @@ class DashboardRepository {
 
   /// The Revenue Overview panel (its own month filter, independent of the period). Money actually received, dated the day
   /// it arrived and counted on the viewer's local calendar day.
+  /// What was collected on each day of the current calendar week, Sunday through Saturday. The numbers come from the same revenue
+  /// overview as the rest of the dashboard (so they add up the same way and follow the sport filter), one call per month the week touches
+  /// (a week can span two months). The month already loaded for the revenue overview is reused when it is the right one. Best-effort:
+  /// a failure leaves the bars at zero rather than breaking the dashboard.
+  Future<List<RevenueTrendPoint>> _fetchWeekCollected({
+    required String facilityId,
+    required DateTime now,
+    required String? sportId,
+    required List<PlayingArea> playingAreasAll,
+    required RevenueOverview viewed,
+    required int viewedMonthOffset,
+  }) async {
+    final days = DashboardCalculator.weekDaysSundayFirst(now);
+    int offsetOf(DateTime d) => (now.year * 12 + now.month) - (d.year * 12 + d.month);
+
+    final byDate = <String, int>{};
+    for (final offset in {for (final d in days) offsetOf(d)}) {
+      try {
+        final overview = offset == viewedMonthOffset
+            ? viewed
+            : await _fetchRevenueOverview(
+                facilityId: facilityId,
+                now: now,
+                monthOffset: offset,
+                sportId: sportId,
+                playingAreasAll: playingAreasAll,
+              );
+        for (final p in overview.points) {
+          byDate[p.date] = p.amountInr;
+        }
+      } catch (_) {}
+    }
+    return [for (final d in days) RevenueTrendPoint(date: _dateKey(d), amountInr: byDate[_dateKey(d)] ?? 0)];
+  }
+
+  /// Just the Revenue Overview for one month: paging its month asks for this alone, not the whole dashboard.
+  Future<RevenueOverview> getRevenueOverview(Facility facility, {String? facilitySportId, required int monthOffset}) async {
+    try {
+      return await _fetchRevenueOverview(
+        facilityId: facility.id,
+        now: DateTime.now(),
+        monthOffset: monthOffset,
+        sportId: facilitySportId,
+        // Only the fallback (migration 0166 not applied) reads the courts, and only when a sport is picked.
+        playingAreasAll: facilitySportId == null ? const [] : await _playingAreaRepo.getPlayingAreas(facility.id),
+      );
+    } on PostgrestException catch (e) {
+      throw mapSupabaseError(e);
+    }
+  }
+
   Future<RevenueOverview> _fetchRevenueOverview({
     required String facilityId,
     required DateTime now,

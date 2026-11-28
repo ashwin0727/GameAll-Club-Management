@@ -85,6 +85,13 @@ export function BookingOperationsView() {
     isError: facilityError,
   } = useFacility();
   const facilityId = facility?.id ?? null;
+  // The calendar starts at the month the venue registered: nothing earlier can be opened (no data exists there, and
+  // membership windows would otherwise be drawn for any year paged back to).
+  const minDate = useMemo(() => {
+    if (!facility?.createdAt) return null;
+    const c = new Date(facility.createdAt);
+    return Number.isNaN(c.getTime()) ? null : new Date(c.getFullYear(), c.getMonth(), 1);
+  }, [facility?.createdAt]);
   // The sports ticked in the top bar (null = All Sports): the calendar shows every court of those sports.
   const sportScope = useSportFilter(facilityId).sportSet;
 
@@ -254,7 +261,20 @@ export function BookingOperationsView() {
     else if (e.href) router.push(e.href);
   }
 
+  /** Whether a whole period (a day, week or month) lies before the registration month. */
+  function beforeStart(a: Date, v: CalView) {
+    return minDate !== null && rangeFor(v, a).to.getTime() <= minDate.getTime();
+  }
+
+  function stepAnchor(delta: -1 | 1) {
+    setAnchor((a) => {
+      const next = shiftAnchor(view, a, delta);
+      return delta < 0 && beforeStart(next, view) ? a : next;
+    });
+  }
+
   function pickDay(day: Date) {
+    if (minDate !== null && day.getTime() < minDate.getTime()) return;
     setAnchor(day);
     setView("day");
     setTab("court");
@@ -498,8 +518,9 @@ export function BookingOperationsView() {
             view={view}
             onViewChange={setView}
             anchor={anchor}
-            onPrev={() => setAnchor((a) => shiftAnchor(view, a, -1))}
-            onNext={() => setAnchor((a) => shiftAnchor(view, a, 1))}
+            onPrev={() => stepAnchor(-1)}
+            onNext={() => stepAnchor(1)}
+            prevDisabled={beforeStart(shiftAnchor(view, anchor, -1), view)}
             onToday={() => setAnchor(new Date())}
             onGuestBooking={() => router.push("/guest-bookings/new")}
           />

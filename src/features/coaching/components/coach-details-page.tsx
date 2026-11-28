@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import { getCoachingService } from "@/services/coaching";
 import { getStaffService } from "@/services/staff";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { CoachAvailabilityEditor, validateAvailabilityWindows } from "@/features/coaching/components/coach-availability-editor";
-import { AVATAR_ACCEPT, AVATAR_MAX_BYTES, DURATION_OPTIONS } from "@/features/coaching/components/use-add-coach-form";
+import { AVATAR_ACCEPT, AVATAR_MAX_BYTES } from "@/features/coaching/components/use-coach-onboarding";
 import { useFacilitySportOptions } from "@/features/facility/hooks/use-facility-sport-options";
 import { COACH_EXPERTISE_LEVELS, type CoachAvailabilityWindow, type CoachDetail, type CoachStatus } from "@/features/coaching/types";
 import {
@@ -31,6 +32,7 @@ import {
   PageHeader,
   TableSkeleton,
   Tabs,
+  DURATION_OPTIONS,
   coachStatusBadge,
   enrollmentStatusBadge,
   fmtDate,
@@ -66,6 +68,16 @@ export function CoachDetailsPage({ coachId }: { coachId: string }) {
   }, [load]);
 
   const canManage = perms?.can("COACHING_MANAGE_COACHES") ?? false;
+
+  // Onboarding state (draft / KYC). Coaches created before the 5-step flow have no record, so a failure is simply "nothing to show".
+  const [onboarding, setOnboarding] = useState<{ status: "DRAFT" | "COMPLETE"; step: number; kycDone: boolean } | null>(null);
+  useEffect(() => {
+    if (!canManage) return;
+    getCoachingService()
+      .getCoachOnboarding(coachId)
+      .then((o) => setOnboarding({ status: o.onboardingStatus, step: o.currentStep, kycDone: o.payoutStatus === "COMPLETE" }))
+      .catch(() => setOnboarding(null));
+  }, [coachId, canManage]);
 
   if (state === "error") {
     return (
@@ -124,6 +136,29 @@ export function CoachDetailsPage({ coachId }: { coachId: string }) {
           </div>
         </div>
       </Card>
+
+      {onboarding?.status === "DRAFT" && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 border-warning/40 bg-warning/10 p-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Badge variant="warning">Draft – step {onboarding.step} of 5</Badge>
+            <span className="text-muted-foreground">Onboarding isn&apos;t finished, so this coach can&apos;t be booked yet.</span>
+          </div>
+          <Link href={`/coaching/coaches/add?coach=${coachId}`} className="text-sm font-medium text-primary hover:underline">
+            Resume onboarding
+          </Link>
+        </Card>
+      )}
+      {onboarding?.status === "COMPLETE" && !onboarding.kycDone && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Badge variant="warning">KYC pending</Badge>
+            <span className="text-muted-foreground">Payout and tax details haven&apos;t been added yet.</span>
+          </div>
+          <Link href={`/coaching/coaches/add?coach=${coachId}&step=4`} className="text-sm font-medium text-primary hover:underline">
+            Add payout details
+          </Link>
+        </Card>
+      )}
 
       <Tabs tabs={TABS} active={tab} onChange={setTab} />
 

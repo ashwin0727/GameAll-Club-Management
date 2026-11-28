@@ -24,7 +24,7 @@ const PAGES = [
     ["MEMBERSHIP_SESSIONS_VIEW"], ["MEMBERSHIP_SESSIONS_EDIT"], []],
   // ── Coaching ──
   ["COACHING_OVERVIEW", "Coaching", "Coaching & Coaches", "Coaching overview and the coaches.", true, null,
-    ["COACHING_VIEW"], ["COACHING_MANAGE_COACHES"], []],
+    ["COACHING_VIEW"], ["COACHING_MANAGE_COACHES"], ["COACHING_MANAGE_COACH_PAYOUTS"]],
   ["COACHING_PROGRAMS", "Coaching", "Programs", "Coaching programs and batches.", true, null,
     ["COACHING_PROGRAMS_VIEW"], ["COACHING_MANAGE_PROGRAMS", "COACHING_MANAGE_PRICING"], []],
   ["COACHING_STUDENTS", "Coaching", "Students", "Students, enrollments and progress.", true, null,

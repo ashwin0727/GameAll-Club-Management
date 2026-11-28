@@ -10,6 +10,7 @@ import '../../core/responsive/responsive_layout.dart';
 import '../../core/routing/app_routes.dart';
 import '../../core/routing/page_transitions.dart';
 import '../bookings/guest_booking_screen.dart';
+import 'dashboard_calculator.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -277,6 +278,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+  /// Loads just the Revenue Overview for the picked month and swaps it into the summary in place (no skeleton, no other call).
+  Future<void> _reloadRevenueOverview() async {
+    final facility = _facility;
+    if (facility == null || _summary == null) return;
+    final offset = _revenueMonthOffset;
+    try {
+      final overview = await ref.read(dashboardRepositoryProvider).getRevenueOverview(
+            facility,
+            facilitySportId: _selectedSportId,
+            monthOffset: offset,
+          );
+      // Ignore an answer for a month that is no longer the one picked.
+      if (!mounted || offset != _revenueMonthOffset || _summary == null) return;
+      setState(() => _summary = _summary!.withRevenueOverview(overview));
+    } catch (_) {
+      // Keep showing what was there; picking the month again retries.
+    }
+  }
+
   /// The recent-activity and "Needs you" lists. Best-effort: the dashboard renders fine without them.
   Future<void> _loadExtras() async {
     try {
@@ -406,7 +426,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       final picked = await _showRevenueMonthPicker(context, _revenueMonthOffset);
                       if (picked != null && picked != _revenueMonthOffset) {
                         setState(() => _revenueMonthOffset = picked);
-                        _load();
+                        // Only the Revenue Overview is fetched again; the rest of the page stays as it is.
+                        _reloadRevenueOverview();
                       }
                     },
                     onReturn: _load,
@@ -815,8 +836,8 @@ class _DashboardBody extends StatelessWidget {
             collectedChange: summary.kpis.revenueInr.changePercent,
             periodLabel: _presetLabels[preset]!,
             toCollectInr: outstandingInr ?? summary.payments.pendingInr,
-            bookings: summary.kpis.totalBookings.value.round(),
-            weekPoints: summary.revenueOverview.points,
+            guestHoursToday: summary.guestHoursToday,
+            weekPoints: summary.weekCollected.isNotEmpty ? summary.weekCollected : summary.revenueOverview.points,
             onReturn: onReturn,
           ),
         ],
@@ -857,7 +878,7 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           _DashSection(
             title: 'This Week',
-            child: _WeekBarsCard(points: summary.revenueOverview.points),
+            child: _WeekBarsCard(points: summary.weekCollected.isNotEmpty ? summary.weekCollected : summary.revenueOverview.points),
           ),
 
           // ── REVENUE ───────────────────────────────────────────────
@@ -977,10 +998,10 @@ class _LiveNowCardState extends State<_LiveNowCard> {
   }
 
   static String _headline(int busy, int total) {
-    if (total == 0) return 'No courts\nset up yet';
-    if (busy == 0) return 'All sports\nready for action';
-    if (busy == total) return 'All courts\nin play right now';
-    return '$busy of $total courts\nin play right now';
+    if (total == 0) return 'No venue\nset up yet';
+    if (busy == 0) return 'All venue\nready for action';
+    if (busy == total) return 'All venue\nin play right now';
+    return '$busy of $total venue\nin play right now';
   }
 
   /// One court's live status as a message + colour: green when it's free,
@@ -1017,7 +1038,6 @@ class _LiveNowCardState extends State<_LiveNowCard> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final nowMin = _now.hour * 60 + _now.minute;
-    final total = widget.courts.length;
 
     final busyIds = <String>{};
     final endingBy = <String, int>{}; // courtId → its live block's end minute
@@ -1029,8 +1049,11 @@ class _LiveNowCardState extends State<_LiveNowCard> {
         }
       }
     }
-    final busy = busyIds.length;
-    final free = total - busy;
+    // The headline counts SPORTS: a sport is "in play" when any of its courts has a booking right now.
+    final sportOf = {for (final c in widget.courts) c.courtId: c.sportName};
+    final totalSports = sportOf.values.toSet().length;
+    final busy = busyIds.map((id) => sportOf[id]).toSet().length;
+    final free = totalSports - busy;
 
     // One status entry per court — free (green), wrapping up within 10
     // minutes (orange), or occupied with time to go (red) — cycled one at a
@@ -1128,7 +1151,7 @@ class _LiveNowCardState extends State<_LiveNowCard> {
                       ),
                       const Spacer(),
                       Text(
-                        _headline(busy, total),
+                        _headline(busy, totalSports),
                         style: const TextStyle(
                             fontSize: 23,
                             fontWeight: FontWeight.w800,
@@ -1409,7 +1432,7 @@ class _MoneyRow extends StatelessWidget {
     required this.collectedChange,
     required this.periodLabel,
     required this.toCollectInr,
-    required this.bookings,
+    required this.guestHoursToday,
     required this.weekPoints,
     required this.onReturn,
   });
@@ -1418,14 +1441,15 @@ class _MoneyRow extends StatelessWidget {
   final double? collectedChange;
   final String periodLabel;
   final int toCollectInr;
-  final int bookings;
+  final double guestHoursToday;
   final List<RevenueTrendPoint> weekPoints;
   final Future<void> Function() onReturn;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final last7 = _trailingWeek(weekPoints);
+    // The current calendar week, Sunday first through Saturday: seven bars, one per day (days still to come are empty).
+    final last7 = weekPoints.length == 7 ? weekPoints : _trailingWeek(weekPoints);
     final todayKey = _dayKeyOf(DateTime.now());
     final maxV = last7.isEmpty
         ? 1
@@ -1495,14 +1519,17 @@ class _MoneyRow extends StatelessWidget {
                       ],
                       const SizedBox(height: AppSpacing.sm),
                       SizedBox(
-                        height: 34,
+                        height: 46,
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             for (var i = 0; i < last7.length; i++) ...[
                               if (i > 0) const SizedBox(width: 4),
                               Expanded(
-                                child: Builder(builder: (context) {
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Builder(builder: (context) {
                                   final isToday = last7[i].date == todayKey;
                                   final v = last7[i].amountInr;
                                   // Value drives BOTH height and colour, so a
@@ -1521,7 +1548,7 @@ class _MoneyRow extends StatelessWidget {
                                   // as "best day of the week" and is a lie.
                                   final lit = isToday && v > 0;
                                   return Container(
-                                    height: (f * 34).clamp(4, 34).toDouble(),
+                                    height: v > 0 ? (f * 34).clamp(6, 34).toDouble() : 3,
                                     decoration: BoxDecoration(
                                       color: lit
                                           ? tokens.primary
@@ -1539,7 +1566,17 @@ class _MoneyRow extends StatelessWidget {
                                           : null,
                                     ),
                                   );
-                                }),
+                                    }),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _weekdayLetter(last7[i].date),
+                                      style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: last7[i].date == todayKey ? FontWeight.w800 : FontWeight.w500,
+                                          color: last7[i].date == todayKey ? tokens.primary : tokens.textSecondary),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ],
@@ -1609,36 +1646,52 @@ class _MoneyRow extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: tokens.surface1,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      // Opens Guest Bookings with the date filter already set to today.
+                      onTap: () async {
+                        await context.push(AppRoutes.guestBookings, extra: 'today');
+                        onReturn();
+                      },
                       borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(color: tokens.borderColor),
-                    ),
-                    child: Stack(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: tokens.surface1,
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: tokens.borderColor),
+                        ),
+                        child: Stack(
                           children: [
-                            Text('$bookings',
-                                style: const TextStyle(
-                                    fontSize: 17, fontWeight: FontWeight.w800)),
-                            Text('bookings',
-                                style: TextStyle(
-                                    fontSize: 10.5,
-                                    color: tokens.textSecondary)),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(DashboardCalculator.formatHours(guestHoursToday),
+                                      style: const TextStyle(
+                                          fontSize: 17, fontWeight: FontWeight.w800)),
+                                ),
+                                Text('Guest Bookings · Today',
+                                    maxLines: 2,
+                                    style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: tokens.textSecondary)),
+                              ],
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: Icon(Icons.calendar_month_rounded,
+                                  size: 32, color: tokens.textPrimary),
+                            ),
                           ],
                         ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Icon(Icons.calendar_month_rounded,
-                              size: 32, color: tokens.textPrimary),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -1675,9 +1728,27 @@ class _NeedsYouSection extends StatelessWidget {
     final totalOwed = obligations.fold<int>(0, (sum, o) => sum + o.outstandingMinor);
     final totalOverdue = overdue.fold<int>(0, (sum, o) => sum + o.outstandingMinor);
     return _DashSection(
-      title: 'Needs You',
-      trailing: Text('$n item${n == 1 ? '' : 's'}',
-          style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+      title: 'Need your Attention',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$n item${n == 1 ? '' : 's'}',
+              style: TextStyle(fontSize: 12, color: tokens.textSecondary)),
+          const SizedBox(width: AppSpacing.sm),
+          InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: () async {
+              await context.push(AppRoutes.financePendingPayments);
+              onReturn();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Text('View All',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: tokens.primary)),
+            ),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           if (obligations.isNotEmpty)
@@ -1704,7 +1775,9 @@ class _NeedsYouSection extends StatelessWidget {
                 ),
               ),
             ),
-          for (final o in obligations)
+          // Only the five that have waited longest are listed here (the server orders by due date, oldest first); the totals above
+          // still cover every pending payment, and View All opens the full list.
+          for (final o in obligations.take(5))
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: _needRow(
@@ -1928,6 +2001,14 @@ class _OnCourtNowSection extends StatelessWidget {
 }
 
 /// 'YYYY-MM-DD' — matches the key `buildRevenueTrend` writes.
+/// "S M T W T F S" letter of a "YYYY-MM-DD" date (Sunday = S).
+String _weekdayLetter(String yyyyMmDd) {
+  final d = DateTime.tryParse(yyyyMmDd);
+  if (d == null) return '';
+  const letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // indexed by weekday % 7 (Sunday = 7 -> 0)
+  return letters[d.weekday % 7];
+}
+
 String _dayKeyOf(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
@@ -1959,7 +2040,8 @@ class _WeekBarsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final last7 = _trailingWeek(points);
+    // This calendar week, Sunday first through Saturday: seven bars, one per day (days still to come are empty).
+    final last7 = points.length == 7 ? points : _trailingWeek(points);
     if (last7.isEmpty) {
       return _card(
         context,
@@ -1974,8 +2056,12 @@ class _WeekBarsCard extends StatelessWidget {
     }
     final maxV =
         last7.map((p) => p.amountInr).reduce(math.max).clamp(1, 1 << 30);
-    final avg = last7.map((p) => p.amountInr).reduce((a, b) => a + b) ~/
-        last7.length;
+    // The daily average only spans the days that have happened so far this week.
+    final todayKey = _dayKeyOf(DateTime.now());
+    final daysSoFar = last7.where((p) => p.date.compareTo(todayKey) <= 0).length;
+    final avg = daysSoFar == 0
+        ? 0
+        : last7.where((p) => p.date.compareTo(todayKey) <= 0).map((p) => p.amountInr).reduce((a, b) => a + b) ~/ daysSoFar;
     const wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     // Match by date, not position — for a past month today isn't in range.
     final todayIdx =
@@ -2027,7 +2113,7 @@ class _WeekBarsCard extends StatelessWidget {
                               tokens.surface1);
                           final lit = i == todayIdx && v > 0;
                           return Container(
-                            height: (f * 58).clamp(4, 58).toDouble(),
+                            height: v > 0 ? (f * 58).clamp(6, 58).toDouble() : 3,
                             decoration: BoxDecoration(
                               color: lit
                                   ? tokens.primary
@@ -2223,7 +2309,7 @@ class _ShareLinkCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Share Your Booking Link',
+                Text('Share Your Guest Booking Link',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -2697,7 +2783,8 @@ class _RevenueBreakdownChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      // The legend sits in the vertical middle of the ring (it used to hang from the top, so the two looked out of line).
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
           width: 96,
@@ -2717,39 +2804,50 @@ class _RevenueBreakdownChart extends StatelessWidget {
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (final s in segments)
+              for (var i = 0; i < segments.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                  // Spacing between rows only: no extra gap under the last one, which pushed the list above the ring's centre.
+                  padding: EdgeInsets.only(bottom: i == segments.length - 1 ? 0 : 8),
                   child: Row(
                     children: [
                       Container(
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: _RevenueOverviewCard.breakdownColor(context, s.key),
+                          color: _RevenueOverviewCard.breakdownColor(context, segments[i].key),
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          s.count != null ? '${s.label} · ${s.count}' : s.label,
+                          segments[i].count != null ? '${segments[i].label} · ${segments[i].count}' : segments[i].label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 11),
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        s.unavailable ? '-' : Formatters.currencyInr(s.amountInr),
-                        style: TextStyle(fontSize: 10, color: tokens.textSecondary),
+                      // Amounts share one right-aligned column, and percentages the next, so every row lines up.
+                      SizedBox(
+                        width: 56,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            segments[i].unavailable ? '-' : Formatters.currencyInr(segments[i].amountInr),
+                            textAlign: TextAlign.right,
+                            style: TextStyle(fontSize: 10, color: tokens.textSecondary, fontFeatures: const [FontFeature.tabularFigures()]),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       SizedBox(
                         width: 30,
                         child: Text(
-                          '${total > 0 ? ((s.amountInr / total) * 100).round() : 0}%',
+                          '${total > 0 ? ((segments[i].amountInr / total) * 100).round() : 0}%',
                           textAlign: TextAlign.right,
                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                         ),

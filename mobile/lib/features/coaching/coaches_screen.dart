@@ -40,6 +40,7 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
   int _total = 0;
   String? _error;
   int _requestId = 0;
+  List<CoachOnboardingDraft> _drafts = const [];
 
   @override
   void initState() {
@@ -61,6 +62,12 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
     if (fid == null) return;
     final reqId = ++_requestId;
     setState(() => _error = null);
+    // Coaches whose onboarding is saved as a draft — resumable at the step they stopped on. Best-effort: never blocks the list.
+    if (ref.read(sessionControllerProvider).can('COACHING_MANAGE_COACHES')) {
+      ref.read(coachingRepositoryProvider).listCoachOnboardingDrafts(fid).then((d) {
+        if (mounted) setState(() => _drafts = d);
+      }).catchError((_) {});
+    }
     try {
       final page = await ref.read(coachingRepositoryProvider).listCoaches(
             facilityId: fid,
@@ -151,6 +158,10 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
               const SizedBox(height: AppSpacing.sm),
               PickerChip(label: _status?.label ?? 'All Status', onSelect: _pickStatus),
               const SizedBox(height: AppSpacing.lg),
+              if (_drafts.isNotEmpty) ...[
+                _draftsCard(),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               if (_error != null)
                 ErrorView(message: _error!, onRetry: _load)
               else if (_rows == null)
@@ -174,6 +185,29 @@ class _CoachesScreenState extends ConsumerState<CoachesScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _draftsCard() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Drafts (${_drafts.length})', style: AppTypography.rowTitle(context)),
+          for (final d in _drafts)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(d.fullName, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text('Draft – step ${d.currentStep} of 5'),
+              trailing: const Text('Resume', style: TextStyle(fontWeight: FontWeight.w700)),
+              onTap: () async {
+                await context.push<bool>(AppRoutes.coachingCoachAdd, extra: d.coachId);
+                _load();
+              },
+            ),
+        ],
       ),
     );
   }

@@ -10,7 +10,8 @@ import 'intro_art.dart';
 import 'otp_widgets.dart';
 import 'signup_draft.dart';
 
-const _resendSeconds = 30;
+// The OTP is spoken to the person on a phone call; calling again is allowed after 1 minute 30 seconds.
+const _resendSeconds = 90;
 
 /// Verify Your Number: the first of the two verification steps after Create Your Account. A 6-digit OTP is sent to the mobile number
 /// typed there. Once it checks out, the account is created (which emails the code for the next step, [VerifyEmailScreen]) and this page
@@ -81,7 +82,7 @@ class _VerifyPhoneScreenState extends ConsumerState<VerifyPhoneScreen> {
         _code.clear();
         _startCooldown();
         setState(() {
-          _message = 'A new OTP has been sent.';
+          _message = 'We are calling you again. Please pick up the call.';
           _messageIsError = false;
         });
       }
@@ -135,7 +136,7 @@ class _VerifyPhoneScreenState extends ConsumerState<VerifyPhoneScreen> {
       onBack: () => context.canPop() ? context.pop() : context.go(AppRoutes.createAccount),
       art: IntroArtKind.otpPhone,
       title: 'Verify Your Number',
-      lead: 'We’ve sent a 6-digit OTP to',
+      lead: 'Please pick up our call. You will hear your 6-digit OTP on',
       strong: _draft.phoneDisplay,
       buttonLabel: 'Verify & Continue',
       busy: _busy,
@@ -151,8 +152,14 @@ class _VerifyPhoneScreenState extends ConsumerState<VerifyPhoneScreen> {
             onSubmitted: _verify,
             hasError: _message != null && _messageIsError,
           ),
-          const SizedBox(height: 26),
-          OtpResendRow(secondsLeft: _cooldown, busy: _busy, onResend: _sendCode),
+          const SizedBox(height: 18),
+          const Text(
+            'Accept the incoming call, listen to the code and enter it above.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF555555)),
+          ),
+          const SizedBox(height: 18),
+          OtpResendRow(label: 'Call again', secondsLeft: _cooldown, busy: _busy, onResend: _sendCode),
         ],
       ),
     );

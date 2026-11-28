@@ -82,7 +82,7 @@ import '../../features/inventory/vendor_detail_screen.dart';
 import '../../features/inventory/inventory_categories_screen.dart';
 import '../../features/coaching/coaching_hub_screen.dart';
 import '../../features/coaching/coaches_screen.dart';
-import '../../features/coaching/coach_form_screen.dart';
+import '../../features/coaching/coach_onboarding_screen.dart';
 import '../../features/coaching/coach_detail_screen.dart';
 import '../../features/coaching/coaching_programs_screen.dart';
 import '../../features/coaching/coaching_program_wizard_screen.dart';
@@ -285,7 +285,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.guestBookings,
         pageBuilder: (context, state) =>
-            slideOver(state, const GuestBookingsScreen()),
+            slideOver(state, GuestBookingsScreen(todayOnly: state.extra == 'today')),
       ),
       GoRoute(
         path: AppRoutes.membershipPlanNew,
@@ -534,7 +534,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppRoutes.coachingCoaches, builder: (context, state) => const CoachesScreen()),
       GoRoute(
         path: AppRoutes.coachingCoachAdd,
-        pageBuilder: (context, state) => slideOver(state, const CoachFormScreen()),
+        pageBuilder: (context, state) => slideOver(
+          state,
+          CoachOnboardingScreen(
+            resumeCoachId: state.extra is String ? state.extra as String : null,
+            initialStep: int.tryParse(state.uri.queryParameters['step'] ?? ''),
+          ),
+        ),
       ),
       GoRoute(
         path: AppRoutes.coachingCoachDetail,

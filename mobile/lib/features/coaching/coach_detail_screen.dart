@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/errors/app_exception.dart';
+import '../../core/routing/app_routes.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -16,6 +17,7 @@ import '../../shared/widgets/skeleton.dart';
 import '../../shared/widgets/states.dart';
 import '../authentication/session_controller.dart';
 import '../staff/staff_common.dart';
+import 'add_coach_validation.dart' show findAvailabilityConflict;
 import 'coaching_common.dart';
 import '../../shared/widgets/app_dropdown.dart';
 
@@ -37,6 +39,8 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
   String? _error;
   int _tab = 0;
   bool _changed = false;
+  // Onboarding state (draft / KYC). Coaches created before the 5-step flow have no record, so a failure just means nothing to show.
+  CoachOnboarding? _onboarding;
 
   @override
   void initState() {
@@ -49,6 +53,13 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
     try {
       final c = await ref.read(coachingRepositoryProvider).getCoach(widget.coachId);
       if (mounted) setState(() => _coach = c);
+      if (ref.read(sessionControllerProvider).can('COACHING_MANAGE_COACHES')) {
+        ref.read(coachingRepositoryProvider).getCoachOnboarding(widget.coachId).then((o) {
+          if (mounted) setState(() => _onboarding = o);
+        }).catchError((_) {
+          if (mounted) setState(() => _onboarding = null);
+        });
+      }
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
@@ -98,6 +109,32 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
     );
   }
 
+  /// A Draft badge + Resume while onboarding is unfinished, or "KYC pending" once active without payout details.
+  Widget? _onboardingBanner(CoachOnboarding o) {
+    final draft = o.onboardingStatus == 'DRAFT';
+    final kycPending = !draft && o.payoutStatus != 'COMPLETE';
+    if (!draft && !kycPending) return null;
+    return AppCard(
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              draft ? 'Draft – step ${o.resumeStep} of 5. Onboarding isn\x27t finished, so this coach can\x27t be booked yet.' : 'KYC pending — payout and tax details haven\x27t been added yet.',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              await context.push<bool>(draft ? AppRoutes.coachingCoachAdd : '${AppRoutes.coachingCoachAdd}?step=4', extra: widget.coachId);
+              if (mounted) _load();
+            },
+            child: Text(draft ? 'Resume' : 'Add details'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _content(CoachDetail c, bool canManage) {
     return RefreshIndicator(
       onRefresh: _load,
@@ -129,6 +166,10 @@ class _CoachDetailScreenState extends ConsumerState<CoachDetailScreen> {
           if (c.bio != null && c.bio!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(c.bio!, style: AppTypography.secondary(context)),
+          ],
+          if (_onboarding != null && _onboardingBanner(_onboarding!) != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _onboardingBanner(_onboarding!)!,
           ],
           const SizedBox(height: AppSpacing.md),
           GridView.count(
@@ -305,6 +346,11 @@ class _AvailabilityEditorState extends ConsumerState<_AvailabilityEditor> {
         setState(() => _error = "Every window's end time must be after its start time.");
         return;
       }
+    }
+    final clash = findAvailabilityConflict(_windows);
+    if (clash != null) {
+      setState(() => _error = clash);
+      return;
     }
     setState(() {
       _saving = true;

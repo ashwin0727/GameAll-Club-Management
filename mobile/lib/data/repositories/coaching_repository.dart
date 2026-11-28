@@ -197,6 +197,93 @@ class CoachingRepository {
     }
   }
 
+  // ── Coach onboarding (5-step Add Coach, migration 0211) ───────────────────────────────────────────────────────────
+
+  /// Step 1: creates the coach (INACTIVE) + its DRAFT profile; a second call for the same person returns the same id.
+  Future<String> startCoachOnboarding({
+    required String facilityId,
+    required String userId,
+    required String displayName,
+    required String location,
+    required String timezone,
+    required List<String> languages,
+    required String shortBio,
+    String? dateOfBirth,
+  }) async {
+    try {
+      final id = await _client.rpc('start_coach_onboarding', params: {
+        'p_facility_id': facilityId,
+        'p_user_id': userId,
+        'p_data': {
+          'displayName': displayName,
+          'location': location,
+          'timezone': timezone,
+          'languages': languages,
+          'shortBio': shortBio,
+          'dateOfBirth': dateOfBirth,
+        },
+      });
+      return id as String;
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Saves steps 1-4 (the payload shape per step is documented in the migration).
+  Future<void> saveCoachOnboardingStep(String coachId, int step, Map<String, dynamic> data) async {
+    try {
+      await _client.rpc('save_coach_onboarding_step', params: {'p_coach_id': coachId, 'p_step': step, 'p_data': data});
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<CoachOnboarding> getCoachOnboarding(String coachId) async {
+    try {
+      return CoachOnboarding.fromJson(_obj(await _client.rpc('get_coach_onboarding', params: {'p_coach_id': coachId})));
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Step 5: records the four agreements and activates the coach.
+  Future<void> completeCoachOnboarding(String coachId, {required bool terms, required bool ethics, required bool privacy, required bool commission}) async {
+    try {
+      await _client.rpc('complete_coach_onboarding', params: {
+        'p_coach_id': coachId,
+        'p_legal': {'terms': terms, 'ethics': ethics, 'privacy': privacy, 'commission': commission},
+      });
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  Future<List<CoachOnboardingDraft>> listCoachOnboardingDrafts(String facilityId) async {
+    try {
+      return _rows(await _client.rpc('list_coach_onboarding_drafts', params: {'p_facility_id': facilityId})).map(CoachOnboardingDraft.fromJson).toList();
+    } catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Uploads a certificate into the private coach-credentials bucket and returns its storage path.
+  Future<String> uploadCoachCertificate({
+    required String facilityId,
+    required String coachId,
+    required List<int> bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    try {
+      final safe = fileName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final path = '$facilityId/$coachId/${DateTime.now().microsecondsSinceEpoch}-$safe';
+      await _client.storage.from('coach-credentials').uploadBinary(path, Uint8List.fromList(bytes), fileOptions: FileOptions(contentType: contentType));
+      return path;
+    } catch (_) {
+      throw AppException(AppErrorCode.databaseError, 'Could not upload this certificate. Please try again.');
+    }
+  }
+
   /// Removes a student's enrollment while no payment has been received on it (migration 0127).
   Future<void> deleteEnrollment(String enrollmentId) async {
     try {

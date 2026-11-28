@@ -174,7 +174,7 @@ const accessPages = <AccessPage>[
     editLabel: null,
     viewKeys: <String>['COACHING_VIEW'],
     editKeys: <String>['COACHING_MANAGE_COACHES'],
-    extraKeys: <String>[],
+    extraKeys: <String>['COACHING_MANAGE_COACH_PAYOUTS'],
   ),
   AccessPage(
     key: 'COACHING_PROGRAMS',

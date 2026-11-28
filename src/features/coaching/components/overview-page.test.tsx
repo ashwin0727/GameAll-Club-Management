@@ -10,6 +10,7 @@ const getOverview = vi.fn();
 const getInsights = vi.fn();
 const listCoaches = vi.fn();
 const listCoachCandidates = vi.fn();
+const listCoachOnboardingDrafts = vi.fn();
 const listRoles = vi.fn();
 
 vi.mock("@/features/auth/context/permission-provider", () => ({
@@ -24,7 +25,7 @@ vi.mock("@/features/auth/context/permission-provider", () => ({
 }));
 
 vi.mock("@/services/coaching", () => ({
-  getCoachingService: () => ({ getOverview, getInsights, listCoaches, listCoachCandidates }),
+  getCoachingService: () => ({ getOverview, getInsights, listCoaches, listCoachCandidates, listCoachOnboardingDrafts }),
 }));
 
 vi.mock("@/services/staff", () => ({
@@ -90,6 +91,7 @@ describe("CoachingOverviewPage", () => {
     );
     listCoaches.mockReset().mockResolvedValue({ coaches: [], totalCount: 0 });
     listCoachCandidates.mockReset().mockResolvedValue([]);
+    listCoachOnboardingDrafts.mockReset().mockResolvedValue([]);
     listRoles.mockReset().mockResolvedValue([]);
     resetRouterMock();
   });
@@ -146,25 +148,25 @@ describe("CoachingOverviewPage", () => {
     expect(screen.queryByText("4.6")).not.toBeInTheDocument();
   });
 
-  it("the hero's Add Coach button opens the Add Coach slide-over instead of navigating", async () => {
+  it("the hero's Add Coach button goes to the full Add Coach page (no slide-over)", async () => {
     const user = userEvent.setup();
     renderWithProviders(<CoachingOverviewPage />);
     await screen.findByText("5"); // wait for the hero/KPIs to render past loading
 
     const heroButtons = screen.getAllByRole("button", { name: "Add Coach" });
     await user.click(heroButtons[0]!);
-    expect(await screen.findByRole("heading", { name: "Add Coach" })).toBeInTheDocument();
-    expect(routerMock.push).not.toHaveBeenCalledWith("/coaching/coaches/add");
+    expect(routerMock.push).toHaveBeenCalledWith("/coaching/coaches/add");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("the Quick Actions Add Coach tile also opens the slide-over", async () => {
+  it("the Quick Actions Add Coach tile also navigates to the page", async () => {
     const user = userEvent.setup();
     renderWithProviders(<CoachingOverviewPage />);
     await screen.findByText("5");
 
     const addCoachButtons = screen.getAllByRole("button", { name: "Add Coach" });
     await user.click(addCoachButtons[addCoachButtons.length - 1]!); // the Quick Actions tile
-    expect(await screen.findByRole("heading", { name: "Add Coach" })).toBeInTheDocument();
+    expect(routerMock.push).toHaveBeenCalledWith("/coaching/coaches/add");
   });
 
   it("shows an empty state when there are no upcoming sessions", async () => {

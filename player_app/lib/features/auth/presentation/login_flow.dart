@@ -125,7 +125,8 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
 
   void _startCountdown() {
     _timer?.cancel();
-    setState(() => _resendIn = 30);
+    // The code is spoken on a phone call; calling again is allowed after 1 minute 30 seconds.
+    setState(() => _resendIn = 90);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return t.cancel();
       setState(() => _resendIn = (_resendIn - 1).clamp(0, 999));
@@ -396,8 +397,13 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'We sent a 6-digit code to +91 $_digits.',
+          'Please pick up our call. You will hear your 6-digit OTP on +91 $_digits.',
           style: AppTextStyles.body(p.secondaryText),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Accept the incoming call, listen to the code and enter it below.',
+          style: AppTextStyles.support(p.secondaryText),
         ),
         const SizedBox(height: 18),
         _field(
@@ -450,7 +456,7 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
             const Spacer(),
             if (_resendIn > 0)
               Text(
-                'Resend in ${_resendIn}s',
+                'Call again in ${(_resendIn ~/ 60).toString().padLeft(2, '0')}:${(_resendIn % 60).toString().padLeft(2, '0')}',
                 key: const ValueKey('login-resend-wait'),
                 style: AppTextStyles.support(p.secondaryText),
               )
@@ -462,7 +468,7 @@ class _LoginFlowState extends ConsumerState<LoginFlow> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Text(
-                    'Resend code',
+                    'Call again',
                     style: AppTextStyles.button(AppColors.blue),
                   ),
                 ),

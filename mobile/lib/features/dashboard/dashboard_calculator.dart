@@ -380,6 +380,42 @@ class DashboardCalculator {
     return ScheduleTimeline(startHour: startHour, endHour: endHour, courts: courts);
   }
 
+  /// Hours of GUEST bookings on one day (booked by a player or by the owner), from midnight to 11:59 PM.
+  ///
+  /// Only bookings that really stand are counted: confirmed or completed. A booking whose payment was started but not finished is a
+  /// "pending" hold that is released after 5 minutes (or cancelled), so it never counts; cancelled ones don't either. A booking that is
+  /// confirmed with its money still to be collected at the venue DOES count: the court time is taken.
+  /// [rows] are bookings rows with start_time / end_time / status / customer_type.
+  static double guestHoursBooked(List<Map<String, dynamic>> rows, DateTime dayStart, DateTime dayEnd) {
+    var minutes = 0;
+    for (final b in rows) {
+      if (b['customer_type'] != 'GUEST') continue;
+      final status = b['status'];
+      if (status != 'confirmed' && status != 'completed') continue;
+      var start = DateTime.parse(b['start_time'] as String).toLocal();
+      var end = DateTime.parse(b['end_time'] as String).toLocal();
+      if (start.isBefore(dayStart)) start = dayStart;
+      if (end.isAfter(dayEnd)) end = dayEnd;
+      final m = end.difference(start).inMinutes;
+      if (m > 0) minutes += m;
+    }
+    return minutes / 60.0;
+  }
+
+  /// The seven days of the calendar week that contains [now], Sunday first through Saturday.
+  static List<DateTime> weekDaysSundayFirst(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final sunday = today.subtract(Duration(days: now.weekday % 7)); // DateTime.sunday == 7
+    return [for (var i = 0; i < 7; i++) DateTime(sunday.year, sunday.month, sunday.day + i)];
+  }
+
+  /// "6 hrs", "1 hr", "6.5 hrs", "0 hrs".
+  static String formatHours(double hours) {
+    final whole = hours == hours.roundToDouble();
+    final text = whole ? hours.round().toString() : hours.toStringAsFixed(1);
+    return '$text ${hours == 1 ? 'hr' : 'hrs'}';
+  }
+
   static MembershipSummary summarizeMemberships(
     List<({String status, DateTime endDate, DateTime createdAt})> memberships,
     DateTime now,

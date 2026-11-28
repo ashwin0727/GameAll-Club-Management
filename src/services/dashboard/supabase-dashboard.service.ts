@@ -313,7 +313,8 @@ export class SupabaseDashboardService implements DashboardService {
     now: Date;
     monthOffset: number;
     sportIds: string[] | null;
-    playingAreasAll: { id: string; facilitySportId: string }[];
+    /** Only read by the fallback (migration 0166 not applied), so it is looked up lazily. */
+    playingAreas: () => Promise<{ id: string; facilitySportId: string }[]>;
   }): Promise<RevenueOverview> {
     const sb = this.supabase as unknown as SupabaseClient;
     const { now, monthOffset } = a;
@@ -350,9 +351,22 @@ export class SupabaseDashboardService implements DashboardService {
     const all = ((res.data ?? []) as PaymentRow[]).map((p) => ({ ...p, created_at: p.paid_at ?? p.created_at }));
     const sportSet = a.sportIds ? new Set(a.sportIds) : null;
     const payments = sportSet
-      ? await this.paymentsInSports(all, sportSet, a.playingAreasAll, await this.membershipIdsInSports(a.facilityId, sportSet))
+      ? await this.paymentsInSports(all, sportSet, await a.playingAreas(), await this.membershipIdsInSports(a.facilityId, sportSet))
       : all;
     return buildRevenueOverview(payments, now, monthOffset);
+  }
+
+  async getRevenueOverview(
+    facility: Facility,
+    params: { facilitySportIds: string[] | null; revenueMonthOffset: number },
+  ): Promise<RevenueOverview> {
+    return this.fetchRevenueOverview({
+      facilityId: facility.id,
+      now: new Date(),
+      monthOffset: params.revenueMonthOffset,
+      sportIds: params.facilitySportIds && params.facilitySportIds.length > 0 ? params.facilitySportIds : null,
+      playingAreas: () => getPlayingAreasService().getPlayingAreas(facility.id),
+    });
   }
 
   async getDashboardSummary(facility: Facility, params: DashboardSummaryParams): Promise<DashboardSummary> {
@@ -426,7 +440,7 @@ export class SupabaseDashboardService implements DashboardService {
       now,
     });
     const minutesPromise = this.fetchBookedMinutes({ facilityId, current, previous, courtIds: [...playingAreaIds] });
-    const revenuePromise = this.fetchRevenueOverview({ facilityId, now, monthOffset: revenueMonthOffset, sportIds, playingAreasAll });
+    const revenuePromise = this.fetchRevenueOverview({ facilityId, now, monthOffset: revenueMonthOffset, sportIds, playingAreas: async () => playingAreasAll });
 
     if (todayBookingsRes.error) throw mapSupabaseError(todayBookingsRes.error);
     if (todaySessionsRes.error) throw mapSupabaseError(todaySessionsRes.error);

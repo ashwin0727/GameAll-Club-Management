@@ -283,4 +283,42 @@ describe("SupabaseCoachingService, online billing", () => {
     await new SupabaseCoachingService({ rpc, functions: { invoke } } as never).setEnrollmentStatus("e1", "PAUSED");
     expect(invoke).not.toHaveBeenCalled();
   });
+
+  it("startCoachOnboarding sends the identity as p_data and returns the coach id", async () => {
+    const rpc = vi.fn(async () => ({ data: "coach-1", error: null }));
+    const identity = { displayName: "Ravi", location: "Chennai", timezone: "Asia/Kolkata", languages: ["English"], shortBio: "", dateOfBirth: null };
+    const id = await new SupabaseCoachingService({ rpc } as never).startCoachOnboarding("f1", "u1", identity);
+    expect(id).toBe("coach-1");
+    expect(rpc).toHaveBeenCalledWith("start_coach_onboarding", { p_facility_id: "f1", p_user_id: "u1", p_data: identity });
+  });
+
+  it("getCoachOnboarding maps the masked payout and never invents a raw account number", async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        coachId: "c1", userId: "u1", currentStep: 3, stepsDone: [1, 2], onboardingStatus: "DRAFT", payoutStatus: "COMPLETE", canManagePayouts: true,
+        identity: { displayName: "Ravi", languages: ["English"] }, expertise: { niche: "Badminton" }, services: { sessionFormats: ["GROUP"] },
+        payout: { entityType: "INDIVIDUAL", accountNumberMasked: "XXXXXXXX1234", taxIdMasked: "XXXXXX234F", payoutMethod: "BANK_TRANSFER", payoutFrequency: "MONTHLY", currency: "INR" },
+      },
+      error: null,
+    }));
+    const o = await new SupabaseCoachingService({ rpc } as never).getCoachOnboarding("c1");
+    expect(o.currentStep).toBe(3);
+    expect(o.data.displayName).toBe("Ravi");
+    expect(o.data.niche).toBe("Badminton");
+    expect(o.payout?.accountNumberMasked).toBe("XXXXXXXX1234");
+    expect(JSON.stringify(o)).not.toContain("accountNumber\":");
+  });
+
+  it("saveCoachOnboardingStep surfaces the RPC message", async () => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message: "Enter a valid IFSC code.", code: "22023" } }));
+    await expect(new SupabaseCoachingService({ rpc } as never).saveCoachOnboardingStep("c1", 4, {})).rejects.toBeInstanceOf(ServiceError);
+  });
+
+  it("uploadCoachCertificate rejects an oversized file before touching storage", async () => {
+    const upload = vi.fn();
+    const service = new SupabaseCoachingService({ storage: { from: () => ({ upload }) } } as never);
+    const big = new File([new Uint8Array(6 * 1024 * 1024)], "cert.pdf", { type: "application/pdf" });
+    await expect(service.uploadCoachCertificate("f1", "c1", big)).rejects.toBeInstanceOf(ServiceError);
+    expect(upload).not.toHaveBeenCalled();
+  });
 });

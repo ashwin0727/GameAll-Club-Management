@@ -323,7 +323,11 @@ class Facility {
     this.setupReviewStatus,
     this.setupReviewNote,
     this.membershipAccessDays = const [0, 1, 2, 3, 4, 5, 6],
+    this.createdAt,
   });
+
+  /// When the venue registered (`facilities.created_at`). The calendar cannot be paged back past this month.
+  final DateTime? createdAt;
 
   final String id;
   final String ownerId;
@@ -401,6 +405,7 @@ class Facility {
       ownerId: json['owner_id'] as String,
       name: json['name'] as String,
       slug: json['slug'] as String?,
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '')?.toLocal(),
       type: FacilityType.fromDb(json['facility_type'] as String? ?? 'MULTI_SPORT'),
       customType: json['custom_facility_type'] as String?,
       businessEmail: json['business_email'] as String? ?? '',

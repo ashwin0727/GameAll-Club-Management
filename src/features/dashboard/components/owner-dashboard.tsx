@@ -34,6 +34,7 @@ import { useFacility } from "@/features/facility/hooks/use-facility";
 import { useSportFilter } from "@/features/facility/hooks/use-sport-filter";
 import { getCoachingService } from "@/services/coaching";
 import { useDashboardSummary } from "@/features/dashboard/hooks/use-dashboard-summary";
+import { useRevenueOverview } from "@/features/dashboard/hooks/use-revenue-overview";
 import type {
   DashboardSummary,
   DateRangePreset,
@@ -534,8 +535,9 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
   const { data: summary, isLoading, isError, isPlaceholderData, refetch } = useDashboardSummary(facility ?? null, {
     facilitySportIds: sportIds,
     preset: PRESET,
-    revenueMonthOffset,
+    // The Revenue Overview month is NOT part of this query: paging it must not refetch the whole dashboard (see useRevenueOverview).
   });
+  const revenueMonth = useRevenueOverview(facility ?? null, { facilitySportIds: sportIds, revenueMonthOffset });
 
   // Only a month change keeps the page up (see the hook); switching sports is a
   // different dataset, so it still gets the full skeleton rather than briefly
@@ -543,7 +545,9 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
   const sameSports = (a: string[] | null | undefined, b: string[] | null) =>
     (a ?? null) === null ? b === null : b !== null && a!.length === b.length && a!.every((id) => b.includes(id));
   const sportChanging = isPlaceholderData && !sameSports(summary?.selectedFacilitySportIds, sportIds);
-  const revenueLoading = isPlaceholderData && !sportChanging;
+  const revenueLoading = revenueMonthOffset !== 0 && revenueMonth.isFetching;
+  // This month comes with the summary; any other month comes from its own query.
+  const revenueOverview = revenueMonthOffset === 0 ? summary?.revenueOverview : (revenueMonth.data ?? summary?.revenueOverview);
 
   if (facilityLoading || isLoading || sportChanging) {
     return (
@@ -748,7 +752,7 @@ export function OwnerDashboard({ ownerFirstName }: { ownerFirstName: string | nu
               </DropdownSelect>
             }
           >
-            <RevenueOverviewPanel overview={summary.revenueOverview} />
+            {revenueOverview && <RevenueOverviewPanel overview={revenueOverview} />}
           </DashCard>
         </PageGate>
         <DashCard title="Recent Activity" delay={580}>
@@ -939,8 +943,8 @@ function RevenueBreakdownList({
               <span className="truncate text-foreground">{seg.label}</span>
             </span>
             <span className="flex shrink-0 items-center gap-2">
-              <span className="text-muted-foreground">{seg.unavailable ? "-" : formatCurrencyINR(seg.amountInr)}</span>
-              <span className="w-7 text-right font-medium text-foreground">{pct}%</span>
+              <span className="w-16 text-right tabular-nums text-muted-foreground">{seg.unavailable ? "-" : formatCurrencyINR(seg.amountInr)}</span>
+              <span className="w-8 text-right font-medium tabular-nums text-foreground">{pct}%</span>
             </span>
           </li>
         );

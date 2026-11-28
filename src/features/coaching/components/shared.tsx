@@ -289,3 +289,13 @@ export const NO_SPINNER_INPUT = "[appearance:textfield] [&::-webkit-inner-spin-b
 export function blurOnWheel(e: WheelEvent<HTMLInputElement>) {
   e.currentTarget.blur();
 }
+
+/** Default session length choices for a coach ("custom" asks for minutes). */
+export const DURATION_OPTIONS = [
+  { value: "30", label: "30 minutes" },
+  { value: "45", label: "45 minutes" },
+  { value: "60", label: "1 hour" },
+  { value: "90", label: "1.5 hours" },
+  { value: "120", label: "2 hours" },
+  { value: "custom", label: "Custom" },
+];

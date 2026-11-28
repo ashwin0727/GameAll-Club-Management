@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:linked_scroll_controller/linked_scroll_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
@@ -15,6 +16,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/validators.dart';
 import '../../data/models/booking.dart';
+import '../../data/models/coaching.dart' show SessionRow, SessionStatus;
 import '../../data/models/finance.dart';
 import '../../data/models/guest.dart';
 import '../../data/models/membership_session.dart';
@@ -63,6 +65,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String? _sportFilter; // null = All Sports
   DateTime _selectedDate = DateTime.now();
   DateTime _visibleMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  /// The first month the calendar can show: the month the venue registered. Nothing earlier can be opened.
+  DateTime? _minMonth;
   final ScrollController _dayStripController = ScrollController();
 
   bool _gridLoading = false;
@@ -70,6 +74,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String? _gridError;
   List<Booking> _bookings = [];
   List<MembershipSessionSlot> _membershipSlots = [];
+  // Coaching sessions on the selected day, each on the court it was created for.
+  List<SessionRow> _coachingSessions = [];
   final Map<String, OperatingDay?> _dayByCourt = {};
 
   @override
@@ -123,6 +129,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         _sports = sports;
         _areas = areas.where((a) => !a.archived && a.status == 'ACTIVE' && a.bookingEnabled).toList();
         _pricingPlan = pricingPlan;
+        final registered = facility.createdAt;
+        _minMonth = registered == null ? null : DateTime(registered.year, registered.month);
         _isLoading = false;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDay());
@@ -161,6 +169,14 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final membershipSlots = await ref
           .read(membershipSessionRepositoryProvider)
           .listSessionsForDate(_facilityId!, dateStr);
+      // Coaching sessions are best-effort: someone without Coaching access still gets their bookings.
+      List<SessionRow> coaching = const [];
+      try {
+        coaching = (await ref
+                .read(coachingRepositoryProvider)
+                .listSessions(facilityId: _facilityId!, from: dayStart, to: dayEnd, limit: 500))
+            .sessions;
+      } catch (_) {}
 
       _dayByCourt.clear();
       for (final area in _areas) {
@@ -172,6 +188,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       setState(() {
         _bookings = bookings;
         _membershipSlots = membershipSlots;
+        _coachingSessions = coaching.where((c) => c.status != SessionStatus.cancelled && c.courtId.isNotEmpty).toList();
         _gridLoading = false;
         _hasLoadedGridOnce = true;
       });
@@ -206,7 +223,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   List<BookingTimeSlot> _slotsFor(PlayingArea area) {
     final day = _dayByCourt[area.id];
     if (day == null) return [];
-    final existing = (_bookingsByCourt[area.id] ?? []).map((b) => (startTime: b.startTime, endTime: b.endTime)).toList();
+    final existing = [
+      ...(_bookingsByCourt[area.id] ?? []).map((b) => (startTime: b.startTime, endTime: b.endTime)),
+      ..._coachingSessions.where((c) => c.courtId == area.id).map((c) => (startTime: c.startAt, endTime: c.endAt)),
+    ];
     return computeAvailableSlots(_selectedDate, day, existing);
   }
 
@@ -216,6 +236,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   }
 
   void _selectDay(DateTime day) {
+    final min = _minMonth;
+    if (min != null && day.isBefore(min)) return;
     setState(() => _selectedDate = day);
     _reloadGrid();
   }
@@ -236,7 +258,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => _MonthPickerSheet(initial: _visibleMonth),
+      builder: (context) => _MonthPickerSheet(initial: _visibleMonth, minMonth: _minMonth),
     );
     if (picked == null) return;
     setState(() {
@@ -625,6 +647,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             .toList(),
         membershipSlots:
             _membershipSlots.where((m) => m.courtId == area.id).toList(),
+        coachingSessions: _coachingSessions.where((c) => c.courtId == area.id).toList(),
         availableSlots: _slotsFor(area),
       );
     }).toList();
@@ -639,6 +662,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         onEmptyTap: (area, slot) => _openQuickBooking(area, slot),
         onBookingTap: (booking, area) => _openBookingDetails(booking, area),
         onMembershipTap: _openMembershipSlot,
+        onCoachingTap: (session) => context.push('/coaching/sessions/${session.id}'),
       ),
     );
   }
@@ -653,6 +677,7 @@ class CourtScheduleRow {
     required this.day,
     required this.bookings,
     required this.membershipSlots,
+    required this.coachingSessions,
     required this.availableSlots,
   });
 
@@ -662,6 +687,7 @@ class CourtScheduleRow {
   final OperatingDay? day;
   final List<Booking> bookings;
   final List<MembershipSessionSlot> membershipSlots;
+  final List<SessionRow> coachingSessions;
   final List<BookingTimeSlot> availableSlots;
 }
 
@@ -690,6 +716,7 @@ class CourtsScheduleView extends StatefulWidget {
     required this.onEmptyTap,
     required this.onBookingTap,
     required this.onMembershipTap,
+    required this.onCoachingTap,
   });
 
   final DateTime date;
@@ -699,6 +726,7 @@ class CourtsScheduleView extends StatefulWidget {
   final void Function(PlayingArea area, BookingTimeSlot slot) onEmptyTap;
   final void Function(Booking booking, PlayingArea area) onBookingTap;
   final ValueChanged<MembershipSessionSlot> onMembershipTap;
+  final ValueChanged<SessionRow> onCoachingTap;
 
   @override
   State<CourtsScheduleView> createState() => _CourtsScheduleViewState();
@@ -1008,6 +1036,7 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
                     onBookingTap: (b) =>
                         widget.onBookingTap(b, widget.rows[i].area),
                     onMembershipTap: widget.onMembershipTap,
+                    onCoachingTap: widget.onCoachingTap,
                   ),
                 ],
               ],
@@ -1019,7 +1048,7 @@ class _CourtsScheduleViewState extends State<CourtsScheduleView> {
   }
 }
 
-enum _BlockKind { booked, unpaid, membership }
+enum _BlockKind { booked, unpaid, membership, coaching }
 
 LinearGradient _blockGradient(_BlockKind k, AppColorTokens t) {
   switch (k) {
@@ -1041,6 +1070,12 @@ LinearGradient _blockGradient(_BlockKind k, AppColorTokens t) {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
+    case _BlockKind.coaching:
+      return const LinearGradient(
+        colors: [Color(0xFF0E9AA7), Color(0xFF0B5560)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
   }
 }
 
@@ -1058,6 +1093,7 @@ class _CourtLane extends StatelessWidget {
     required this.onEmptyTap,
     required this.onBookingTap,
     required this.onMembershipTap,
+    required this.onCoachingTap,
   });
 
   final CourtScheduleRow row;
@@ -1071,6 +1107,7 @@ class _CourtLane extends StatelessWidget {
   final ValueChanged<BookingTimeSlot> onEmptyTap;
   final ValueChanged<Booking> onBookingTap;
   final ValueChanged<MembershipSessionSlot> onMembershipTap;
+  final ValueChanged<SessionRow> onCoachingTap;
 
   double _x(DateTime t) => t.difference(winStart).inMinutes * _pxPerMin;
 
@@ -1232,6 +1269,15 @@ class _CourtLane extends StatelessWidget {
                         title: m.batchName,
                         onTap: () => onMembershipTap(m),
                       ),
+                    for (final c in row.coachingSessions)
+                      _block(
+                        context,
+                        start: c.startAt,
+                        end: c.endAt,
+                        kind: _BlockKind.coaching,
+                        title: c.programName.isEmpty ? 'Coaching' : c.programName,
+                        onTap: () => onCoachingTap(c),
+                      ),
                     if (showNow)
                       Positioned(
                         left: nowX,
@@ -1344,10 +1390,13 @@ class _ScheduleLegend extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         dot(tokens.primary, 'Paid'),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         dot(const Color(0xFFFFB020), 'Unpaid'),
-        const SizedBox(width: 10),
-        dot(tokens.violet, 'Session'),
+        const SizedBox(width: 8),
+        dot(tokens.violet, 'Membership'),
+        const SizedBox(width: 8),
+        // The same teal the coaching blocks are drawn in.
+        dot(const Color(0xFF0E9AA7), 'Coaching'),
       ],
     );
   }
@@ -1356,9 +1405,12 @@ class _ScheduleLegend extends StatelessWidget {
 /// Lets an owner jump the Bookings day strip to any month — a year stepper
 /// above a 12-month grid, rather than paging one week at a time.
 class _MonthPickerSheet extends StatefulWidget {
-  const _MonthPickerSheet({required this.initial});
+  const _MonthPickerSheet({required this.initial, this.minMonth});
 
   final DateTime initial;
+
+  /// Months before this one cannot be picked (the month the venue registered).
+  final DateTime? minMonth;
 
   @override
   State<_MonthPickerSheet> createState() => _MonthPickerSheetState();
@@ -1384,7 +1436,10 @@ class _MonthPickerSheetState extends State<_MonthPickerSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => setState(() => _year -= 1)),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: widget.minMonth != null && _year <= widget.minMonth!.year ? null : () => setState(() => _year -= 1),
+                ),
                 Text('$_year', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => setState(() => _year += 1)),
               ],
@@ -1403,9 +1458,11 @@ class _MonthPickerSheetState extends State<_MonthPickerSheet> {
               itemBuilder: (context, i) {
                 final month = i + 1;
                 final selected = month == widget.initial.month && _year == widget.initial.year;
+                final min = widget.minMonth;
+                final before = min != null && DateTime(_year, month).isBefore(DateTime(min.year, min.month));
                 return InkWell(
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  onTap: () => Navigator.of(context).pop(DateTime(_year, month)),
+                  onTap: before ? null : () => Navigator.of(context).pop(DateTime(_year, month)),
                   child: Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
@@ -1417,7 +1474,9 @@ class _MonthPickerSheetState extends State<_MonthPickerSheet> {
                       _monthShort[i],
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: selected ? tokens.onAccent(tokens.primary) : tokens.textPrimary,
+                        color: selected
+                            ? tokens.onAccent(tokens.primary)
+                            : (before ? tokens.textSecondary.withValues(alpha: 0.4) : tokens.textPrimary),
                       ),
                     ),
                   ),

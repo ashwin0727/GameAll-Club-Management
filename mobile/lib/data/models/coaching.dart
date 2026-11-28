@@ -1390,3 +1390,188 @@ class EnrollmentBilling {
         currentEnd: j['current_end'] as String?,
       );
 }
+
+// ── Coach onboarding (5-step Add Coach) — mirrors the onboarding types in src/features/coaching/types.ts ──────────────
+const coachOnboardingSteps = [
+  'Identity & Basic Profile',
+  'Expertise & Credentials',
+  'Sessions & Pricing',
+  'Payments, Payouts & KYC',
+  'Review & Agreements',
+];
+
+class CoachCertificate {
+  const CoachCertificate({required this.name, this.issuer = '', this.year, this.path = ''});
+  final String name;
+  final String issuer;
+  final int? year;
+
+  /// Storage path in the private coach-credentials bucket; empty until a file is uploaded.
+  final String path;
+
+  CoachCertificate copyWith({String? name, String? issuer, int? year, bool clearYear = false, String? path}) =>
+      CoachCertificate(name: name ?? this.name, issuer: issuer ?? this.issuer, year: clearYear ? null : (year ?? this.year), path: path ?? this.path);
+
+  factory CoachCertificate.fromJson(Map<String, dynamic> j) => CoachCertificate(
+        name: (j['name'] as String?) ?? '',
+        issuer: (j['issuer'] as String?) ?? '',
+        year: (j['year'] as num?)?.toInt(),
+        path: (j['path'] as String?) ?? '',
+      );
+  Map<String, dynamic> toPayload() => {'name': name.trim(), 'issuer': issuer.trim(), 'year': year, 'path': path};
+}
+
+/// What the server returns for Step 4 — secrets only ever come back masked (last 4 characters).
+class CoachPayoutMasked {
+  const CoachPayoutMasked({
+    required this.entityType,
+    this.legalName,
+    this.businessAddress,
+    this.taxIdMasked,
+    required this.payoutMethod,
+    this.accountHolderName,
+    this.accountNumberMasked,
+    this.ifsc,
+    this.upiId,
+    required this.payoutFrequency,
+    this.cancellationPolicy,
+  });
+  final String entityType; // INDIVIDUAL | BUSINESS
+  final String? legalName;
+  final String? businessAddress;
+  final String? taxIdMasked;
+  final String payoutMethod; // BANK_TRANSFER | UPI
+  final String? accountHolderName;
+  final String? accountNumberMasked;
+  final String? ifsc;
+  final String? upiId;
+  final String payoutFrequency; // WEEKLY | BIWEEKLY | MONTHLY
+  final String? cancellationPolicy;
+  factory CoachPayoutMasked.fromJson(Map<String, dynamic> j) => CoachPayoutMasked(
+        entityType: (j['entityType'] as String?) ?? 'INDIVIDUAL',
+        legalName: j['legalName'] as String?,
+        businessAddress: j['businessAddress'] as String?,
+        taxIdMasked: j['taxIdMasked'] as String?,
+        payoutMethod: (j['payoutMethod'] as String?) ?? 'BANK_TRANSFER',
+        accountHolderName: j['accountHolderName'] as String?,
+        accountNumberMasked: j['accountNumberMasked'] as String?,
+        ifsc: j['ifsc'] as String?,
+        upiId: j['upiId'] as String?,
+        payoutFrequency: (j['payoutFrequency'] as String?) ?? 'MONTHLY',
+        cancellationPolicy: j['cancellationPolicy'] as String?,
+      );
+}
+
+class CoachOnboarding {
+  const CoachOnboarding({
+    required this.coachId,
+    required this.userId,
+    required this.currentStep,
+    required this.stepsDone,
+    required this.onboardingStatus,
+    required this.payoutStatus,
+    required this.canManagePayouts,
+    required this.displayName,
+    required this.location,
+    required this.timezone,
+    required this.languages,
+    required this.shortBio,
+    this.dateOfBirth,
+    required this.niche,
+    required this.subSpecialties,
+    this.experienceYears,
+    required this.targetAudience,
+    required this.methodology,
+    required this.certificates,
+    required this.sportIds,
+    required this.expertiseLevels,
+    required this.sessionFormats,
+    required this.sessionDurations,
+    this.defaultSessionDurationMinutes,
+    this.perSessionRateMinor,
+    this.weeklyRateMinor,
+    this.monthlyRateMinor,
+    this.payout,
+  });
+
+  final String coachId;
+  final String userId;
+  final int currentStep;
+  final List<int> stepsDone;
+  final String onboardingStatus; // DRAFT | COMPLETE
+  final String payoutStatus; // PENDING | COMPLETE
+  final bool canManagePayouts;
+  final String displayName;
+  final String location;
+  final String timezone;
+  final List<String> languages;
+  final String shortBio;
+  final String? dateOfBirth;
+  final String niche;
+  final List<String> subSpecialties;
+  final double? experienceYears;
+  final List<String> targetAudience;
+  final String methodology;
+  final List<CoachCertificate> certificates;
+  final List<String> sportIds;
+  final List<String> expertiseLevels;
+  final List<String> sessionFormats;
+  final List<int> sessionDurations;
+  final int? defaultSessionDurationMinutes;
+  /// Coaching amounts in paise; each is optional (null = not set).
+  final int? perSessionRateMinor;
+  final int? weeklyRateMinor;
+  final int? monthlyRateMinor;
+  final CoachPayoutMasked? payout;
+
+  /// The step to open on, kept within 1..5.
+  int get resumeStep => currentStep.clamp(1, 5);
+
+  factory CoachOnboarding.fromJson(Map<String, dynamic> j) {
+    Map<String, dynamic> m(String k) => ((j[k] as Map?) ?? const {}).cast<String, dynamic>();
+    List<String> strs(dynamic v) => ((v as List?) ?? const []).map((e) => e.toString()).toList();
+    final id = m('identity'), ex = m('expertise'), sv = m('services');
+    return CoachOnboarding(
+      coachId: j['coachId'] as String,
+      userId: j['userId'] as String,
+      currentStep: (j['currentStep'] as num?)?.toInt() ?? 1,
+      stepsDone: ((j['stepsDone'] as List?) ?? const []).map((e) => (e as num).toInt()).toList(),
+      onboardingStatus: (j['onboardingStatus'] as String?) ?? 'DRAFT',
+      payoutStatus: (j['payoutStatus'] as String?) ?? 'PENDING',
+      canManagePayouts: j['canManagePayouts'] == true,
+      displayName: (id['displayName'] as String?) ?? '',
+      location: (id['location'] as String?) ?? '',
+      timezone: (id['timezone'] as String?) ?? 'Asia/Kolkata',
+      languages: strs(id['languages']),
+      shortBio: (id['shortBio'] as String?) ?? '',
+      dateOfBirth: id['dateOfBirth'] as String?,
+      niche: (ex['niche'] as String?) ?? '',
+      subSpecialties: strs(ex['subSpecialties']),
+      experienceYears: (ex['experienceYears'] as num?)?.toDouble(),
+      targetAudience: strs(ex['targetAudience']),
+      methodology: (ex['methodology'] as String?) ?? '',
+      certificates: ((ex['certificates'] as List?) ?? const []).map((e) => CoachCertificate.fromJson((e as Map).cast<String, dynamic>())).toList(),
+      sportIds: strs(ex['sportIds']),
+      expertiseLevels: strs(ex['expertiseLevels']),
+      sessionFormats: strs(sv['sessionFormats']),
+      sessionDurations: ((sv['sessionDurations'] as List?) ?? const []).map((e) => (e as num).toInt()).toList(),
+      defaultSessionDurationMinutes: (sv['defaultSessionDurationMinutes'] as num?)?.toInt(),
+      perSessionRateMinor: (sv['perSessionRateMinor'] as num?)?.toInt(),
+      weeklyRateMinor: (sv['weeklyRateMinor'] as num?)?.toInt(),
+      monthlyRateMinor: (sv['monthlyRateMinor'] as num?)?.toInt(),
+      payout: j['payout'] == null ? null : CoachPayoutMasked.fromJson((j['payout'] as Map).cast<String, dynamic>()),
+    );
+  }
+}
+
+class CoachOnboardingDraft {
+  const CoachOnboardingDraft({required this.coachId, required this.fullName, required this.currentStep});
+  final String coachId;
+  final String fullName;
+  final int currentStep;
+  factory CoachOnboardingDraft.fromJson(Map<String, dynamic> j) => CoachOnboardingDraft(
+        coachId: j['coach_id'] as String,
+        fullName: (j['full_name'] as String?) ?? 'Coach',
+        currentStep: (j['current_step'] as num?)?.toInt() ?? 1,
+      );
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LayoutGrid, List, Plus, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,7 @@ import { ServiceError } from "@/services/shared/service-error";
 import { getCoachingService } from "@/services/coaching";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
-import { AddCoachSheet } from "@/features/coaching/components/add-coach-sheet";
-import type { CoachRow, CoachSort, CoachStatus } from "@/features/coaching/types";
+import type { CoachOnboardingDraft, CoachRow, CoachSort, CoachStatus } from "@/features/coaching/types";
 import {
   EmptyState,
   ErrorState,
@@ -77,7 +77,8 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
   const [rows, setRows] = useState<CoachRow[] | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
+  const router = useRouter();
+  const [drafts, setDrafts] = useState<CoachOnboardingDraft[]>([]);
 
   const canAdd = perms?.can("COACHING_MANAGE_COACHES") ?? false;
 
@@ -116,13 +117,37 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
     };
   }, [load]);
 
+  // Coaches whose onboarding is saved as a draft — resumable at the step they stopped on.
+  useEffect(() => {
+    if (!canAdd) return;
+    getCoachingService().listCoachOnboardingDrafts(facilityId).then(setDrafts).catch(() => setDrafts([]));
+  }, [facilityId, canAdd]);
+
   return (
     <div className="space-y-4">
+      {drafts.length > 0 && (
+        <Card className="p-4">
+          <h2 className="text-sm font-semibold">Drafts ({drafts.length})</h2>
+          <ul className="mt-2 divide-y divide-border">
+            {drafts.map((d) => (
+              <li key={d.coachId} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0 truncate font-medium">{d.fullName}</span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <Badge variant="warning">Draft – step {d.currentStep} of 5</Badge>
+                  <Link href={`/coaching/coaches/add?coach=${d.coachId}`} className="font-medium text-primary hover:underline">
+                    Resume
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs tabs={STATUS_TABS} active={tabForStatus(status)} onChange={(t) => setStatus(statusForTab(t))} />
           {showAddButton && canAdd && (
-            <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Button size="sm" onClick={() => router.push("/coaching/coaches/add")}>
               <Plus className="h-4 w-4" aria-hidden /> Add Coach
             </Button>
           )}
@@ -283,9 +308,6 @@ export function CoachesListPanel({ facilityId, showAddButton = false }: { facili
         <Pagination page={page} pageSize={PAGE_SIZE} totalCount={totalCount} onPage={setPage} unit="coaches" />
       </Card>
 
-      {showAddButton && (
-        <AddCoachSheet facilityId={facilityId} open={addOpen} onOpenChange={setAddOpen} onCoachAdded={() => void load()} />
-      )}
     </div>
   );
 }

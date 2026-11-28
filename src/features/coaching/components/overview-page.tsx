@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarClock, CalendarPlus, ClipboardList, IndianRupee, UserPlus, Users, UsersRound } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +14,6 @@ import { getCoachingService } from "@/services/coaching";
 import { useSportIds } from "@/features/facility/hooks/use-sport-filter";
 import { usePermissionContext } from "@/features/auth/context/permission-provider";
 import { CoachesListPanel } from "@/features/coaching/components/coaches-list-panel";
-import { AddCoachSheet } from "@/features/coaching/components/add-coach-sheet";
 import type { CoachingInsights, CoachingOverview } from "@/features/coaching/types";
 import { EmptyState, ErrorState, fmtTime, money } from "@/features/coaching/components/shared";
 import { nextSessions, sessionDayLabel } from "@/features/coaching/upcoming-sessions";
@@ -45,10 +45,10 @@ export function CoachingOverviewPage() {
   const [insights, setInsights] = useState<CoachingInsights | null>(null);
   const [insightsError, setInsightsError] = useState<string | null>(null);
 
-  const [addCoachOpen, setAddCoachOpen] = useState(false);
+  const router = useRouter();
+  const addCoach = () => router.push("/coaching/coaches/add");
   // Bumped after a coach is added from the hero/Quick Actions sheet, forcing the roster panel
   // (which owns its own load()) to remount and refetch, since it doesn't expose a refresh handle.
-  const [rosterKey, setRosterKey] = useState(0);
 
   // The sports ticked in the top bar (null = All Sports): every figure on this page is for those sports.
   const { sportIds, ready: sportsReady } = useSportIds(facilityId);
@@ -120,12 +120,11 @@ export function CoachingOverviewPage() {
           tagline="Better Coaching. Stronger Players."
           taglineSub="Manage coaches, schedule sessions, and grow your community."
           buttonLabel="Add Coach"
-          onAddMember={canCoach ? () => setAddCoachOpen(true) : undefined}
+          onAddMember={canCoach ? addCoach : undefined}
         />
         <Card className="p-0">
           <ErrorState message={error ?? ""} onRetry={() => void load()} />
         </Card>
-        <AddCoachSheet facilityId={facilityId} open={addCoachOpen} onOpenChange={setAddCoachOpen} />
       </div>
     );
   }
@@ -139,7 +138,7 @@ export function CoachingOverviewPage() {
         tagline="Better Coaching. Stronger Players."
         taglineSub="Manage coaches, schedule sessions, and grow your community."
         buttonLabel="Add Coach"
-        onAddMember={canCoach ? () => setAddCoachOpen(true) : undefined}
+        onAddMember={canCoach ? addCoach : undefined}
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -192,7 +191,7 @@ export function CoachingOverviewPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
-        <CoachesListPanel key={rosterKey} facilityId={facilityId} />
+        <CoachesListPanel facilityId={facilityId} />
 
         <div className="space-y-4">
           <Card className="p-4">
@@ -273,7 +272,7 @@ export function CoachingOverviewPage() {
             <h2 className="text-sm font-semibold">Quick Actions</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {canCoach && (
-                <QuickAction icon={UserPlus} tone="success" label="Add Coach" desc="Onboard a new coach" onClick={() => setAddCoachOpen(true)} />
+                <QuickAction icon={UserPlus} tone="success" label="Add Coach" desc="Onboard a new coach" onClick={addCoach} />
               )}
               {canSession && (
                 <QuickAction icon={CalendarPlus} tone="blue" label="Schedule Session" desc="Create coaching session" href="/coaching/sessions/new" />
@@ -287,12 +286,6 @@ export function CoachingOverviewPage() {
         </div>
       </div>
 
-      <AddCoachSheet
-        facilityId={facilityId}
-        open={addCoachOpen}
-        onOpenChange={setAddCoachOpen}
-        onCoachAdded={() => setRosterKey((k) => k + 1)}
-      />
     </div>
   );
 }
